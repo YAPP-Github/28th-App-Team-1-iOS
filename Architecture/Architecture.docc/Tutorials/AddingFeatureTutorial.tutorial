@@ -1,0 +1,113 @@
+@Tutorial(time: 10) {
+    @Intro(title: "새 Feature 추가하기") {
+        `ProfileFeature` 를 처음부터 빌드해 스택에 푸시되도록 만든다.
+    }
+
+    @Section(title: "Step 1 — Domain 모델 만들기") {
+        @ContentAndMedia {
+            화면이 다룰 데이터를 먼저 정의한다. ``User`` 와 분리된 표현이 필요할 때 새 도메인 모델을 둔다.
+        }
+
+        @Steps {
+            @Step {
+                `Architecture/Domain/Profile.swift` 를 만들고 `Equatable + Identifiable + Sendable` 3종 세트를 채택한 구조체를 정의한다.
+                @Code(name: "Profile.swift", file: profile-domain.swift)
+            }
+
+            @Step {
+                `Sendable` 을 빼면 비동기 클로저에 넣을 때 Swift 6 모드에서 경고가 뜬다. `Equatable` 은 Reducer State 가 된 뒤 부모와 diff 비교가 가능하려면 필수다.
+            }
+        }
+    }
+
+    @Section(title: "Step 2 — Dependency 추가") {
+        @ContentAndMedia {
+            외부 접근은 항상 `@Dependency` 로만. 세 가지 값(live/preview/test)을 모두 채운다.
+        }
+
+        @Steps {
+            @Step {
+                `Architecture/Dependencies/ProfileClient.swift` 에 클로저 프로퍼티만 가진 struct 를 정의한다.
+                @Code(name: "ProfileClient.swift", file: profile-client-1.swift)
+            }
+
+            @Step {
+                `DependencyKey` 채택 + `liveValue`/`previewValue`/`testValue` 세 값을 채운다. `testValue` 는 반드시 `unimplemented` — 빈 클로저로 두면 테스트가 의도치 않게 통과한다.
+                @Code(name: "ProfileClient.swift", file: profile-client-2.swift)
+            }
+
+            @Step {
+                `DependencyValues` 슬롯까지 마무리. Reducer 에서는 `@Dependency(\.profileClient)` 한 줄로 가져온다.
+                @Code(name: "ProfileClient.swift", file: profile-client-3.swift)
+            }
+        }
+    }
+
+    @Section(title: "Step 3 — Reducer 작성") {
+        @ContentAndMedia {
+            `@Reducer` + `@ObservableState` + 액션 네이밍 컨벤션. 폼 입력이 있으니 `BindableAction` + `BindingReducer` 를 함께 쓴다.
+        }
+
+        @Steps {
+            @Step {
+                `Architecture/Features/Profile/ProfileFeature.swift` 에 reducer 의 뼈대를 만든다. `init(profileId:)` 로 id 만 받고 나머지는 옵셔널/기본값.
+                @Code(name: "ProfileFeature.swift", file: profile-feature-1.swift)
+            }
+
+            @Step {
+                Action 네이밍을 컨벤션대로 둔다 — 사용자 입력은 `userTapped...`, 응답은 `...Loaded`/`...Saved`, 생명주기는 `onAppear`/`onDisappear`, 부모 통보는 `delegate(Delegate)`.
+                @Code(name: "ProfileFeature.swift", file: profile-feature-2.swift)
+            }
+
+            @Step {
+                비동기 호출은 반드시 `.run` 블록 안에서. `cancellable(id:)` 로 in-flight 요청 식별자를 붙여두면 `onDisappear` 에서 깔끔히 끊을 수 있다.
+                @Code(name: "ProfileFeature.swift", file: profile-feature-3.swift)
+            }
+        }
+    }
+
+    @Section(title: "Step 4 — View 연결") {
+        @ContentAndMedia {
+            `@Bindable var store` 가 표준 패턴. 양방향 바인딩은 `$store.field` 로 한다.
+        }
+
+        @Steps {
+            @Step {
+                `Architecture/Features/Profile/ProfileView.swift` 의 골격. `WithViewStore` 는 사용 금지.
+                @Code(name: "ProfileView.swift", file: profile-view.swift)
+            }
+
+            @Step {
+                `#Preview` 에는 반드시 `previewValue` 를 주입해 네트워크 없이도 캔버스가 살아 있게 만든다.
+                @Code(name: "ProfileView.swift", file: profile-view-preview.swift)
+            }
+        }
+    }
+
+    @Section(title: "Step 5 — Path 등록") {
+        @ContentAndMedia {
+            마지막으로 ``AppFeature`` 와 ``AppView`` 에 새 화면을 끼워넣는다. 정확히 세 줄.
+        }
+
+        @Steps {
+            @Step {
+                ``AppFeature/Path-swift.enum`` 에 case 한 줄.
+                @Code(name: "AppFeature.swift", file: app-feature-path.swift)
+            }
+
+            @Step {
+                ``AppFeature`` `body` 에서 어떤 delegate 를 받았을 때 push 할지 한 줄.
+                @Code(name: "AppFeature.swift", file: app-feature-push.swift)
+            }
+
+            @Step {
+                ``AppView`` 의 `destination` switch 에 case 한 줄.
+                @Code(name: "ArchitectureApp.swift", file: app-view-destination.swift)
+            }
+
+            @Step {
+                시뮬레이터에서 목록 → 상세 → "Edit Profile" 까지 가면 새 화면이 푸시된다.
+            }
+        }
+    }
+}

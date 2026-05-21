@@ -1,0 +1,14 @@
+@Tutorials(name: "Architecture") {
+    @Intro(title: "SwiftUI + TCA 레퍼런스") {
+        실제 동작하는 예제로 새 Feature 를 추가하고, 화면 간에 값을 안전하게 주고받는 방법을 익힌다.
+    }
+
+    @Chapter(name: "기초") {
+        @Image(source: "chapter-basics.png", alt: "기초")
+
+        화면 한 개를 더하는 가장 짧은 길과, 세 가지 값 전달 패턴.
+
+        @TutorialReference(tutorial: "doc:AddingFeatureTutorial")
+        @TutorialReference(tutorial: "doc:NavigationPatternsTutorial")
+    }
+}
