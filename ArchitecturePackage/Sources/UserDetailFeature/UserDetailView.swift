@@ -1,10 +1,16 @@
 import ComposableArchitecture
+import Models
 import SwiftUI
+import UserClient
 
-struct UserDetailView: View {
+public struct UserDetailView: View {
     @Bindable var store: StoreOf<UserDetailFeature>
 
-    var body: some View {
+    public init(store: StoreOf<UserDetailFeature>) {
+        self.store = store
+    }
+
+    public var body: some View {
         Form {
             Section("Profile") {
                 LabeledContent("Name", value: store.user.name)

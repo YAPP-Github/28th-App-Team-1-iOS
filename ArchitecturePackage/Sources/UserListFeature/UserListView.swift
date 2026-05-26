@@ -1,10 +1,16 @@
 import ComposableArchitecture
+import Models
 import SwiftUI
+import UserClient
 
-struct UserListView: View {
+public struct UserListView: View {
     @Bindable var store: StoreOf<UserListFeature>
 
-    var body: some View {
+    public init(store: StoreOf<UserListFeature>) {
+        self.store = store
+    }
+
+    public var body: some View {
         content
             .navigationTitle("Users")
             .onAppear { store.send(.onAppear) }

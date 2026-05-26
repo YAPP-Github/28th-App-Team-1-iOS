@@ -1,26 +1,33 @@
 import ComposableArchitecture
 import Foundation
+import Models
+import UserClient
 
 /// 사용자 목록 화면 Reducer.
 ///
-/// **Case B — 객체 전달** 패턴의 발사대. 사용자가 행을 탭하면
-/// ``Action/Delegate/userTappedRow(_:)`` 로 ``User`` 통째를 위에 던지고,
-/// ``AppFeature`` 가 그 객체를 `UserDetailFeature.State(user:)` 에 넘겨
-/// 스택에 push 합니다.
-///
-/// 결과 반환(Case C) 도 이 Feature 에서 관찰할 수 있는데, ``ProfileFeature``
-/// 가 보낸 ``ProfileFeature/Action/Delegate/profileSaved(_:)`` 가
-/// ``AppFeature`` 를 거쳐 이 Feature 의 ``State/users`` 를 갱신합니다.
+/// **Case B — 객체 전달** 패턴의 발사대. 행 탭 시
+/// ``Action/Delegate/userTappedRow(_:)`` 로 `User` 통째를 위에 던지고,
+/// `AppFeature` 가 그 객체를 detail push 에 사용한다.
 @Reducer
-struct UserListFeature {
+public struct UserListFeature {
     @ObservableState
-    struct State: Equatable {
-        var users: [User] = []
-        var isLoading = false
-        var errorMessage: String?
+    public struct State: Equatable {
+        public var users: [User]
+        public var isLoading: Bool
+        public var errorMessage: String?
+
+        public init(
+            users: [User] = [],
+            isLoading: Bool = false,
+            errorMessage: String? = nil
+        ) {
+            self.users = users
+            self.isLoading = isLoading
+            self.errorMessage = errorMessage
+        }
     }
 
-    enum Action {
+    public enum Action {
         case onAppear
         case onDisappear
         case userTappedRow(User)
@@ -30,8 +37,8 @@ struct UserListFeature {
         case delegate(Delegate)
 
         @CasePathable
-        enum Delegate: Equatable {
-            /// 행 탭이 일어났음을 상위에 알리고 push 대상 ``User`` 를 함께 전달.
+        public enum Delegate: Equatable {
+            /// 행 탭이 일어났음을 상위에 알리고 push 대상 `User` 를 함께 전달.
             case userTappedRow(User)
         }
     }
@@ -40,7 +47,9 @@ struct UserListFeature {
 
     private enum CancelID { case load }
 
-    var body: some ReducerOf<Self> {
+    public init() {}
+
+    public var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
             case .onAppear:

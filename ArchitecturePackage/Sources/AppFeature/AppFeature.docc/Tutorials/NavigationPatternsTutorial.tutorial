@@ -5,7 +5,7 @@
 
     @Section(title: "Case A — id 만 전달") {
         @ContentAndMedia {
-            부모가 들고 있는 정보가 자식 화면에 부족하거나, 진입 시점에 최신본을 보장하고 싶을 때. 본 앱에서는 ``UserDetailFeature`` → ``ProfileFeature`` 가 이 케이스다.
+            부모가 들고 있는 정보가 자식 화면에 부족하거나, 진입 시점에 최신본을 보장하고 싶을 때. 본 앱에서는 `UserDetailFeature` → `ProfileFeature` 가 이 케이스다.
         }
 
         @Steps {
@@ -33,7 +33,7 @@
 
     @Section(title: "Case B — 객체 전체 전달") {
         @ContentAndMedia {
-            부모가 이미 데이터를 들고 있고, 진입 직후 깜빡임이 없어야 할 때. 본 앱의 ``UserListFeature`` → ``UserDetailFeature`` 가 이 케이스.
+            부모가 이미 데이터를 들고 있고, 진입 직후 깜빡임이 없어야 할 때. 본 앱의 `UserListFeature` → `UserDetailFeature` 가 이 케이스.
         }
 
         @Steps {
@@ -55,7 +55,7 @@
 
     @Section(title: "Case C — 결과를 부모로") {
         @ContentAndMedia {
-            저장·선택 결과가 다른 화면에도 반영되어야 할 때. 본 앱에서는 ``ProfileFeature`` 의 저장 결과가 ``UserListFeature`` 와 스택 아래의 ``UserDetailFeature`` 양쪽을 갱신한다.
+            저장·선택 결과가 다른 화면에도 반영되어야 할 때. 본 앱에서는 `ProfileFeature` 의 저장 결과가 `UserListFeature` 와 스택 아래의 `UserDetailFeature` 양쪽을 갱신한다.
         }
 
         @Steps {

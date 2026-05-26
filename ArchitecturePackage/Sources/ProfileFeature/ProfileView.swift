@@ -1,14 +1,16 @@
 import ComposableArchitecture
+import Models
+import ProfileClient
 import SwiftUI
 
-/// ``ProfileFeature`` 의 SwiftUI 화면.
-///
-/// 폼 입력은 `$store.editedDisplayName` 식으로 ``ProfileFeature/Action/binding(_:)``
-/// 액션을 통해 전파됩니다. View 가 직접 상태를 변경하지 않는다는 원칙은 지켜집니다.
-struct ProfileView: View {
+public struct ProfileView: View {
     @Bindable var store: StoreOf<ProfileFeature>
 
-    var body: some View {
+    public init(store: StoreOf<ProfileFeature>) {
+        self.store = store
+    }
+
+    public var body: some View {
         Form {
             if store.isLoading {
                 HStack(spacing: 8) {

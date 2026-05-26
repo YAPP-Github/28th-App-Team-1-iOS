@@ -5,7 +5,7 @@
 
     @Section(title: "Step 1 — Domain 모델 만들기") {
         @ContentAndMedia {
-            화면이 다룰 데이터를 먼저 정의한다. ``User`` 와 분리된 표현이 필요할 때 새 도메인 모델을 둔다.
+            화면이 다룰 데이터를 먼저 정의한다. `User` 와 분리된 표현이 필요할 때 새 도메인 모델을 둔다.
         }
 
         @Steps {
@@ -91,7 +91,7 @@
 
         @Steps {
             @Step {
-                ``AppFeature/Path-swift.enum`` 에 case 한 줄.
+                `AppFeature.Path` 에 case 한 줄.
                 @Code(name: "AppFeature.swift", file: app-feature-path.swift)
             }
 

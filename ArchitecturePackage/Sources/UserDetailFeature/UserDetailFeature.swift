@@ -1,26 +1,29 @@
 import ComposableArchitecture
 import Foundation
+import Models
+import UserClient
 
 /// 사용자 상세 화면 Reducer.
 ///
-/// 이 Feature 는 **Case B — 객체 전체 전달** 패턴의 예시입니다.
-/// 상위 ``AppFeature`` 가 `State(user:)` 에 ``User`` 통째로 넘기기 때문에
-/// 화면 진입 즉시 이름·이메일을 보여줄 수 있고, bio 만 ``Action/onAppear`` 에서
-/// 추가로 fetch 합니다 (실서비스에서는 detail 전용 endpoint 가 따로 있는 경우).
-///
-/// 편집 화면 진입은 ``Action/Delegate/editProfileTapped(id:)`` 로 위에 알리고,
-/// 실제 push 는 ``AppFeature`` 가 처리합니다 — Feature 가 직접 자기 위 스택을
-/// 만지지 않는 원칙입니다.
+/// **Case B — 객체 전체 전달** 패턴 + **Case A — id 만 전달** 트리거.
+/// 진입 시 `User` 통째로 받아 즉시 렌더하고, 편집 진입은
+/// ``Action/Delegate/editProfileTapped(id:)`` 로 상위에 알린다.
 @Reducer
-struct UserDetailFeature {
+public struct UserDetailFeature {
     @ObservableState
-    struct State: Equatable {
-        var user: User
-        var isLoading = false
-        var errorMessage: String?
+    public struct State: Equatable {
+        public var user: User
+        public var isLoading: Bool
+        public var errorMessage: String?
+
+        public init(user: User, isLoading: Bool = false, errorMessage: String? = nil) {
+            self.user = user
+            self.isLoading = isLoading
+            self.errorMessage = errorMessage
+        }
     }
 
-    enum Action {
+    public enum Action {
         case onAppear
         case onDisappear
         case userTappedEditButton
@@ -30,8 +33,8 @@ struct UserDetailFeature {
         case delegate(Delegate)
 
         @CasePathable
-        enum Delegate: Equatable {
-            /// "Edit Profile" 버튼이 눌렸음을 상위에 알리고, 어떤 id 를 편집할지 함께 전달.
+        public enum Delegate: Equatable {
+            /// "Edit Profile" 버튼이 눌렸음을 상위에 알리고 편집 대상 id 전달.
             case editProfileTapped(id: Int)
         }
     }
@@ -40,7 +43,9 @@ struct UserDetailFeature {
 
     private enum CancelID { case load }
 
-    var body: some ReducerOf<Self> {
+    public init() {}
+
+    public var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
             case .onAppear:

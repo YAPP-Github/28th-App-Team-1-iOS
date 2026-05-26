@@ -1,18 +1,23 @@
 import ComposableArchitecture
 import Foundation
+import Models
 
 /// 프로필 조회/저장 통로.
-///
-/// 패턴은 ``UserClient`` 와 동일합니다. ``ProfileFeature`` 에서
-/// `@Dependency(\.profileClient)` 로 주입받아 사용하며, 테스트에서는
-/// `withDependencies` 로 mock 을 갈아끼웁니다.
-struct ProfileClient: Sendable {
-    var fetchProfile: @Sendable (_ id: Int) async throws -> Profile
-    var saveProfile: @Sendable (_ profile: Profile) async throws -> Profile
+public struct ProfileClient: Sendable {
+    public var fetchProfile: @Sendable (_ id: Int) async throws -> Profile
+    public var saveProfile: @Sendable (_ profile: Profile) async throws -> Profile
+
+    public init(
+        fetchProfile: @escaping @Sendable (_ id: Int) async throws -> Profile,
+        saveProfile: @escaping @Sendable (_ profile: Profile) async throws -> Profile
+    ) {
+        self.fetchProfile = fetchProfile
+        self.saveProfile = saveProfile
+    }
 }
 
 extension ProfileClient: DependencyKey {
-    static let liveValue = ProfileClient(
+    public static let liveValue = ProfileClient(
         fetchProfile: { id in
             try await Task.sleep(for: .milliseconds(600))
             guard let user = User.samples.first(where: { $0.id == id }) else {
@@ -31,7 +36,7 @@ extension ProfileClient: DependencyKey {
         }
     )
 
-    static let previewValue = ProfileClient(
+    public static let previewValue = ProfileClient(
         fetchProfile: { id in
             Profile(
                 id: id,
@@ -43,7 +48,7 @@ extension ProfileClient: DependencyKey {
         saveProfile: { $0 }
     )
 
-    static let testValue = ProfileClient(
+    public static let testValue = ProfileClient(
         fetchProfile: unimplemented(
             "ProfileClient.fetchProfile",
             placeholder: Profile(id: 0, displayName: "", bio: "")
@@ -56,12 +61,12 @@ extension ProfileClient: DependencyKey {
 }
 
 extension DependencyValues {
-    var profileClient: ProfileClient {
+    public var profileClient: ProfileClient {
         get { self[ProfileClient.self] }
         set { self[ProfileClient.self] = newValue }
     }
 }
 
-enum ProfileClientError: Error, Equatable {
+public enum ProfileClientError: Error, Equatable {
     case notFound
 }

@@ -1,37 +1,36 @@
 import ComposableArchitecture
 import Foundation
+import Models
+import ProfileClient
 
-/// 프로필 편집 화면의 Reducer.
+/// 프로필 편집 화면 Reducer.
 ///
-/// 이 Feature 는 **Case A — id 만 받아 화면에서 fetch** 패턴을 보여줍니다.
-/// 상위에서 ``State/init(profileId:)`` 로 id 만 넘기면 ``Action/onAppear`` 가
-/// ``ProfileClient/fetchProfile`` 를 호출해 본문을 채웁니다.
-///
-/// 저장이 끝나면 ``Action/Delegate/profileSaved(_:)`` 로 상위에 결과를 던지고,
-/// 화면 pop 과 ``UserListFeature`` / ``UserDetailFeature`` 의 갱신은
-/// ``AppFeature`` 가 일괄 처리합니다 (Case C — 결과 반환 delegate 패턴).
-///
-/// 폼 입력은 `BindableAction` + `BindingReducer` 패턴을 사용합니다.
-/// View 에서는 `$store.editedDisplayName` 처럼 `@Bindable` 의 projected value 로
-/// 바로 양방향 바인딩합니다.
+/// **Case A** (id 만 받아 화면에서 fetch) 와 **Case C** (저장 결과를 delegate
+/// 로 부모에 통보) 를 한 화면에 모두 보여주는 Feature.
 @Reducer
-struct ProfileFeature {
+public struct ProfileFeature {
     @ObservableState
-    struct State: Equatable {
-        let profileId: Int
-        var profile: Profile?
-        var isLoading = false
-        var isSaving = false
-        var errorMessage: String?
-        var editedDisplayName: String = ""
-        var editedBio: String = ""
+    public struct State: Equatable {
+        public let profileId: Int
+        public var profile: Profile?
+        public var isLoading: Bool
+        public var isSaving: Bool
+        public var errorMessage: String?
+        public var editedDisplayName: String
+        public var editedBio: String
 
-        init(profileId: Int) {
+        public init(profileId: Int) {
             self.profileId = profileId
+            self.profile = nil
+            self.isLoading = false
+            self.isSaving = false
+            self.errorMessage = nil
+            self.editedDisplayName = ""
+            self.editedBio = ""
         }
     }
 
-    enum Action: BindableAction {
+    public enum Action: BindableAction {
         case binding(BindingAction<State>)
         case onAppear
         case onDisappear
@@ -44,7 +43,7 @@ struct ProfileFeature {
         case delegate(Delegate)
 
         @CasePathable
-        enum Delegate: Equatable {
+        public enum Delegate: Equatable {
             /// 저장이 성공해 상위가 목록/상세를 갱신해야 함을 알리는 신호.
             case profileSaved(Profile)
         }
@@ -54,7 +53,9 @@ struct ProfileFeature {
 
     private enum CancelID { case load, save }
 
-    var body: some ReducerOf<Self> {
+    public init() {}
+
+    public var body: some ReducerOf<Self> {
         BindingReducer()
         Reduce { state, action in
             switch action {

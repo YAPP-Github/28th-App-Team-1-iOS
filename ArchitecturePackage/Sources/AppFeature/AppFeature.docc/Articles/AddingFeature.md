@@ -27,7 +27,7 @@ struct Profile: Equatable, Identifiable, Codable, Sendable {
 }
 ```
 
-**언제 쓰는가** — 기존 ``User`` 와 책임이 분리되는 표현이 필요할 때. 같은 데이터의 다른 단면이거나 편집 전용 모델.
+**언제 쓰는가** — 기존 `User` 와 책임이 분리되는 표현이 필요할 때. 같은 데이터의 다른 단면이거나 편집 전용 모델.
 **어떻게 쓰는가** — `struct + Equatable + Identifiable + Sendable` 4종 세트가 기본. Reducer State 에 들어가려면 `Equatable` 필수.
 **주의할 점** — `Sendable` 을 빼면 `@Dependency` 클로저에 넣을 때 Swift 6 모드에서 경고가 뜬다.
 
@@ -134,7 +134,7 @@ struct ProfileView: View {
 
 ## Step 5 — Path 등록 + destination switch
 
-``AppFeature/Path-swift.enum`` 에 한 줄.
+`AppFeature.Path` 에 한 줄.
 
 ```swift
 @Reducer
@@ -166,4 +166,3 @@ case let .profile(profileStore):
 - <doc:NavigationPatterns>
 - <doc:AddingFeatureTutorial>
 - ``AppFeature``
-- ``ProfileFeature``
