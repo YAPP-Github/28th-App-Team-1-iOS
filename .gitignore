@@ -57,8 +57,10 @@ Package.pins
 *.xcodeproj/project.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
 
-# Package.resolved 은 의도적으로 추적 — 팀 의존성 잠금
-# Architecture.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+# Package.resolved 은 워크스페이스 레벨 하나만 추적해 의존성 잠금을 통일.
+# 로컬 패키지(ArchitecturePackage/) 안의 Package.resolved 는 SPM 이 자동 생성하는
+# 부산물이므로 제외한다.
+ArchitecturePackage/Package.resolved
 
 # ──────────────────────────────────────────────────────────────
 # CocoaPods (사용 시)
