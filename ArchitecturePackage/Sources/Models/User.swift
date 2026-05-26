@@ -1,3 +1,10 @@
+//
+//  User.swift
+//  Models
+//
+//  Created by EunseoKim on 5/26/26.
+//
+
 import Foundation
 
 /// 사용자 도메인 모델.

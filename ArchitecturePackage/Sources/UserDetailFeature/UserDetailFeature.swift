@@ -1,3 +1,10 @@
+//
+//  UserDetailFeature.swift
+//  UserDetailFeature
+//
+//  Created by EunseoKim on 5/26/26.
+//
+
 import ComposableArchitecture
 import Foundation
 import Models
