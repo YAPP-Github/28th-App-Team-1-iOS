@@ -1,6 +1,7 @@
 @Tutorial(time: 10) {
     @Intro(title: "새 Feature 추가하기") {
-        `ProfileFeature` 를 처음부터 빌드해 스택에 푸시되도록 만든다.
+        `ProfileFeature` 를 처음부터 빌드해 Users 탭의 스택에 푸시되도록 만든다.
+        SPM target 분리 구조라 단계별로 손대는 위치가 명확하다.
     }
 
     @Section(title: "Step 1 — Domain 모델 만들기") {
@@ -10,7 +11,7 @@
 
         @Steps {
             @Step {
-                `Architecture/Domain/Profile.swift` 를 만들고 `Equatable + Identifiable + Sendable` 3종 세트를 채택한 구조체를 정의한다.
+                `Sources/Models/Profile.swift` 를 만들고 `Equatable + Identifiable + Sendable` 3종 세트를 채택한 구조체를 정의한다. SPM target 경계를 넘으므로 모든 멤버에 `public`.
                 @Code(name: "Profile.swift", file: profile-domain.swift)
             }
 
@@ -27,7 +28,7 @@
 
         @Steps {
             @Step {
-                `Architecture/Dependencies/ProfileClient.swift` 에 클로저 프로퍼티만 가진 struct 를 정의한다.
+                `Sources/ProfileClient/ProfileClient.swift` 에 클로저 프로퍼티만 가진 struct 를 정의한다.
                 @Code(name: "ProfileClient.swift", file: profile-client-1.swift)
             }
 
@@ -50,7 +51,7 @@
 
         @Steps {
             @Step {
-                `Architecture/Features/Profile/ProfileFeature.swift` 에 reducer 의 뼈대를 만든다. `init(profileId:)` 로 id 만 받고 나머지는 옵셔널/기본값.
+                `Sources/ProfileFeature/ProfileFeature.swift` 에 reducer 의 뼈대를 만든다. `init(profileId:)` 로 id 만 받고 나머지는 옵셔널/기본값.
                 @Code(name: "ProfileFeature.swift", file: profile-feature-1.swift)
             }
 
@@ -73,7 +74,7 @@
 
         @Steps {
             @Step {
-                `Architecture/Features/Profile/ProfileView.swift` 의 골격. `WithViewStore` 는 사용 금지.
+                `Sources/ProfileFeature/ProfileView.swift` 의 골격. `WithViewStore` 는 사용 금지.
                 @Code(name: "ProfileView.swift", file: profile-view.swift)
             }
 
@@ -86,27 +87,28 @@
 
     @Section(title: "Step 5 — Path 등록") {
         @ContentAndMedia {
-            마지막으로 ``AppFeature`` 와 ``AppView`` 에 새 화면을 끼워넣는다. 정확히 세 줄.
+            마지막으로 호스트 Feature (``UserFeature``) 와 그 View 에 새 화면을 끼워넣는다. 정확히 세 줄.
+            새 도메인을 만들 때는 호스트 자체를 새로 만들고 ``AppFeature`` 의 탭으로 추가한다.
         }
 
         @Steps {
             @Step {
-                `AppFeature.Path` 에 case 한 줄.
-                @Code(name: "AppFeature.swift", file: app-feature-path.swift)
+                `UserFeature.Path` 에 case 한 줄.
+                @Code(name: "UserFeature.swift", file: app-feature-path.swift)
             }
 
             @Step {
-                ``AppFeature`` `body` 에서 어떤 delegate 를 받았을 때 push 할지 한 줄.
-                @Code(name: "AppFeature.swift", file: app-feature-push.swift)
+                ``UserFeature`` `body` 에서 어떤 delegate 를 받았을 때 push 할지 한 줄.
+                @Code(name: "UserFeature.swift", file: app-feature-push.swift)
             }
 
             @Step {
-                ``AppView`` 의 `destination` switch 에 case 한 줄.
-                @Code(name: "ArchitectureApp.swift", file: app-view-destination.swift)
+                ``UserFeatureView`` 의 `destination` switch 에 case 한 줄.
+                @Code(name: "UserFeatureView.swift", file: app-view-destination.swift)
             }
 
             @Step {
-                시뮬레이터에서 목록 → 상세 → "Edit Profile" 까지 가면 새 화면이 푸시된다.
+                시뮬레이터의 Users 탭에서 목록 → 상세 → "Edit Profile" 까지 가면 새 화면이 푸시된다.
             }
         }
     }

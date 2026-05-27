@@ -1,7 +1,7 @@
 case let .path(.element(id: _, action: .profile(.delegate(.profileSaved(profile))))):
-    if let i = state.userList.users.firstIndex(where: { $0.id == profile.id }) {
-        state.userList.users[i].name = profile.displayName
-        state.userList.users[i].bio = profile.bio
+    if let i = state.list.users.firstIndex(where: { $0.id == profile.id }) {
+        state.list.users[i].name = profile.displayName
+        state.list.users[i].bio = profile.bio
     }
     for id in state.path.ids {
         guard case .detail(var detail) = state.path[id: id],

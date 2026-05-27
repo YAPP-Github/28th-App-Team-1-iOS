@@ -1,6 +1,7 @@
 @Tutorial(time: 15) {
     @Intro(title: "값 전달 패턴 3가지") {
         화면 사이에 데이터를 옮기는 세 가지 방법을 본 프로젝트의 실제 흐름으로 따라가본다.
+        모든 라우팅 코드는 Users 탭의 호스트인 ``UserFeature`` 에 들어 있다.
     }
 
     @Section(title: "Case A — id 만 전달") {
@@ -15,8 +16,8 @@
             }
 
             @Step {
-                부모는 push 시점에 id 만 넘긴다.
-                @Code(name: "AppFeature.swift", file: nav-a-push.swift)
+                호스트 (``UserFeature``) 는 push 시점에 id 만 넘긴다.
+                @Code(name: "UserFeature.swift", file: nav-a-push.swift)
             }
 
             @Step {
@@ -43,8 +44,8 @@
             }
 
             @Step {
-                부모는 받은 객체를 그대로 State init 에 꽂는다. 진입 즉시 이름·이메일이 보인다.
-                @Code(name: "AppFeature.swift", file: nav-b-push.swift)
+                호스트는 받은 객체를 그대로 State init 에 꽂는다. 진입 즉시 이름·이메일이 보인다.
+                @Code(name: "UserFeature.swift", file: nav-b-push.swift)
             }
 
             @Step {
@@ -65,12 +66,12 @@
             }
 
             @Step {
-                부모는 한 줄의 case 패턴으로 받아 형제 Feature 의 State 까지 직접 갱신하고 스택을 pop 한다.
-                @Code(name: "AppFeature.swift", file: nav-c-receive.swift)
+                호스트는 한 줄의 case 패턴으로 받아 형제 State 까지 직접 갱신하고 스택을 pop 한다.
+                @Code(name: "UserFeature.swift", file: nav-c-receive.swift)
             }
 
             @Step {
-                pop 후에 목록에 돌아가면 변경된 이름이 즉시 반영되어 있다. 자식은 자기 화면의 마무리만, 부모는 형제 갱신과 스택 조작을 책임지는 분담이 핵심.
+                pop 후에 목록에 돌아가면 변경된 이름이 즉시 반영되어 있다. 자식은 자기 화면의 마무리만, 호스트는 형제 갱신과 스택 조작을 책임지는 분담이 핵심.
             }
         }
     }
