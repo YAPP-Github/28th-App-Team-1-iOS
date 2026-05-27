@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import DesignSystemKit
 import Models
 import SwiftUI
 import UserClient
@@ -54,11 +55,15 @@ private struct UserRow: View {
     let user: User
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(user.name).font(.headline)
-            Text(user.email).font(.subheadline).foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: .dsXS) {
+            Text(user.name)
+                .font(.dsHeadline)
+                .foregroundStyle(Color.dsTextPrimary)
+            Text(user.email)
+                .font(.dsCaption)
+                .foregroundStyle(Color.dsTextSecondary)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, .dsXS)
     }
 }
 

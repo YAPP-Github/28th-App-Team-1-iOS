@@ -5,7 +5,8 @@ let package = Package(
     name: "ArchitecturePackage",
     platforms: [.iOS(.v17)],
     products: [
-        .library(name: "AppFeature", targets: ["AppFeature"])
+        .library(name: "AppFeature", targets: ["AppFeature"]),
+        .library(name: "DesignSystemKit", targets: ["DesignSystemKit"])
     ],
     dependencies: [
         .package(url: "https://github.com/pointfreeco/swift-composable-architecture", from: "1.15.0")
@@ -13,6 +14,12 @@ let package = Package(
     targets: [
         // ── Domain ────────────────────────────────────────────
         .target(name: "Models"),
+
+        // ── Design System (임시 격리 / 색상·타이포·컴포넌트) ──
+        .target(
+            name: "DesignSystemKit",
+            resources: [.process("Resources")]
+        ),
 
         // ── Clients (interface + impl 한 모듈 / Stage 2) ─────
         .target(
@@ -32,18 +39,16 @@ let package = Package(
 
         // ── Features ──────────────────────────────────────────
         .target(
-            name: "UserListFeature",
+            name: "HomeFeature",
             dependencies: [
-                "Models",
-                "UserClient",
+                "DesignSystemKit",
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
             ]
         ),
         .target(
-            name: "UserDetailFeature",
+            name: "ActivityFeature",
             dependencies: [
-                "Models",
-                "UserClient",
+                "DesignSystemKit",
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
             ]
         ),
@@ -52,6 +57,17 @@ let package = Package(
             dependencies: [
                 "Models",
                 "ProfileClient",
+                "DesignSystemKit",
+                .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
+            ]
+        ),
+        .target(
+            name: "UserFeature",
+            dependencies: [
+                "Models",
+                "UserClient",
+                "ProfileFeature",
+                "DesignSystemKit",
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
             ]
         ),
@@ -60,8 +76,9 @@ let package = Package(
         .target(
             name: "AppFeature",
             dependencies: [
-                "UserListFeature",
-                "UserDetailFeature",
+                "HomeFeature",
+                "UserFeature",
+                "ActivityFeature",
                 "ProfileFeature",
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
             ]

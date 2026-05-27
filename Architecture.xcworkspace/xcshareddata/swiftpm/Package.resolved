@@ -1,5 +1,5 @@
 {
-  "originHash" : "11c1f2a42b6116066d444f097ea87b7ee68750797765bf8d3062ebdb88806354",
+  "originHash" : "69fbcd16a0a26f716c72434ff48e076a774d6c501d38507e81178d83b1010370",
   "pins" : [
     {
       "identity" : "combine-schedulers",
@@ -60,8 +60,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/pointfreeco/swift-custom-dump",
       "state" : {
-        "revision" : "06c57924455064182d6b217f06ebc05d00cb2990",
-        "version" : "1.5.0"
+        "revision" : "b9b59eb58c946236d6f16305c576ad194c36444e",
+        "version" : "1.6.0"
       }
     },
     {

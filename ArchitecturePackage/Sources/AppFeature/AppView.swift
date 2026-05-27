@@ -5,13 +5,14 @@
 //  Created by EunseoKim on 5/26/26.
 //
 
+import ActivityFeature
 import ComposableArchitecture
+import HomeFeature
 import ProfileFeature
 import SwiftUI
-import UserDetailFeature
-import UserListFeature
+import UserFeature
 
-/// 앱 최상위 SwiftUI 컨테이너. ``AppFeature`` 의 path 를 `NavigationStack` 에 바인딩한다.
+/// 앱 최상위 SwiftUI 컨테이너. ``AppFeature`` 의 4 탭 라우팅.
 public struct AppView: View {
     @Bindable var store: StoreOf<AppFeature>
 
@@ -20,17 +21,32 @@ public struct AppView: View {
     }
 
     public var body: some View {
-        NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
-            UserListView(
-                store: store.scope(state: \.userList, action: \.userList)
+        TabView(selection: $store.selectedTab) {
+            HomeView(
+                store: store.scope(state: \.home, action: \.home)
             )
-        } destination: { store in
-            switch store.case {
-            case let .detail(detailStore):
-                UserDetailView(store: detailStore)
-            case let .profile(profileStore):
-                ProfileView(store: profileStore)
+            .tabItem { Label("Home", systemImage: "house") }
+            .tag(AppFeature.Tab.home)
+
+            UserFeatureView(
+                store: store.scope(state: \.users, action: \.users)
+            )
+            .tabItem { Label("Users", systemImage: "person.2") }
+            .tag(AppFeature.Tab.users)
+
+            ActivityView(
+                store: store.scope(state: \.activity, action: \.activity)
+            )
+            .tabItem { Label("Activity", systemImage: "bell") }
+            .tag(AppFeature.Tab.activity)
+
+            NavigationStack {
+                ProfileView(
+                    store: store.scope(state: \.profile, action: \.profile)
+                )
             }
+            .tabItem { Label("Profile", systemImage: "person.crop.circle") }
+            .tag(AppFeature.Tab.profile)
         }
     }
 }
