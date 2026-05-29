@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git ls-remote:*)",
+      "Bash(git for-each-ref:*)",
+      "Bash(git fsck:*)",
+      "Bash(git config --get:*)",
+      "Bash(git config --list:*)",
+      "Bash(git config --show-origin:*)",
+      "Bash(git stash list:*)",
+      "Bash(git reflog:*)",
+      "Bash(git remote -v:*)",
+      "Bash(git remote get-url:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(swift build:*)",
+      "Bash(swift package:*)",
+      "Bash(swift test:*)",
+      "Bash(open *.xcworkspace)",
+      "Bash(open *.xcodeproj)"
+    ],
+    "deny": []
+  }
+}
