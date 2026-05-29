@@ -12,45 +12,51 @@ let package = Package(
         .package(url: "https://github.com/pointfreeco/swift-composable-architecture", from: "1.15.0")
     ],
     targets: [
-        // ── Domain ────────────────────────────────────────────
-        .target(name: "Models"),
-
-        // ── Design System (임시 격리 / 색상·타이포·컴포넌트) ──
+        // ── Core ──────────────────────────────────────────────
+        .target(
+            name: "Models",
+            path: "Sources/Core/Models"
+        ),
         .target(
             name: "DesignSystemKit",
+            path: "Sources/Core/DesignSystemKit",
             resources: [.process("Resources")]
         ),
 
-        // ── Clients (interface + impl 한 모듈 / Stage 2) ─────
+        // ── Data (Clients) ────────────────────────────────────
         .target(
             name: "UserClient",
             dependencies: [
                 "Models",
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
-            ]
+            ],
+            path: "Sources/Data/UserClient"
         ),
         .target(
             name: "ProfileClient",
             dependencies: [
                 "Models",
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
-            ]
+            ],
+            path: "Sources/Data/ProfileClient"
         ),
 
-        // ── Features ──────────────────────────────────────────
+        // ── Feature ───────────────────────────────────────────
         .target(
             name: "HomeFeature",
             dependencies: [
                 "DesignSystemKit",
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
-            ]
+            ],
+            path: "Sources/Feature/HomeFeature"
         ),
         .target(
             name: "ActivityFeature",
             dependencies: [
                 "DesignSystemKit",
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
-            ]
+            ],
+            path: "Sources/Feature/ActivityFeature"
         ),
         .target(
             name: "ProfileFeature",
@@ -59,7 +65,8 @@ let package = Package(
                 "ProfileClient",
                 "DesignSystemKit",
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
-            ]
+            ],
+            path: "Sources/Feature/ProfileFeature"
         ),
         .target(
             name: "UserFeature",
@@ -69,10 +76,11 @@ let package = Package(
                 "ProfileFeature",
                 "DesignSystemKit",
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
-            ]
+            ],
+            path: "Sources/Feature/UserFeature"
         ),
 
-        // ── App composition ──────────────────────────────────
+        // ── App composition ───────────────────────────────────
         .target(
             name: "AppFeature",
             dependencies: [
@@ -81,7 +89,8 @@ let package = Package(
                 "ActivityFeature",
                 "ProfileFeature",
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
-            ]
+            ],
+            path: "Sources/App/AppFeature"
         )
     ]
 )
