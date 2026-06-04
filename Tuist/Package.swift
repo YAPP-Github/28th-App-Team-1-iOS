@@ -6,8 +6,7 @@ import PackageDescription
 
     let packageSettings = PackageSettings(
         productTypes: [
-            "ComposableArchitecture": .framework,
-            "DesignSystemKit": .framework
+            "ComposableArchitecture": .framework
         ]
     )
 #endif
@@ -15,7 +14,6 @@ import PackageDescription
 let package = Package(
     name: "Architecture",
     dependencies: [
-        .package(url: "https://github.com/pointfreeco/swift-composable-architecture", from: "1.15.0"),
-        .package(path: "../ArchitecturePackage")
+        .package(url: "https://github.com/pointfreeco/swift-composable-architecture", from: "1.15.0")
     ]
 )

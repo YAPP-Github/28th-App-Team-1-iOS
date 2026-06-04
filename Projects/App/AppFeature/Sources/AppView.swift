@@ -10,9 +10,9 @@ import ComposableArchitecture
 import HomeFeature
 import ProfileFeature
 import SwiftUI
-import UserFeature
+import UsersFeature
 
-/// 앱 최상위 SwiftUI 컨테이너. ``AppFeature`` 의 4 탭 라우팅.
+/// 앱 최상위 SwiftUI 컨테이너. ``AppFeature`` 의 4 탭 + 앱 레벨 프로필 편집 sheet.
 public struct AppView: View {
     @Bindable var store: StoreOf<AppFeature>
 
@@ -28,7 +28,7 @@ public struct AppView: View {
             .tabItem { Label("Home", systemImage: "house") }
             .tag(AppFeature.Tab.home)
 
-            UserFeatureView(
+            UsersView(
                 store: store.scope(state: \.users, action: \.users)
             )
             .tabItem { Label("Users", systemImage: "person.2") }
@@ -47,6 +47,13 @@ public struct AppView: View {
             }
             .tabItem { Label("Profile", systemImage: "person.crop.circle") }
             .tag(AppFeature.Tab.profile)
+        }
+        .sheet(
+            item: $store.scope(state: \.editProfile, action: \.editProfile)
+        ) { editProfileStore in
+            NavigationStack {
+                ProfileView(store: editProfileStore)
+            }
         }
     }
 }
