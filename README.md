@@ -34,7 +34,8 @@ Tuist/
 Projects/
   ├── App/                               # composition root
   │   ├── Sources/ArchitectureApp.swift  #   @main — *ClientLive link 으로 liveValue 활성화
-  │   └── AppFeature/                     #   탭 코디네이터 + cross-feature 라우팅
+  │   ├── AppFeature/                     #   탭 코디네이터 + cross-feature 라우팅
+  │   └── Documentation/                  #   ArchitectureDocs 타겟 — 전역 DocC 카탈로그
   ├── Feature/{Home,Users,Profile,Activity}/   # 화면 도메인 (Sources+Testing+Tests+Example)
   ├── Client/{User,Profile,Activity}Client/    # Repository (Interface + Live 분리)
   └── Shared/{Models,DesignSystemKit}/         # 도메인 모델 + 디자인 토큰
@@ -59,8 +60,8 @@ Feature 스킴(`HomeFeature` / `UsersFeature` / `ProfileFeature` / `ActivityFeat
 
 ## DocC 문서
 
-가이드·튜토리얼·심볼 주석은 `Projects/App/AppFeature/AppFeature.docc/` 카탈로그에 있다.
-`tuist generate` 후 Xcode 에서 **Product → Build Documentation** (⌃⇧⌘D).
+가이드·튜토리얼·심볼 주석은 `Projects/App/Documentation/Architecture.docc/` 카탈로그에 있다 (전용 `ArchitectureDocs` 타겟이 호스팅).
+`tuist generate` 후 Xcode 에서 `ArchitectureDocs` 스킴 선택 → **Product → Build Documentation** (⌃⇧⌘D).
 
 > 참고: µFeature 전환(`feature/MFA`) 직후라 DocC 튜토리얼 본문 일부는 이전 단일 SPM 구조를 설명한다. 코드 기준은 위 "프로젝트 구조"를 따른다.
 

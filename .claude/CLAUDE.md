@@ -11,7 +11,8 @@ Tuist/ProjectDescriptionHelpers/         ← Project.feature/.client/.core + 타
 Projects/
 ├── App/                                   composition root
 │   ├── Sources/ArchitectureApp.swift        @main — *ClientLive link → liveValue 활성화
-│   └── AppFeature/                          탭 코디네이터 + cross-feature 라우팅 + DocC
+│   ├── AppFeature/                          탭 코디네이터 + cross-feature 라우팅
+│   └── Documentation/                       ArchitectureDocs 타겟 — 전역 DocC 카탈로그 (코드 없음)
 ├── Feature/{Home,Users,Profile,Activity}/   화면 도메인 (Sources+Testing+Tests+Example)
 ├── Client/{User,Profile,Activity}Client/    Repository (Interface + Live 분리)
 └── Shared/{Models, DesignSystemKit}/        도메인 모델 + 디자인 토큰
@@ -69,5 +70,5 @@ Projects/
 
 ## 참고
 
-- 자세한 패턴/튜토리얼은 `Projects/App/AppFeature/AppFeature.docc/` DocC 카탈로그 (단, µFeature 전환 직후라 본문 일부는 이전 단일 SPM 구조 설명 — 코드 기준은 본 문서)
+- 자세한 패턴/튜토리얼은 `Projects/App/Documentation/Architecture.docc/` DocC 카탈로그 (전용 `ArchitectureDocs` 타겟이 호스팅. 단, µFeature 전환 직후라 본문 일부는 이전 단일 SPM 구조 설명 — 코드 기준은 본 문서)
 - modular architecture 스펙트럼에서 이 프로젝트는 Tuist 멀티프로젝트 µFeature (Level 3)
