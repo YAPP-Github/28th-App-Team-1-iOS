@@ -8,7 +8,7 @@
 import ComposableArchitecture
 import Foundation
 import Models
-import ProfileClient
+import ProfileClientInterface
 
 /// 프로필 편집 화면 Reducer.
 ///

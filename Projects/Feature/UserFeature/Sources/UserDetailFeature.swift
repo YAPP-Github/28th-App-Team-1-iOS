@@ -8,7 +8,7 @@
 import ComposableArchitecture
 import Foundation
 import Models
-import UserClient
+import UserClientInterface
 
 /// 사용자 상세 화면 Reducer.
 ///

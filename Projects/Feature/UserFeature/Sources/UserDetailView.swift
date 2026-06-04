@@ -8,7 +8,7 @@
 import ComposableArchitecture
 import Models
 import SwiftUI
-import UserClient
+import UserClientInterface
 
 public struct UserDetailView: View {
     @Bindable var store: StoreOf<UserDetailFeature>

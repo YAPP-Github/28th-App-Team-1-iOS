@@ -7,7 +7,7 @@
 
 import ComposableArchitecture
 import Models
-import ProfileClient
+import ProfileClientInterface
 import SwiftUI
 
 public struct ProfileView: View {
