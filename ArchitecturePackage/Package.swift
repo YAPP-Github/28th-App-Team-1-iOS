@@ -5,8 +5,10 @@ let package = Package(
     name: "ArchitecturePackage",
     platforms: [.iOS(.v17)],
     products: [
-        .library(name: "AppFeature", targets: ["AppFeature"]),
-        .library(name: "DesignSystemKit", targets: ["DesignSystemKit"])
+        .library(name: "DesignSystemKit", targets: ["DesignSystemKit"]),
+        .library(name: "UserFeature", targets: ["UserFeature"]),
+        .library(name: "ActivityFeature", targets: ["ActivityFeature"]),
+        .library(name: "ProfileFeature", targets: ["ProfileFeature"])
     ],
     dependencies: [
         .package(url: "https://github.com/pointfreeco/swift-composable-architecture", from: "1.15.0")
@@ -43,14 +45,6 @@ let package = Package(
 
         // ── Feature ───────────────────────────────────────────
         .target(
-            name: "HomeFeature",
-            dependencies: [
-                "DesignSystemKit",
-                .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
-            ],
-            path: "Sources/Feature/HomeFeature"
-        ),
-        .target(
             name: "ActivityFeature",
             dependencies: [
                 "DesignSystemKit",
@@ -78,19 +72,6 @@ let package = Package(
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
             ],
             path: "Sources/Feature/UserFeature"
-        ),
-
-        // ── App composition ───────────────────────────────────
-        .target(
-            name: "AppFeature",
-            dependencies: [
-                "HomeFeature",
-                "UserFeature",
-                "ActivityFeature",
-                "ProfileFeature",
-                .product(name: "ComposableArchitecture", package: "swift-composable-architecture")
-            ],
-            path: "Sources/App/AppFeature"
         )
     ]
 )
