@@ -2,8 +2,6 @@
 //  ProfileFeature.swift
 //  ProfileFeature
 //
-//  Created by EunseoKim on 5/26/26.
-//
 
 import ComposableArchitecture
 import Foundation
@@ -11,9 +9,6 @@ import Models
 import ProfileClientInterface
 
 /// 프로필 편집 화면 Reducer.
-///
-/// **Case A** (id 만 받아 화면에서 fetch) 와 **Case C** (저장 결과를 delegate
-/// 로 부모에 통보) 를 한 화면에 모두 보여주는 Feature.
 @Reducer
 public struct ProfileFeature {
     @ObservableState
@@ -51,7 +46,6 @@ public struct ProfileFeature {
 
         @CasePathable
         public enum Delegate: Equatable {
-            /// 저장이 성공해 상위가 목록/상세를 갱신해야 함을 알리는 신호.
             case profileSaved(Profile)
         }
     }

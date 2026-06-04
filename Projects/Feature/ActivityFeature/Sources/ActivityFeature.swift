@@ -2,16 +2,11 @@
 //  ActivityFeature.swift
 //  ActivityFeature
 //
-//  Created by EunseoKim on 5/27/26.
-//
 
 import ComposableArchitecture
 import Foundation
 
 /// 활동/알림 목록 화면.
-///
-/// 빈 상태 + 더미 리스트를 보여주는 학습용 Feature. List/Detail 같은
-/// 분기 없이 단일 화면으로 유지한다.
 @Reducer
 public struct ActivityFeature {
     @ObservableState

@@ -2,8 +2,6 @@
 //  HomeFeature.swift
 //  HomeFeature
 //
-//  Created by EunseoKim on 5/27/26.
-//
 
 import ComposableArchitecture
 import Foundation

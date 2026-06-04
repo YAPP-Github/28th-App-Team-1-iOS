@@ -1,8 +1,6 @@
 //
 //  UserDetailFeature.swift
-//  UserDetailFeature
-//
-//  Created by EunseoKim on 5/26/26.
+//  UserFeature
 //
 
 import ComposableArchitecture
@@ -11,10 +9,6 @@ import Models
 import UserClientInterface
 
 /// 사용자 상세 화면 Reducer.
-///
-/// **Case B — 객체 전체 전달** 패턴 + **Case A — id 만 전달** 트리거.
-/// 진입 시 `User` 통째로 받아 즉시 렌더하고, 편집 진입은
-/// ``Action/Delegate/editProfileTapped(id:)`` 로 상위에 알린다.
 @Reducer
 public struct UserDetailFeature {
     @ObservableState
@@ -41,7 +35,6 @@ public struct UserDetailFeature {
 
         @CasePathable
         public enum Delegate: Equatable {
-            /// "Edit Profile" 버튼이 눌렸음을 상위에 알리고 편집 대상 id 전달.
             case editProfileTapped(id: Int)
         }
     }

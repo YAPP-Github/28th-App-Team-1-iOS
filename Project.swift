@@ -78,7 +78,7 @@ let project = Project(
             ]
         ),
 
-        // ── Data : UserClient (Interface + Live) ──────────────
+        // ── Data : UserClient (Interface + Live, MFA 적용) ────
         framework(
             name: "UserClientInterface",
             sourcesPath: "Projects/Data/UserClient/Interface",
@@ -97,7 +97,7 @@ let project = Project(
             ]
         ),
 
-        // ── Data : ProfileClient (Interface + Live) ───────────
+        // ── Data : ProfileClient (Interface + Live, MFA 적용) ─
         framework(
             name: "ProfileClientInterface",
             sourcesPath: "Projects/Data/ProfileClient/Interface",
@@ -116,16 +116,11 @@ let project = Project(
             ]
         ),
 
-        // ── Feature : HomeFeature (MFA 4-layer) ───────────────
-        framework(
-            name: "HomeFeatureInterface",
-            sourcesPath: "Projects/Feature/HomeFeature/Interface"
-        ),
+        // ── Feature : HomeFeature (Sources + Tests + Testing) ─
         framework(
             name: "HomeFeature",
             sourcesPath: "Projects/Feature/HomeFeature/Sources",
             dependencies: [
-                .target(name: "HomeFeatureInterface"),
                 .external(name: "ComposableArchitecture"),
                 .external(name: "DesignSystemKit")
             ]
@@ -134,7 +129,7 @@ let project = Project(
             name: "HomeFeatureTesting",
             sourcesPath: "Projects/Feature/HomeFeature/Testing",
             dependencies: [
-                .target(name: "HomeFeatureInterface")
+                .target(name: "HomeFeature")
             ]
         ),
         unitTests(
@@ -147,16 +142,11 @@ let project = Project(
             ]
         ),
 
-        // ── Feature : UserFeature (MFA 4-layer) ───────────────
-        framework(
-            name: "UserFeatureInterface",
-            sourcesPath: "Projects/Feature/UserFeature/Interface"
-        ),
+        // ── Feature : UserFeature ─────────────────────────────
         framework(
             name: "UserFeature",
             sourcesPath: "Projects/Feature/UserFeature/Sources",
             dependencies: [
-                .target(name: "UserFeatureInterface"),
                 .target(name: "UserClientInterface"),
                 .target(name: "ProfileFeature"),
                 .external(name: "ComposableArchitecture"),
@@ -168,7 +158,7 @@ let project = Project(
             name: "UserFeatureTesting",
             sourcesPath: "Projects/Feature/UserFeature/Testing",
             dependencies: [
-                .target(name: "UserFeatureInterface")
+                .target(name: "UserFeature")
             ]
         ),
         unitTests(
@@ -181,16 +171,11 @@ let project = Project(
             ]
         ),
 
-        // ── Feature : ActivityFeature (MFA 4-layer) ───────────
-        framework(
-            name: "ActivityFeatureInterface",
-            sourcesPath: "Projects/Feature/ActivityFeature/Interface"
-        ),
+        // ── Feature : ActivityFeature ─────────────────────────
         framework(
             name: "ActivityFeature",
             sourcesPath: "Projects/Feature/ActivityFeature/Sources",
             dependencies: [
-                .target(name: "ActivityFeatureInterface"),
                 .external(name: "ComposableArchitecture"),
                 .external(name: "DesignSystemKit")
             ]
@@ -199,7 +184,7 @@ let project = Project(
             name: "ActivityFeatureTesting",
             sourcesPath: "Projects/Feature/ActivityFeature/Testing",
             dependencies: [
-                .target(name: "ActivityFeatureInterface")
+                .target(name: "ActivityFeature")
             ]
         ),
         unitTests(
@@ -212,16 +197,11 @@ let project = Project(
             ]
         ),
 
-        // ── Feature : ProfileFeature (MFA 4-layer) ────────────
-        framework(
-            name: "ProfileFeatureInterface",
-            sourcesPath: "Projects/Feature/ProfileFeature/Interface"
-        ),
+        // ── Feature : ProfileFeature ──────────────────────────
         framework(
             name: "ProfileFeature",
             sourcesPath: "Projects/Feature/ProfileFeature/Sources",
             dependencies: [
-                .target(name: "ProfileFeatureInterface"),
                 .target(name: "ProfileClientInterface"),
                 .external(name: "ComposableArchitecture"),
                 .external(name: "Models"),
@@ -232,7 +212,7 @@ let project = Project(
             name: "ProfileFeatureTesting",
             sourcesPath: "Projects/Feature/ProfileFeature/Testing",
             dependencies: [
-                .target(name: "ProfileFeatureInterface")
+                .target(name: "ProfileFeature")
             ]
         ),
         unitTests(

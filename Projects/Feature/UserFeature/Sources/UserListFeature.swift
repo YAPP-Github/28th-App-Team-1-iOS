@@ -1,8 +1,6 @@
 //
 //  UserListFeature.swift
-//  UserListFeature
-//
-//  Created by EunseoKim on 5/26/26.
+//  UserFeature
 //
 
 import ComposableArchitecture
@@ -11,10 +9,6 @@ import Models
 import UserClientInterface
 
 /// 사용자 목록 화면 Reducer.
-///
-/// **Case B — 객체 전달** 패턴의 발사대. 행 탭 시
-/// ``Action/Delegate/userTappedRow(_:)`` 로 `User` 통째를 위에 던지고,
-/// `AppFeature` 가 그 객체를 detail push 에 사용한다.
 @Reducer
 public struct UserListFeature {
     @ObservableState
@@ -45,7 +39,6 @@ public struct UserListFeature {
 
         @CasePathable
         public enum Delegate: Equatable {
-            /// 행 탭이 일어났음을 상위에 알리고 push 대상 `User` 를 함께 전달.
             case userTappedRow(User)
         }
     }
