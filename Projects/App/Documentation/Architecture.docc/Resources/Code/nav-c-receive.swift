@@ -1,14 +1,9 @@
-case let .path(.element(id: _, action: .profile(.delegate(.profileSaved(profile))))):
-    if let i = state.list.users.firstIndex(where: { $0.id == profile.id }) {
-        state.list.users[i].name = profile.displayName
-        state.list.users[i].bio = profile.bio
-    }
-    for id in state.path.ids {
-        guard case .detail(var detail) = state.path[id: id],
-              detail.user.id == profile.id else { continue }
-        detail.user.name = profile.displayName
-        detail.user.bio = profile.bio
-        state.path[id: id] = .detail(detail)
-    }
-    state.path.removeLast()
+// AppFeature — 저장 결과를 받아 sheet 닫고 Users 도메인에 통보
+case let .editProfile(.presented(.delegate(.profileSaved(profile)))):
+    state.editProfile = nil
+    return .send(.users(.profileUpdated(profile)))
+
+// UsersFeature — 목록 + 스택에 남은 상세 양쪽을 갱신
+case let .profileUpdated(profile):
+    applyProfileUpdate(profile, to: &state)
     return .none

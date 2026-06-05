@@ -63,7 +63,7 @@ Feature 스킴(`HomeFeature` / `UsersFeature` / `ProfileFeature` / `ActivityFeat
 가이드·튜토리얼·심볼 주석은 `Projects/App/Documentation/Architecture.docc/` 카탈로그에 있다 (전용 `ArchitectureDocs` 타겟이 호스팅).
 `tuist generate` 후 Xcode 에서 `ArchitectureDocs` 스킴 선택 → **Product → Build Documentation** (⌃⇧⌘D).
 
-> 참고: µFeature 전환(`feature/MFA`) 직후라 DocC 튜토리얼 본문 일부는 이전 단일 SPM 구조를 설명한다. 코드 기준은 위 "프로젝트 구조"를 따른다.
+> DocC 카탈로그는 현재 Tuist µFeature 구조·코드 기준으로 정리되어 있다. 첫 빌드/세팅은 `SETUP.md`, 팀 규칙은 `CONVENTIONS.md`, 도메인 지식은 `lat.md/` 참고.
 
 ## 커밋 규칙
 

@@ -5,10 +5,10 @@ struct ProfileClient: Sendable {
     var saveProfile:  @Sendable (_ profile: Profile) async throws -> Profile
 }
 
-extension ProfileClient: DependencyKey {
-    static let liveValue    = ProfileClient(fetchProfile: { _ in .stub }, saveProfile: { $0 })
+// Interface 모듈에는 test/preview 값만. liveValue 는 Live 모듈의 DependencyKey 로 둔다.
+extension ProfileClient: TestDependencyKey {
     static let previewValue = ProfileClient(fetchProfile: { _ in .stub }, saveProfile: { $0 })
-    static let testValue    = ProfileClient(
+    static let testValue = ProfileClient(
         fetchProfile: unimplemented("ProfileClient.fetchProfile", placeholder: .stub),
         saveProfile:  unimplemented("ProfileClient.saveProfile",  placeholder: .stub)
     )
