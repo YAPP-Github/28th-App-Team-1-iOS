@@ -1,84 +1,70 @@
 # Architecture
 
 SwiftUI + TCA(The Composable Architecture) 레퍼런스 프로젝트.
-`UserList` → `UserDetail` → `Profile` 의 세 화면으로 Repository / Coordinator / Command / Observer 패턴과 화면 간 값 전달 3 가지 케이스를 보여준다.
+**Tuist 기반 µFeature(마이크로 피처) 아키텍처**로, 화면 도메인을 독립 모듈로 분리하고 Feature 간 결합을 코디네이터가 중재하는 패턴을 보여준다.
 
 ## 요구 사항
 
-- Xcode 16+ (현재 동작 확인: Xcode 26.4)
-- iOS 17+ 시뮬레이터
-- 의존성: [pointfreeco/swift-composable-architecture](https://github.com/pointfreeco/swift-composable-architecture) 1.15+ (SPM 으로 자동 해결)
+- [Tuist](https://tuist.io) 4.x (`mise install tuist` 또는 `brew install --cask tuist`)
+- Xcode 16+ / iOS 17+ 시뮬레이터
+- 의존성: [pointfreeco/swift-composable-architecture](https://github.com/pointfreeco/swift-composable-architecture) 1.15+ (Tuist 가 자동 해결)
 
 ## 빌드 & 실행
 
 ```bash
-# 시뮬레이터 빌드
-xcodebuild build \
-  -project Architecture.xcodeproj \
-  -scheme Architecture \
-  -destination "platform=iOS Simulator,name=iPhone 16 Pro" \
-  -skipMacroValidation
+# 1) 외부 의존 해석 + Xcode 프로젝트 생성
+tuist install
+tuist generate
+
+# 2) 앱 빌드
+xcodebuild -workspace Architecture.xcworkspace -scheme Architecture \
+  -destination 'generic/platform=iOS Simulator' build
 ```
 
-Xcode GUI 로 처음 열면 TCA 매크로 fingerprint 승인 다이얼로그가 한 번 뜬다. "Trust & Enable" 클릭하면 영구히 해결.
+- `Architecture.xcworkspace` / 각 `*.xcodeproj` 는 **Tuist 생성물**이라 커밋하지 않는다. clone 후 `tuist generate` 로 만든다.
+- 각 Feature 는 단독 실행용 **Example 앱 스킴**(`HomeFeatureExample`, `UsersFeatureExample`, `ProfileFeatureExample`, `ActivityFeatureExample`)을 갖는다.
 
-## DocC 문서 보는 법
+## 프로젝트 구조 (µFeature)
 
-이 프로젝트의 모든 가이드·튜토리얼·심볼 주석은 DocC 카탈로그 (`Architecture/Architecture.docc/`) 에 들어 있다.
+```
+Workspace.swift                         # Projects/** glob 통합
+Tuist/
+  ├── Package.swift                      # 외부 의존 (ComposableArchitecture)
+  └── ProjectDescriptionHelpers/         # Project.feature/.client/.core + 타입드 의존
+Projects/
+  ├── App/                               # composition root
+  │   ├── Sources/ArchitectureApp.swift  #   @main — *ClientLive link 으로 liveValue 활성화
+  │   ├── AppFeature/                     #   탭 코디네이터 + cross-feature 라우팅
+  │   └── Documentation/                  #   ArchitectureDocs 타겟 — 전역 DocC 카탈로그
+  ├── Feature/{Home,Users,Profile,Activity}/   # 화면 도메인 (Sources+Testing+Tests+Example)
+  ├── Client/{User,Profile,Activity}Client/    # Repository (Interface + Live 분리)
+  └── Shared/{Models,DesignSystemKit}/         # 도메인 모델 + 디자인 토큰
+```
 
-### Xcode 에서 (권장)
+### 의존 규칙
 
-1. Xcode 에서 프로젝트를 연다.
-2. 메뉴: **Product → Build Documentation** — 또는 단축키 **⌃⇧⌘D**.
-3. 빌드가 끝나면 **⌥⇧⌘0** 으로 Developer Documentation 창을 연다.
-4. 좌측 트리에서 **Workspace Documentation → Architecture** 를 펼치면 다음이 보인다.
-   - **Articles** — `AddingFeature`, `NavigationPatterns`, `CommitConvention`
-   - **Tutorials** — `AddingFeatureTutorial` (5 step, 10 분), `NavigationPatternsTutorial` (3 section, 15 분)
-   - 각 타입(`AppFeature`, `UserClient`, `ProfileFeature` 등) 의 심볼 문서
+- **Feature → Feature 의존 0.** 화면 전환이 필요하면 `delegate` 로 신호만 보내고, `AppFeature`(코디네이터)가 앱 레벨에서 조립한다. (예: Users 상세의 "프로필 편집" → 앱 레벨 sheet 로 `ProfileFeature` 제시)
+- **Feature 는 `*ClientInterface` 만 의존.** `*ClientLive`(실제 구현)는 **App 타겟 / Example 앱만** link → `liveValue` 활성화.
+- 의존 방향: `App → AppFeature → *Feature → *ClientInterface → Models`. 전 모듈이 `DesignSystemKit` 의존 가능.
 
-### 커맨드라인에서
+새 화면/모듈 추가 방법은 `Tuist/ProjectDescriptionHelpers/` 의 `Project.feature` / `Project.client` / `Project.core` 헬퍼를 참고. 각 모듈 `Project.swift` 는 이름과 의존만 넘기는 ~5줄짜리다.
+
+## 테스트
 
 ```bash
-xcodebuild docbuild \
-  -project Architecture.xcodeproj \
-  -scheme Architecture \
-  -destination "platform=iOS Simulator,name=iPhone 16 Pro" \
-  -derivedDataPath build \
-  -skipMacroValidation
-
-# 결과: build/Build/Products/Debug-iphonesimulator/Architecture.doccarchive
-open build/Build/Products/Debug-iphonesimulator/Architecture.doccarchive
+xcodebuild -workspace Architecture.xcworkspace -scheme UsersFeature \
+  -destination 'platform=iOS Simulator,name=iPhone 16' test
 ```
 
-### GitHub Pages 로 배포
+Feature 스킴(`HomeFeature` / `UsersFeature` / `ProfileFeature` / `ActivityFeature`)의 Test 액션이 각 `*FeatureTests` 를 포함한다.
 
-```bash
-$(xcrun --find docc) process-archive transform-for-static-hosting \
-  build/Build/Products/Debug-iphonesimulator/Architecture.doccarchive \
-  --output-path docs \
-  --hosting-base-path <repo-name>
-```
+## DocC 문서
 
-생성된 `docs/` 를 `gh-pages` 브랜치에 push 하고 저장소 **Settings → Pages** 에서 source 를 `gh-pages /(root)` 로 지정하면 다음 URL 에 배포된다.
+가이드·튜토리얼·심볼 주석은 `Projects/App/Documentation/Architecture.docc/` 카탈로그에 있다 (전용 `ArchitectureDocs` 타겟이 호스팅).
+`tuist generate` 후 Xcode 에서 `ArchitectureDocs` 스킴 선택 → **Product → Build Documentation** (⌃⇧⌘D).
 
-```
-https://<user>.github.io/<repo-name>/documentation/architecture/
-```
-
-## 프로젝트 구조
-
-```
-Architecture/
-├── App/                    # AppFeature(Coordinator) + @main
-├── Domain/                 # User, Profile
-├── Dependencies/           # UserClient, ProfileClient (Repository)
-├── Features/
-│   ├── UserList/           # 목록 — Case B 트리거
-│   ├── UserDetail/         # 상세 — Case B 수신 + Case A 트리거
-│   └── Profile/            # 편집 — Case A 수신 + Case C 트리거
-└── Architecture.docc/      # 가이드/튜토리얼/심볼 주석 카탈로그
-```
+> 참고: µFeature 전환(`feature/MFA`) 직후라 DocC 튜토리얼 본문 일부는 이전 단일 SPM 구조를 설명한다. 코드 기준은 위 "프로젝트 구조"를 따른다.
 
 ## 커밋 규칙
 
-<doc:CommitConvention> 참고. 요약하면 `<type>: <subject>_<detail>` 형식에 본문은 `-` bullet, 푸터는 `resolves: #N` / `ref: #N` 형태.
+제목 1줄 한국어 `type: 설명_부연` 형식. 본문은 정말 필요할 때만 2-3줄.
