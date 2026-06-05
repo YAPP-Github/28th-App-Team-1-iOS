@@ -9,6 +9,9 @@ import Models
 import ProfileClientInterface
 
 /// 프로필 편집 화면 Reducer.
+// @lat: [[profile#Save]]
+// depends-on: [[clients]] (ProfileClient#fetchProfile, #saveProfile)
+// note: 저장 성공은 delegate(.profileSaved) 로만 외부에 알린다 — 누가 띄웠는지 모름.
 @Reducer
 public struct ProfileFeature {
     @ObservableState

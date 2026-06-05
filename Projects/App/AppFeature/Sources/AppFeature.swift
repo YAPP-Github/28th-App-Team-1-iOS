@@ -18,6 +18,9 @@ import UsersFeature
 /// 4개 탭(Home / Users / Activity / Profile)의 State 를 보유하고,
 /// **Feature 간(cross-feature) 전환은 여기서만** 조립한다.
 /// 각 Feature 는 서로를 알지 못하고 delegate 로만 의사를 전달한다.
+// @lat: [[app#Cross-feature Routing]]
+// depends-on: [[home]], [[users]], [[activity]], [[profile]]
+// note: cross-feature 의존의 유일한 조립 지점. Users.editProfile → Profile sheet → Users.profileUpdated.
 @Reducer
 public struct AppFeature {
     @ObservableState

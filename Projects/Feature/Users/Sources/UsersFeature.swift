@@ -11,6 +11,8 @@ import Models
 ///
 /// Profile 편집 같은 cross-feature 전환은 직접 처리하지 않고
 /// `delegate(.editProfile)` 로 상위(코디네이터)에 위임한다 — Feature 간 의존 0.
+// @lat: [[users#Profile Edit Handoff]]
+// depends-on: [[profile#Save]], [[app#Cross-feature Routing]]
 @Reducer
 public struct UsersFeature {
     @ObservableState
