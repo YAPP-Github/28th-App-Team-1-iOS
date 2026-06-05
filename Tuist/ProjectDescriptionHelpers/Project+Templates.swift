@@ -35,6 +35,7 @@ public extension Project {
                     deploymentTargets: appDeploymentTargets,
                     sources: ["Sources/**"],
                     resources: resources,
+                    scripts: [.swiftLint],
                     dependencies: dependencies
                 )
             ]
@@ -60,6 +61,7 @@ public extension Project {
                     bundleId: bundleId(interface),
                     deploymentTargets: appDeploymentTargets,
                     sources: ["Interface/**"],
+                    scripts: [.swiftLint],
                     dependencies: [.composableArchitecture, .models] + interfaceDependencies
                 ),
                 .target(
@@ -96,6 +98,7 @@ public extension Project {
                     bundleId: bundleId(feature),
                     deploymentTargets: appDeploymentTargets,
                     sources: ["Sources/**"],
+                    scripts: [.swiftLint],
                     dependencies: [.composableArchitecture, .designSystemKit] + dependencies
                 ),
                 .target(

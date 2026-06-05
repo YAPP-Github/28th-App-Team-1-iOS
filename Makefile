@@ -11,7 +11,7 @@ else
   SEARCH = rg --type swift -n
 endif
 
-.PHONY: lat lat-all lat-deps generate test
+.PHONY: lat lat-all lat-deps lint lint-fix generate test
 
 # 특정 도메인과 엮인 코드 전부 (위키링크 [[도메인 으로 검색 → delegate 의존도 잡힘)
 lat:
@@ -24,6 +24,14 @@ lat-all:
 # 이 도메인을 depends-on 하는 코드 (= 바꾸면 영향받는 곳)
 lat-deps:
 	@$(SEARCH) 'depends-on.*$(q)' Projects 2>/dev/null || echo "nothing depends on '$(q)'"
+
+# SwiftLint — 전 모듈 린트 (CI·터미널용. 빌드 페이즈와 같은 .swiftlint.yml 사용)
+lint:
+	@swiftlint lint --quiet
+
+# 자동 수정 가능한 것 고치고 다시 린트
+lint-fix:
+	@swiftlint --fix && swiftlint lint --quiet
 
 # Tuist 프로젝트 생성
 generate:

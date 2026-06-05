@@ -1,0 +1,30 @@
+# 레포 전역 SwiftLint 설정.
+# 사용처 2곳 공용:
+#   • 각 모듈 빌드 페이즈(TargetScript.swiftLint) — 빌드 시 자동 린트 (Xcode 인라인 경고)
+#   • make lint / make lint-fix — 터미널·CI
+
+included:
+  - Projects
+
+excluded:
+  - "**/Derived"          # Tuist 생성물
+  - "**/.build"
+  - .build
+  - Tuist                 # ProjectDescription 매니페스트/헬퍼
+  - "**/*.generated.swift"
+  - "**/*.docc"           # DocC 튜토리얼 코드 스니펫(실제 소스 아님)
+
+disabled_rules:
+  - orphaned_doc_comment  # @lat 라벨이 doc comment 와 선언 사이에 와서 충돌 → 의도적 비활성
+  - todo                  # 도입 초기엔 TODO/FIXME 까지 경고로 막지 않음
+  - nesting               # TCA: Action.Delegate / Path 등 2단계 중첩이 표준 패턴
+
+# 도입 초기 마찰 최소화 — 임계치 완화
+line_length:
+  warning: 140
+  error: 200
+identifier_name:
+  min_length: 2           # id, vm 등 허용
+  excluded: [id, x, y]
+type_name:
+  max_length: 50
