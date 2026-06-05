@@ -33,6 +33,7 @@ let project = Project(
             bundleId: "com.architecture.appfeature",
             deploymentTargets: .iOS("17.0"),
             sources: ["AppFeature/Sources/**"],
+            scripts: [.swiftLint],
             dependencies: [
                 .feature("Home"),
                 .feature("Users"),
