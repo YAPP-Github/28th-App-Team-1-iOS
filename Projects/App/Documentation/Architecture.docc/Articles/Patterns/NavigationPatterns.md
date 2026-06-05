@@ -1,126 +1,128 @@
 # 화면 간 값 전달 패턴
 
-상황에 따라 골라 쓰는 세 가지 패턴.
+상황에 따라 골라 쓰는 패턴 — 그리고 **도메인 내부 navigation 과 cross-feature 전환의 경계**.
 
 ## Overview
 
-TCA 에서 화면 사이에 데이터를 옮길 때 거의 모든 경우는 다음 셋 중 하나다.
+먼저 큰 두 갈래를 구분한다.
 
-| 케이스 | 무엇을 넘기는가 | 누가 fetch 하는가 | 본 프로젝트의 예시 |
+- **도메인 내부 navigation** — 한 Feature 안의 화면 스택. 그 Feature 가 자체 `Path` enum + `StackState` 로 직접 push/pop 한다. (예: Users 의 목록→상세)
+- **Cross-feature 전환** — 다른 Feature 로 넘어가는 것. **직접 하지 않는다.** `delegate` 로 ``AppFeature`` 에 신호를 올리고, 코디네이터가 조립한다. (예: Users 상세 → 프로필 편집) — Feature→Feature 의존 0.
+
+값 전달 자체는 거의 모든 경우 다음 셋 중 하나다.
+
+| 케이스 | 무엇을 넘기는가 | 누가 fetch | 본 프로젝트 예시 |
 |---|---|---|---|
-| A | id 만 | 자식이 직접 | `UserDetailFeature` → `ProfileFeature` |
-| B | 객체 전체 | 부모가 이미 들고 있음 | `UserListFeature` → `UserDetailFeature` |
-| C | 결과를 위로 | 자식이 부모에게 알림 | `ProfileFeature` → ``UserFeature`` |
-
-세 케이스 모두 본 앱의 **Users 탭** 안에서 실제로 동작하는 흐름이다. 한 번 실행해 보면서 비교하면 가장 빠르다.
-
-> Note: 탭 코디네이터(``AppFeature``) 는 탭 전환만 담당하고 탭 내부 화면 스택에는 관여하지 않는다.
-> 아래 모든 라우팅은 ``UserFeature`` 가 자체 `Path` + `StackState` 로 직접 처리한다.
+| A | id 만 | 자식이 직접 | ``AppFeature`` → ``ProfileFeature``(`profileId`) |
+| B | 객체 전체 | 부모가 이미 보유 | `UserListFeature` → `UserDetailFeature` |
+| C | 결과를 위로 | 자식이 부모에 통보 | `ProfileFeature` → ``AppFeature`` → `UsersFeature` |
 
 ---
 
 ## Case A — id 만 전달 → 화면에서 fetch
 
 ```swift
-// 상위 (UserFeature)
-case let .path(.element(id: _, action: .detail(.delegate(.editProfileTapped(id))))):
-    state.path.append(.profile(ProfileFeature.State(profileId: id)))
+// 제시하는 쪽 (AppFeature) — id 만 담아 State 생성
+case let .users(.delegate(.editProfile(id))):
+    state.editProfile = ProfileFeature.State(profileId: id)
     return .none
 
-// 자식 (ProfileFeature)
+// 자식 (ProfileFeature) — onAppear 에서 fetch
 case .onAppear:
     return .run { [id = state.profileId] send in
         let profile = try await profileClient.fetchProfile(id)
         await send(.profileLoaded(profile))
     }
+    .cancellable(id: CancelID.load)
 ```
 
-**언제 쓰는가** — 부모 화면이 들고 있는 데이터가 자식 화면에 부족할 때, 또는 항상 최신본을 받아야 할 때 (편집 화면, 캐시 무효화).
-**어떻게 쓰는가** — 자식 `State` 에 `let id: Int` 를 두고 `init(id:)` 하나만 노출. 나머지 필드는 모두 옵셔널/기본값. `onAppear` 에서 fetch.
-**주의할 점** — 진입 직후 빈 껍데기를 보여주게 되므로 `isLoading` 분기를 반드시 둔다. 그리고 `onDisappear` 에서 `.cancel(id:)` 로 in-flight 요청을 끊을 것 — pop 후에도 응답이 오면 reducer 에 액션이 도착해 알 수 없는 상태가 된다.
+**언제** — 부모가 가진 데이터가 부족하거나 항상 최신본이 필요할 때(편집 화면).
+**어떻게** — 자식 `State` 에 `let id` + `init(id:)` 만 노출, 나머지는 옵셔널/기본값. `onAppear` fetch.
+**주의** — 진입 직후 빈 껍데기가 보이므로 `isLoading` 분기 필수. `onDisappear` 에서 `.cancel(id:)` 로 in-flight 요청을 끊을 것 — dismiss 후 응답이 도착하면 알 수 없는 상태가 된다.
 
-## Case B — 객체 직접 전달 → 추가 fetch 없이 즉시 표시
+## Case B — 객체 직접 전달 → 즉시 표시 (도메인 내부)
 
 ```swift
-// 상위 (UserFeature)
+// 상위 (UsersFeature) — 자체 Path 스택에 push
 case let .list(.delegate(.userTappedRow(user))):
     state.path.append(.detail(UserDetailFeature.State(user: user)))
     return .none
 
 // 자식 (UserDetailFeature)
-struct State: Equatable {
-    var user: User       // 진입 즉시 표시 가능
-    var isLoading = false
+public struct State: Equatable {
+    public var user: User     // 진입 즉시 표시 가능
+    public var isLoading = false
 }
 ```
 
-**언제 쓰는가** — 부모가 이미 갖고 있는 데이터로 충분하거나, 사용자가 진입 직후 깜빡임 없이 보길 원할 때 (목록→상세, 채팅 목록→채팅방의 헤더).
-**어떻게 쓰는가** — `init(user:)` 에 객체 통째를 받는다. 자식이 detail 전용 데이터(bio 등)만 따로 fetch 하는 변형도 자연스럽다.
-**주의할 점** — 부모가 들고 있는 객체가 stale 일 수 있다. 편집 결과를 반영하려면 반드시 Case C 와 짝지어 쓴다. 또 객체가 크면 메모리 압박이 있을 수 있는데, 그땐 Case A 로 전환.
+**언제** — 부모가 이미 가진 데이터로 충분하거나, 깜빡임 없이 보여야 할 때(목록→상세).
+**어떻게** — `init(user:)` 로 객체 통째 전달. 같은 도메인 안이라 `UsersFeature.Path` 에 그대로 push.
+**주의** — 부모가 든 객체가 stale 일 수 있다 → 편집 결과 반영은 Case C 와 짝지어 쓴다.
 
-## Case C — 하위 → 상위 결과 반환 (delegate 패턴)
+## Case C — 결과를 위로 (delegate)
+
+delegate 는 **"사실 통보"** 다(자식이 부모에 명령하는 통로가 아님). 그래서 과거형 이름(`profileSaved`, `editProfileTapped`)을 쓴다. 두 방향이 있다:
 
 ```swift
-// 자식 (ProfileFeature)
-enum Action {
-    case delegate(Delegate)
-
-    @CasePathable
-    enum Delegate: Equatable {
-        case profileSaved(Profile)
-    }
-}
-
+// 자식 (ProfileFeature) — 저장 결과 통보
 case let .profileSaved(profile):
     state.isSaving = false
-    return .send(.delegate(.profileSaved(profile)))   // 부모에 통보
+    return .send(.delegate(.profileSaved(profile)))
 
-// 상위 (UserFeature)
-case let .path(.element(id: _, action: .profile(.delegate(.profileSaved(profile))))):
-    // 목록과 스택에 남아 있는 상세 양쪽을 갱신
-    if let i = state.list.users.firstIndex(where: { $0.id == profile.id }) {
-        state.list.users[i].name = profile.displayName
-        state.list.users[i].bio = profile.bio
-    }
-    for id in state.path.ids {
-        guard case .detail(var detail) = state.path[id: id],
-              detail.user.id == profile.id else { continue }
-        detail.user.name = profile.displayName
-        detail.user.bio = profile.bio
-        state.path[id: id] = .detail(detail)
-    }
-    state.path.removeLast()
+// 코디네이터 (AppFeature) — sheet 닫고 결과를 도메인에 전달
+case let .editProfile(.presented(.delegate(.profileSaved(profile)))):
+    state.editProfile = nil
+    return .send(.users(.profileUpdated(profile)))
+
+// 도메인 (UsersFeature) — 목록 + 열린 상세 양쪽 갱신
+case let .profileUpdated(profile):
+    applyProfileUpdate(profile, to: &state)   // list & path 의 detail 동기화
     return .none
 ```
 
-**언제 쓰는가** — 자식 화면에서 만든 결과가 부모/형제 화면에 반영되어야 할 때 (편집·저장·선택 화면).
-**어떻게 쓰는가** — 자식 Action 에 `delegate(Delegate)` 케이스를 별도 enum 으로 분리한다. 부모는 `case let .path(.element(id: _, action: .child(.delegate(...))))` 한 줄로 받는다. pop / 추가 작업 / 형제 갱신 모두 부모 책임.
-**주의할 점** — delegate 는 "사실 통보" 다. 자식이 부모의 명령을 내리는 통로가 아니다. 행동 동사가 아니라 과거형(`profileSaved`, `itemSelected`) 을 쓰는 이유. 그리고 delegate 만 발사하고 자기 State 는 안 만지면, pop 직후 화면이 갑자기 비어 보일 수 있어 그 직전에 `state.isSaving = false` 같은 정리를 잊지 말 것.
+**언제** — 자식 결과가 부모/형제 화면에 반영돼야 할 때(편집·선택).
+**어떻게** — 자식 Action 에 `delegate(Delegate)` 를 별도 enum 으로 분리. 받는 쪽이 dismiss·갱신·후속 작업을 책임진다.
+**주의** — cross-feature 일 때 결과를 받는 건 **코디네이터(AppFeature)** 다. 도메인끼리 직접 주고받지 않는다.
 
-## 도메인 단위 캡슐화 — 왜 UserFeature 가 path 를 들고 있나
+---
 
-Stage 2 초기에는 ``AppFeature`` 가 `StackState<Path.State>` 를 직접 들고 모든 push/pop 을
-담당했다. 탭이 도입되면서 user 관련 화면 스택은 **Users 탭 안에서만** 의미가 있으므로,
-그 책임을 ``UserFeature`` 로 옮겼다.
+## Cross-feature 전환은 어떻게 흐르나
 
-장점:
-- 탭 간 가로지르는 navigation 이 자연스럽게 차단됨
-- ``AppFeature`` 는 탭 전환과 각 탭 State 보유만 책임지면 됨 (단일 책임)
-- 새 탭(`HomeFeature`, `ActivityFeature`) 추가 시 기존 user navigation 코드를 건드릴 일 없음
+Users 상세의 "편집"은 다른 Feature(`ProfileFeature`)다. `UsersFeature` 는 `ProfileFeature` 를 **import 하지 않는다.** 신호가 delegate 로 위까지 올라갔다가, `AppFeature` 가 sheet 로 제시하고 결과를 되돌린다.
 
-새 도메인을 만들 때도 같은 패턴을 따른다 — 도메인 안에 여러 화면이 있으면 그 도메인 Feature 가
-자체 `Path` enum + `StackState` 를 들고, ``AppFeature`` 는 그 Feature.State 만 보유한다.
+```text
+UserDetailFeature  delegate(.editProfileTapped(id))
+        │
+        ▼
+UsersFeature       delegate(.editProfile(id))          ← 그대로 위로 bubble
+        │
+        ▼
+AppFeature         state.editProfile = .init(id)  →  sheet 로 ProfileFeature 제시
+        ▲
+        │          delegate(.profileSaved) ◀── ProfileFeature (저장)
+        ▼
+AppFeature         .send(.users(.profileUpdated))  →  UsersFeature 가 목록/상세 갱신
+```
+
+핵심: **각 Feature 는 "위(부모)" 만 안다.** `UsersFeature` 는 `ProfileFeature` 의 존재를 모르고, 오직 자기 `delegate` 만 방출한다. 조립 지점은 `AppFeature` 단 한 곳.
+
+## 왜 도메인이 자체 Path 를 들고 있나
+
+탭이 도입되면서, user 화면 스택은 **Users 탭 안에서만** 의미가 있으므로 그 책임을 `UsersFeature` 로 두었다.
+
+- 탭을 가로지르는 navigation 이 구조적으로 차단됨
+- ``AppFeature`` 는 탭 보유 + cross-feature 라우팅에만 집중
+- 새 탭 추가 시 기존 도메인 navigation 코드를 건드릴 일 없음
+
+새 도메인도 같은 패턴: 도메인 안에 여러 화면이 있으면 그 Feature 가 자체 `Path` + `StackState` 를 들고, ``AppFeature`` 는 그 Feature.State 만 보유한다. 다른 도메인으로 넘어갈 때만 `delegate` 로 올린다.
 
 ## 관련 심볼
 
-본 프로젝트에서 위 패턴을 구현하는 핵심 타입:
-
-- ``AppFeature`` — 탭 코디네이터
-- ``UserFeature`` — Users 탭의 path 코디네이터 + delegate 라우팅
-- `UserFeature.Path` — Users 탭에서 푸시 가능한 화면 enum
+- ``AppFeature`` — 탭 + cross-feature 코디네이터
+- ``UsersFeature`` — Users 도메인의 Path 코디네이터 + delegate bubble
 - `UserListFeature.Action.Delegate` — Case B 트리거
-- `UserDetailFeature.Action.Delegate` — Case A 트리거
-- `ProfileFeature.Action.Delegate` — Case C 발신
+- `UserDetailFeature.Action.Delegate` — cross-feature 신호의 출발점
+- `ProfileFeature.Action.Delegate` — Case C 발신 (AppFeature 가 수신)
 
 ## Topics
 
