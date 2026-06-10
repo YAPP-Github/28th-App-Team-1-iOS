@@ -28,3 +28,6 @@ AppFeature  --.users(.profileUpdated)-->       Users   (list/detail 갱신)
 | Home | (없음 — 외부 IO 없는 화면) |
 
 `*ClientLive` 는 App / Example 만 link. → [[clients]]
+
+## 계획 — AI 면접 (작업 문서)
+YAPP APP 1팀 「AI 면접 연습 앱」을 우리 아키텍처에 녹인 설계 → [[ai-interview]]. (현재 데모 4탭과 별개의 후속 도메인 — Setup/Session/Report Feature + 6개 Client)
