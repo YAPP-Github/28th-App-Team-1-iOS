@@ -1,6 +1,6 @@
 # 첫 빌드 세팅 가이드
 
-clone 직후 **처음 빌드까지** 그대로 따라 하면 되는 문서. (아키텍처 설명은 `README.md`, 팀 규칙은 `CONVENTIONS.md`, 도메인 지식은 `lat.md/` 참고)
+clone 직후 **처음 빌드까지** 그대로 따라 하면 되는 문서. (아키텍처 설명은 [`README.md`](../README.md), 팀 규칙은 [`CONTRIBUTING.md`](../CONTRIBUTING.md), 도메인 지식은 [`lat.md/`](../lat.md) 참고)
 
 > 핵심: `.xcworkspace`/`.xcodeproj` 는 **커밋되지 않습니다.** Tuist 생성물이라 clone 후 직접 만들어야 합니다.
 
@@ -91,7 +91,7 @@ make lat-deps q=profile  # profile 을 바꾸면 영향받는 곳
 
 ## 5. 다음 단계
 
-- 아키텍처/의존 규칙 → `README.md`
-- 팀 컨벤션(브랜치·커밋·PR·배포) → `CONVENTIONS.md`
-- 도메인 지식·흐름·의존 인덱스 → `lat.md/` (+ `make lat`)
+- 아키텍처/의존 규칙 → [`README.md`](../README.md)
+- 팀 컨벤션(브랜치·커밋·PR·배포) → [`CONTRIBUTING.md`](../CONTRIBUTING.md)
+- 도메인 지식·흐름·의존 인덱스 → [`lat.md/`](../lat.md) (+ `make lat`)
 - API/튜토리얼 문서 → Xcode 에서 `ArchitectureDocs` 스킴 → **Product → Build Documentation** (⌃⇧⌘D)

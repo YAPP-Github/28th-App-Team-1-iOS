@@ -63,7 +63,21 @@ Feature 스킴(`HomeFeature` / `UsersFeature` / `ProfileFeature` / `ActivityFeat
 가이드·튜토리얼·심볼 주석은 `Projects/App/Documentation/Architecture.docc/` 카탈로그에 있다 (전용 `ArchitectureDocs` 타겟이 호스팅).
 `tuist generate` 후 Xcode 에서 `ArchitectureDocs` 스킴 선택 → **Product → Build Documentation** (⌃⇧⌘D).
 
-> DocC 카탈로그는 현재 Tuist µFeature 구조·코드 기준으로 정리되어 있다. 첫 빌드/세팅은 `SETUP.md`, 팀 규칙은 `CONVENTIONS.md`, 도메인 지식은 `lat.md/` 참고.
+> DocC 카탈로그는 현재 Tuist µFeature 구조·코드 기준으로 정리되어 있다.
+
+## 문서 지도
+
+문서는 독자별로 레이어가 나뉜다. 같은 내용을 중복 작성하지 않고 서로 링크한다.
+
+| 문서 | 위치 | 무엇을 / 누구를 위해 |
+|---|---|---|
+| **README** | (여기) | 프로젝트 소개·빌드·구조·의존 규칙 — 처음 오는 사람의 현관 |
+| **첫 빌드 가이드** | [`docs/getting-started.md`](docs/getting-started.md) | clone 직후 처음 빌드까지의 단계별 셋업 |
+| **기여 가이드** | [`CONTRIBUTING.md`](CONTRIBUTING.md) | 브랜치·커밋·PR·리뷰·배포 등 팀 협업 규칙 |
+| **DocC 카탈로그** | [`Architecture.docc/`](Projects/App/Documentation/Architecture.docc) | 심볼 레퍼런스·튜토리얼·개념 아티클 (Xcode 에서 봄) |
+| **도메인 지식 볼트** | [`lat.md/`](lat.md) | 도메인 흐름·cross-feature 숨은 의존 (Obsidian · `make lat`) |
+| **스터디 노트** | [`docs/notes/`](docs/notes) | 외부 아키텍처 비교 학습 메모 (이 프로젝트 설명 아님) |
+| **에이전트 가이드** | [`.claude/CLAUDE.md`](.claude/CLAUDE.md) | Claude 가 따르는 작업 규칙 |
 
 ## 커밋 규칙
 
