@@ -13,7 +13,7 @@
 | Part 1 질문 생성(온보딩 위저드) | `InterviewSetupFeature` | 자체 `StackState` 위저드 (S0~S3.5) |
 | Part 2 10분 음성 면접 | `InterviewSessionFeature` ★ | 단일 화면 + 턴 **상태머신** |
 | 포트폴리오 관리(설정) | `PortfolioFeature` | — |
-| Part 3 보고서/Scoring | `InterviewReportFeature` | (지금은 stub) |
+| Part 3 보고서/영상 복기 | `InterviewReportFeature` (R0·R1 + V0·V1·V2) | 자체 `Path` (R0→V0→V1→V2→R1) → [[ai-interview-report]] |
 | Part 4 사람 평가(유료) | (후속, 별도) | — |
 
 ★ = 엔지니어링 리스크 집중 지점.
@@ -172,6 +172,6 @@ enum CancelID { case session, thinking, silence, tts, stt, hardCap }
 
 ## 9. 미정/후속
 
-- Part 3 Scoring 입출력 스키마 (보고서 항목) — 별도 기획 필요
+- ~~Part 3 Scoring 입출력 스키마 (보고서 항목) — 별도 기획 필요~~ → 기획서 나옴, 설계 완료 [[ai-interview-report]] (ScoringClient 확장 + PlaybackClient·ReviewClient 신규)
 - Part 4 사람 평가 연계 + 유료 게이팅(논의 L)
 - 탭 구성(연습/기록/설정) — 제품 IA 확정 시 [[domain.map]] 갱신
