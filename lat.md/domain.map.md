@@ -30,4 +30,7 @@ AppFeature  --.users(.profileUpdated)-->       Users   (list/detail 갱신)
 `*ClientLive` 는 App / Example 만 link. → [[clients]]
 
 ## 계획 — AI 면접 (작업 문서)
-YAPP APP 1팀 「AI 면접 연습 앱」을 우리 아키텍처에 녹인 설계 → [[ai-interview]]. (현재 데모 4탭과 별개의 후속 도메인 — Setup/Session/Report Feature + 6개 Client)
+YAPP APP 1팀 「AI 면접 연습 앱」을 우리 아키텍처에 녹인 설계 → [[ai-interview]] (Part 1/2 + 전체 개요). (현재 데모 4탭과 별개의 후속 도메인 — Setup/Session/Report Feature + Client군)
+
+- **Part 3 분석 보고서 & 영상 복기** → [[ai-interview-report]]. `InterviewReportFeature`(R0·R1 + V0·V1·V2, 자체 Path). 신규 Client: PlaybackClient(영상 자산·재생 시간축) · ReviewClient(자기평가 영구 저장 → 4.6 '나'), ScoringClient 확장(폴링·기준선).
+- ⚠️ cross-feature: `Session --finished--> AppFeature --present--> Report`, `Report --requestFriendFeedback--> AppFeature`. 평가 독립성 — 친구(4.5)에 넘기는 payload 는 챕터 경계만(내 표시·AI 지적 제외).
