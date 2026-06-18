@@ -20,6 +20,12 @@ public extension TargetDependency {
         path: .relativeToRoot("Projects/Shared/DesignSystemKit")
     )
 
+    /// 실행 환경(개발계/운영계) 설정. App·`*ClientLive` 만 의존한다 (Feature 는 X).
+    static let appConfig: TargetDependency = .project(
+        target: "AppConfig",
+        path: .relativeToRoot("Projects/Shared/AppConfig")
+    )
+
     // MARK: Client (Interface / Live)
 
     /// 예: `.clientInterface("User")` → `UserClientInterface`
