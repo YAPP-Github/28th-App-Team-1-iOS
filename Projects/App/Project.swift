@@ -75,6 +75,7 @@ let project = Project(
                 .feature("Activity"),
                 .models,
                 .designSystemKit,
+                .appConfig,
                 .composableArchitecture
             ]
         )

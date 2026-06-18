@@ -61,6 +61,9 @@ xcodebuild -workspace Architecture.xcworkspace -scheme Architecture \
 각 Feature 는 단독 실행용 **Example 앱 스킴**이 있습니다:
 `HomeFeatureExample` / `UsersFeatureExample` / `ProfileFeatureExample` / `ActivityFeatureExample` → 선택 후 ⌘R.
 
+### 개발계 / 운영계
+**`Architecture-Dev`**(개발계) / **`Architecture-Prod`**(운영계) 스킴으로 전환합니다. 동작 원리·확장법은 DocC `Environments` 아티클 (`ArchitectureDocs` 스킴 → Build Documentation) 참고.
+
 ---
 
 ## 3. 자주 겪는 문제
