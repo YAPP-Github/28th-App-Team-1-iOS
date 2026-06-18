@@ -7,20 +7,34 @@ import ProjectDescriptionHelpers
 //   • ArchitectureDocs    : 프로젝트 전역 DocC 카탈로그 전용 호스트 (코드 없음).
 let project = Project(
     name: "Architecture",
+    // 환경 분리: Debug=개발계 / Release=운영계. 각 xcconfig 가 APP_ENV·API_BASE_URL 주입.
+    // 이름을 Debug/Release 로 유지해 워크스페이스 내 다른 프로젝트와 Configuration 일관성 보장.
+    settings: .settings(
+        configurations: [
+            .debug(name: "Debug", xcconfig: "Config/Dev.xcconfig"),
+            .release(name: "Release", xcconfig: "Config/Prod.xcconfig")
+        ]
+    ),
     targets: [
         .target(
             name: "Architecture",
             destinations: .iOS,
             product: .app,
-            bundleId: "com.architecture.app",
+            // 접미사는 xcconfig(BUNDLE_ID_SUFFIX)가 결정 — 개발계 .dev / 운영계 빈값.
+            bundleId: "com.architecture.app$(BUNDLE_ID_SUFFIX)",
             deploymentTargets: .iOS("17.0"),
             infoPlist: .extendingDefault(with: [
-                "UILaunchScreen": [:]
+                "UILaunchScreen": [:],
+                // xcconfig → Info.plist 치환. AppConfig.fromBundle() 가 읽는다.
+                "APP_ENV": "$(APP_ENV)",
+                "API_BASE_URL": "$(API_BASE_URL)",
+                "CFBundleDisplayName": "$(APP_DISPLAY_NAME)"
             ]),
             sources: ["Sources/**"],
             resources: ["Resources/**"],
             dependencies: [
                 .target(name: "AppFeature"),
+                .appConfig,
                 .clientLive("User"),
                 .clientLive("Profile"),
                 .clientLive("Activity")
@@ -63,6 +77,24 @@ let project = Project(
                 .designSystemKit,
                 .composableArchitecture
             ]
+        )
+    ],
+    schemes: [
+        // 개발계 — Debug 구성으로 실행/아카이브.
+        .scheme(
+            name: "Architecture-Dev",
+            shared: true,
+            buildAction: .buildAction(targets: ["Architecture"]),
+            runAction: .runAction(configuration: .debug, executable: "Architecture"),
+            archiveAction: .archiveAction(configuration: .debug)
+        ),
+        // 운영계 — Release 구성으로 실행/아카이브.
+        .scheme(
+            name: "Architecture-Prod",
+            shared: true,
+            buildAction: .buildAction(targets: ["Architecture"]),
+            runAction: .runAction(configuration: .release, executable: "Architecture"),
+            archiveAction: .archiveAction(configuration: .release)
         )
     ]
 )
