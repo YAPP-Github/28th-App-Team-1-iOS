@@ -72,5 +72,6 @@ App
 
 ### 함께 보기
 
+- <doc:FeatureInterface>
 - <doc:NavigationPatterns>
 - <doc:AddingFeature>

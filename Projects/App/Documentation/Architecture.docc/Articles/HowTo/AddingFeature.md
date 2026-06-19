@@ -141,7 +141,7 @@ public struct ProfileView: View {
 }
 ```
 
-**주의** — `@Bindable var store` 표준, `WithViewStore` 금지. ``DesignSystemKit`` 토큰/컴포넌트(`Color.dsPrimary`, `PrimaryButton`) 우선. View 에서 `Task { await }` 직접 만들지 말고 `store.send` 로 위임.
+**주의** — `@Bindable var store` 표준, `WithViewStore` 금지. `DesignSystemKit` 토큰/컴포넌트(`Color.dsPrimary`, `PrimaryButton`) 우선. View 에서 `Task { await }` 직접 만들지 말고 `store.send` 로 위임.
 
 ## Step 5 — Project.swift + 의존 액세서 + 생성
 

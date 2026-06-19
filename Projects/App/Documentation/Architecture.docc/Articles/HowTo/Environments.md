@@ -4,7 +4,7 @@
 
 ## Overview
 
-환경 분기는 **``AppConfig``(composition root)와 `*ClientLive` 만의 관심사**다. Feature 는 환경을 전혀 모른다 — `*ClientInterface` 만 의존하기 때문이다(<doc:ModularArchitecture> 의 두 번째 분리 규칙). 그래서 운영계를 추가해도 Feature 코드는 한 줄도 바뀌지 않는다.
+환경 분기는 **`AppConfig`(composition root)와 `*ClientLive` 만의 관심사**다. Feature 는 환경을 전혀 모른다 — `*ClientInterface` 만 의존하기 때문이다(<doc:ModularArchitecture> 의 두 번째 분리 규칙). 그래서 운영계를 추가해도 Feature 코드는 한 줄도 바뀌지 않는다.
 
 환경값은 `@Dependency(\.appConfig)` 하나로 주입된다. `#if DEBUG` 를 코드 곳곳에 뿌리지 않는다.
 
@@ -46,7 +46,7 @@ xcodebuild -workspace Architecture.xcworkspace -scheme Architecture-Prod \
 
 1. `Projects/App/Config/Dev.xcconfig` · `Prod.xcconfig` 에 키 추가 (`SOME_KEY = …`)
 2. `Projects/App/Project.swift` 의 `infoPlist` 에 `"SOME_KEY": "$(SOME_KEY)"` 치환 추가
-3. ``AppConfig`` 의 `fromBundle()` 에서 읽어 프로퍼티로 노출
+3. `AppConfig` 의 `fromBundle()` 에서 읽어 프로퍼티로 노출
 4. `tuist generate`
 
 > Tip: xcconfig 값에 URL 처럼 `//` 가 들어가면 주석으로 먹힌다. `https:/$()/host` 처럼 빈 변수 `$()` 를 끼워 회피한다.
@@ -80,7 +80,7 @@ withDependencies {
 
 ## 관련 파일
 
-- `Projects/Shared/AppConfig/` — ``AppConfig`` 타입 + Dependency
+- `Projects/Shared/AppConfig/` — `AppConfig` 타입 + Dependency
 - `Projects/App/Config/{Dev,Prod}.xcconfig` — 환경값
 - `Projects/App/Project.swift` — Configuration 연결 + Info.plist 치환 + Dev/Prod 스킴
 - `Projects/Client/*/Live/*+Live.swift` — `config.baseURL` 소비
@@ -89,5 +89,4 @@ withDependencies {
 
 - <doc:ModularArchitecture>
 - <doc:AddingFeature>
-- ``AppConfig``
 - ``AppFeature``
