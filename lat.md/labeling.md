@@ -66,6 +66,4 @@ make lat-all              # 코드 전체 @lat 라벨 목록
 - 새 cross-feature delegate 를 추가하면 → 그 자리에 `depends-on:` 을 추가한다.
 - 코드를 다른 도메인으로 옮기면 → `@lat:` 을 갱신한다.
 - lat.md 문서의 헤딩을 바꾸면 → 그 `#Section` 을 가리키는 라벨을 갱신한다 (`make lat q=<domain>` 으로 확인).
-- 라벨이 가리키는 `[[domain]]` 문서는 존재해야 한다 — **dangling 금지.**
-
-> 참고: 현재 `[[app]]` 은 전용 문서(`app.md`)가 아직 없다. AppFeature 코디네이터 도메인 doc 신설은 백로그 — 그 전까지 `[[app#…]]` 은 의도상 앵커로만 쓴다.
+- 라벨이 가리키는 `[[domain]]` 문서·`#Section` 헤딩은 존재해야 한다 — **dangling 금지.** (예: `[[app#Cross-feature Routing]]` → `app.md` 의 `## Cross-feature Routing` 헤딩)

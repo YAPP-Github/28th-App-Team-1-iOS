@@ -92,6 +92,7 @@ make lat-all              # 코드 전체의 @lat 라벨 목록
 |---|---|
 | [`architecture.md`](architecture.md) | 시스템 총론 — 레이어·의존 방향·핵심 결정 |
 | [`domain.map.md`](domain.map.md) | 도메인(=모듈) 간 관계도, cross-feature 숨은 의존 |
+| [`app.md`](app.md) | AppFeature 코디네이터 — 탭 구성 + cross-feature 라우팅 |
 | [`clients.md`](clients.md) | Client(Repository) 계약 — Interface/Live 분리 규칙 |
 | [`home.md`](home.md) · [`users.md`](users.md) · [`profile.md`](profile.md) · [`activity.md`](activity.md) | 각 도메인 설명서 (흐름 + 주의사항) |
 | [`labeling.md`](labeling.md) | 방법론 문서 — `@lat` 코드 주석 컨벤션 |
