@@ -58,6 +58,7 @@ Projects/
 - **Action 네이밍**: 사용자 입력 `userTapped...`, 응답 `...Loaded` / `...Saved`, 생명주기 `onAppear` / `onDisappear`, 부모/코디네이터 통보 `delegate(Delegate)`
 - **Dependency `testValue`**: 반드시 `unimplemented`. 빈 클로저 금지
 - **DesignSystemKit 토큰 우선**: `Color.dsPrimary`, `Font.dsBody`, `CGFloat.dsL`, `PrimaryButton` 등. 하드코딩 (`Color.blue`, `16`) 지양
+- **@lat 주석**: Feature·AppFeature·Client 코드를 작성·수정하면 `lat.md/labeling.md` 규칙대로 Reducer 선언부에 `@lat:` / `depends-on:` 주석을 추가·갱신한다. cross-feature delegate 의존은 `import` 에 안 보이므로 `depends-on:` 으로 반드시 명시
 
 ## 디자인 시스템
 
@@ -71,6 +72,6 @@ Projects/
 ## 참고
 
 - 자세한 패턴/튜토리얼은 `Projects/App/Documentation/Architecture.docc/` DocC 카탈로그 (전용 `ArchitectureDocs` 타겟이 호스팅. 현재 Tuist µFeature 구조·코드 기준으로 현행화됨)
-- 첫 빌드/세팅 `docs/getting-started.md`, 기획→아키텍처 매핑 작업 문서 `docs/work/`, 팀 컨벤션 `CONTRIBUTING.md`, 도메인 지식·의존·lat 방법론 `lat.md/`(진입점 `lat.md/README.md`)
+- 첫 빌드/세팅 `docs/getting-started.md`, 기획→아키텍처 매핑 작업 문서 `docs/work/`, 팀 컨벤션 `CONTRIBUTING.md`, 도메인 지식·의존·lat 방법론 `lat.md/`(진입점 `lat.md/README.md`, 코드 라벨 규칙 `lat.md/labeling.md`)
 - 개발계/운영계 환경 분리는 DocC `Environments` 아티클 (`Architecture.docc/Articles/HowTo/Environments.md`) — xcconfig + `@Dependency(\.appConfig)`, Feature 는 환경 무관
 - modular architecture 스펙트럼에서 이 프로젝트는 Tuist 멀티프로젝트 µFeature (Level 3)

@@ -46,6 +46,7 @@ UserList ─tap row▶ UserDetail ─Edit(delegate)▶ UsersFeature
 ### 아키텍처
 
 - <doc:ModularArchitecture>
+- <doc:FeatureInterface>
 
 ### 시작하기
 

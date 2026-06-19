@@ -31,7 +31,7 @@ App → AppFeature → *Feature → *ClientInterface → Models
 ### D3. Client 만 Interface/Live 분리 (Feature Interface 폐기)
 Feature 는 인터페이스를 두지 않는다. (git: `Phase 3_Feature Interface 폐기`)
 - **이유**: TCA 단일 트리에선 Feature Interface 가 State 를 통째로 public 노출시켜 캡슐화 이득이 절반인데 보일러플레이트는 4겹. 실험(`experiment/feature-interface-tma` 브랜치)으로 비용 재확인 후 폐기.
-- **왜(언어/매크로 레벨 근거)**: `@Reducer` 매크로 + `some` 정적 합성이 구체 타입을 강제 → 인터페이스로 못 가린다. 상세 → [[feature-interface]]
+- **왜(언어/매크로 레벨 근거)**: `@Reducer` 매크로 + `some` 정적 합성이 구체 타입을 강제 → 인터페이스로 못 가린다. 상세 → DocC 개념 아티클 [FeatureInterface](../Projects/App/Documentation/Architecture.docc/Architecture/FeatureInterface.md)
 
 ## 디자인 시스템
 `DesignSystemKit` 토큰 우선: `Color.dsPrimary` / `Font.dsBody` / `CGFloat.dsL` / `PrimaryButton`. 하드코딩 지양.
