@@ -9,7 +9,8 @@
 
 ## 1.2 네이밍 / 커밋 / PR
 - **브랜치명**: `{type}/{짧은-설명}` — `feature/` `fix/` `refactor/` `experiment/` `chore/`.
-- **커밋**: `type: 설명_부연` — **제목 1줄 한국어**. type ∈ feat/fix/refactor/docs/test/chore. (기존 규칙 유지, Conventional Commits 미채택)
+- **커밋**: `type: 설명_부연` — **제목 1줄 한국어**. type ∈ feat/fix/refactor/docs/test/chore. (기존 규칙 유지, Conventional Commits 미채택) 두 type 에 걸치면 커밋을 쪼갠다 — `chore`(빌드/툴/메타만) vs `refactor`(코드 의미 변경) 구분. 본문 bullet 은 "무엇이 바뀌었는가"를 적고 필요할 때만.
+  - 예: `feat: ProfileFeature_화면 간 값 전달 3가지 패턴` · `docs: DocC 카탈로그_튜토리얼·아티클 추가`
 - **PR**: `.github/pull_request_template.md` 사용 — 요약 / 영향 모듈(@lat) / 테스트 방법 / 체크리스트.
 - **PR 크기**: **1 모듈 단위 권장** (µFeature 라 자연히 작아짐). 리뷰 어려우면 쪼갠다.
 

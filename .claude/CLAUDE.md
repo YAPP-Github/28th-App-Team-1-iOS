@@ -51,6 +51,16 @@ Projects/
 - Feature 단독 실행: `*FeatureExample` 스킴
 - DocC: Xcode 의 Product → Build Documentation
 
+## lat.md 지식 그래프 — 작업 워크플로우
+
+도메인 지식·설계 의도는 `lat.md/` 그래프(도구: [lat.md](https://www.npmjs.com/package/lat.md), `lat --help`)에 산다. **코드와 그래프를 끊지 않는 게 핵심.**
+
+- **작업 시작 전**: `lat search "<할 일>"` 로 관련 섹션을 찾아 설계 의도부터 파악(LLM 키 없으면 `lat locate`/`lat section`). 프롬프트의 `[[ref]]` 는 `lat expand` 로 펼쳐 맥락 확보.
+- **작업 후 (필수)**: 기능/아키텍처/동작을 바꿨으면 해당 `lat.md/*.md` 노드를 갱신하고 **`lat check` 통과**(끊긴 링크·코드 ref 0). 통과 전엔 작업 완료로 보지 않는다.
+- **코드 ↔ 그래프 앵커**: Reducer 선언부 위에 `// @lat: [[domain#Section]]`(소속), cross-feature 의존은 `// depends-on: [[…]]`(`import` 에 안 보이므로 명시).
+- **작성 규칙**: 섹션 ID = **헤딩 텍스트 전체** → 헤딩에 ⚠️·괄호 등 데코레이션 금지. 모든 섹션은 **≤250자 선행 문단**으로 시작(`lat check` 강제). 상세 → `docs/lat-labeling.md`.
+- 역참조 추적: `lat refs <id>` / `make lat q=<domain>`.
+
 ## 컨벤션
 
 - **커밋**: 제목 1 줄 한국어. `type: 설명_부연` 형식. 본문은 정말 필요할 때만 2-3 줄.
@@ -58,7 +68,7 @@ Projects/
 - **Action 네이밍**: 사용자 입력 `userTapped...`, 응답 `...Loaded` / `...Saved`, 생명주기 `onAppear` / `onDisappear`, 부모/코디네이터 통보 `delegate(Delegate)`
 - **Dependency `testValue`**: 반드시 `unimplemented`. 빈 클로저 금지
 - **DesignSystemKit 토큰 우선**: `Color.dsPrimary`, `Font.dsBody`, `CGFloat.dsL`, `PrimaryButton` 등. 하드코딩 (`Color.blue`, `16`) 지양
-- **@lat 주석**: Feature·AppFeature·Client 코드를 작성·수정하면 `lat.md/labeling.md` 규칙대로 Reducer 선언부에 `@lat:` / `depends-on:` 주석을 추가·갱신한다. cross-feature delegate 의존은 `import` 에 안 보이므로 `depends-on:` 으로 반드시 명시
+- **@lat 주석 / lat.md 그래프**: 코드 변경 후 `@lat:` 라벨과 `lat.md/` 노드를 갱신하고 `lat check` 통과 (위 «lat.md 지식 그래프» 워크플로우 참조). cross-feature delegate 의존은 `import` 에 안 보이므로 `depends-on:` 으로 반드시 명시
 
 ## 디자인 시스템
 
@@ -72,6 +82,7 @@ Projects/
 ## 참고
 
 - 자세한 패턴/튜토리얼은 `Projects/App/Documentation/Architecture.docc/` DocC 카탈로그 (전용 `ArchitectureDocs` 타겟이 호스팅. 현재 Tuist µFeature 구조·코드 기준으로 현행화됨)
-- 첫 빌드/세팅 `docs/getting-started.md`, 기획→아키텍처 매핑 작업 문서 `docs/work/`, 팀 컨벤션 `CONTRIBUTING.md`, 도메인 지식·의존·lat 방법론 `lat.md/`(진입점 `lat.md/README.md`, 코드 라벨 규칙 `lat.md/labeling.md`)
+- 첫 빌드/세팅 `docs/getting-started.md`, 기획→아키텍처 매핑 작업 문서 `docs/work/`, 팀 컨벤션 `CONTRIBUTING.md`, 도메인 지식·의존 그래프 `lat.md/`(진입점 `lat.md/lat.md`, `lat check` 로 검증), lat 방법론 `docs/lat-methodology.md`, 코드 라벨 규칙 `docs/lat-labeling.md`
 - 개발계/운영계 환경 분리는 DocC `Environments` 아티클 (`Architecture.docc/Articles/HowTo/Environments.md`) — xcconfig + `@Dependency(\.appConfig)`, Feature 는 환경 무관
 - modular architecture 스펙트럼에서 이 프로젝트는 Tuist 멀티프로젝트 µFeature (Level 3)
+- **문서 배치 규칙**: 심볼·튜토리얼·Xcode 렌더링이면 **DocC**, 검증되는 도메인 지식이면 **`lat.md/`**, 코드 밖 독립 산문(세팅·과정·외부·방법론)이면 **`docs/`**. 커밋/PR 규칙 단일 소스는 `CONTRIBUTING.md`

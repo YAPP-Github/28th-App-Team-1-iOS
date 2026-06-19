@@ -9,7 +9,7 @@ import Models
 import UserClientInterface
 
 /// 사용자 상세 화면 Reducer.
-// @lat: [[users#User Detail]]
+// @lat: [[users#List Detail]]
 // depends-on: [[profile#Save]]  ← "편집" 탭 시 delegate(.editProfileTapped). Profile 을 직접 import 하지 않음.
 @Reducer
 public struct UserDetailFeature {

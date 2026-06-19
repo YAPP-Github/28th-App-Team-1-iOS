@@ -75,11 +75,16 @@ Feature 스킴(`HomeFeature` / `UsersFeature` / `ProfileFeature` / `ActivityFeat
 | **첫 빌드 가이드** | [`docs/getting-started.md`](docs/getting-started.md) | clone 직후 처음 빌드까지의 단계별 셋업 |
 | **기여 가이드** | [`CONTRIBUTING.md`](CONTRIBUTING.md) | 브랜치·커밋·PR·리뷰·배포 등 팀 협업 규칙 |
 | **DocC 카탈로그** | [`Architecture.docc/`](Projects/App/Documentation/Architecture.docc) | 심볼 레퍼런스·튜토리얼·개념 아티클 (Xcode 에서 봄) |
-| **도메인 지식 볼트** | [`lat.md/`](lat.md/README.md) | lat 방법론·도메인 흐름·cross-feature 숨은 의존 (Obsidian · `make lat`) |
+| **도메인 지식 그래프** | [`lat.md/`](lat.md/lat.md) | 도메인 스펙·설계 결정·cross-feature 숨은 의존 (lat.md 도구 · `lat check`). 방법론은 [`docs/lat-methodology.md`](docs/lat-methodology.md) |
 | **작업 문서** | [`docs/work/`](docs/work) | 기획서 → 아키텍처 매핑 작업 문서 (AI 면접 등) |
 | **스터디 노트** | [`docs/notes/`](docs/notes) | 외부 아키텍처 비교 학습 메모 (이 프로젝트 설명 아님) |
 | **에이전트 가이드** | [`.claude/CLAUDE.md`](.claude/CLAUDE.md) | Claude 가 따르는 작업 규칙 |
 
+> **어디에 쓰나 (DocC vs lat.md vs docs)** — 셋이 헷갈리면 이 순서로 판단한다:
+> 1. 코드 심볼 링크·튜토리얼·Xcode 렌더링으로 더 좋아지나? → **DocC** (이 코드를 *배우는* 것)
+> 2. 코드와 동기화 *검증*이 필요한 "도메인이 무엇·무슨 결정"인가? → **`lat.md/`** (`lat check`)
+> 3. 둘 다 아닌, 코드 밖에서 읽는 **독립 산문**(세팅·과정·외부 노트·방법론)인가? → **`docs/`**
+
 ## 커밋 규칙
 
-제목 1줄 한국어 `type: 설명_부연` 형식. 본문은 정말 필요할 때만 2-3줄.
+제목 1줄 한국어 `type: 설명_부연` 형식. 본문은 정말 필요할 때만 2-3줄. (전체 규칙·type 목록의 **단일 소스**는 [`CONTRIBUTING.md`](CONTRIBUTING.md) §1.2)
