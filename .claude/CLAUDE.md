@@ -47,7 +47,7 @@ Projects/
 
 - 프로젝트 생성: `tuist install && tuist generate` (xcworkspace/xcodeproj 는 생성물 — 커밋 안 함)
 - 빌드: `xcodebuild -workspace Architecture.xcworkspace -scheme Architecture -destination 'generic/platform=iOS Simulator' build`
-- 테스트: Feature 스킴(`HomeFeature` 등)의 Test 액션 — `-destination 'platform=iOS Simulator,name=iPhone 16' test`
+- 테스트: `make test scheme=HomeFeature` 권장 (사용 가능한 시뮬레이터 UDID 로 해석 — 기기 이름이 여러 OS 런타임에 중복돼도 안전). 직접 xcodebuild 쓸 때 `name=iPhone 16` 이 중복으로 "Unable to find a device" 나면 `,OS=18.0` 또는 `id=<UDID>` 로 지정
 - Feature 단독 실행: `*FeatureExample` 스킴
 - DocC: Xcode 의 Product → Build Documentation
 
