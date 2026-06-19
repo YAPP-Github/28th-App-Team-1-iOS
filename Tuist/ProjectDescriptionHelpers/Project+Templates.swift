@@ -2,7 +2,7 @@ import ProjectDescription
 
 // MARK: - 공통 상수
 
-private let bundlePrefix = "com.architecture"
+private let bundlePrefix = "com.yapp01.architecture"
 private let appDestinations: Destinations = .iOS
 private let appDeploymentTargets: DeploymentTargets = .iOS("17.0")
 

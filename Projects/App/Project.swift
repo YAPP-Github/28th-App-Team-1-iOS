@@ -21,7 +21,7 @@ let project = Project(
             destinations: .iOS,
             product: .app,
             // 접미사는 xcconfig(BUNDLE_ID_SUFFIX)가 결정 — 개발계 .dev / 운영계 빈값.
-            bundleId: "com.architecture.app$(BUNDLE_ID_SUFFIX)",
+            bundleId: "com.yapp01.architecture.app$(BUNDLE_ID_SUFFIX)",
             deploymentTargets: .iOS("17.0"),
             infoPlist: .extendingDefault(with: [
                 "UILaunchScreen": [:],
@@ -44,7 +44,7 @@ let project = Project(
             name: "AppFeature",
             destinations: .iOS,
             product: .framework,
-            bundleId: "com.architecture.appfeature",
+            bundleId: "com.yapp01.architecture.appfeature",
             deploymentTargets: .iOS("17.0"),
             sources: ["AppFeature/Sources/**"],
             scripts: [.swiftLint],
@@ -63,7 +63,7 @@ let project = Project(
             name: "ArchitectureDocs",
             destinations: .iOS,
             product: .framework,
-            bundleId: "com.architecture.docs",
+            bundleId: "com.yapp01.architecture.docs",
             deploymentTargets: .iOS("17.0"),
             sources: ["Documentation/Sources/**"],
             resources: ["Documentation/Architecture.docc/**"],
