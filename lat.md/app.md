@@ -18,6 +18,7 @@
 → 양쪽 끝 흐름은 [[users#Profile Edit Handoff]] · [[profile#Save]], 큰 그림은 [[domain.map]].
 
 ## 주의사항
+코디네이터 패턴을 유지하기 위한 규칙.
 - **Feature → Feature 의존 0.** 새 cross-feature 전환이 생기면 leaf Feature 엔 `delegate` case 만 추가하고, 조립(State 생성·제시·결과 통보)은 전부 여기서 한다. 직접 import/push 금지.
 - 다른 Feature 의 reducer/State 를 구체 타입으로 참조해도 되는 **유일한 자리**(owner/코디네이터). leaf 끼리는 금지.
 - 새 탭은 `State` / `Tab` / body `Scope` + `AppView` 의 `TabView` 에 추가. → DocC `AddingFeature`

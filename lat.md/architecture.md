@@ -1,9 +1,9 @@
 # Architecture — 시스템 설계 & 핵심 결정
 
-> SwiftUI + TCA · Tuist 멀티프로젝트 µFeature. 이 문서는 **시스템 전체 그림과 "왜 이렇게 했는가"**만 담는다.
-> 작업 규칙은 `CLAUDE.md`, 심볼/API 레퍼런스는 `Projects/App/Documentation/Architecture.docc` 를 본다. (중복 작성 금지)
+SwiftUI + TCA · Tuist 멀티프로젝트 µFeature 의 시스템 총론. 이 문서는 **전체 그림과 "왜 이렇게 했는가"** 만 담는다. 작업 규칙은 `CLAUDE.md`, 심볼/API 레퍼런스는 `Architecture.docc` 를 본다.
 
 ## 레이어 & 의존 방향
+앱은 한 방향으로만 의존하며, 안쪽 레이어일수록 추상(계약)에 가깝다.
 
 ```
 App → AppFeature → *Feature → *ClientInterface → Models
@@ -17,11 +17,12 @@ App → AppFeature → *Feature → *ClientInterface → Models
 - **Client**: 외부 IO. `Interface` / `Live` 분리. → [[clients]]
 
 ## 핵심 결정 (Trade-off 기록)
+이 아키텍처를 규정하는 세 가지 결정과 각각의 비용.
 
 ### D1. Feature → Feature 의존 = 0 (delegate-only)
 다른 Feature 로의 전환은 `delegate` 신호만 올리고, 조립은 **AppFeature 에서만** 한다.
 - **이유**: 결합 0, 컴파일 격리, 피쳐 단독(Example) 실행.
-- **비용**: cross-feature 의존이 **import 에 안 보인다** → 변경 영향 추적이 어려움. → 이 약점을 `@lat depends-on` 라벨로 메운다. (lat.md 도입 제1 명분)
+- **비용**: cross-feature 의존이 **import 에 안 보인다** → 변경 영향 추적이 어려움. → 이 약점을 `@lat depends-on` 라벨로 메운다. (lat 도입 제1 명분)
 
 ### D2. 단일 코디네이터 (AppFeature)
 피쳐별 sub-coordinator 대신 AppFeature 하나가 모든 cross-feature 를 중재.
