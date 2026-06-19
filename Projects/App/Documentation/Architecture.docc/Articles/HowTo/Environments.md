@@ -22,8 +22,8 @@ App Info.plist  ($(APP_ENV), $(API_BASE_URL), …)
 
 | 스킴 | Configuration | APP_ENV | API_BASE_URL | bundle ID |
 |---|---|---|---|---|
-| `Architecture-Dev` | Debug | `dev` | `https://dev-api.architecture.com` | `com.architecture.app.dev` |
-| `Architecture-Prod` | Release | `prod` | `https://api.architecture.com` | `com.architecture.app` |
+| `Architecture-Dev` | Debug | `dev` | `https://dev-api.architecture.com` | `com.yapp01.architecture.app.dev` |
+| `Architecture-Prod` | Release | `prod` | `https://api.architecture.com` | `com.yapp01.architecture.app` |
 
 > Note: Configuration 이름을 `Debug`/`Release` 로 유지하는 이유 — Tuist 워크스페이스 안의 모든 프로젝트가 같은 Configuration 이름을 가져야 한다. 커스텀 이름(`Dev`/`Prod`)을 쓰려면 전 모듈에 동일하게 선언해야 하므로, 2티어에선 기본 이름 재사용이 가장 가볍다.
 
