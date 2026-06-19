@@ -37,7 +37,13 @@ lint-fix:
 generate:
 	@tuist install && tuist generate
 
-# Feature 테스트 (예: make test scheme=UsersFeature)
+# Feature 테스트 (예: make test scheme=UsersFeature [device='iPhone 15'])
+#
+# 기기 이름이 여러 OS 런타임에 중복되면(예: iPhone 16 이 18.0·26.1 둘 다 존재)
+# xcodebuild 가 name 만으론 못 골라 "Unable to find a device" 로 죽는다.
+# → 사용 가능한 시뮬레이터 UDID 로 해석해서 넘긴다. device= 로 기기 변경 가능.
+device ?= iPhone 16
 test:
-	@xcodebuild -workspace Architecture.xcworkspace -scheme $(scheme) \
-		-destination 'platform=iOS Simulator,name=iPhone 16' test
+	@id=$$(xcrun simctl list devices available | grep -E '^ +$(device) \(' | grep -oE '[0-9A-Fa-f-]{36}' | head -1); \
+	if [ -z "$$id" ]; then echo "❌ '$(device)' 시뮬레이터 없음. 사용 가능:"; xcrun simctl list devices available | grep -E '^ +iPhone'; exit 1; fi; \
+	xcodebuild -workspace Architecture.xcworkspace -scheme $(scheme) -destination "platform=iOS Simulator,id=$$id" test
