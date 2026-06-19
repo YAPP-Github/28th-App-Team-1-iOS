@@ -75,7 +75,8 @@ Feature 스킴(`HomeFeature` / `UsersFeature` / `ProfileFeature` / `ActivityFeat
 | **첫 빌드 가이드** | [`docs/getting-started.md`](docs/getting-started.md) | clone 직후 처음 빌드까지의 단계별 셋업 |
 | **기여 가이드** | [`CONTRIBUTING.md`](CONTRIBUTING.md) | 브랜치·커밋·PR·리뷰·배포 등 팀 협업 규칙 |
 | **DocC 카탈로그** | [`Architecture.docc/`](Projects/App/Documentation/Architecture.docc) | 심볼 레퍼런스·튜토리얼·개념 아티클 (Xcode 에서 봄) |
-| **도메인 지식 볼트** | [`lat.md/`](lat.md) | 도메인 흐름·cross-feature 숨은 의존 (Obsidian · `make lat`) |
+| **도메인 지식 볼트** | [`lat.md/`](lat.md/README.md) | lat 방법론·도메인 흐름·cross-feature 숨은 의존 (Obsidian · `make lat`) |
+| **작업 문서** | [`docs/work/`](docs/work) | 기획서 → 아키텍처 매핑 작업 문서 (AI 면접 등) |
 | **스터디 노트** | [`docs/notes/`](docs/notes) | 외부 아키텍처 비교 학습 메모 (이 프로젝트 설명 아님) |
 | **에이전트 가이드** | [`.claude/CLAUDE.md`](.claude/CLAUDE.md) | Claude 가 따르는 작업 규칙 |
 

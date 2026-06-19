@@ -71,6 +71,6 @@ Projects/
 ## 참고
 
 - 자세한 패턴/튜토리얼은 `Projects/App/Documentation/Architecture.docc/` DocC 카탈로그 (전용 `ArchitectureDocs` 타겟이 호스팅. 현재 Tuist µFeature 구조·코드 기준으로 현행화됨)
-- 첫 빌드/세팅 `docs/getting-started.md`, 팀 컨벤션 `CONTRIBUTING.md`, 도메인 지식·의존 인덱스 `lat.md/`
+- 첫 빌드/세팅 `docs/getting-started.md`, 기획→아키텍처 매핑 작업 문서 `docs/work/`, 팀 컨벤션 `CONTRIBUTING.md`, 도메인 지식·의존·lat 방법론 `lat.md/`(진입점 `lat.md/README.md`)
 - 개발계/운영계 환경 분리는 DocC `Environments` 아티클 (`Architecture.docc/Articles/HowTo/Environments.md`) — xcconfig + `@Dependency(\.appConfig)`, Feature 는 환경 무관
 - modular architecture 스펙트럼에서 이 프로젝트는 Tuist 멀티프로젝트 µFeature (Level 3)
