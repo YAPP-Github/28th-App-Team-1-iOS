@@ -78,6 +78,7 @@ Projects/
 - 타이포: `Font.dsLargeTitle` ~ `dsCaption` (8 단계)
 - spacing: `CGFloat.dsXS` (4) ~ `dsXXL` (32)
 - 컴포넌트: `PrimaryButton`
+- 에셋 로드: 새 색·이미지는 `Resources/Colors.xcassets`·`Assets.xcassets` 에 추가 후 `Color.load(_:)`·`Image.load(_:)` 단일 seam 으로 토큰 노출 (번들 해석 일원화 + 개발 빌드 `assert` 로 오타 검출). 이미지 토큰은 `Image.DS` 네임스페이스 — 늘어나면 `Ic`/`Img` 중첩 enum 으로 묶는다 (GmoneyTrans 방식)
 
 ## 참고
 

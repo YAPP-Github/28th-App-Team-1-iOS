@@ -16,10 +16,10 @@ import SwiftUI
 /// ```
 public extension Color {
     /// 강조 색상. 버튼·링크·선택 상태에 사용.
-    static let dsPrimary = Color("DSPrimary", bundle: .module)
+    static let dsPrimary = Color.load("DSPrimary")
 
     /// 기본 배경 색상. 라이트/다크 자동 대응.
-    static let dsBackground = Color("DSBackground", bundle: .module)
+    static let dsBackground = Color.load("DSBackground")
 
     /// 본문 텍스트 색상.
     static let dsTextPrimary = Color.primary
