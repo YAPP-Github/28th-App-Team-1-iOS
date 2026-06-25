@@ -16,6 +16,7 @@ import Foundation
 public struct AppConfig: Sendable, Equatable {
     public enum Environment: String, Sendable {
         case dev
+        case qa
         case prod
     }
 

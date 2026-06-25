@@ -7,11 +7,17 @@ import ProjectDescriptionHelpers
 //   • ArchitectureDocs    : 프로젝트 전역 DocC 카탈로그 전용 호스트 (코드 없음).
 let project = Project(
     name: "Architecture",
-    // 환경 분리: Debug=개발계 / Release=운영계. 각 xcconfig 가 APP_ENV·API_BASE_URL 주입.
-    // 이름을 Debug/Release 로 유지해 워크스페이스 내 다른 프로젝트와 Configuration 일관성 보장.
+    // 환경 분리: Dev / QA / Release 3단계. 각 xcconfig 가 APP_ENV·API_BASE_URL·번들ID 주입.
+    // 이름·타입(Dev=.debug / QA=.debug / Release=.release)은 워크스페이스 전역(Settings.standard)과 일치해야 한다.
+    //   • Dev: 개발계 서버 + 디버그 메뉴(DEV 컴파일 조건)  • QA: 개발계 서버, 디버그 메뉴 없음  • Release: 운영계
     settings: .settings(
         configurations: [
-            .debug(name: "Debug", xcconfig: "Config/Dev.xcconfig"),
+            .debug(
+                name: "Dev",
+                settings: ["SWIFT_ACTIVE_COMPILATION_CONDITIONS": "$(inherited) DEV"],
+                xcconfig: "Config/Dev.xcconfig"
+            ),
+            .debug(name: "QA", xcconfig: "Config/QA.xcconfig"),
             .release(name: "Release", xcconfig: "Config/Prod.xcconfig")
         ]
     ),
@@ -81,13 +87,21 @@ let project = Project(
         )
     ],
     schemes: [
-        // 개발계 — Debug 구성으로 실행/아카이브.
+        // 개발계 — Dev 구성(디버그 메뉴 포함)으로 실행/아카이브.
         .scheme(
             name: "Architecture-Dev",
             shared: true,
             buildAction: .buildAction(targets: ["Architecture"]),
-            runAction: .runAction(configuration: .debug, executable: "Architecture"),
-            archiveAction: .archiveAction(configuration: .debug)
+            runAction: .runAction(configuration: .configuration("Dev"), executable: "Architecture"),
+            archiveAction: .archiveAction(configuration: .configuration("Dev"))
+        ),
+        // QA — 개발계 서버, 디버그 메뉴 없음. 테스터 배포(아카이브)용.
+        .scheme(
+            name: "Architecture-QA",
+            shared: true,
+            buildAction: .buildAction(targets: ["Architecture"]),
+            runAction: .runAction(configuration: .configuration("QA"), executable: "Architecture"),
+            archiveAction: .archiveAction(configuration: .configuration("QA"))
         ),
         // 운영계 — Release 구성으로 실행/아카이브.
         .scheme(

@@ -1,5 +1,23 @@
 import ProjectDescription
 
+// MARK: - 빌드 구성 (3단계: Dev / QA / Release)
+//
+// Tuist 는 워크스페이스 내 모든 프로젝트가 **동일한 Configuration 집합**을 가질 때만
+// generate 가 통과한다. 따라서 App 을 포함한 전 모듈이 아래 이름/타입을 공유한다.
+//   • Dev     : 개발계 서버 + 디버그 메뉴. `DEV` 컴파일 조건이 켜져 `#if DEV` 코드가 포함된다.
+//   • QA      : 개발계 서버, 디버그 메뉴 없음(테스터 배포용). `DEV` 미설정.
+//   • Release : 운영계 서버.
+// App 타겟만 여기에 더해 xcconfig(APP_ENV/API_BASE_URL/번들ID)를 얹는다 → `App/Project.swift`.
+public extension Settings {
+    static var standard: Settings {
+        .settings(configurations: [
+            .debug(name: "Dev", settings: ["SWIFT_ACTIVE_COMPILATION_CONDITIONS": "$(inherited) DEV"]),
+            .debug(name: "QA"),
+            .release(name: "Release")
+        ])
+    }
+}
+
 // MARK: - 공통 상수
 
 private let bundlePrefix = "com.yapp01.architecture"
@@ -26,6 +44,7 @@ public extension Project {
         let resources: ResourceFileElements? = hasResources ? ["Resources/**"] : nil
         return Project(
             name: name,
+            settings: .standard,
             targets: [
                 .target(
                     name: name,
@@ -53,6 +72,7 @@ public extension Project {
         let live = "\(name)Live"
         return Project(
             name: name,
+            settings: .standard,
             targets: [
                 .target(
                     name: interface,
@@ -90,6 +110,7 @@ public extension Project {
         let example = "\(feature)Example"
         return Project(
             name: feature,
+            settings: .standard,
             targets: [
                 .target(
                     name: feature,
@@ -140,7 +161,7 @@ public extension Project {
                     name: example,
                     shared: true,
                     buildAction: .buildAction(targets: ["\(example)"]),
-                    runAction: .runAction(configuration: .debug, executable: "\(example)")
+                    runAction: .runAction(configuration: .configuration("Dev"), executable: "\(example)")
                 )
             ]
         )
