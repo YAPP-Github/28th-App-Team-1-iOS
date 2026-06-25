@@ -22,12 +22,15 @@ extension UserClient: DependencyKey {
 
         return UserClient(
             fetchUsers: {
-                // 실제 구현: let url = config.baseURL.appendingPathComponent("users")
+                // 백엔드 준비 시: @Dependency(\.apiClient) var api 주입 후
+                //   try await api.decoded([User].self, baseURL: config.baseURL, .init(path: "users"))
+                // (Networking 모듈 + UserClient/Project.swift liveDependencies 에 .networking 추가)
                 try await Task.sleep(for: .milliseconds(800))
                 return User.samples
             },
             fetchUser: { id in
-                // 실제 구현: let url = config.baseURL.appendingPathComponent("users/\(id)")
+                // 백엔드 준비 시:
+                //   try await api.decoded(User.self, baseURL: config.baseURL, .init(path: "users/\(id)"))
                 try await Task.sleep(for: .milliseconds(500))
                 guard let user = User.samples.first(where: { $0.id == id }) else {
                     throw UserClientError.notFound

@@ -24,6 +24,9 @@ struct ArchitectureApp: App {
     var body: some Scene {
         WindowGroup {
             AppView(store: Self.store)
+                #if DEV
+                .modifier(DebugMenuOverlay(store: Self.store))
+                #endif
         }
     }
 }

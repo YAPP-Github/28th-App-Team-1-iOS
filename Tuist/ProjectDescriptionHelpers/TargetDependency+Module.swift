@@ -20,6 +20,12 @@ public extension TargetDependency {
         path: .relativeToRoot("Projects/Shared/DesignSystemKit")
     )
 
+    /// 순정 URLSession HTTP transport. `*ClientLive` 만 의존한다 (Interface·Feature 는 X).
+    static let networking: TargetDependency = .project(
+        target: "Networking",
+        path: .relativeToRoot("Projects/Shared/Networking")
+    )
+
     /// 실행 환경(개발계/운영계) 설정. App·`*ClientLive` 만 의존한다 (Feature 는 X).
     static let appConfig: TargetDependency = .project(
         target: "AppConfig",

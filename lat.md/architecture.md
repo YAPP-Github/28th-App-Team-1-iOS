@@ -15,6 +15,7 @@ App → AppFeature → *Feature → *ClientInterface → Models
 - **AppFeature**: 탭 코디네이터 + cross-feature 라우팅. → [[app#Cross-feature Routing]]
 - **Feature**: 화면 도메인. 단일 모듈(+Testing/Tests/Example).
 - **Client**: 외부 IO. `Interface` / `Live` 분리. → [[clients]]
+- **Networking**: 순정 URLSession transport. 전 `*ClientLive` 가 공유 의존(Feature·Interface 는 X). → [[clients#공유 transport]]
 
 ## 핵심 결정 (Trade-off 기록)
 이 아키텍처를 규정하는 세 가지 결정과 각각의 비용.
