@@ -5,8 +5,7 @@
 
 import ComposableArchitecture
 import Foundation
-import Models
-import UserClientInterface
+import DomainUserInterface
 
 /// 사용자 상세 화면 Reducer.
 // @lat: [[users#List Detail]]

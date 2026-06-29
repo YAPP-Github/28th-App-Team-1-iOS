@@ -6,7 +6,7 @@
 //
 
 import ComposableArchitecture
-import HomeFeature
+import FeatureHome
 import SwiftUI
 
 @main

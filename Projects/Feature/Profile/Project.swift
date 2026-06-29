@@ -3,6 +3,6 @@ import ProjectDescriptionHelpers
 
 let project = Project.feature(
     name: "Profile",
-    dependencies: [.clientInterface("Profile"), .models],
-    exampleDependencies: [.clientLive("Profile")]
+    dependencies: [.domainInterface("Profile")],
+    exampleDependencies: [.domainLive("Profile")]
 )

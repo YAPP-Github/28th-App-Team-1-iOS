@@ -6,7 +6,7 @@
 import ComposableArchitecture
 import XCTest
 
-@testable import ProfileFeature
+@testable import FeatureProfile
 
 @MainActor
 final class ProfileFeatureTests: XCTestCase {

@@ -7,8 +7,8 @@
 //
 
 import ComposableArchitecture
-import ProfileClientLive
-import ProfileFeature
+import DomainProfileLive
+import FeatureProfile
 import SwiftUI
 
 @main

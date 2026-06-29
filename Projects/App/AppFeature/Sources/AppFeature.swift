@@ -5,13 +5,13 @@
 //  Created by EunseoKim on 5/26/26.
 //
 
-import ActivityFeature
+import FeatureActivity
 import ComposableArchitecture
 import Foundation
-import HomeFeature
-import Models
-import ProfileFeature
-import UsersFeature
+import FeatureHome
+import DomainProfileInterface
+import FeatureProfile
+import FeatureUsers
 
 /// 앱 최상위 Reducer 겸 탭 코디네이터.
 ///

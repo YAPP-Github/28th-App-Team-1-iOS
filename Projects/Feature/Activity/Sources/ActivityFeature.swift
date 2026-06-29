@@ -3,10 +3,9 @@
 //  ActivityFeature
 //
 
-import ActivityClientInterface
+import DomainActivityInterface
 import ComposableArchitecture
 import Foundation
-import Models
 
 /// 활동/알림 목록 화면. `ActivityClient` 로 항목을 로드/초기화한다.
 @Reducer
