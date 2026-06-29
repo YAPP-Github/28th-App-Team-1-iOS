@@ -10,52 +10,47 @@ public extension TargetDependency {
 
     // MARK: Core / Shared
 
-    static let models: TargetDependency = .project(
-        target: "Models",
-        path: .relativeToRoot("Projects/Shared/Models")
-    )
-
     static let designSystemKit: TargetDependency = .project(
         target: "DesignSystemKit",
         path: .relativeToRoot("Projects/Shared/DesignSystemKit")
     )
 
-    /// 순정 URLSession HTTP transport. `*ClientLive` 만 의존한다 (Interface·Feature 는 X).
+    /// 순정 URLSession HTTP transport. `*DomainLive` 만 의존한다 (Interface·Feature 는 X).
     static let networking: TargetDependency = .project(
         target: "Networking",
         path: .relativeToRoot("Projects/Shared/Networking")
     )
 
-    /// 실행 환경(개발계/운영계) 설정. App·`*ClientLive` 만 의존한다 (Feature 는 X).
+    /// 실행 환경(개발계/운영계) 설정. App·`*DomainLive` 만 의존한다 (Feature 는 X).
     static let appConfig: TargetDependency = .project(
         target: "AppConfig",
         path: .relativeToRoot("Projects/Shared/AppConfig")
     )
 
-    // MARK: Client (Interface / Live)
+    // MARK: Domain (Interface / Live)
 
-    /// 예: `.clientInterface("User")` → `UserClientInterface`
-    static func clientInterface(_ name: String) -> TargetDependency {
+    /// 예: `.domainInterface("User")` → `DomainUserInterface`
+    static func domainInterface(_ name: String) -> TargetDependency {
         .project(
-            target: "\(name)ClientInterface",
-            path: .relativeToRoot("Projects/Client/\(name)Client")
+            target: "Domain\(name)Interface",
+            path: .relativeToRoot("Projects/Domain/\(name)")
         )
     }
 
-    /// 예: `.clientLive("User")` → `UserClientLive` (App 타겟 / Example 앱만 link)
-    static func clientLive(_ name: String) -> TargetDependency {
+    /// 예: `.domainLive("User")` → `DomainUserLive` (App 타겟 / Example 앱만 link)
+    static func domainLive(_ name: String) -> TargetDependency {
         .project(
-            target: "\(name)ClientLive",
-            path: .relativeToRoot("Projects/Client/\(name)Client")
+            target: "Domain\(name)Live",
+            path: .relativeToRoot("Projects/Domain/\(name)")
         )
     }
 
     // MARK: Feature
 
-    /// 예: `.feature("Users")` → `UsersFeature`
+    /// 예: `.feature("Users")` → `FeatureUsers`
     static func feature(_ name: String) -> TargetDependency {
         .project(
-            target: "\(name)Feature",
+            target: "Feature\(name)",
             path: .relativeToRoot("Projects/Feature/\(name)")
         )
     }
