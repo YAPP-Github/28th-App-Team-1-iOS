@@ -1,13 +1,6 @@
-//
-//  ProfileClient.swift
-//  ProfileClientInterface
-//
-
 import ComposableArchitecture
 import Foundation
-import Models
 
-/// 프로필 조회/저장 통로.
 public struct ProfileClient: Sendable {
     public var fetchProfile: @Sendable (_ id: Int) async throws -> Profile
     public var saveProfile: @Sendable (_ profile: Profile) async throws -> Profile
