@@ -1,16 +1,6 @@
-//
-//  UserClient.swift
-//  UserClientInterface
-//
-
 import ComposableArchitecture
 import Foundation
-import Models
 
-/// 사용자 데이터의 외부 접근 통로 (Repository).
-///
-/// Interface target — 다른 Feature 는 이 모듈만 import 하면 된다.
-/// 실제 네트워크 호출 등의 liveValue 는 ``UserClientLive`` 에 분리.
 public struct UserClient: Sendable {
     public var fetchUsers: @Sendable () async throws -> [User]
     public var fetchUser: @Sendable (Int) async throws -> User
@@ -25,10 +15,17 @@ public struct UserClient: Sendable {
 }
 
 extension UserClient: TestDependencyKey {
+    private static let mockUsers: [User] = [
+        .init(id: 1, name: "Ada Lovelace", email: "ada@example.com"),
+        .init(id: 2, name: "Alan Turing", email: "alan@example.com"),
+        .init(id: 3, name: "Grace Hopper", email: "grace@example.com"),
+        .init(id: 4, name: "Linus Torvalds", email: "linus@example.com")
+    ]
+
     public static let previewValue = UserClient(
-        fetchUsers: { User.samples },
+        fetchUsers: { mockUsers },
         fetchUser: { id in
-            guard let user = User.samples.first(where: { $0.id == id }) else {
+            guard let user = mockUsers.first(where: { $0.id == id }) else {
                 throw UserClientError.notFound
             }
             return User(id: user.id, name: user.name, email: user.email, bio: "Preview bio for \(user.name).")

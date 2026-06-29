@@ -1,4 +1,4 @@
 import ProjectDescription
 import ProjectDescriptionHelpers
 
-let project = Project.core(name: "Models")
+let project = Project.domain(name: "Activity")
