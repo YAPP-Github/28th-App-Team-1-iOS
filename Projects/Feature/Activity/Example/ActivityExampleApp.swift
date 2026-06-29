@@ -6,8 +6,8 @@
 //  ActivityClientLive 를 link 하므로 실제(mock-delay) 데이터로 구동된다.
 //
 
-import ActivityClientLive
-import ActivityFeature
+import DomainActivityLive
+import FeatureActivity
 import ComposableArchitecture
 import SwiftUI
 

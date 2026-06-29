@@ -8,8 +8,8 @@
 
 import ComposableArchitecture
 import SwiftUI
-import UserClientLive
-import UsersFeature
+import DomainUserLive
+import FeatureUsers
 
 @main
 struct UsersExampleApp: App {

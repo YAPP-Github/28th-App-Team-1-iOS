@@ -5,8 +5,7 @@
 
 import ComposableArchitecture
 import Foundation
-import Models
-import ProfileClientInterface
+import DomainProfileInterface
 
 /// 프로필 편집 화면 Reducer.
 // @lat: [[profile#Save]]

@@ -10,10 +10,12 @@
 //  한 문서 안에서 해석되고, 전 피처 API 가 한 곳에서 브라우징된다.
 //
 
-@_exported import ActivityFeature
+@_exported import DomainActivityInterface
+@_exported import FeatureActivity
 @_exported import AppFeature
 @_exported import DesignSystemKit
-@_exported import HomeFeature
-@_exported import Models
-@_exported import ProfileFeature
-@_exported import UsersFeature
+@_exported import FeatureHome
+@_exported import DomainProfileInterface
+@_exported import FeatureProfile
+@_exported import DomainUserInterface
+@_exported import FeatureUsers

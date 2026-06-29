@@ -41,9 +41,9 @@ let project = Project(
             dependencies: [
                 .target(name: "AppFeature"),
                 .appConfig,
-                .clientLive("User"),
-                .clientLive("Profile"),
-                .clientLive("Activity")
+                .domainLive("User"),
+                .domainLive("Profile"),
+                .domainLive("Activity")
             ]
         ),
         .target(
@@ -59,7 +59,7 @@ let project = Project(
                 .feature("Users"),
                 .feature("Profile"),
                 .feature("Activity"),
-                .models,
+                .domainInterface("Profile"),
                 .composableArchitecture
             ]
         ),
@@ -79,7 +79,9 @@ let project = Project(
                 .feature("Users"),
                 .feature("Profile"),
                 .feature("Activity"),
-                .models,
+                .domainInterface("User"),
+                .domainInterface("Profile"),
+                .domainInterface("Activity"),
                 .designSystemKit,
                 .appConfig,
                 .composableArchitecture
