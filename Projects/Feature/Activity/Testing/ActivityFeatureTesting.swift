@@ -5,6 +5,6 @@
 
 import Foundation
 
-public enum ActivityFeatureTesting {
-    public static let identifier = "ActivityFeatureTesting"
+public enum FeatureActivityTesting {
+    public static let identifier = "FeatureActivityTesting"
 }

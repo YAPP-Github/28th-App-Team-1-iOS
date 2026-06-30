@@ -8,7 +8,7 @@
 import ComposableArchitecture
 import XCTest
 
-@testable import HomeFeature
+@testable import FeatureHome
 
 @MainActor
 final class HomeFeatureTests: XCTestCase {

@@ -5,6 +5,6 @@
 
 import Foundation
 
-public enum UsersFeatureTesting {
-    public static let identifier = "UsersFeatureTesting"
+public enum FeatureUsersTesting {
+    public static let identifier = "FeatureUsersTesting"
 }

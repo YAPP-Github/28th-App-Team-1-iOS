@@ -16,7 +16,7 @@ import Foundation
 // Client / Adapter 가 도입되면 그 모듈의 mock 을 여기에 노출한다. 예:
 // `extension UserClient { static let mock = UserClient(fetchUsers: { ... }) }`
 
-public enum HomeFeatureTesting {
+public enum FeatureHomeTesting {
     /// 미리 정해둔 인사말이 들어간 State.
     public static func makeWelcomeState() -> HomeFeatureSampleState {
         HomeFeatureSampleState(greeting: "Welcome to Architecture", tapCount: 0)

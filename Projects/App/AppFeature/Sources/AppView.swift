@@ -5,12 +5,12 @@
 //  Created by EunseoKim on 5/26/26.
 //
 
-import ActivityFeature
+import FeatureActivity
 import ComposableArchitecture
-import HomeFeature
-import ProfileFeature
+import FeatureHome
+import FeatureProfile
 import SwiftUI
-import UsersFeature
+import FeatureUsers
 
 /// 앱 최상위 SwiftUI 컨테이너. ``AppFeature`` 의 4 탭 + 앱 레벨 프로필 편집 sheet.
 public struct AppView: View {

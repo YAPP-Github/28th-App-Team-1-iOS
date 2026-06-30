@@ -4,10 +4,10 @@
 //
 
 import ComposableArchitecture
-import Models
+import DomainUserInterface
 import XCTest
 
-@testable import UsersFeature
+@testable import FeatureUsers
 
 @MainActor
 final class UsersFeatureTests: XCTestCase {
