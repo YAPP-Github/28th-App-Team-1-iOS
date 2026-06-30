@@ -1,15 +1,9 @@
-//
-//  ProfileClient+Live.swift
-//  ProfileClientLive
-//
-
 import AppConfig
 import ComposableArchitecture
 import Foundation
-import Models
-import ProfileClientInterface
+import DomainProfileInterface
 
-extension ProfileClient: DependencyKey {
+extension ProfileClient: @retroactive DependencyKey {
     public static var liveValue: ProfileClient {
         @Dependency(\.appConfig) var config
 
@@ -17,13 +11,10 @@ extension ProfileClient: DependencyKey {
             fetchProfile: { id in
                 // 실제 구현: GET config.baseURL.appendingPathComponent("profiles/\(id)")
                 try await Task.sleep(for: .milliseconds(600))
-                guard let user = User.samples.first(where: { $0.id == id }) else {
-                    throw ProfileClientError.notFound
-                }
                 return Profile(
                     id: id,
-                    displayName: user.name,
-                    bio: "[\(config.environment.rawValue)] \(config.baseURL.host() ?? "") · \(user.name)",
+                    displayName: "User \(id)",
+                    bio: "[\(config.environment.rawValue)] \(config.baseURL.host() ?? "")",
                     location: "Seoul"
                 )
             },

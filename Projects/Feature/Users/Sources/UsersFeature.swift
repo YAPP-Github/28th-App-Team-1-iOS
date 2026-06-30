@@ -5,7 +5,8 @@
 
 import ComposableArchitecture
 import Foundation
-import Models
+import DomainProfileInterface
+import DomainUserInterface
 
 /// User 도메인의 List → Detail 흐름 컨테이너.
 ///

@@ -5,10 +5,9 @@
 //  Created by EunseoKim on 5/27/26.
 //
 
-import ActivityClientInterface
+import DomainActivityInterface
 import ComposableArchitecture
 import DesignSystemKit
-import Models
 import SwiftUI
 
 public struct ActivityView: View {
@@ -71,7 +70,10 @@ public struct ActivityView: View {
 
 #Preview("Items") {
     ActivityView(
-        store: Store(initialState: ActivityFeature.State(items: ActivityItem.samples)) {
+        store: Store(initialState: ActivityFeature.State(items: [
+            .init(id: 1, title: "Ada followed you", subtitle: "방금 전"),
+            .init(id: 2, title: "Alan liked your post", subtitle: "5분 전")
+        ])) {
             ActivityFeature()
         } withDependencies: {
             $0.activityClient = .previewValue
