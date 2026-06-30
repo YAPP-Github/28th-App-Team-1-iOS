@@ -1,0 +1,216 @@
+# 새 모듈 추가 가이드
+
+Tuist 기반 TMA(The Modular Architecture) 4레이어 구조에서 새 모듈을 추가하는 방법을 설명한다.
+
+## 전체 구조 요약
+
+```
+Projects/
+├── Core/       {Name}/   CoreCommon, CoreNetwork, ...
+├── Domain/     {Name}/   DomainCommon, DomainInterview, ...
+├── Feature/    {Name}/   FeatureCommon, FeatureInterviewSetup, ...
+└── Shared/     {Name}/   SharedCommon, SharedDesignSystem, ...
+```
+
+각 서브모듈은 아래 타겟 세트를 가진다.
+
+| 타겟 | 역할 | 소스 경로 |
+|---|---|---|
+| `{Layer}{Name}Interface` | 외부에 노출할 프로토콜·타입 선언 | `Interface/` |
+| `{Layer}{Name}Implementation` | 실제 구현체 (Interface를 import) | `Sources/` |
+| `{Layer}{Name}Testing` | 테스트용 Mock/Stub (Interface를 import) | `Testing/` |
+| `{Layer}{Name}Tests` | 단위 테스트 (Implementation + Testing import) | `Tests/` |
+| `Feature{Name}Example` | 독립 실행 앱 (Feature만 있음) | `Example/` |
+
+의존 방향: **App → Feature → Domain Interface → Core Interface**  
+구현체(Implementation)는 App과 Example 앱만 링크한다.
+
+---
+
+## 모듈 추가 시 수정해야 하는 파일
+
+### 1. `Plugins/DependencyPlugin/ProjectDescriptionHelpers/Modules.swift`
+
+**모든 모듈 추가의 시작점.** 해당 레이어 enum에 case를 등록한다.  
+등록하지 않으면 `Project.swift`에서 참조할 수 없어 컴파일 에러가 발생한다.
+
+```swift
+// Feature 모듈 추가 예시
+public enum Feature: String, CaseIterable {
+    case common = "Common"
+    case interviewSetup = "InterviewSetup"   // ← 추가
+    case interviewSession = "InterviewSession"
+}
+
+// Domain 모듈 추가 예시
+public enum Domain: String, CaseIterable {
+    case common = "Common"
+    case interview = "Interview"   // ← 추가
+}
+```
+
+> rawValue는 실제 디렉토리 이름과 동일해야 한다.  
+> ex) `case interviewSetup = "InterviewSetup"` → `Projects/Feature/FeatureInterviewSetup/`
+
+---
+
+### 2. `Projects/{Layer}/{Layer}{Name}/Project.swift` 신규 생성
+
+레이어별 팩토리 함수를 호출하는 ~10줄짜리 파일이다.
+
+#### Feature 모듈 예시
+
+```swift
+import ProjectDescription
+import ProjectDescriptionHelpers
+
+let project = Project.makeModule(
+    name: "FeatureInterviewSetup",
+    targets: [
+        .feature(interface: "InterviewSetup"),
+        .feature(implements: "InterviewSetup", factory: .init(dependencies: [
+            .domain(interface: .interview),   // 의존하는 Domain 모듈 Interface
+            .composableArchitecture,
+        ])),
+        .feature(testing: "InterviewSetup"),
+        .feature(tests: "InterviewSetup"),
+        .feature(example: "InterviewSetup"),
+    ]
+)
+```
+
+#### Domain 모듈 예시
+
+```swift
+import ProjectDescription
+import ProjectDescriptionHelpers
+
+let project = Project.makeModule(
+    name: "DomainInterview",
+    targets: [
+        .domain(interface: "Interview"),
+        .domain(implements: "Interview", factory: .init(dependencies: [
+            .core(interface: .network),   // 의존하는 Core 모듈 Interface
+        ])),
+        .domain(testing: "Interview"),
+        .domain(tests: "Interview"),
+    ]
+)
+```
+
+#### Core 모듈 예시
+
+```swift
+import ProjectDescription
+import ProjectDescriptionHelpers
+
+let project = Project.makeModule(
+    name: "CoreNetwork",
+    targets: [
+        .core(interface: "Network"),
+        .core(implements: "Network"),
+        .core(testing: "Network"),
+        .core(tests: "Network"),
+    ]
+)
+```
+
+#### Shared 모듈 예시
+
+```swift
+import ProjectDescription
+import ProjectDescriptionHelpers
+
+let project = Project.makeModule(
+    name: "SharedDesignSystem",
+    targets: [
+        .shared(interface: "DesignSystem"),
+        .shared(implements: "DesignSystem"),
+        .shared(testing: "DesignSystem"),
+        .shared(tests: "DesignSystem"),
+    ]
+)
+```
+
+---
+
+### 3. `Projects/{Layer}/Project.swift` — umbrella에 Implementation 추가
+
+레이어 umbrella 타겟은 하위 서브모듈의 Implementation을 모아서 App에게 노출한다.  
+새 서브모듈을 추가했으면 여기에 한 줄을 추가해야 App이 인식한다.
+
+```swift
+// Projects/Feature/Project.swift
+let project = Project.makeModule(
+    name: "Feature",
+    targets: [
+        .feature(factory: .init(dependencies: [
+            .project(target: "FeatureCommonImplementation",       path: "FeatureCommon"),
+            .project(target: "FeatureInterviewSetupImplementation", path: "FeatureInterviewSetup"),  // ← 추가
+        ]))
+    ]
+)
+```
+
+---
+
+### 4. 소스 디렉토리 생성
+
+`Project.swift`가 참조하는 소스 경로(`Interface/`, `Sources/`, `Testing/`, `Tests/`, `Example/`)에  
+Swift 파일이 하나 이상 있어야 Tuist가 타겟을 생성한다.
+
+```
+Projects/Feature/FeatureInterviewSetup/
+├── Project.swift
+├── Interface/
+│   └── InterviewSetupInterface.swift    ← 프로토콜 선언
+├── Sources/
+│   └── InterviewSetupFeature.swift      ← Reducer 구현
+├── Testing/
+│   └── InterviewSetupStub.swift         ← Mock
+├── Tests/
+│   └── InterviewSetupTests.swift        ← 단위 테스트
+└── Example/
+    └── InterviewSetupApp.swift          ← @main 독립 실행 앱
+```
+
+---
+
+## `TargetDependency` 액세서 사용 규칙
+
+### Interface 전용 (Feature/Domain 서브모듈에서 사용)
+
+```swift
+// Feature Implementation이 Domain Interface에 의존할 때
+.domain(interface: .interview)
+
+// Domain Implementation이 Core Interface에 의존할 때
+.core(interface: .network)
+
+// 어느 레이어에서든 Shared Interface에 의존할 때
+.shared(interface: .designSystem)
+```
+
+### Umbrella (App과 Example 앱에서만 사용)
+
+```swift
+// App(Twix/Project.swift)에서 전체 레이어 링크
+.core, .domain, .feature, .shared
+
+// FeatureXxxExample/Project.swift에서 Feature 전체 링크
+.feature
+```
+
+> **주의**: Feature나 Domain `Project.swift`에서 `.domain`(umbrella)을 쓰면 구현체까지 링크되어  
+> Clean Architecture의 Dependency Inversion이 깨진다. 반드시 `.domain(interface:)`를 사용할 것.
+
+---
+
+## 완료 체크리스트
+
+- [ ] `Plugins/DependencyPlugin/ProjectDescriptionHelpers/Modules.swift`에 case 추가
+- [ ] `Projects/{Layer}/{Layer}{Name}/` 디렉토리 생성
+- [ ] `Projects/{Layer}/{Layer}{Name}/Project.swift` 작성
+- [ ] 각 타겟 소스 경로(`Interface/`, `Sources/` 등)에 Swift 파일 최소 1개 생성
+- [ ] `Projects/{Layer}/Project.swift` umbrella에 Implementation 의존 추가
+- [ ] `tuist generate` 실행 → 에러 없이 완료 확인

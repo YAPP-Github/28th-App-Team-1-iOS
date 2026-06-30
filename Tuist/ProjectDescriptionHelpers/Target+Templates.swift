@@ -1,0 +1,277 @@
+import ProjectDescription
+
+// MARK: - TargetFactory
+
+public struct TargetFactory {
+    var name: String
+    var destinations: Destinations
+    var product: Product
+    var bundleId: String?
+    var deploymentTargets: DeploymentTargets?
+    var infoPlist: InfoPlist?
+    var sources: SourceFilesList?
+    var resources: ResourceFileElements?
+    var scripts: [TargetScript]
+    var dependencies: [TargetDependency]
+    var settings: Settings?
+
+    public init(
+        name: String = "",
+        destinations: Destinations = Project.Environment.destinations,
+        product: Product = .staticFramework,
+        bundleId: String? = nil,
+        deploymentTargets: DeploymentTargets? = Project.Environment.deploymentTarget,
+        infoPlist: InfoPlist? = nil,
+        sources: SourceFilesList? = nil,
+        resources: ResourceFileElements? = nil,
+        scripts: [TargetScript] = [],
+        dependencies: [TargetDependency] = [],
+        settings: Settings? = nil
+    ) {
+        self.name = name
+        self.destinations = destinations
+        self.product = product
+        self.bundleId = bundleId
+        self.deploymentTargets = deploymentTargets
+        self.infoPlist = infoPlist
+        self.sources = sources
+        self.resources = resources
+        self.scripts = scripts
+        self.dependencies = dependencies
+        self.settings = settings
+    }
+}
+
+// MARK: - Target
+
+public extension Target {
+
+    private static func make(factory: TargetFactory) -> Self {
+        .target(
+            name: factory.name,
+            destinations: factory.destinations,
+            product: factory.product,
+            bundleId: factory.bundleId
+                ?? "\(Project.Environment.bundlePrefix).\(factory.name.lowercased())",
+            deploymentTargets: factory.deploymentTargets,
+            infoPlist: factory.infoPlist,
+            sources: factory.sources,
+            resources: factory.resources,
+            scripts: factory.scripts,
+            dependencies: factory.dependencies,
+            settings: factory.settings
+        )
+    }
+
+    // MARK: App
+
+    /// App 앱 타겟.
+    static func app(factory: TargetFactory = .init()) -> Self {
+        var f = factory
+        f.name = Project.Environment.appName
+        f.product = .app
+        f.bundleId = f.bundleId ?? Project.Environment.bundlePrefix
+        f.infoPlist = f.infoPlist ?? .extendingDefault(with: ["UILaunchScreen": [:]])
+        f.sources = f.sources ?? ["Sources/**"]
+        return make(factory: f)
+    }
+
+    // MARK: Layer Umbrellas
+    //
+    // 역할 파라미터 없이 레이어 함수를 호출하면 어그리게이터 타겟이 생성된다.
+    // factory.dependencies 에 하위 서브모듈 Implementation 들을 넘긴다.
+
+    static func core(factory: TargetFactory = .init()) -> Self {
+        var f = factory
+        f.name = "Core"
+        f.sources = f.sources ?? ["Sources/**"]
+        return make(factory: f)
+    }
+
+    static func domain(factory: TargetFactory = .init()) -> Self {
+        var f = factory
+        f.name = "Domain"
+        f.sources = f.sources ?? ["Sources/**"]
+        return make(factory: f)
+    }
+
+    static func feature(factory: TargetFactory = .init()) -> Self {
+        var f = factory
+        f.name = "Feature"
+        f.sources = f.sources ?? ["Sources/**"]
+        return make(factory: f)
+    }
+
+    static func shared(factory: TargetFactory = .init()) -> Self {
+        var f = factory
+        f.name = "Shared"
+        f.sources = f.sources ?? ["Sources/**"]
+        return make(factory: f)
+    }
+
+    // MARK: Feature
+
+    static func feature(interface name: String, factory: TargetFactory = .init()) -> Self {
+        var f = factory
+        f.name = "Feature\(name)Interface"
+        f.sources = f.sources ?? ["Interface/**"]
+        f.scripts = [.swiftLint]
+        return make(factory: f)
+    }
+
+    static func feature(implements name: String, factory: TargetFactory = .init()) -> Self {
+        var f = factory
+        f.name = "Feature\(name)Implementation"
+        f.sources = f.sources ?? ["Sources/**"]
+        f.scripts = [.swiftLint]
+        f.dependencies = [.target(name: "Feature\(name)Interface")] + f.dependencies
+        return make(factory: f)
+    }
+
+    static func feature(testing name: String, factory: TargetFactory = .init()) -> Self {
+        var f = factory
+        f.name = "Feature\(name)Testing"
+        f.sources = f.sources ?? ["Testing/**"]
+        f.dependencies = [.target(name: "Feature\(name)Interface")] + f.dependencies
+        return make(factory: f)
+    }
+
+    static func feature(tests name: String, factory: TargetFactory = .init()) -> Self {
+        var f = factory
+        f.name = "Feature\(name)Tests"
+        f.product = .unitTests
+        f.sources = f.sources ?? ["Tests/**"]
+        f.dependencies = [
+            .target(name: "Feature\(name)Implementation"),
+            .target(name: "Feature\(name)Testing")
+        ] + f.dependencies
+        return make(factory: f)
+    }
+
+    static func feature(example name: String, factory: TargetFactory = .init()) -> Self {
+        var f = factory
+        f.name = "Feature\(name)Example"
+        f.product = .app
+        f.infoPlist = f.infoPlist ?? .extendingDefault(with: ["UILaunchScreen": [:]])
+        f.sources = f.sources ?? ["Example/**"]
+        f.dependencies = [.target(name: "Feature\(name)Implementation")] + f.dependencies
+        return make(factory: f)
+    }
+
+    // MARK: Core
+
+    static func core(interface name: String, factory: TargetFactory = .init()) -> Self {
+        var f = factory
+        f.name = "Core\(name)Interface"
+        f.sources = f.sources ?? ["Interface/**"]
+        f.scripts = [.swiftLint]
+        return make(factory: f)
+    }
+
+    static func core(implements name: String, factory: TargetFactory = .init()) -> Self {
+        var f = factory
+        f.name = "Core\(name)Implementation"
+        f.sources = f.sources ?? ["Sources/**"]
+        f.scripts = [.swiftLint]
+        f.dependencies = [.target(name: "Core\(name)Interface")] + f.dependencies
+        return make(factory: f)
+    }
+
+    static func core(testing name: String, factory: TargetFactory = .init()) -> Self {
+        var f = factory
+        f.name = "Core\(name)Testing"
+        f.sources = f.sources ?? ["Testing/**"]
+        f.dependencies = [.target(name: "Core\(name)Interface")] + f.dependencies
+        return make(factory: f)
+    }
+
+    static func core(tests name: String, factory: TargetFactory = .init()) -> Self {
+        var f = factory
+        f.name = "Core\(name)Tests"
+        f.product = .unitTests
+        f.sources = f.sources ?? ["Tests/**"]
+        f.dependencies = [
+            .target(name: "Core\(name)Implementation"),
+            .target(name: "Core\(name)Testing")
+        ] + f.dependencies
+        return make(factory: f)
+    }
+
+    // MARK: Domain
+
+    static func domain(interface name: String, factory: TargetFactory = .init()) -> Self {
+        var f = factory
+        f.name = "Domain\(name)Interface"
+        f.sources = f.sources ?? ["Interface/**"]
+        f.scripts = [.swiftLint]
+        return make(factory: f)
+    }
+
+    static func domain(implements name: String, factory: TargetFactory = .init()) -> Self {
+        var f = factory
+        f.name = "Domain\(name)Implementation"
+        f.sources = f.sources ?? ["Sources/**"]
+        f.scripts = [.swiftLint]
+        f.dependencies = [.target(name: "Domain\(name)Interface")] + f.dependencies
+        return make(factory: f)
+    }
+
+    static func domain(testing name: String, factory: TargetFactory = .init()) -> Self {
+        var f = factory
+        f.name = "Domain\(name)Testing"
+        f.sources = f.sources ?? ["Testing/**"]
+        f.dependencies = [.target(name: "Domain\(name)Interface")] + f.dependencies
+        return make(factory: f)
+    }
+
+    static func domain(tests name: String, factory: TargetFactory = .init()) -> Self {
+        var f = factory
+        f.name = "Domain\(name)Tests"
+        f.product = .unitTests
+        f.sources = f.sources ?? ["Tests/**"]
+        f.dependencies = [
+            .target(name: "Domain\(name)Implementation"),
+            .target(name: "Domain\(name)Testing")
+        ] + f.dependencies
+        return make(factory: f)
+    }
+
+    // MARK: Shared
+
+    static func shared(interface name: String, factory: TargetFactory = .init()) -> Self {
+        var f = factory
+        f.name = "Shared\(name)Interface"
+        f.sources = f.sources ?? ["Interface/**"]
+        f.scripts = [.swiftLint]
+        return make(factory: f)
+    }
+
+    static func shared(implements name: String, factory: TargetFactory = .init()) -> Self {
+        var f = factory
+        f.name = "Shared\(name)Implementation"
+        f.sources = f.sources ?? ["Sources/**"]
+        f.scripts = [.swiftLint]
+        f.dependencies = [.target(name: "Shared\(name)Interface")] + f.dependencies
+        return make(factory: f)
+    }
+
+    static func shared(testing name: String, factory: TargetFactory = .init()) -> Self {
+        var f = factory
+        f.name = "Shared\(name)Testing"
+        f.sources = f.sources ?? ["Testing/**"]
+        f.dependencies = [.target(name: "Shared\(name)Interface")] + f.dependencies
+        return make(factory: f)
+    }
+
+    static func shared(tests name: String, factory: TargetFactory = .init()) -> Self {
+        var f = factory
+        f.name = "Shared\(name)Tests"
+        f.product = .unitTests
+        f.sources = f.sources ?? ["Tests/**"]
+        f.dependencies = [
+            .target(name: "Shared\(name)Implementation"),
+            .target(name: "Shared\(name)Testing")
+        ] + f.dependencies
+        return make(factory: f)
+    }
+}

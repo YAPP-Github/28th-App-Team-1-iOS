@@ -1,3 +1,5 @@
 import ProjectDescription
 
-let config = Config()
+let tuist = Tuist(
+    plugins: [.local(path: .relativeToRoot("Plugins/DependencyPlugin"))]
+)
