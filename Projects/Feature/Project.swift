@@ -6,6 +6,7 @@ let project = Project.makeModule(
     targets: [
         .feature(factory: .init(dependencies: [
             .project(target: "FeatureCommonImplementation", path: "FeatureCommon"),
+            .project(target: "FeatureHomeImplementation", path: "FeatureHome"),
         ]))
     ]
 )

@@ -6,6 +6,7 @@ import Foundation
 public enum ModulePath {
     public enum Feature: String, CaseIterable {
         case common = "Common"
+        case home = "Home"
         // 추후 추가 예시: case interviewSetup = "InterviewSetup"
 
         public static let name = "Feature"
