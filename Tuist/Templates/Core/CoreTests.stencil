@@ -1,3 +1,10 @@
+//
+//  Core{{ name }}Tests.swift
+//  Core{{ name }}Tests
+//
+//  Created by {{ author }} on{{ " " }}{% now "yy/MM/dd" %}.
+//
+
 import XCTest
 @testable import Core{{ name }}Implementation
 

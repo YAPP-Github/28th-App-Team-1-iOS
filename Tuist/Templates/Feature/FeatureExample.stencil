@@ -1,3 +1,10 @@
+//
+//  Feature{{ name }}ExampleApp.swift
+//  Feature{{ name }}Example
+//
+//  Created by {{ author }} on{{ " " }}{% now "yy/MM/dd" %}.
+//
+
 import ComposableArchitecture
 import Feature{{ name }}Implementation
 import SwiftUI

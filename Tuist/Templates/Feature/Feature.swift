@@ -1,10 +1,11 @@
 import ProjectDescription
 
 private let nameAttribute = Template.Attribute.required("name")
+private let authorAttribute = Template.Attribute.optional("author", default: .string("Unknown"))
 
 private let template = Template(
-    description: "Feature 모듈 전체 scaffold (TMA 4-layer, TCA + SwiftUI). 사용: tuist scaffold Feature --name Home",
-    attributes: [nameAttribute],
+    description: "Feature 모듈 전체 scaffold (TMA 4-layer, TCA + SwiftUI). 사용: make scaffold-feature name=Home (author 는 make 가 git config user.name 으로 자동 채움)",
+    attributes: [nameAttribute, authorAttribute],
     items: [
         .file(
             path: "Projects/Feature/Feature\(nameAttribute)/Sources/\(nameAttribute)Feature.swift",

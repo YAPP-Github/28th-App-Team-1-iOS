@@ -1,3 +1,10 @@
+//
+//  Domain{{ name }}Interface.swift
+//  Domain{{ name }}Interface
+//
+//  Created by {{ author }} on{{ " " }}{% now "yy/MM/dd" %}.
+//
+
 import ComposableArchitecture
 import Foundation
 

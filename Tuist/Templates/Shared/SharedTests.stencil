@@ -1,3 +1,10 @@
+//
+//  Shared{{ name }}Tests.swift
+//  Shared{{ name }}Tests
+//
+//  Created by {{ author }} on{{ " " }}{% now "yy/MM/dd" %}.
+//
+
 import XCTest
 @testable import Shared{{ name }}Implementation
 

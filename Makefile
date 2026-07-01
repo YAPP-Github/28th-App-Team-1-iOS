@@ -38,31 +38,33 @@ generate:
 	@tuist install && tuist generate
 
 # 새 Feature 모듈 scaffold (예: make scaffold-feature name=Home)
+# 파일 헤더의 author 는 git config user.name 에서 자동으로 채운다 (Tuist 매니페스트 실행 환경은
+# Process/ProcessInfo.environment 를 못 읽어 stencil 기본값으로는 불가 — 그래서 여기서 셸로 주입).
 # 생성 후 Project.swift 상단 ⚠️ 주석의 수동 작업 2단계를 완료하고 make generate 실행
 scaffold-feature:
 	@[ -n "$(name)" ] || (echo "❌ name 필수. 예: make scaffold-feature name=Home"; exit 1)
-	@tuist scaffold Feature --name $(name)
+	@tuist scaffold Feature --name $(name) --author "$$(git config user.name)"
 	@echo "✅ Feature$(name) 생성 완료. Projects/Feature/Feature$(name)/Project.swift 의 ⚠️ 주석을 확인하세요."
 
 # 새 Domain 모듈 scaffold (예: make scaffold-domain name=User)
 # 생성 후 Project.swift 상단 ⚠️ 주석의 수동 작업 2단계를 완료하고 make generate 실행
 scaffold-domain:
 	@[ -n "$(name)" ] || (echo "❌ name 필수. 예: make scaffold-domain name=User"; exit 1)
-	@tuist scaffold Domain --name $(name)
+	@tuist scaffold Domain --name $(name) --author "$$(git config user.name)"
 	@echo "✅ Domain$(name) 생성 완료. Projects/Domain/Domain$(name)/Project.swift 의 ⚠️ 주석을 확인하세요."
 
 # 새 Core 모듈 scaffold (예: make scaffold-core name=Network)
 # 생성 후 Project.swift 상단 ⚠️ 주석의 수동 작업 2단계를 완료하고 make generate 실행
 scaffold-core:
 	@[ -n "$(name)" ] || (echo "❌ name 필수. 예: make scaffold-core name=Network"; exit 1)
-	@tuist scaffold Core --name $(name)
+	@tuist scaffold Core --name $(name) --author "$$(git config user.name)"
 	@echo "✅ Core$(name) 생성 완료. Projects/Core/Core$(name)/Project.swift 의 ⚠️ 주석을 확인하세요."
 
 # 새 Shared 모듈 scaffold (예: make scaffold-shared name=DesignSystem)
 # 생성 후 Project.swift 상단 ⚠️ 주석의 수동 작업 2단계를 완료하고 make generate 실행
 scaffold-shared:
 	@[ -n "$(name)" ] || (echo "❌ name 필수. 예: make scaffold-shared name=DesignSystem"; exit 1)
-	@tuist scaffold Shared --name $(name)
+	@tuist scaffold Shared --name $(name) --author "$$(git config user.name)"
 	@echo "✅ Shared$(name) 생성 완료. Projects/Shared/Shared$(name)/Project.swift 의 ⚠️ 주석을 확인하세요."
 
 # Feature 테스트 (예: make test scheme=UsersFeature [device='iPhone 15'])

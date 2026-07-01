@@ -1,10 +1,11 @@
 import ProjectDescription
 
 private let nameAttribute = Template.Attribute.required("name")
+private let authorAttribute = Template.Attribute.optional("author", default: .string("Unknown"))
 
 private let template = Template(
-    description: "Shared 모듈 전체 scaffold (TMA 4-layer). 사용: tuist scaffold Shared --name DesignSystem",
-    attributes: [nameAttribute],
+    description: "Shared 모듈 전체 scaffold (TMA 4-layer). 사용: make scaffold-shared name=DesignSystem (author 는 make 가 git config user.name 으로 자동 채움)",
+    attributes: [nameAttribute, authorAttribute],
     items: [
         .file(
             path: "Projects/Shared/Shared\(nameAttribute)/Interface/Shared\(nameAttribute)Interface.swift",

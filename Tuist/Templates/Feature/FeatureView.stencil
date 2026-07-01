@@ -1,3 +1,10 @@
+//
+//  {{ name }}View.swift
+//  Feature{{ name }}
+//
+//  Created by {{ author }} on{{ " " }}{% now "yy/MM/dd" %}.
+//
+
 import ComposableArchitecture
 import SwiftUI
 

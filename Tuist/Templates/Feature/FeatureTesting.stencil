@@ -1,3 +1,10 @@
+//
+//  Feature{{ name }}Testing.swift
+//  Feature{{ name }}Testing
+//
+//  Created by {{ author }} on{{ " " }}{% now "yy/MM/dd" %}.
+//
+
 import ComposableArchitecture
 import Feature{{ name }}Implementation
 

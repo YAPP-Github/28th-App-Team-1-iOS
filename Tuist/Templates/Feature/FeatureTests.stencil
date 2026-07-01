@@ -1,3 +1,10 @@
+//
+//  Feature{{ name }}Tests.swift
+//  Feature{{ name }}Tests
+//
+//  Created by {{ author }} on{{ " " }}{% now "yy/MM/dd" %}.
+//
+
 import XCTest
 @testable import Feature{{ name }}Implementation
 

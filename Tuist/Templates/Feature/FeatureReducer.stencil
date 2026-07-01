@@ -1,3 +1,10 @@
+//
+//  {{ name }}Feature.swift
+//  Feature{{ name }}
+//
+//  Created by {{ author }} on{{ " " }}{% now "yy/MM/dd" %}.
+//
+
 import ComposableArchitecture
 
 // @lat: [[{{ name | lowercase }}]]

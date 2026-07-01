@@ -1,3 +1,10 @@
+//
+//  Shared{{ name }}Implementation.swift
+//  Shared{{ name }}Implementation
+//
+//  Created by {{ author }} on{{ " " }}{% now "yy/MM/dd" %}.
+//
+
 import Shared{{ name }}Interface
 
 // public final class Shared{{ name }}Implementation: Shared{{ name }}Interface {}
