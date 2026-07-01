@@ -7,10 +7,6 @@ private let template = Template(
     attributes: [nameAttribute],
     items: [
         .file(
-            path: "Projects/Feature/Feature\(nameAttribute)/Interface/Feature\(nameAttribute)Interface.swift",
-            templatePath: "FeatureInterface.stencil"
-        ),
-        .file(
             path: "Projects/Feature/Feature\(nameAttribute)/Sources/\(nameAttribute)Feature.swift",
             templatePath: "FeatureReducer.stencil"
         ),

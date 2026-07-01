@@ -1,5 +1,4 @@
 import ComposableArchitecture
-import FeatureHomeInterface
 
 // @lat: [[home]]
 @Reducer

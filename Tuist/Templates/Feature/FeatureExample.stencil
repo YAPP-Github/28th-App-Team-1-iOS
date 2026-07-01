@@ -2,6 +2,8 @@ import ComposableArchitecture
 import Feature{{ name }}Implementation
 import SwiftUI
 
+// Feature 단독 실행 앱 (스킴: Feature{{ name }}Example).
+// 이 Feature 만 격리해 띄워보는 용도 — 외부 IO 는 가짜(preview/test) 의존성으로 주입해 네트워크 없이 돌린다.
 @main
 struct Feature{{ name }}ExampleApp: App {
     var body: some Scene {
@@ -14,3 +16,15 @@ struct Feature{{ name }}ExampleApp: App {
         }
     }
 }
+
+// MARK: - 작성 가이드
+//
+// ▸ 특정 상태로 시작:
+//     Store(initialState: {{ name }}Feature.State(items: [.mock])) { {{ name }}Feature() }
+//
+// ▸ 가짜 의존성 주입 (외부 IO 가 있는 Feature):
+//     Store(initialState: {{ name }}Feature.State()) {
+//         {{ name }}Feature()
+//     } withDependencies: {
+//         $0.someClient = .preview          // .testValue(unimplemented) 대신 preview 스텁으로 화면 확인
+//     }

@@ -110,21 +110,16 @@ public extension Target {
     }
 
     // MARK: Feature
-
-    static func feature(interface name: String, factory: TargetFactory = .init()) -> Self {
-        var f = factory
-        f.name = "Feature\(name)Interface"
-        f.sources = f.sources ?? ["Interface/**"]
-        f.scripts = [.swiftLint]
-        return make(factory: f)
-    }
+    //
+    // D3: Feature 는 Interface 를 두지 않는다 — 단일 Implementation 모듈(+Testing/Tests/Example).
+    // 근거: `@Reducer` + `some` 정적 합성이 구체 타입을 강제해 Interface 로 못 가림.
+    // → DocC `FeatureInterface` / lat.md architecture.md D3. (Core/Domain/Shared 와 달리 interface 팩토리 없음)
 
     static func feature(implements name: String, factory: TargetFactory = .init()) -> Self {
         var f = factory
         f.name = "Feature\(name)Implementation"
         f.sources = f.sources ?? ["Sources/**"]
         f.scripts = [.swiftLint]
-        f.dependencies = [.target(name: "Feature\(name)Interface")] + f.dependencies
         return make(factory: f)
     }
 
@@ -132,7 +127,7 @@ public extension Target {
         var f = factory
         f.name = "Feature\(name)Testing"
         f.sources = f.sources ?? ["Testing/**"]
-        f.dependencies = [.target(name: "Feature\(name)Interface")] + f.dependencies
+        f.dependencies = [.target(name: "Feature\(name)Implementation")] + f.dependencies
         return make(factory: f)
     }
 
