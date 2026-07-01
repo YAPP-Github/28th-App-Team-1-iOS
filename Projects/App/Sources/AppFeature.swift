@@ -14,7 +14,6 @@ struct AppFeature {
     struct State: Equatable {
         var home = HomeFeature.State()
         var selectedTab: Tab = .home
-        init() {}
     }
 
     enum Action: BindableAction {
@@ -28,7 +27,7 @@ struct AppFeature {
         Scope(state: \.home, action: \.home) {
             HomeFeature()
         }
-        Reduce { state, action in
+        Reduce { _, action in
             switch action {
             case .onAppear:
                 return .none

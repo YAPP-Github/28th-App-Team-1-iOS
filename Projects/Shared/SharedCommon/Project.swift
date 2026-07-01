@@ -7,6 +7,6 @@ let project = Project.makeModule(
         .shared(interface: "Common"),
         .shared(implements: "Common"),
         .shared(testing: "Common"),
-        .shared(tests: "Common"),
+        .shared(tests: "Common")
     ]
 )

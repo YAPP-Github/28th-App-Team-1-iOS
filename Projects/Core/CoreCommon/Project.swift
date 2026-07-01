@@ -7,6 +7,6 @@ let project = Project.makeModule(
         .core(interface: "Common"),
         .core(implements: "Common"),
         .core(testing: "Common"),
-        .core(tests: "Common"),
+        .core(tests: "Common")
     ]
 )
