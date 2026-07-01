@@ -129,4 +129,4 @@ AppFeature         .send(.users(.profileUpdated))  →  UsersFeature 가 목록/
 ### 함께 보기
 
 - <doc:AddingFeature>
-- <doc:NavigationPatternsTutorial>
+- <doc:FeatureInterface>

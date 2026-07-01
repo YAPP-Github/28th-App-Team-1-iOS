@@ -67,7 +67,7 @@ import ProjectDescriptionHelpers
 let project = Project.makeModule(
     name: "FeatureInterviewSetup",
     targets: [
-        .feature(interface: "InterviewSetup"),
+        // Feature 는 interface 없음 (D3 = Feature Interface 폐기) — implements 부터 시작
         .feature(implements: "InterviewSetup", factory: .init(dependencies: [
             .domain(interface: .interview),   // 의존하는 Domain 모듈 Interface
             .composableArchitecture,
@@ -134,22 +134,23 @@ let project = Project.makeModule(
 
 ---
 
-### 3. `Projects/{Layer}/Project.swift` — umbrella에 Implementation 추가
+### 3. umbrella 재노출 — `Projects/{Layer}/Sources/Source.swift`
 
-레이어 umbrella 타겟은 하위 서브모듈의 Implementation을 모아서 App에게 노출한다.  
-새 서브모듈을 추가했으면 여기에 한 줄을 추가해야 App이 인식한다.
+레이어 umbrella 타겟은 하위 서브모듈의 Implementation을 모아서 App에게 노출한다. **umbrella `Project.swift` 의 dependencies 는 `ModulePath.{Layer}.allCases` 를 순회해 자동 생성**되므로, 1번의 case 등록만으로 링크는 끝난다 — `Project.swift` 는 손댈 필요 없다.
 
 ```swift
-// Projects/Feature/Project.swift
-let project = Project.makeModule(
-    name: "Feature",
-    targets: [
-        .feature(factory: .init(dependencies: [
-            .project(target: "FeatureCommonImplementation",       path: "FeatureCommon"),
-            .project(target: "FeatureInterviewSetupImplementation", path: "FeatureInterviewSetup"),  // ← 추가
-        ]))
-    ]
-)
+// Projects/Feature/Project.swift — allCases 순회, 손댈 필요 없음
+.feature(factory: .init(dependencies: ModulePath.Feature.allCases.map {
+    .project(target: "Feature\($0.rawValue)Implementation", path: .feature($0))
+}))
+```
+
+남은 건 재노출 한 줄. **`Projects/{Layer}/Sources/Source.swift`** 에 `@_exported import` 를 추가해야 `import Feature` 한 줄로 새 모듈이 재노출된다.
+
+```swift
+// Projects/Feature/Sources/Source.swift
+@_exported import FeatureCommonImplementation
+@_exported import FeatureInterviewSetupImplementation   // ← 추가
 ```
 
 ---
@@ -160,12 +161,11 @@ let project = Project.makeModule(
 Swift 파일이 하나 이상 있어야 Tuist가 타겟을 생성한다.
 
 ```
-Projects/Feature/FeatureInterviewSetup/
+Projects/Feature/FeatureInterviewSetup/   # Feature 는 Interface 없음 (D3)
 ├── Project.swift
-├── Interface/
-│   └── InterviewSetupInterface.swift    ← 프로토콜 선언
 ├── Sources/
-│   └── InterviewSetupFeature.swift      ← Reducer 구현
+│   ├── InterviewSetupFeature.swift      ← Reducer 구현
+│   └── InterviewSetupView.swift         ← View
 ├── Testing/
 │   └── InterviewSetupStub.swift         ← Mock
 ├── Tests/
@@ -173,6 +173,8 @@ Projects/Feature/FeatureInterviewSetup/
 └── Example/
     └── InterviewSetupApp.swift          ← @main 독립 실행 앱
 ```
+
+> Domain/Core/Shared 는 여기에 `Interface/` 가 추가된다 (계약 선언). Feature 만 Interface 를 두지 않는다.
 
 ---
 
@@ -194,11 +196,11 @@ Projects/Feature/FeatureInterviewSetup/
 ### Umbrella (App과 Example 앱에서만 사용)
 
 ```swift
-// App(Twix/Project.swift)에서 전체 레이어 링크
+// App(Projects/App/Project.swift)에서 전체 레이어 링크
 .core, .domain, .feature, .shared
 
-// FeatureXxxExample/Project.swift에서 Feature 전체 링크
-.feature
+// FeatureXxxExample 은 자기 Implementation + 필요한 Domain 구현만 link (팩토리가 자동 추가)
+.project(target: "DomainXxxImplementation", path: .domain(.xxx))
 ```
 
 > **주의**: Feature나 Domain `Project.swift`에서 `.domain`(umbrella)을 쓰면 구현체까지 링크되어  
@@ -211,6 +213,6 @@ Projects/Feature/FeatureInterviewSetup/
 - [ ] `Plugins/DependencyPlugin/ProjectDescriptionHelpers/Modules.swift`에 case 추가
 - [ ] `Projects/{Layer}/{Layer}{Name}/` 디렉토리 생성
 - [ ] `Projects/{Layer}/{Layer}{Name}/Project.swift` 작성
-- [ ] 각 타겟 소스 경로(`Interface/`, `Sources/` 등)에 Swift 파일 최소 1개 생성
-- [ ] `Projects/{Layer}/Project.swift` umbrella에 Implementation 의존 추가
+- [ ] 각 타겟 소스 경로에 Swift 파일 최소 1개 (Domain/Core/Shared: `Interface/`+`Sources/`+…, Feature: `Sources/`+… — Interface 없음)
+- [ ] `Projects/{Layer}/Sources/Source.swift` 에 `@_exported import …Implementation` 추가 (umbrella `Project.swift` 는 case 등록으로 자동 — 손댈 필요 없음)
 - [ ] `tuist generate` 실행 → 에러 없이 완료 확인

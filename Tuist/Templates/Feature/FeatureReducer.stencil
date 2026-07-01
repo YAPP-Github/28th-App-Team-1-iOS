@@ -7,8 +7,7 @@
 
 import ComposableArchitecture
 
-// @lat: [[{{ name | lowercase }}]]
-// ↑ lat.md/{{ name | lowercase }}.md 노드를 만들면 연결됨 (없으면 lat check 가 지적 → 노드 생성 또는 이 줄 삭제)
+// @lat 앵커: lat.md/{{ name | lowercase }}.md 노드를 만든 뒤 이 Reducer 위에 @lat 로 소속을 연결하세요.
 @Reducer
 public struct {{ name }}Feature {
     @ObservableState

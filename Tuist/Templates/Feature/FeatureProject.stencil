@@ -12,7 +12,7 @@ import DependencyPlugin
 // 2. Projects/Feature/Sources/Source.swift (umbrella 재노출 — 이게 있어야 App 이 import Feature 로 접근)
 //    @_exported import Feature{{ name }}Implementation
 //
-// (선택) lat.md/{{ name | lowercase }}.md 노드를 만들면 Reducer 의 // @lat: [[{{ name | lowercase }}]] 앵커가 연결됩니다.
+// (선택) lat.md/{{ name | lowercase }}.md 노드를 만들고 Reducer 에 @lat 앵커를 연결하세요.
 
 let project = Project.makeModule(
     name: "Feature{{ name }}",

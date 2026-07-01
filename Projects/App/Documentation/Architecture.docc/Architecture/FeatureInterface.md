@@ -9,7 +9,7 @@
 - TCA 의 `@Reducer` 매크로 + `some Reducer` 합성은 **컴파일 시점에 구체 타입을 못박는다.**
 - 그래서 **A Feature 가 B Feature 의 reducer 를 자기 상태 트리에 담아 실행(embed)하려는 순간**, B 의 구체 타입이 강제되고 → Interface(추상)로는 못 끼운다. = 충돌.
 - 단, **데이터 전달은 충돌이 아니다.** 충돌은 "reducer 를 embed/run" 할 때만. → 그래서 **코디네이터(delegate) 로 우회**한다.
-- **Client/Dependency 의 Interface/Live 분리는 충돌 없음** (reducer 가 아니라 클로저 struct 라서). 그건 유지한다.
+- **Domain 의 Client/Dependency Interface/Implementation 분리는 충돌 없음** (reducer 가 아니라 클로저 struct 라서). 그건 유지한다.
 
 ---
 
@@ -77,7 +77,7 @@ case let .users(.delegate(.editProfile(id))):
     state.editProfile = ProfileFeature.State(profileId: id)   // 여기서만 B 구체 타입
 ```
 
-이 프로젝트에서 데이터(`id: Int`, `Profile`)는 셋 다 흐르지만(편집 요청 → 저장 완료 → 목록 반영), **어느 Feature 도 다른 Feature 의 reducer/State 를 참조하지 않는다.** 데이터는 공유 `Models` 모듈 타입으로 오간다.
+이 프로젝트에서 데이터(`id: Int`, `Profile`)는 셋 다 흐르지만(편집 요청 → 저장 완료 → 목록 반영), **어느 Feature 도 다른 Feature 의 reducer/State 를 참조하지 않는다.** 데이터는 공유 Domain(Interface) 타입으로 오간다.
 
 ## 5. embed 는 TCA 의 핵심 합성 메커니즘 (= 자주 생긴다)
 
@@ -145,22 +145,22 @@ leaf 끼리 서로 embed      = 금지 ← 이게 우리가 막은 케이스
 
 **핵심: embed 가 나쁜 게 아니라, leaf feature 끼리 서로 embed 하는 게 나쁘다.** owner 노드(코디네이터/컨테이너) 한 곳으로 모으면 된다.
 
-## 9. 비대칭 — Client/Dependency 는 Interface/Live 가 잘 맞는다
+## 9. 비대칭 — Domain 의 Client(Dependency)는 Interface/Implementation 이 잘 맞는다
 
-같은 "Interface/구현 분리"라도 **Client(`@Dependency`)는 분리가 유효**하다. Client 는 *클로저 묶음 struct* 라 소비자는 "모양(Interface)"만 알면 되고, Live 가 클로저 본문을 채운다. "reducer 를 합성한다"는 문제가 없다.
+같은 "Interface/구현 분리"라도 **Client(`@Dependency`)는 분리가 유효**하다. Client 는 *클로저 묶음 struct* 라 소비자는 "모양(Interface)"만 알면 되고, `liveValue`(Implementation)가 클로저 본문을 채운다. "reducer 를 합성한다"는 문제가 없다.
 
 ```
 Interface 분리가 유효:  Dependency / Client (closure struct — 모양만 알면 됨)
 Interface 분리가 어색:  TCA Feature reducer (합성하려면 구현이 필요)
 ```
 
-→ 그래서 이 프로젝트는 **Client 만 Interface/Live 로 쪼개고, Feature 는 단일 모듈**로 둔다.
+→ 그래서 이 프로젝트는 **Domain·Core·Shared 는 Interface/Implementation 로 쪼개고, Feature 는 단일 모듈**로 둔다.
 
 ## 10. 이 프로젝트의 결정
 
 - **D1.** Feature → Feature 의존 0 (delegate-only). cross-feature 조립은 AppFeature 에서만.
 - **D2.** 단일 코디네이터(AppFeature). 피쳐 15개↑ / 다단계 cross-feature 가 일상화되면 sub-coordinator 검토.
-- **D3.** Client 만 Interface/Live, Feature Interface 폐기 (위 2~9 가 그 근거).
+- **D3.** Domain·Core·Shared 는 Interface/Implementation, Feature 는 단일 모듈 (Feature Interface 폐기 — 위 2~9 가 그 근거).
 
 상세 trade-off 는 lat.md `architecture.md`, 작업 규칙은 `CLAUDE.md` 참고.
 
