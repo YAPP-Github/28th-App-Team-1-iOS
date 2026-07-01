@@ -7,6 +7,7 @@ public enum ModulePath {
     public enum Feature: String, CaseIterable {
         case common = "Common"
         case home = "Home"
+        case reels = "Reels"
         // 추후 추가 예시: case interviewSetup = "InterviewSetup"
 
         public static let name = "Feature"
