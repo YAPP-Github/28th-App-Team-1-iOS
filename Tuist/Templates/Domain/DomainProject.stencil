@@ -2,15 +2,15 @@ import ProjectDescription
 import ProjectDescriptionHelpers
 import DependencyPlugin
 
-// MARK: - ⚠️ 수동 작업 필요 (아래 두 파일을 직접 수정하세요)
+// MARK: - ⚠️ 수동 작업 필요 (scaffold 후 아래 2곳을 직접 수정하세요)
 //
 // 1. Plugins/DependencyPlugin/ProjectDescriptionHelpers/Modules.swift
-//    ModulePath.Domain enum에 신규 case를 추가합니다:
+//    ModulePath.Domain enum 에 case 추가:
 //    case {{ name | lowercase }} = "{{ name }}"
+//    (Domain umbrella 의 dependencies 는 ModulePath.Domain.allCases 를 순회해 자동 포함됩니다)
 //
-// 2. Projects/Domain/Project.swift (Domain umbrella 타겟)
-//    dependencies 배열에 아래 항목을 추가합니다:
-//    .project(target: "Domain{{ name }}Implementation", path: "Domain{{ name }}")
+// 2. Projects/Domain/Sources/Source.swift (umbrella 재노출 — 이게 있어야 다른 모듈이 import Domain 으로 접근)
+//    @_exported import Domain{{ name }}Implementation
 
 let project = Project.makeModule(
     name: "Domain{{ name }}",
