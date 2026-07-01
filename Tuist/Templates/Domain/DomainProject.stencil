@@ -1,0 +1,23 @@
+import ProjectDescription
+import ProjectDescriptionHelpers
+import DependencyPlugin
+
+// MARK: - ⚠️ 수동 작업 필요 (아래 두 파일을 직접 수정하세요)
+//
+// 1. Plugins/DependencyPlugin/ProjectDescriptionHelpers/Modules.swift
+//    ModulePath.Domain enum에 신규 case를 추가합니다:
+//    case {{ name | lowercase }} = "{{ name }}"
+//
+// 2. Projects/Domain/Project.swift (Domain umbrella 타겟)
+//    dependencies 배열에 아래 항목을 추가합니다:
+//    .project(target: "Domain{{ name }}Implementation", path: "Domain{{ name }}")
+
+let project = Project.makeModule(
+    name: "Domain{{ name }}",
+    targets: [
+        .domain(interface: "{{ name }}"),
+        .domain(implements: "{{ name }}"),
+        .domain(testing: "{{ name }}"),
+        .domain(tests: "{{ name }}"),
+    ]
+)

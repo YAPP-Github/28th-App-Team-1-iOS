@@ -1,0 +1,3 @@
+import Shared{{ name }}Interface
+
+// public final class Shared{{ name }}Implementation: Shared{{ name }}Interface {}

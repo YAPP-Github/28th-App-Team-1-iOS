@@ -1,0 +1,12 @@
+import ComposableArchitecture
+import Domain{{ name }}Interface
+import Foundation
+
+extension {{ name }}Client {
+    // 다른 모듈의 테스트·Preview에서 주입할 수 있는 mock 값.
+    // public static var mock: {{ name }}Client {
+    //     {{ name }}Client(
+    //         fetchItems: { [...] }
+    //     )
+    // }
+}

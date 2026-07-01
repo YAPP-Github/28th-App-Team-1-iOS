@@ -1,0 +1,21 @@
+import ComposableArchitecture
+import Feature{{ name }}Interface
+
+// @lat: [[feature#{{ name }}Feature]]
+@Reducer
+public struct {{ name }}Feature {
+    @ObservableState
+    public struct State: Equatable {
+        public init() {}
+    }
+
+    public enum Action {}
+
+    public init() {}
+
+    public var body: some ReducerOf<Self> {
+        Reduce { state, action in
+            return .none
+        }
+    }
+}

@@ -1,0 +1,3 @@
+import Feature{{ name }}Interface
+
+// public final class Feature{{ name }}InterfaceMock: Feature{{ name }}Interface {}

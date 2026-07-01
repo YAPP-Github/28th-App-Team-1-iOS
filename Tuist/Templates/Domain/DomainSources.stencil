@@ -1,0 +1,12 @@
+import ComposableArchitecture
+import Domain{{ name }}Interface
+import Foundation
+
+extension {{ name }}Client: DependencyKey {
+    public static var liveValue: {{ name }}Client {
+        {{ name }}Client(
+            // TODO: 각 operation의 실제 구현을 작성한다.
+            // fetchItems: { try await ... }
+        )
+    }
+}

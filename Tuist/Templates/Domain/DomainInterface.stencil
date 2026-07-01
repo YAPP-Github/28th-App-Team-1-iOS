@@ -1,0 +1,32 @@
+import ComposableArchitecture
+import Foundation
+
+// {{ name }}Client: Feature가 Domain에 접근하는 유일한 계약.
+// testValue는 Interface 타겟에 두고, liveValue는 Implementation 타겟에 분리한다.
+
+public struct {{ name }}Client {
+    // TODO: 필요한 operation을 closure property로 선언한다.
+    // 예) public var fetchItems: @Sendable () async throws -> [{{ name }}]
+
+    public init(
+        // TODO: 위에서 선언한 property와 동일하게 작성한다.
+    ) {
+        // self.fetchItems = fetchItems
+    }
+}
+
+extension {{ name }}Client: TestDependencyKey {
+    public static var testValue: {{ name }}Client {
+        {{ name }}Client(
+            // TODO: 각 operation을 unimplemented로 채운다.
+            // fetchItems: unimplemented("{{ name }}Client.fetchItems", placeholder: [])
+        )
+    }
+}
+
+extension DependencyValues {
+    public var {{ name | lowercase }}Client: {{ name }}Client {
+        get { self[{{ name }}Client.self] }
+        set { self[{{ name }}Client.self] = newValue }
+    }
+}

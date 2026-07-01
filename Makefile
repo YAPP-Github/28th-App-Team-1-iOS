@@ -11,7 +11,7 @@ else
   SEARCH = rg --type swift -n
 endif
 
-.PHONY: lat lat-all lat-deps lint lint-fix generate test
+.PHONY: lat lat-all lat-deps lint lint-fix generate test scaffold-feature scaffold-domain scaffold-core scaffold-shared
 
 # 특정 도메인과 엮인 코드 전부 (위키링크 [[도메인 으로 검색 → delegate 의존도 잡힘)
 lat:
@@ -36,6 +36,34 @@ lint-fix:
 # Tuist 프로젝트 생성
 generate:
 	@tuist install && tuist generate
+
+# 새 Feature 모듈 scaffold (예: make scaffold-feature name=Home)
+# 생성 후 Project.swift 상단 ⚠️ 주석의 수동 작업 2단계를 완료하고 make generate 실행
+scaffold-feature:
+	@[ -n "$(name)" ] || (echo "❌ name 필수. 예: make scaffold-feature name=Home"; exit 1)
+	@tuist scaffold Feature --name $(name)
+	@echo "✅ Feature$(name) 생성 완료. Projects/Feature/Feature$(name)/Project.swift 의 ⚠️ 주석을 확인하세요."
+
+# 새 Domain 모듈 scaffold (예: make scaffold-domain name=User)
+# 생성 후 Project.swift 상단 ⚠️ 주석의 수동 작업 2단계를 완료하고 make generate 실행
+scaffold-domain:
+	@[ -n "$(name)" ] || (echo "❌ name 필수. 예: make scaffold-domain name=User"; exit 1)
+	@tuist scaffold Domain --name $(name)
+	@echo "✅ Domain$(name) 생성 완료. Projects/Domain/Domain$(name)/Project.swift 의 ⚠️ 주석을 확인하세요."
+
+# 새 Core 모듈 scaffold (예: make scaffold-core name=Network)
+# 생성 후 Project.swift 상단 ⚠️ 주석의 수동 작업 2단계를 완료하고 make generate 실행
+scaffold-core:
+	@[ -n "$(name)" ] || (echo "❌ name 필수. 예: make scaffold-core name=Network"; exit 1)
+	@tuist scaffold Core --name $(name)
+	@echo "✅ Core$(name) 생성 완료. Projects/Core/Core$(name)/Project.swift 의 ⚠️ 주석을 확인하세요."
+
+# 새 Shared 모듈 scaffold (예: make scaffold-shared name=DesignSystem)
+# 생성 후 Project.swift 상단 ⚠️ 주석의 수동 작업 2단계를 완료하고 make generate 실행
+scaffold-shared:
+	@[ -n "$(name)" ] || (echo "❌ name 필수. 예: make scaffold-shared name=DesignSystem"; exit 1)
+	@tuist scaffold Shared --name $(name)
+	@echo "✅ Shared$(name) 생성 완료. Projects/Shared/Shared$(name)/Project.swift 의 ⚠️ 주석을 확인하세요."
 
 # Feature 테스트 (예: make test scheme=UsersFeature [device='iPhone 15'])
 #
