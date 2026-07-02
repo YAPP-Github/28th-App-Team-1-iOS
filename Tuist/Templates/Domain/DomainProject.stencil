@@ -15,8 +15,13 @@ import DependencyPlugin
 let project = Project.makeModule(
     name: "Domain{{ name }}",
     targets: [
-        .domain(interface: "{{ name }}"),
-        .domain(implements: "{{ name }}"),
+        .domain(interface: "{{ name }}", factory: .init(dependencies: [
+            .composableArchitecture,   // Client 계약이 TestDependencyKey/DependencyValues 를 사용
+        ])),
+        .domain(implements: "{{ name }}", factory: .init(dependencies: [
+            .composableArchitecture,   // liveValue(DependencyKey) 구현
+            // 인프라가 필요하면 여기에: .core(interface: .network)
+        ])),
         .domain(testing: "{{ name }}"),
         .domain(tests: "{{ name }}"),
     ]

@@ -88,8 +88,11 @@ import ProjectDescriptionHelpers
 let project = Project.makeModule(
     name: "DomainInterview",
     targets: [
-        .domain(interface: "Interview"),
+        .domain(interface: "Interview", factory: .init(dependencies: [
+            .composableArchitecture,      // Client 계약이 TestDependencyKey/DependencyValues 를 사용
+        ])),
         .domain(implements: "Interview", factory: .init(dependencies: [
+            .composableArchitecture,      // liveValue(DependencyKey) 구현
             .core(interface: .network),   // 의존하는 Core 모듈 Interface
         ])),
         .domain(testing: "Interview"),
@@ -97,6 +100,8 @@ let project = Project.makeModule(
     ]
 )
 ```
+
+> ⚠️ Domain 의 Interface/Implementation 은 Client 패턴(TCA `TestDependencyKey`/`DependencyKey`)을 쓰므로 `.composableArchitecture` 의존이 **필수**다. 빠뜨려도 로컬에선 이전 빌드가 남긴 산출물 덕에 우연히 컴파일될 수 있지만, 클린 환경(CI·새 clone)에선 `Unable to find module dependency: 'ComposableArchitecture'` 로 실패한다.
 
 #### Core 모듈 예시
 
