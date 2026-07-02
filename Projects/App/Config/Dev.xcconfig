@@ -1,8 +1,8 @@
-// 개발계 — Debug 빌드에 연결.
+// 개발계 — Dev Configuration 에 연결.
 // `https:/$()/` 의 $() 는 xcconfig 가 // 를 주석으로 먹는 걸 피하는 트릭.
 APP_ENV = dev
 API_BASE_URL = https:/$()/dev-api.architecture.com
 
 // 운영계와 동시 설치 가능하도록 bundle ID·표시 이름을 분리.
 BUNDLE_ID_SUFFIX = .dev
-APP_DISPLAY_NAME = Architecture Dev
+APP_DISPLAY_NAME = App Dev

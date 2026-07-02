@@ -58,7 +58,7 @@ xcodebuild -workspace App.xcworkspace -scheme App \
 > ⏱️ **첫 빌드는 수 분 걸립니다.** ComposableArchitecture 가 의존하는 **swift-syntax 매크로 컴파일**이 처음에 통째로 돌기 때문이고, 정상입니다. 두 번째부터는 캐시되어 빠릅니다.
 
 ### 화면(Feature) 단독 실행
-각 Feature 는 단독 실행용 **Example 앱 스킴**이 있습니다: `Feature{Name}Example` (현재 골격에선 `FeatureHomeExample`) → 선택 후 ⌘R.
+각 Feature 는 단독 실행용 **Example 앱**이 있습니다: `Feature{Name}` 스킴(현재 골격에선 `FeatureHome`)을 선택 후 ⌘R — 그 스킴의 실행 타겟이 Example 앱입니다.
 
 ### 개발계 / QA / 운영계
 빌드 Configuration `Dev` / `QA` / `Release` 로 나뉩니다 (`Dev` 에만 `DEV` 컴파일 조건). 스킴의 Run 구성에서 Configuration 을 바꿔 전환합니다. 동작 원리·값 주입(`@Dependency(\.appConfig)`)·확장법은 DocC `Environments` 아티클 (`ArchitectureDocs` 스킴 → Build Documentation) 참고.

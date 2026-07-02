@@ -62,7 +62,7 @@ Projects/
 - 프로젝트 생성: `tuist install && tuist generate` (`.xcworkspace`/`.xcodeproj` 는 생성물 — 커밋 안 함)
 - 빌드: `xcodebuild -workspace App.xcworkspace -scheme App -destination 'generic/platform=iOS Simulator' build`
 - 테스트: `make test scheme=FeatureHome` 권장 (사용 가능한 시뮬레이터 UDID 로 해석 — 기기 이름이 여러 OS 런타임에 중복돼도 안전). 직접 xcodebuild 쓸 때 `name=iPhone 16` 이 중복으로 "Unable to find a device" 나면 `,OS=26.0` 또는 `id=<UDID>` 로 지정
-- Feature 단독 실행: `Feature{Name}Example` 스킴 (예: `FeatureHomeExample`)
+- Feature 단독 실행: `Feature{Name}` 스킴 ⌘R — Example 앱이 그 스킴의 실행 타겟 (예: `FeatureHome` 스킴 → `FeatureHomeExample.app`. `FeatureHomeExample` 이라는 스킴은 없다)
 - **umbrella 의존을 고치면 반드시 `tuist generate` 재실행** — 캐시된 그래프로 빌드하면 새 의존이 누락된 채 "거짓 성공" 이 난다.
 - DocC: Xcode 의 Product → Build Documentation (`ArchitectureDocs` 스킴)
 

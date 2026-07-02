@@ -67,7 +67,7 @@ scaffold-shared:
 	@tuist scaffold Shared --name $(name) --author "$$(git config user.name)"
 	@echo "✅ Shared$(name) 생성 완료. Projects/Shared/Shared$(name)/Project.swift 의 ⚠️ 주석을 확인하세요."
 
-# Feature 테스트 (예: make test scheme=UsersFeature [device='iPhone 15'])
+# Feature 테스트 (예: make test scheme=FeatureHome [device='iPhone 15'])
 #
 # 기기 이름이 여러 OS 런타임에 중복되면(예: iPhone 16 이 18.0·26.1 둘 다 존재)
 # xcodebuild 가 name 만으론 못 골라 "Unable to find a device" 로 죽는다.

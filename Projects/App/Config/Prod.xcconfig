@@ -1,7 +1,7 @@
-// 운영계 — Release 빌드에 연결.
+// 운영계 — Release Configuration 에 연결.
 APP_ENV = prod
 API_BASE_URL = https:/$()/api.architecture.com
 
-// 운영계는 접미사 없음 → com.architecture.app
+// 운영계는 접미사 없음 → com.yapp01.app
 BUNDLE_ID_SUFFIX =
-APP_DISPLAY_NAME = Architecture
+APP_DISPLAY_NAME = App

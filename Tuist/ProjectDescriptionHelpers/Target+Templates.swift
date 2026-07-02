@@ -71,19 +71,37 @@ public extension Target {
     /// Domain 등의 Implementation 은 extension(DependencyKey conformance)뿐이라 참조가 없어
     /// 통째로 탈락한다(→ 런타임에 testValue 폴백). `-all_load` 로 전 아카이브를 강제 적재한다.
     /// → lat.md architecture.md D4
-    private static let compositionRootSettings: Settings = .settings(
-        base: ["OTHER_LDFLAGS": "$(inherited) -all_load"]
-    )
+    private static let compositionRootBase: SettingsDictionary = [
+        "OTHER_LDFLAGS": "$(inherited) -all_load"
+    ]
+    private static let compositionRootSettings: Settings = .settings(base: compositionRootBase)
 
     /// App 앱 타겟.
+    ///
+    /// 환경 분리(→ DocC Environments): 계별 xcconfig 를 Configuration 에 연결하고
+    /// 그 값(APP_ENV·API_BASE_URL·표시 이름·번들 접미사)을 Info.plist / bundleId 로 치환한다.
+    /// → Dev(.dev)·QA(.qa)·운영(접미사 없음)이 번들 ID 가 달라 한 기기에 동시 설치된다.
     static func app(factory: TargetFactory = .init()) -> Self {
         var f = factory
         f.name = Project.Environment.appName
         f.product = .app
-        f.bundleId = f.bundleId ?? Project.Environment.bundlePrefix
-        f.infoPlist = f.infoPlist ?? .extendingDefault(with: ["UILaunchScreen": [:]])
+        f.bundleId = f.bundleId ?? "\(Project.Environment.bundlePrefix)$(BUNDLE_ID_SUFFIX)"
+        f.infoPlist = f.infoPlist ?? .extendingDefault(with: [
+            "UILaunchScreen": [:],
+            // xcconfig → Info.plist 치환. AppConfig.fromBundle()(이관 대기)이 여기서 읽는다.
+            "APP_ENV": "$(APP_ENV)",
+            "API_BASE_URL": "$(API_BASE_URL)",
+            "CFBundleDisplayName": "$(APP_DISPLAY_NAME)"
+        ])
         f.sources = f.sources ?? ["Sources/**"]
-        f.settings = f.settings ?? compositionRootSettings
+        f.settings = f.settings ?? .settings(
+            base: compositionRootBase,   // -all_load (D4) — settings 를 교체해도 이 base 는 유지할 것
+            configurations: [
+                .debug(name: "Dev", xcconfig: "Config/Dev.xcconfig"),
+                .debug(name: "QA", xcconfig: "Config/QA.xcconfig"),
+                .release(name: "Release", xcconfig: "Config/Prod.xcconfig")
+            ]
+        )
         return make(factory: f)
     }
 

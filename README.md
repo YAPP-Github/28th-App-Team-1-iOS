@@ -24,7 +24,7 @@ xcodebuild -workspace App.xcworkspace -scheme App \
 ```
 
 - `App.xcworkspace` / 각 `*.xcodeproj` 는 **Tuist 생성물**이라 커밋하지 않는다. clone 후 `tuist generate` 로 만든다.
-- 각 Feature 는 단독 실행용 **Example 앱 스킴**(예: `FeatureHomeExample`)을 갖는다.
+- 각 Feature 는 단독 실행용 **Example 앱**을 갖는다 — `Feature{Name}` 스킴(예: `FeatureHome`)의 실행 타겟이 Example 앱이다.
 
 ## 프로젝트 구조 (TMA)
 

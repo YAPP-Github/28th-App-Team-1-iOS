@@ -9,7 +9,7 @@ import ComposableArchitecture
 import Feature{{ name }}Implementation
 import SwiftUI
 
-// Feature 단독 실행 앱 (스킴: Feature{{ name }}Example).
+// Feature 단독 실행 앱 — Feature{{ name }} 스킴의 실행 타겟.
 // 이 Feature 만 격리해 띄워보는 용도 — 외부 IO 는 가짜(preview/test) 의존성으로 주입해 네트워크 없이 돌린다.
 @main
 struct Feature{{ name }}ExampleApp: App {
