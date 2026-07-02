@@ -65,6 +65,16 @@ public extension Target {
 
     // MARK: App
 
+    /// composition root(App/Example) 공통 링크 설정.
+    ///
+    /// liveValue 활성화 보장 — 정적 아카이브는 참조된 오브젝트 파일만 링크하는데,
+    /// Domain 등의 Implementation 은 extension(DependencyKey conformance)뿐이라 참조가 없어
+    /// 통째로 탈락한다(→ 런타임에 testValue 폴백). `-all_load` 로 전 아카이브를 강제 적재한다.
+    /// → lat.md architecture.md D4
+    private static let compositionRootSettings: Settings = .settings(
+        base: ["OTHER_LDFLAGS": "$(inherited) -all_load"]
+    )
+
     /// App 앱 타겟.
     static func app(factory: TargetFactory = .init()) -> Self {
         var f = factory
@@ -73,6 +83,7 @@ public extension Target {
         f.bundleId = f.bundleId ?? Project.Environment.bundlePrefix
         f.infoPlist = f.infoPlist ?? .extendingDefault(with: ["UILaunchScreen": [:]])
         f.sources = f.sources ?? ["Sources/**"]
+        f.settings = f.settings ?? compositionRootSettings
         return make(factory: f)
     }
 
@@ -150,6 +161,7 @@ public extension Target {
         f.infoPlist = f.infoPlist ?? .extendingDefault(with: ["UILaunchScreen": [:]])
         f.sources = f.sources ?? ["Example/**"]
         f.dependencies = [.target(name: "Feature\(name)Implementation")] + f.dependencies
+        f.settings = f.settings ?? compositionRootSettings   // Domain Implementation(liveValue) link 시에도 활성화 보장 (D4)
         return make(factory: f)
     }
 
