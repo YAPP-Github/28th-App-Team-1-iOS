@@ -76,4 +76,4 @@ device ?= iPhone 16
 test:
 	@id=$$(xcrun simctl list devices available | grep -E '^ +$(device) \(' | grep -oE '[0-9A-Fa-f-]{36}' | head -1); \
 	if [ -z "$$id" ]; then echo "❌ '$(device)' 시뮬레이터 없음. 사용 가능:"; xcrun simctl list devices available | grep -E '^ +iPhone'; exit 1; fi; \
-	xcodebuild -workspace Architecture.xcworkspace -scheme $(scheme) -destination "platform=iOS Simulator,id=$$id" test
+	xcodebuild -workspace App.xcworkspace -scheme $(scheme) -destination "platform=iOS Simulator,id=$$id" test
