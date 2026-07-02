@@ -87,6 +87,20 @@ public extension Target {
         return make(factory: f)
     }
 
+    // MARK: Docs
+
+    /// 프로젝트 전역 DocC 카탈로그(Architecture.docc) 전용 호스트 타겟. 실행 코드 없음.
+    /// 카탈로그의 심볼 링크 해석을 위해 문서가 참조하는 모듈(레이어 umbrella)을 의존으로 받는다.
+    static func docs(factory: TargetFactory = .init()) -> Self {
+        var f = factory
+        f.name = "ArchitectureDocs"
+        f.product = .framework
+        f.bundleId = "\(Project.Environment.bundlePrefix).docs"
+        f.sources = f.sources ?? ["Documentation/Sources/**"]
+        f.resources = f.resources ?? ["Documentation/Architecture.docc/**"]
+        return make(factory: f)
+    }
+
     // MARK: Layer Umbrellas
     //
     // 역할 파라미터 없이 레이어 함수를 호출하면 어그리게이터 타겟이 생성된다.

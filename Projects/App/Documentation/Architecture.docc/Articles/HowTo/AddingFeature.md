@@ -13,9 +13,9 @@
 | 3 | `Projects/Feature/FeatureProfile/Sources/ProfileFeature.swift` (Reducer) |
 | 4 | `Projects/Feature/FeatureProfile/Sources/ProfileView.swift` (View) |
 | 5 | 두 모듈 `Project.swift` 작성 + umbrella `Source.swift` 재노출 → `tuist generate` |
-| 6 | 호스트에 연결 — **새 탭**이면 ``AppFeature``, **다른 Feature 에서 진입**이면 `delegate` → ``AppFeature`` 가 제시 |
+| 6 | 호스트에 연결 — **새 탭**이면 `AppFeature`, **다른 Feature 에서 진입**이면 `delegate` → `AppFeature` 가 제시 |
 
-> Important: 화면이 다른 Feature 라면 그 Feature 를 직접 import/push 하지 않는다. **Feature → Feature 의존은 0** 이고, cross-feature 조립은 ``AppFeature`` 에서만 한다. (Step 6 참조)
+> Important: 화면이 다른 Feature 라면 그 Feature 를 직접 import/push 하지 않는다. **Feature → Feature 의존은 0** 이고, cross-feature 조립은 `AppFeature` 에서만 한다. (Step 6 참조)
 
 ---
 
@@ -195,7 +195,7 @@ tuist install && tuist generate
 
 ### (a) 새 탭으로 추가
 
-호스트가 ``AppFeature`` 가 된다.
+호스트가 `AppFeature` 가 된다.
 
 ```swift
 // AppFeature.State
@@ -206,11 +206,11 @@ case home, users, activity, profile
 Scope(state: \.profile, action: \.profile) { ProfileFeature() }
 ```
 
-``AppView`` 의 `TabView` 에 `.tabItem` + `.tag` 한 쌍을 추가하면 끝. (App 은 `.feature` umbrella 를 link 하므로 `ProfileFeature` 구체 타입을 안다.)
+`AppView` 의 `TabView` 에 `.tabItem` + `.tag` 한 쌍을 추가하면 끝. (App 은 `.feature` umbrella 를 link 하므로 `ProfileFeature` 구체 타입을 안다.)
 
 ### (b) 다른 Feature 에서 진입 (cross-feature)
 
-`Profile` 편집을 **Users 상세**에서 띄우는 경우. `UsersFeature` 는 `ProfileFeature` 를 모른다 — `delegate` 로 신호만 올리고, ``AppFeature`` 가 받아 조립한다.
+`Profile` 편집을 **Users 상세**에서 띄우는 경우. `UsersFeature` 는 `ProfileFeature` 를 모른다 — `delegate` 로 신호만 올리고, `AppFeature` 가 받아 조립한다.
 
 ```swift
 // 1) UsersFeature — 신호만 위로 (ProfileFeature import 안 함)
@@ -243,4 +243,3 @@ case let .editProfile(.presented(.delegate(.profileSaved(profile)))):
 
 - <doc:NavigationPatterns>
 - <doc:FeatureInterface>
-- ``AppFeature``

@@ -76,7 +76,7 @@ Domain  Implementation → .core(interface: .network)     # 인프라 계약만
 
 이 아키텍처를 지탱하는 절대 규칙 두 개:
 
-1. **Feature → Feature 의존 = 0.** 다른 Feature 로의 전환은 `delegate` 로 신호만 올리고, cross-feature 조립은 ``AppFeature`` (코디네이터)에서만 한다. → <doc:NavigationPatterns>
+1. **Feature → Feature 의존 = 0.** 다른 Feature 로의 전환은 `delegate` 로 신호만 올리고, cross-feature 조립은 `AppFeature` (코디네이터)에서만 한다. → <doc:NavigationPatterns>
 2. **Domain·Core·Shared 는 Interface/Implementation 분리, Feature 는 단일 모듈.** 다른 레이어는 Interface 에만 의존하고, 구현은 composition root(App)/Example 에서만 link 한다. **Feature 가 Interface 를 안 두는 이유**(TCA 리듀서는 Interface 로 못 가림)는 <doc:FeatureInterface>.
 
 ### 모듈 구성

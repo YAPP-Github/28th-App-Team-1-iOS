@@ -84,4 +84,3 @@ withDependencies {
 
 - <doc:ModularArchitecture>
 - <doc:AddingFeature>
-- ``AppFeature``
