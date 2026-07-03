@@ -19,6 +19,13 @@ public struct ReelsView: View {
     @State private var dragBaseHeight: CGFloat?
     @FocusState private var isInputFocused: Bool
 
+    // 열린 시트가 차지하는 화면 높이 비율. 영상 축소율도 이 값에서 유도해 두 값이 어긋나지 않게 한다.
+    private enum Metric {
+        static let sheetHeightRatio: CGFloat = 0.58
+        static let dimOpacity: Double = 0.25
+        static let openCornerRadius: CGFloat = 22
+    }
+
     public init(store: StoreOf<ReelsFeature>) {
         self.store = store
     }
@@ -26,20 +33,21 @@ public struct ReelsView: View {
     public var body: some View {
         GeometryReader { geo in
             let containerHeight = geo.size.height
-            let target = containerHeight * 0.58
+            let target = containerHeight * Metric.sheetHeightRatio
             let progress = min(max(sheetHeight / target, 0), 1)
 
             ZStack(alignment: .bottom) {
                 Color.black.ignoresSafeArea()
 
+                // 시트가 차지한 높이만큼 영상 높이를 줄여 상단 영역에 딱 맞춘다.
+                // 축소율을 시트 비율과 동일하게 잡아야 영상 바닥이 시트 상단과 만나 짤리지 않는다.
                 ReelVideoLayer(store: store)
-                    .scaleEffect(1 - progress * 0.38, anchor: .top)
-                    .offset(y: progress * 12)
-                    .clipShape(RoundedRectangle(cornerRadius: progress * 22, style: .continuous))
+                    .scaleEffect(1 - progress * Metric.sheetHeightRatio, anchor: .top)
+                    .clipShape(RoundedRectangle(cornerRadius: progress * Metric.openCornerRadius, style: .continuous))
 
                 if progress > 0 {
                     Color.black
-                        .opacity(Double(progress) * 0.25)
+                        .opacity(Double(progress) * Metric.dimOpacity)
                         .ignoresSafeArea()
                         .contentShape(Rectangle())
                         .onTapGesture { store.send(.userTappedCloseComments) }
