@@ -1,0 +1,21 @@
+//
+//  {{ name }}View.swift
+//  Feature{{ name }}
+//
+//  Created by {{ author }} on{{ " " }}{% now "yy/MM/dd" %}.
+//
+
+import ComposableArchitecture
+import SwiftUI
+
+public struct {{ name }}View: View {
+    @Bindable var store: StoreOf<{{ name }}Feature>
+
+    public init(store: StoreOf<{{ name }}Feature>) {
+        self.store = store
+    }
+
+    public var body: some View {
+        Text("{{ name }}")
+    }
+}

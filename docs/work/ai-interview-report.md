@@ -1,10 +1,10 @@
 # AI 면접 Part 3 — 작업 문서 (분석 보고서 & 영상 복기 → 우리 아키텍처 매핑)
 
 > YAPP APP 1팀 「AI 면접 연습 앱」 기획서 **Part 3 (AI 분석 보고서 & 면접 영상 다시보기)** 를
-> 이 레포의 **Tuist µFeature + 순수 TCA** 규칙에 녹인 설계 작업 문서.
-> [[ai-interview]] 에서 `InterviewReportFeature (지금은 stub)` 로 자리만 잡았던 도메인의 본설계.
-> 절대 규칙: **Feature→Feature 의존 0 · Client만 Interface/Live 분리 · cross-feature 조립은 [[app]](AppFeature)에서만.**
-> 시스템 전체 그림은 [[architecture]], 도메인 큰 그림 [[domain.map]], Client 분리 [[clients]], Part1/2 설계 [[ai-interview]].
+> 이 레포의 **Tuist TMA + 순수 TCA** 규칙에 녹인 설계 작업 문서.
+> [ai-interview](ai-interview.md) 에서 `InterviewReportFeature (지금은 stub)` 로 자리만 잡았던 도메인의 본설계.
+> 절대 규칙: **Feature→Feature 의존 0 · Repository(Client)는 Domain 모듈 Interface/Implementation 분리 · cross-feature 조립은 [[app]](AppFeature)에서만.**
+> 시스템 전체 그림·Client 분리(D3)는 [[architecture]], 도메인 큰 그림 [[domain.map]], Part1/2 설계 [ai-interview](ai-interview.md).
 > 출처: 「Part3. AI 분석 보고서 & 면접 영상 다시보기」 PDF (기준일 2026-06-15)
 
 ## 0. 제품 → 레이어 매핑
@@ -25,10 +25,10 @@
 
 ```
 AppFeature  (코디네이터: Session 종료 → Report present / Report → 친구 피드백 핸드오프)
-└── InterviewReportFeature ┬ ScoringClientInterface    (리포트 폴링·fetch + 회차 기준선)
-    (R0 root + 복기 Path)   ├ PlaybackClientInterface   (영상 자산·챕터·대본 cue + 재생 시간축)  ★
-                           ├ ReviewClientInterface     (자기평가·👍/👎 영구 저장 → 4.6 '나')
-                           └ Models · DesignSystemKit
+└── InterviewReportFeature ┬ DomainScoringInterface    (리포트 폴링·fetch + 회차 기준선)
+    (R0 root + 복기 Path)   ├ DomainPlaybackInterface   (영상 자산·챕터·대본 cue + 재생 시간축)  ★
+                           ├ DomainReviewInterface     (자기평가·👍/👎 영구 저장 → 4.6 '나')
+                           └ SharedDesignSystem
 
    Path: reviewChapters(V0) → reviewPlayer(V1)★ → selfEval(V2) → detailReport(R1)
                                                        └ V2 제출 전엔 R1 push 불가 (잠금 게이트)
@@ -48,7 +48,7 @@ Report  --delegate(.close)-----------------▶ AppFeature --dismiss
 → `@lat`: [[app#Cross-feature Routing]] · import 에 안 보이는 의존이므로 변경 시 이 표 기준으로 영향 추적.
 **평가 독립성(정책 7)**: 4.5 로 넘기는 payload 는 **챕터 경계만**. 내 👍/👎·AI 지적·자기평가는 제외 → AppFeature 핸드오프에서 축소 DTO 로만 전달(§8).
 
-## 3. Client 설계 ([[clients]] — 외부 IO 만, 유일하게 Interface/Live 분리)
+## 3. Client 설계 (외부 IO 만 — Domain 모듈 Interface/Implementation 분리, [[architecture]] D3)
 
 | Client | 상태 | 책임 | 핵심 시그니처(요지) |
 |---|---|---|---|
@@ -56,10 +56,10 @@ Report  --delegate(.close)-----------------▶ AppFeature --dismiss
 | **PlaybackClient** | 신규 | 영상 자산·챕터·대본 cue + 재생 시간축 | `recording(sessionId)→ReviewRecording?` · `time()→AsyncStream<TimeInterval>` · `seek(to:)` · `play()`/`pause()` |
 | **ReviewClient** | 신규 | 자기평가·표시 영구 저장 (4.6 '나' 재료) | `saveMarker(sessionId, ReviewMarker)` · `saveSelfEvaluation(sessionId, SelfEvaluation)` · `selfEvaluation(sessionId)→SelfEvaluation?` |
 
-규칙: 각 Client 는 `Project.client(name:)`, `testValue` 전부 `unimplemented`(빈 클로저 금지).
+규칙: 각 Client 는 **Domain 모듈**(`DomainScoring` 등 — `make scaffold-domain name=Scoring`), `testValue` 전부 `unimplemented`(빈 클로저 금지).
 **내부 채점(루브릭)→사용자 리포트 변환은 서버 책임.** 클라는 이미 변환된 `InterviewReport` 만 받는다 → 점수/판정/천장은 *애초에 클라로 안 내려온다*(§5).
 
-## 4. 도메인 모델 (Shared/Models 추가분)
+## 4. 도메인 모델 (각 Domain 모듈 Interface 추가분)
 
 ```swift
 enum InterviewTest { case depth, scopeScale, connection, alternativesPriority, conflict, growthResilience }  // 6대 테스트
@@ -146,7 +146,7 @@ enum Action {
 
 Part 2 Session 이 "겹치는 타이머 + 오디오 스트림"이었다면, **Part 3 는 AVPlayer(명령형 reference) ↔ TCA(값·단방향) 경계**가 리스크. 정석 레시피는 Part 2 와 동형:
 
-- **시간축 단일 소스 = `PlaybackClient.time()` 스트림.** Live 가 AVPlayer 를 소유, reducer 는 `currentTime` 만 받아 → ① 현재 `TranscriptCue` 강조 ② chapter 경계 판정 ③ marker 배치. AVPlayer 를 State 에 두지 않는다.
+- **시간축 단일 소스 = `PlaybackClient.time()` 스트림.** Implementation(liveValue) 이 AVPlayer 를 소유, reducer 는 `currentTime` 만 받아 → ① 현재 `TranscriptCue` 강조 ② chapter 경계 판정 ③ marker 배치. AVPlayer 를 State 에 두지 않는다.
 - **모든 AI 근거 = `evidenceAt` 기반 `TimelineMarker`** (질문 경계·긴 침묵·AI 지적·내 👍/👎). 탭 → `seek(to:)`. "근거 보기"(R1)도 같은 경로.
 - **scroll-follow 게이트**: `var followsPlayback: Bool`. 자동 스크롤 중 사용자가 직접 스크롤 → `false` + "현재 위치로" 버튼 → 다시 `true`.
 - **STT 약한 구간**: `cue.lowConfidence` → 표시만, 수정 불가(정책 — 받아쓴 대본은 '보조').
@@ -174,15 +174,15 @@ Part 2 Session 이 "겹치는 타이머 + 오디오 스트림"이었다면, **Pa
 | **H** STT 30%↓ 손실 고지·분석 제외 | `report.sttLossWarning` + `cue.lowConfidence` | 🟠 |
 | **I** 영상 보관기간 차등 + 삭제 보류 | `expiresAt` + 삭제 정책(법무) | 🟠 4.7 연동 |
 | **J** 회차 "지난 대비" 비교 범위 | `ReportBaseline` 모델 | 🟡 |
-| **A/B** 사용자 문구(3단계 상태/R0 이름) | 표시 문자열·로컬라이즈·DSKit | 🟡 State 자리만 |
+| **A/B** 사용자 문구(3단계 상태/R0 이름) | 표시 문자열·로컬라이즈·SharedDesignSystem | 🟡 State 자리만 |
 | **F/G** 대본·타임라인 모바일 UI(탭 단위·마커 묶기) | V0/V1 View | 🟡 디자인 |
 
 ## 10. 빌드 순서 (CLAUDE.md "새 모듈 추가 흐름"에 정렬)
 
-1. **Models 확장 + DSKit** — 위 Report/Review 타입 + 복기 전용 컴포넌트(`TestStatusChip` 3단계 · `ReviewChapterCard` · `TimelineMarkerBar` · `ThumbToggle` 👍/👎 · 참고 데이터 카드)
-2. **Clients = Interface 먼저**(Live stub) — ScoringClient 확장(status/report/baseline) · PlaybackClient · ReviewClient, `testValue` 전부 unimplemented
+1. **Domain 모델 확장 + SharedDesignSystem** — 위 Report/Review 타입 + 복기 전용 컴포넌트(`TestStatusChip` 3단계 · `ReviewChapterCard` · `TimelineMarkerBar` · `ThumbToggle` 👍/👎 · 참고 데이터 카드)
+2. **Domain Clients = Interface 먼저**(Implementation 은 stub) — ScoringClient 확장(status/report/baseline) · PlaybackClient · ReviewClient, `testValue` 전부 unimplemented
 3. **InterviewReportFeature R0 + 폴링** — `TestClock` 로 `scoring → ready/insufficient` 전이 결정론 검증
-4. **V1 ★** — mock PlaybackClient(스크립트 `time` 스트림) + `TestClock` 로 cue/marker/chapter·scroll-follow 검증. Example 앱 격리, AVPlayer 는 Live 만
+4. **V1 ★** — mock PlaybackClient(스크립트 `time` 스트림) + `TestClock` 로 cue/marker/chapter·scroll-follow 검증. Example 앱 격리, AVPlayer 는 Implementation 만
 5. **R0 / V0 / V2 / R1 + Path** — R1 잠금 게이트 (selfEval 의존)
 6. **AppFeature 배선** — `Session.finished → present Report` · `Report.requestFriendFeedback → (4.5 후속)` · 세션 무효는 Report 진입 차단
 7. **회차 비교(baseline) · 4.6 종합** — 후속

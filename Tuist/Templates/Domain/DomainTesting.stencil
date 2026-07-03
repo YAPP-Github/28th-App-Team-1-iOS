@@ -1,0 +1,19 @@
+//
+//  Domain{{ name }}Testing.swift
+//  Domain{{ name }}Testing
+//
+//  Created by {{ author }} on{{ " " }}{% now "yy/MM/dd" %}.
+//
+
+import ComposableArchitecture
+import Domain{{ name }}Interface
+import Foundation
+
+extension {{ name }}Client {
+    // 다른 모듈의 테스트·Preview에서 주입할 수 있는 mock 값.
+    // public static var mock: {{ name }}Client {
+    //     {{ name }}Client(
+    //         fetchItems: { [...] }
+    //     )
+    // }
+}

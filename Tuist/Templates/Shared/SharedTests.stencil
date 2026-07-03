@@ -1,0 +1,11 @@
+//
+//  Shared{{ name }}Tests.swift
+//  Shared{{ name }}Tests
+//
+//  Created by {{ author }} on{{ " " }}{% now "yy/MM/dd" %}.
+//
+
+import XCTest
+@testable import Shared{{ name }}Implementation
+
+// 단위테스트는 작성하지 않는다. placeholder.

@@ -1,0 +1,23 @@
+import ProjectDescription
+import ProjectDescriptionHelpers
+import DependencyPlugin
+
+// MARK: - ⚠️ 수동 작업 필요 (scaffold 후 아래 2곳을 직접 수정하세요)
+//
+// 1. Plugins/DependencyPlugin/ProjectDescriptionHelpers/Modules.swift
+//    ModulePath.Shared enum 에 case 추가:
+//    case {{ name | lowercase }} = "{{ name }}"
+//    (Shared umbrella 의 dependencies 는 ModulePath.Shared.allCases 를 순회해 자동 포함됩니다)
+//
+// 2. Projects/Shared/Sources/Source.swift (umbrella 재노출 — 이게 있어야 다른 모듈이 import Shared 로 접근)
+//    @_exported import Shared{{ name }}Implementation
+
+let project = Project.makeModule(
+    name: "Shared{{ name }}",
+    targets: [
+        .shared(interface: "{{ name }}"),
+        .shared(implements: "{{ name }}"),
+        .shared(testing: "{{ name }}"),
+        .shared(tests: "{{ name }}"),
+    ]
+)

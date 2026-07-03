@@ -1,0 +1,10 @@
+//
+//  Core{{ name }}Testing.swift
+//  Core{{ name }}Testing
+//
+//  Created by {{ author }} on{{ " " }}{% now "yy/MM/dd" %}.
+//
+
+import Core{{ name }}Interface
+
+// public final class Core{{ name }}InterfaceMock: Core{{ name }}Interface {}

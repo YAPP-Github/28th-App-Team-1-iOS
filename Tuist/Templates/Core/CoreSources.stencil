@@ -1,0 +1,10 @@
+//
+//  Core{{ name }}Implementation.swift
+//  Core{{ name }}Implementation
+//
+//  Created by {{ author }} on{{ " " }}{% now "yy/MM/dd" %}.
+//
+
+import Core{{ name }}Interface
+
+// public final class Core{{ name }}Implementation: Core{{ name }}Interface {}
