@@ -2,7 +2,7 @@
 
 > lat 방법론의 **장치 2**(코드 ↔ 도메인 색인)의 실행 스펙.
 > 개념·전체 그림은 [lat-methodology](lat-methodology.md). 이 문서는 **코드에 무엇을, 어떻게 적는가**만 정한다.
-> Claude 는 Feature·AppFeature·Client 코드를 작성·수정할 때 이 규칙대로 주석을 추가·갱신한다.
+> Claude 는 Feature·AppFeature·Domain 코드를 작성·수정할 때 이 규칙대로 주석을 추가·갱신한다.
 
 ## 왜 다나
 
@@ -16,9 +16,9 @@
 | `depends-on:` | 이 코드가 **의존하는** 곳 (없으면 안 돎 / 바꾸면 영향받음) | `// depends-on: [[domain#Section]], [[other]]` |
 | `@lat:` (테스트) | 테스트가 검증하는 스펙 | `// @lat: [[tests#Case]]` (테스트 코드에) |
 
-- `[[domain]]` = `lat.md/` 의 파일명(확장자 없이). `[[users]]` → `lat.md/users.md`.
-- `[[domain#Section]]` 의 `#Section` 은 **헤딩 텍스트 전체**와 일치해야 한다 → 헤딩에 ⚠️·괄호 데코레이션 금지(안 그러면 `[[profile#Save]]` 가 안 맞음). 모든 섹션은 **≤250자 선행 문단**으로 시작해야 `lat check` 통과. (헤딩이 바뀌면 라벨도 갱신)
-- `depends-on:` 뒤에는 괄호로 짧은 부연을 붙일 수 있다 → `depends-on: [[clients]] (ProfileClient#fetchProfile)`. **단 `depends-on:` 은 lat.md 가 검증하지 않는 로컬 관례**(`lat check` 는 `@lat:` 만 본다) — 사람이 읽는 cross-feature 의존 메모.
+- `[[domain]]` = `lat.md/` 의 파일명(확장자 없이). `[[home]]` → `lat.md/home.md`.
+- `[[domain#Section]]` 의 `#Section` 은 **헤딩 텍스트 전체**와 일치해야 한다 → 헤딩에 ⚠️·괄호 데코레이션 금지(안 그러면 `[[app#Cross-feature Routing]]` 가 안 맞음). 모든 섹션은 **≤250자 선행 문단**으로 시작해야 `lat check` 통과. (헤딩이 바뀌면 라벨도 갱신)
+- `depends-on:` 뒤에는 괄호로 짧은 부연을 붙일 수 있다 → `depends-on: [[domain.map]] (UserClient#fetch)`. **단 `depends-on:` 은 lat.md 가 검증하지 않는 로컬 관례**(`lat check` 는 `@lat:` 만 본다) — 사람이 읽는 cross-feature 의존 메모.
 - 테스트↔스펙은 별도 `@lat-test:` 가 아니라, **스펙 섹션에 `lat: { require-code-mention: true }` frontmatter** 를 달고 테스트 코드에서 `// @lat:` 로 그 섹션을 가리키면 `lat check` 가 커버리지를 강제한다.
 
 ## 어디에 다나
@@ -34,24 +34,31 @@ public struct UsersFeature { ... }
 
 대상:
 
-- **모든 Feature Reducer** — `@lat:` 필수. cross-feature/Client 의존이 있으면 `depends-on:` 추가.
+- **모든 Feature Reducer** — `@lat:` 필수. cross-feature/Domain 의존이 있으면 `depends-on:` 추가.
 - **AppFeature(코디네이터)** — `@lat: [[app#Cross-feature Routing]]` + 보유한 Feature 들을 `depends-on:`.
 - **cross-feature delegate 출구/입구** — 가장 중요. `import` 에 안 보이는 연결이므로 반드시 `depends-on:` 으로 명시한다.
 
-## 실제 예 (현재 코드)
+## 실제 예
+
+현재 실 코드는 Home 하나뿐이다:
+
+```swift
+// HomeFeature.swift
+// @lat: [[home]]
+@Reducer
+public struct HomeFeature { ... }
+```
+
+cross-feature 가 생기면(이관 후) 아래처럼 delegate 의존을 `depends-on:` 으로 적는다 — `import` 에 안 보이는 연결이라 이게 유일한 추적 수단이다:
 
 ```swift
 // AppFeature.swift
 // @lat: [[app#Cross-feature Routing]]
-// depends-on: [[home]], [[users]], [[activity]], [[profile]]
+// depends-on: [[home]], [[users]], [[profile]]
 
-// UsersFeature.swift
+// UsersFeature.swift  (이관 후)
 // @lat: [[users#Profile Edit Handoff]]
 // depends-on: [[profile#Save]], [[app#Cross-feature Routing]]
-
-// ProfileFeature.swift
-// @lat: [[profile#Save]]
-// depends-on: [[clients]] (ProfileClient#fetchProfile, #saveProfile)
 ```
 
 ## 검색·검증 (lat CLI)

@@ -7,15 +7,15 @@
 먼저 큰 두 갈래를 구분한다.
 
 - **도메인 내부 navigation** — 한 Feature 안의 화면 스택. 그 Feature 가 자체 `Path` enum + `StackState` 로 직접 push/pop 한다. (예: Users 의 목록→상세)
-- **Cross-feature 전환** — 다른 Feature 로 넘어가는 것. **직접 하지 않는다.** `delegate` 로 ``AppFeature`` 에 신호를 올리고, 코디네이터가 조립한다. (예: Users 상세 → 프로필 편집) — Feature→Feature 의존 0.
+- **Cross-feature 전환** — 다른 Feature 로 넘어가는 것. **직접 하지 않는다.** `delegate` 로 `AppFeature` 에 신호를 올리고, 코디네이터가 조립한다. (예: Users 상세 → 프로필 편집) — Feature→Feature 의존 0.
 
 값 전달 자체는 거의 모든 경우 다음 셋 중 하나다.
 
 | 케이스 | 무엇을 넘기는가 | 누가 fetch | 본 프로젝트 예시 |
 |---|---|---|---|
-| A | id 만 | 자식이 직접 | ``AppFeature`` → ``ProfileFeature``(`profileId`) |
+| A | id 만 | 자식이 직접 | `AppFeature` → `ProfileFeature`(`profileId`) |
 | B | 객체 전체 | 부모가 이미 보유 | `UserListFeature` → `UserDetailFeature` |
-| C | 결과를 위로 | 자식이 부모에 통보 | `ProfileFeature` → ``AppFeature`` → `UsersFeature` |
+| C | 결과를 위로 | 자식이 부모에 통보 | `ProfileFeature` → `AppFeature` → `UsersFeature` |
 
 ---
 
@@ -111,15 +111,15 @@ AppFeature         .send(.users(.profileUpdated))  →  UsersFeature 가 목록/
 탭이 도입되면서, user 화면 스택은 **Users 탭 안에서만** 의미가 있으므로 그 책임을 `UsersFeature` 로 두었다.
 
 - 탭을 가로지르는 navigation 이 구조적으로 차단됨
-- ``AppFeature`` 는 탭 보유 + cross-feature 라우팅에만 집중
+- `AppFeature` 는 탭 보유 + cross-feature 라우팅에만 집중
 - 새 탭 추가 시 기존 도메인 navigation 코드를 건드릴 일 없음
 
-새 도메인도 같은 패턴: 도메인 안에 여러 화면이 있으면 그 Feature 가 자체 `Path` + `StackState` 를 들고, ``AppFeature`` 는 그 Feature.State 만 보유한다. 다른 도메인으로 넘어갈 때만 `delegate` 로 올린다.
+새 도메인도 같은 패턴: 도메인 안에 여러 화면이 있으면 그 Feature 가 자체 `Path` + `StackState` 를 들고, `AppFeature` 는 그 Feature.State 만 보유한다. 다른 도메인으로 넘어갈 때만 `delegate` 로 올린다.
 
 ## 관련 심볼
 
-- ``AppFeature`` — 탭 + cross-feature 코디네이터
-- ``UsersFeature`` — Users 도메인의 Path 코디네이터 + delegate bubble
+- `AppFeature` — 탭 + cross-feature 코디네이터
+- `UsersFeature` — Users 도메인의 Path 코디네이터 + delegate bubble
 - `UserListFeature.Action.Delegate` — Case B 트리거
 - `UserDetailFeature.Action.Delegate` — cross-feature 신호의 출발점
 - `ProfileFeature.Action.Delegate` — Case C 발신 (AppFeature 가 수신)
@@ -129,4 +129,4 @@ AppFeature         .send(.users(.profileUpdated))  →  UsersFeature 가 목록/
 ### 함께 보기
 
 - <doc:AddingFeature>
-- <doc:NavigationPatternsTutorial>
+- <doc:FeatureInterface>

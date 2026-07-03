@@ -1,0 +1,28 @@
+import ProjectDescription
+import ProjectDescriptionHelpers
+import DependencyPlugin
+
+// MARK: - ⚠️ 수동 작업 필요 (scaffold 후 아래 2곳을 직접 수정하세요)
+//
+// 1. Plugins/DependencyPlugin/ProjectDescriptionHelpers/Modules.swift
+//    ModulePath.Feature enum 에 case 추가:
+//    case {{ name | lowercase }} = "{{ name }}"
+//    (Feature umbrella 의 dependencies 는 ModulePath.Feature.allCases 를 순회해 자동 포함됩니다)
+//
+// 2. Projects/Feature/Sources/Source.swift (umbrella 재노출 — 이게 있어야 App 이 import Feature 로 접근)
+//    @_exported import Feature{{ name }}Implementation
+//
+// (선택) lat.md/{{ name | lowercase }}.md 노드를 만들고 Reducer 에 @lat 앵커를 연결하세요.
+
+let project = Project.makeModule(
+    name: "Feature{{ name }}",
+    targets: [
+        // D3: Feature 는 Interface 를 두지 않는다 (단일 Implementation). → DocC FeatureInterface / architecture.md D3
+        .feature(implements: "{{ name }}", factory: .init(dependencies: [
+            .composableArchitecture,
+        ])),
+        .feature(testing: "{{ name }}"),
+        .feature(tests: "{{ name }}"),
+        .feature(example: "{{ name }}"),
+    ]
+)

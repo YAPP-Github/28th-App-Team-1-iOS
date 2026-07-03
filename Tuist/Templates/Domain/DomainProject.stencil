@@ -1,0 +1,28 @@
+import ProjectDescription
+import ProjectDescriptionHelpers
+import DependencyPlugin
+
+// MARK: - ⚠️ 수동 작업 필요 (scaffold 후 아래 2곳을 직접 수정하세요)
+//
+// 1. Plugins/DependencyPlugin/ProjectDescriptionHelpers/Modules.swift
+//    ModulePath.Domain enum 에 case 추가:
+//    case {{ name | lowercase }} = "{{ name }}"
+//    (Domain umbrella 의 dependencies 는 ModulePath.Domain.allCases 를 순회해 자동 포함됩니다)
+//
+// 2. Projects/Domain/Sources/Source.swift (umbrella 재노출 — 이게 있어야 다른 모듈이 import Domain 으로 접근)
+//    @_exported import Domain{{ name }}Implementation
+
+let project = Project.makeModule(
+    name: "Domain{{ name }}",
+    targets: [
+        .domain(interface: "{{ name }}", factory: .init(dependencies: [
+            .composableArchitecture,   // Client 계약이 TestDependencyKey/DependencyValues 를 사용
+        ])),
+        .domain(implements: "{{ name }}", factory: .init(dependencies: [
+            .composableArchitecture,   // liveValue(DependencyKey) 구현
+            // 인프라가 필요하면 여기에: .core(interface: .network)
+        ])),
+        .domain(testing: "{{ name }}"),
+        .domain(tests: "{{ name }}"),
+    ]
+)

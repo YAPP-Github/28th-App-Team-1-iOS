@@ -1,0 +1,4 @@
+import XCTest
+@testable import FeatureCommonImplementation
+
+// 단위테스트는 작성하지 않는다. placeholder.

@@ -1,0 +1,78 @@
+//
+//  {{ name }}Feature.swift
+//  Feature{{ name }}
+//
+//  Created by {{ author }} on{{ " " }}{% now "yy/MM/dd" %}.
+//
+
+import ComposableArchitecture
+
+// @lat 앵커: lat.md/{{ name | lowercase }}.md 노드를 만든 뒤 이 Reducer 위에 @lat 로 소속을 연결하세요.
+@Reducer
+public struct {{ name }}Feature {
+    @ObservableState
+    public struct State: Equatable {
+        public init() {}
+    }
+
+    public enum Action {}
+
+    public init() {}
+
+    public var body: some ReducerOf<Self> {
+        Reduce { state, action in
+            return .none
+        }
+    }
+}
+
+// MARK: - 작성 가이드 (이 Feature 를 채울 때 참고 · 실제 코드는 위 본문에 채운다)
+//
+// ▸ 외부 IO 는 @Dependency 로 주입한다 (네트워크·DB 등은 별도 Client 모듈, Feature 는 그 Interface 만 안다).
+//     @Dependency(\.someClient) var someClient
+//
+// ▸ State — 화면이 그리는 데이터. @ObservableState + Equatable 필수.
+//     public struct State: Equatable {
+//         var items: [Item] = []
+//         var isLoading = false
+//     }
+//
+// ▸ Action — 네이밍 규칙:
+//     · 사용자 입력           → userTappedRefresh, userChangedQuery(String)
+//     · 비동기 응답           → itemsLoaded([Item]), itemsSaved
+//     · 생명주기             → onAppear / onDisappear
+//     · @Bindable 양방향 바인딩 → BindableAction 채택 + case binding(BindingAction<State>)
+//     · 부모/코디네이터 통보    → case delegate(Delegate)   ← 다른 Feature 로의 전환은 오직 이걸로만 (D1)
+//     public enum Action: BindableAction {
+//         case onAppear
+//         case userTappedRefresh
+//         case itemsLoaded([Item])
+//         case binding(BindingAction<State>)
+//         case delegate(Delegate)
+//         public enum Delegate: Equatable { case itemSelected(Item.ID) }
+//     }
+//
+// ▸ body — 비즈니스 로직 + 도메인 '내부' 네비게이션(Path/StackState)까지 여기서 처리.
+//     public var body: some ReducerOf<Self> {
+//         BindingReducer()                          // binding 을 쓸 때만
+//         Reduce { state, action in
+//             switch action {
+//             case .onAppear:
+//                 state.isLoading = true
+//                 return .run { send in
+//                     await send(.itemsLoaded(try await someClient.fetch()))
+//                 }
+//             case let .itemsLoaded(items):
+//                 state.isLoading = false
+//                 state.items = items
+//                 return .none
+//             case .userTappedRefresh:
+//                 return .send(.onAppear)
+//             case .binding, .delegate:
+//                 return .none                       // delegate 는 부모(AppFeature)가 처리 → 자신은 no-op
+//             }
+//         }
+//     }
+//
+// ⚠️ 다른 Feature 로 넘어가야 하면: 직접 import/embed 금지. delegate 로 신호만 올리고
+//    cross-feature 조립은 AppFeature(코디네이터)가 한다. (같은 Feature 안 화면 전환은 Path/StackState 로 자유롭게)

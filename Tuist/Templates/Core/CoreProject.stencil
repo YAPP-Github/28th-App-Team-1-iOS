@@ -1,0 +1,23 @@
+import ProjectDescription
+import ProjectDescriptionHelpers
+import DependencyPlugin
+
+// MARK: - ⚠️ 수동 작업 필요 (scaffold 후 아래 2곳을 직접 수정하세요)
+//
+// 1. Plugins/DependencyPlugin/ProjectDescriptionHelpers/Modules.swift
+//    ModulePath.Core enum 에 case 추가:
+//    case {{ name | lowercase }} = "{{ name }}"
+//    (Core umbrella 의 dependencies 는 ModulePath.Core.allCases 를 순회해 자동 포함됩니다)
+//
+// 2. Projects/Core/Sources/Source.swift (umbrella 재노출 — 이게 있어야 다른 모듈이 import Core 로 접근)
+//    @_exported import Core{{ name }}Implementation
+
+let project = Project.makeModule(
+    name: "Core{{ name }}",
+    targets: [
+        .core(interface: "{{ name }}"),
+        .core(implements: "{{ name }}"),
+        .core(testing: "{{ name }}"),
+        .core(tests: "{{ name }}"),
+    ]
+)

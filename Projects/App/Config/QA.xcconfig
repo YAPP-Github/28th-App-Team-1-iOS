@@ -1,8 +1,8 @@
-// QA — 개발계 서버를 바라보되 디버그 메뉴(DEV)는 없는 빌드. 테스터 배포용.
+// QA — QA Configuration 에 연결. 개발계 서버를 바라보되 디버그 메뉴(DEV)는 없는 빌드. 테스터 배포용.
 // `https:/$()/` 의 $() 는 xcconfig 가 // 를 주석으로 먹는 걸 피하는 트릭.
 APP_ENV = qa
 API_BASE_URL = https:/$()/dev-api.architecture.com
 
 // dev·운영과 동시 설치 가능하도록 bundle ID·표시 이름을 분리.
 BUNDLE_ID_SUFFIX = .qa
-APP_DISPLAY_NAME = Architecture QA
+APP_DISPLAY_NAME = App QA
