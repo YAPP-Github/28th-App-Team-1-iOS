@@ -18,7 +18,7 @@ public struct TargetFactory {
     public init(
         name: String = "",
         destinations: Destinations = Project.Environment.destinations,
-        product: Product = .staticFramework,
+        product: Product = Project.Environment.productType,
         bundleId: String? = nil,
         deploymentTargets: DeploymentTargets? = Project.Environment.deploymentTarget,
         infoPlist: InfoPlist? = nil,

@@ -9,6 +9,16 @@ public extension Project {
         public static let bundlePrefix = "com.yapp01.app"
         public static let destinations: Destinations = .iOS
         public static let deploymentTarget: DeploymentTargets = .iOS("26.0")
+
+        /// 로컬 `tuist generate` 는 기본값(동적) — 개발 중 SwiftUI Previews/컴파일 속도.
+        /// 릴리스·CI 아카이브에서만 `TUIST_PRODUCT_TYPE=static-library tuist generate` 로 명시 전환.
+        /// → Tuist TMA 공식 권장(dynamic in dev, static in release)
+        public static var productType: ProjectDescription.Product {
+            if case let .string(value) = ProjectDescription.Environment.productType {
+                return value == "static-library" ? .staticLibrary : .framework
+            }
+            return .framework
+        }
     }
 }
 
