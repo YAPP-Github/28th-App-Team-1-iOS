@@ -25,10 +25,14 @@ AppFeature  --.users(.profileUpdated)-->       Users   (list/detail 갱신)
 | Feature | 의존 Domain (Interface) | Client |
 |---|---|---|
 | Home | (없음 — 외부 IO 없는 화면) | — |
+| Interview 군 (예정 — [ai-interview](../docs/work/ai-interview.md)) | DomainInterview | InterviewClient → [[interview]] |
 | Users (예정) | DomainUser | UserClient |
 | Profile (예정) | DomainProfile | ProfileClient |
 
 Domain `Implementation`(`liveValue`)은 App / Example 만 link. → [[home]]
+
+## 네트워킹 인프라
+모든 외부 HTTP IO 는 `CoreNetwork` 의 `NetworkClient` 계약을 거친다. 소비자는 Domain Implementation 뿐 — Feature 는 Domain(Client)만 알고 이 모듈을 모른다. baseURL 은 계별 xcconfig `API_BASE_URL`(→ DocC Environments)을 liveValue 가 읽는다. 첫 소비자 → [[interview#Client 계약]]
 
 ## 계획 — AI 면접
 YAPP APP 1팀 「AI 면접 연습 앱」을 우리 아키텍처에 녹인 후속 도메인 설계(현재 데모 탭과 별개) — Setup/Session/Report Feature + Domain 군.
