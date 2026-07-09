@@ -14,7 +14,7 @@ public enum ModulePath {
 
     public enum Domain: String, CaseIterable {
         case common = "Common"
-        // 추후 추가 예시: case interview = "Interview"
+        case auth = "Auth"
 
         public static let name = "Domain"
     }
