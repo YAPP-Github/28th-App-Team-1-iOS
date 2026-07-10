@@ -28,7 +28,7 @@ public struct HomeFeature {
     public init() {}
 
     public var body: some ReducerOf<Self> {
-        Reduce { state, action in
+        Reduce { _, action in
             switch action {
             case .view(.onAppear):
                 return .none
