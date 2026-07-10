@@ -15,13 +15,33 @@ public struct {{ name }}Feature {
         public init() {}
     }
 
-    public enum Action {}
+    public enum Action: ViewAction {
+        case view(View)
+        case inner(Inner)
+        case delegate(Delegate)
+
+        /// 사용자 입력·생명주기. View 의 send(...) 로만 방출된다.
+        public enum View: Sendable {
+            case onAppear
+        }
+
+        /// effect 결과·리듀서 내부 신호. 리듀서만 방출한다.
+        public enum Inner: Sendable {}
+
+        /// 부모(AppFeature) 통보. 부모는 이것만 매칭한다 (D1).
+        public enum Delegate: Sendable {}
+    }
 
     public init() {}
 
     public var body: some ReducerOf<Self> {
         Reduce { state, action in
-            return .none
+            switch action {
+            case .view(.onAppear):
+                return .none
+            case .inner, .delegate:
+                return .none
+            }
         }
     }
 }
@@ -37,40 +57,49 @@ public struct {{ name }}Feature {
 //         var isLoading = false
 //     }
 //
-// ▸ Action — 네이밍 규칙:
-//     · 사용자 입력           → userTappedRefresh, userChangedQuery(String)
-//     · 비동기 응답           → itemsLoaded([Item]), itemsSaved
-//     · 생명주기             → onAppear / onDisappear
-//     · @Bindable 양방향 바인딩 → BindableAction 채택 + case binding(BindingAction<State>)
-//     · 부모/코디네이터 통보    → case delegate(Delegate)   ← 다른 Feature 로의 전환은 오직 이걸로만 (D1)
-//     public enum Action: BindableAction {
+// ▸ Action — 3분류 (view / inner / delegate). 분류의 핵심은 경계 규칙이다:
+//     · view     : 사용자 입력·생명주기. View 의 send(...) 로만 방출
+//                  — onAppear / onDisappear, userTappedRefresh, userChangedQuery(String)
+//     · inner    : effect 결과·내부 신호. 리듀서만 방출 — itemsLoaded([Item]), itemsSaved
+//     · delegate : 부모(AppFeature) 통보. 부모는 자식의 delegate 만 매칭한다
+//                  — 다른 Feature 로의 전환은 오직 이걸로만 (D1)
+//     · async 카테고리는 두지 않는다 — 트리거는 view/inner 에서 effect 로, 응답은 inner 로 흡수.
+//     · @Bindable 양방향 바인딩이 필요하면 View 가 BindableAction 채택:
+//     public enum View: BindableAction, Sendable {
+//         case binding(BindingAction<State>)
 //         case onAppear
 //         case userTappedRefresh
-//         case itemsLoaded([Item])
-//         case binding(BindingAction<State>)
-//         case delegate(Delegate)
-//         public enum Delegate: Equatable { case itemSelected(Item.ID) }
 //     }
+//     public enum Inner: Sendable { case itemsLoaded([Item]) }
+//     public enum Delegate: Sendable { case itemSelected(Item.ID) }
 //
 // ▸ body — 비즈니스 로직 + 도메인 '내부' 네비게이션(Path/StackState)까지 여기서 처리.
+//   switch 가 길어지면 카테고리별 private func 으로 나눈다 (분류는 switch 총량을 줄여주지 않는다).
 //     public var body: some ReducerOf<Self> {
-//         BindingReducer()                          // binding 을 쓸 때만
+//         BindingReducer(action: \.view)             // View 가 BindableAction 일 때만
 //         Reduce { state, action in
 //             switch action {
-//             case .onAppear:
-//                 state.isLoading = true
-//                 return .run { send in
-//                     await send(.itemsLoaded(try await someClient.fetch()))
-//                 }
-//             case let .itemsLoaded(items):
-//                 state.isLoading = false
-//                 state.items = items
-//                 return .none
-//             case .userTappedRefresh:
-//                 return .send(.onAppear)
-//             case .binding, .delegate:
+//             case let .view(action):
+//                 return reduceView(&state, action)
+//             case let .inner(action):
+//                 return reduceInner(&state, action)
+//             case .delegate:
 //                 return .none                       // delegate 는 부모(AppFeature)가 처리 → 자신은 no-op
 //             }
+//         }
+//     }
+//
+//     private func reduceView(_ state: inout State, _ action: Action.View) -> Effect<Action> {
+//         switch action {
+//         case .onAppear:
+//             state.isLoading = true
+//             return .run { send in
+//                 await send(.inner(.itemsLoaded(try await someClient.fetch())))
+//             }
+//         case .userTappedRefresh:
+//             return .send(.view(.onAppear))
+//         case .binding:
+//             return .none
 //         }
 //     }
 //
