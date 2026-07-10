@@ -1,6 +1,5 @@
 import Core
 import Domain
-import DomainAuthInterface
 import Feature
 import Shared
 
