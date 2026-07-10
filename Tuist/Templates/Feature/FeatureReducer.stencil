@@ -92,14 +92,18 @@ public struct {{ name }}Feature {
 //     private func reduceView(_ state: inout State, _ action: Action.View) -> Effect<Action> {
 //         switch action {
 //         case .onAppear:
-//             state.isLoading = true
-//             return .run { send in
-//                 await send(.inner(.itemsLoaded(try await someClient.fetch())))
-//             }
+//             return fetchItems(&state)
 //         case .userTappedRefresh:
-//             return .send(.view(.onAppear))
+//             return fetchItems(&state)
 //         case .binding:
 //             return .none
+//         }
+//     }
+//
+//     private func fetchItems(_ state: inout State) -> Effect<Action> {
+//         state.isLoading = true
+//         return .run { send in
+//             await send(.inner(.itemsLoaded(try await someClient.fetch())))
 //         }
 //     }
 //
