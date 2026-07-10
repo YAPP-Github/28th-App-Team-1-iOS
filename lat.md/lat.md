@@ -6,6 +6,7 @@
 - [[domain.map]] — 도메인 간 관계도·cross-feature 숨은 의존
 - [[app]] — AppFeature 코디네이터·cross-feature 라우팅
 - [[home]] — Home 도메인 (현재 유일한 실 Feature)
+- [[auth]] — Auth 도메인 (카카오 소셜 로그인, 애플 확장 지점)
 
 > `refactor/#6` 은 TMA 스켈레톤 단계라 실 Feature 노드는 [[home]] 뿐이다. Users·Profile 등은 이관되면서 노드가 추가된다.
 
