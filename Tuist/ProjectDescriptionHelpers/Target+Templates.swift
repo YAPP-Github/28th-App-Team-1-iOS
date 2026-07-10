@@ -91,7 +91,15 @@ public extension Target {
             // xcconfig → Info.plist 치환. AppConfig.fromBundle()(이관 대기)이 여기서 읽는다.
             "APP_ENV": "$(APP_ENV)",
             "API_BASE_URL": "$(API_BASE_URL)",
-            "CFBundleDisplayName": "$(APP_DISPLAY_NAME)"
+            "CFBundleDisplayName": "$(APP_DISPLAY_NAME)",
+            // 카카오 로그인 — AppSecrets 가 여기서 읽는다.
+            "KAKAO_NATIVE_APP_KEY": "$(KAKAO_NATIVE_APP_KEY)",
+            "CFBundleURLTypes": [
+                [
+                    "CFBundleURLSchemes": ["kakao$(KAKAO_NATIVE_APP_KEY)"]
+                ]
+            ],
+            "LSApplicationQueriesSchemes": ["kakaokompassauth", "kakaolink", "kakaotalk"]
         ])
         f.sources = f.sources ?? ["Sources/**"]
         f.settings = f.settings ?? .settings(
