@@ -15,6 +15,7 @@ public struct NetworkRequest: Equatable, Sendable {
         case get = "GET"
         case post = "POST"
         case put = "PUT"
+        case patch = "PATCH"
         case delete = "DELETE"
     }
 
@@ -36,5 +37,28 @@ public struct NetworkRequest: Equatable, Sendable {
         self.queryItems = queryItems
         self.headers = headers
         self.body = body
+    }
+}
+
+public extension NetworkRequest {
+    /// Encodable body 를 JSON 으로 인코딩하고 `Content-Type: application/json` 을 세팅한 요청.
+    /// 응답 쪽 `NetworkClient.request(_:as:)` 와 대칭. 인코딩 실패는 `EncodingError` 그대로 던진다.
+    static func json(
+        method: Method,
+        path: String,
+        queryItems: [URLQueryItem] = [],
+        headers: [String: String] = [:],
+        body: some Encodable,
+        encoder: JSONEncoder = JSONEncoder()
+    ) throws -> NetworkRequest {
+        var headers = headers
+        headers["Content-Type"] = "application/json"
+        return NetworkRequest(
+            method: method,
+            path: path,
+            queryItems: queryItems,
+            headers: headers,
+            body: try encoder.encode(body)
+        )
     }
 }

@@ -18,4 +18,9 @@ public extension NetworkClient {
     static func mock(json value: some Encodable & Sendable) -> NetworkClient {
         NetworkClient(request: { _ in try JSONEncoder().encode(value) })
     }
+
+    /// 항상 주어진 에러를 던지는 mock — 에러 경로 테스트·Preview 용.
+    static func mock(throwing error: any Error) -> NetworkClient {
+        NetworkClient(request: { _ in throw error })
+    }
 }

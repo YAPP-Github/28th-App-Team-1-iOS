@@ -23,12 +23,21 @@ extension NetworkClient: DependencyKey {
         NetworkClient(
             request: { request in
                 let urlRequest = try request.urlRequest(baseURL: baseURL())
-                let (data, response) = try await session.data(for: urlRequest)
+                let data: Data
+                let response: URLResponse
+                do {
+                    (data, response) = try await session.data(for: urlRequest)
+                } catch let error as URLError where error.code == .cancelled {
+                    // 구조적 동시성 취소는 실패가 아니다 — TCA `.run` 이 조용히 무시하도록 취소로 전파
+                    throw CancellationError()
+                } catch let error as URLError {
+                    throw NetworkError.transport(error.code)
+                }
                 guard let http = response as? HTTPURLResponse else {
                     throw NetworkError.invalidResponse
                 }
                 guard (200..<300).contains(http.statusCode) else {
-                    throw NetworkError.statusCode(http.statusCode)
+                    throw NetworkError.statusCode(http.statusCode, data)
                 }
                 return data
             }
