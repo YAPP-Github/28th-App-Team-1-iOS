@@ -2,12 +2,20 @@ import ComposableArchitecture
 
 extension AuthClient {
     public static let testValue = AuthClient(
-        signInWithKakao: unimplemented("AuthClient.signInWithKakao")
+        configure: unimplemented("AuthClient.configure"),
+        handleOpenURL: unimplemented("AuthClient.handleOpenURL"),
+        signIn: unimplemented("AuthClient.signIn")
     )
 
     public static let previewValue = AuthClient(
-        signInWithKakao: {
-            SocialCredential(provider: .kakao, accessToken: "preview-access-token")
+        configure: { _ in },
+        handleOpenURL: { _ in },
+        signIn: { _ in
+            SocialCredential(
+                provider: .kakao,
+                accessToken: "preview-access-token",
+                refreshToken: "preview-refresh-token"
+            )
         }
     )
 }
