@@ -25,6 +25,7 @@ AppFeature  --.users(.profileUpdated)-->       Users   (list/detail 갱신)
 | Feature | 의존 Domain (Interface) | Client |
 |---|---|---|
 | Home | (없음 — 외부 IO 없는 화면) | — |
+| Auth | DomainAuth | AuthClient |
 | Users (예정) | DomainUser | UserClient |
 | Profile (예정) | DomainProfile | ProfileClient |
 
