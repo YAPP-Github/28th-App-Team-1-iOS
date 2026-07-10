@@ -10,7 +10,11 @@ let project = Project.makeModule(
             .composableArchitecture
         ])),
         .domain(implements: "Auth", factory: .init(dependencies: [
-            .composableArchitecture
+            .composableArchitecture,
+            // 카카오 SDK는 이 Implementation 안에만 존재한다 — Interface·Feature·App은 SDK를 모른다.
+            .kakaoSDKCommon,
+            .kakaoSDKAuth,
+            .kakaoSDKUser
         ])),
         .domain(testing: "Auth")
     ]
