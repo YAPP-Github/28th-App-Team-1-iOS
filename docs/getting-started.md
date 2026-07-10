@@ -41,6 +41,16 @@ tuist generate
 
 생성이 끝나면 `App.xcworkspace` 가 만들어지고 자동으로 Xcode 가 열립니다. (안 열리면 `open App.xcworkspace`)
 
+### 카카오 로그인 키 설정 (로그인 화면을 실제로 띄우려면 필수)
+
+```bash
+cp Projects/App/Config/Secrets.xcconfig.template Projects/App/Config/Secrets.xcconfig
+```
+
+카카오 개발자 콘솔(https://developers.kakao.com) > 내 애플리케이션 > 앱 키 > **Native 앱 키**를 발급받아 `Secrets.xcconfig`의 `KAKAO_NATIVE_APP_KEY =` 뒤에 채워 넣습니다. (`Secrets.xcconfig`는 gitignore 대상 — 커밋되지 않습니다)
+
+키가 비어있으면 Dev 빌드 실행 시 `AppSecrets`에서 `assertionFailure`가 발생합니다(빌드 자체는 성공).
+
 ---
 
 ## 2. 첫 빌드 & 실행

@@ -1,3 +1,5 @@
+#include? "Secrets.xcconfig"
+
 // 개발계 — Dev Configuration 에 연결.
 // `https:/$()/` 의 $() 는 xcconfig 가 // 를 주석으로 먹는 걸 피하는 트릭.
 APP_ENV = dev

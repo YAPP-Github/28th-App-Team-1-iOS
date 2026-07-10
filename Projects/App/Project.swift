@@ -6,6 +6,7 @@ let project = Project.makeModule(
     targets: [
         .app(factory: .init(dependencies: [
             .core, .domain, .feature, .shared,
+            .domain(interface: .auth),
             .composableArchitecture
         ])),
         // 전역 DocC 카탈로그 호스트 (코드 없음). Xcode: 스킴 ArchitectureDocs → Product → Build Documentation
