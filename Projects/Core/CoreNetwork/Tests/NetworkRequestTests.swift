@@ -43,6 +43,22 @@ final class NetworkRequestTests: XCTestCase {
         XCTAssertEqual(urlRequest.httpBody, body)
     }
 
+    func test_json_ContentType을_세팅하고_body를_인코딩한다() throws {
+        struct Payload: Encodable {
+            let title: String
+        }
+
+        let request = try NetworkRequest.json(
+            method: .post,
+            path: "/interviews",
+            body: Payload(title: "모의 면접")
+        )
+
+        XCTAssertEqual(request.method, .post)
+        XCTAssertEqual(request.headers["Content-Type"], "application/json")
+        XCTAssertEqual(request.body, Data(#"{"title":"모의 면접"}"#.utf8))
+    }
+
     func test_request_as_응답을_Decodable로_디코딩한다() async throws {
         struct Payload: Codable, Equatable {
             let id: Int

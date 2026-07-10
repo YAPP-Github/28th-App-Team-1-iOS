@@ -12,7 +12,8 @@ import Foundation
 // 모든 외부 HTTP IO 가 거치는 인프라 계약. 소비자는 Domain Implementation 뿐이다 —
 // Feature 는 Domain(Client)만 알고 이 모듈의 존재를 모른다.
 public struct NetworkClient: Sendable {
-    /// 요청을 보내고 응답 body 를 돌려준다. 2xx 밖이면 `NetworkError.statusCode` 를 던진다.
+    /// 요청을 보내고 응답 body 를 돌려준다. 실패는 `NetworkError` 로 정규화된다 —
+    /// 2xx 밖 → `.statusCode(코드, body)`, transport 실패 → `.transport`. 취소는 `CancellationError`.
     public var request: @Sendable (NetworkRequest) async throws -> Data
 
     public init(request: @escaping @Sendable (NetworkRequest) async throws -> Data) {
@@ -21,7 +22,7 @@ public struct NetworkClient: Sendable {
 }
 
 public extension NetworkClient {
-    /// 응답 body 를 Decodable 로 디코딩하는 편의 오버로드.
+    /// 응답 body 를 Decodable 로 디코딩하는 편의 오버로드. 디코딩 실패는 `DecodingError` 그대로 던진다.
     func request<Response: Decodable>(
         _ request: NetworkRequest,
         as type: Response.Type,
