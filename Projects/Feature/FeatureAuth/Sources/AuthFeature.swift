@@ -34,7 +34,7 @@ public struct AuthFeature {
         // 직속 멤버에만 적용됨) — store.receive(\.delegate.signedIn)을 쓰려면 명시가 필요하다.
         @CasePathable
         public enum Delegate: Equatable {
-            /// 소셜 로그인 완료 — provider AT/RT 수신까지 성공.
+            /// 소셜 로그인 완료 — provider 자격증명 수신까지 성공.
             case signedIn
         }
     }

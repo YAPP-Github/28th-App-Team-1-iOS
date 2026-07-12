@@ -11,7 +11,7 @@ public struct AuthClient: Sendable {
     /// 소셜 로그인 콜백 URL 처리. 카카오 콜백이면 SDK에 전달, 아니면 무시.
     /// 애플 로그인은 시스템 시트가 자체 처리해 콜백 URL이 없다.
     public var handleOpenURL: @MainActor @Sendable (URL) -> Void
-    /// 소셜 로그인 → provider가 발급한 AT/RT를 담은 자격증명 반환.
+    /// 소셜 로그인 → provider가 발급한 자격증명(SocialCredential) 반환.
     /// 백엔드 연동 시 이 반환값이 세션 교환의 입력이 된다.
     public var signIn: @Sendable (SocialProvider) async throws -> SocialCredential
 
