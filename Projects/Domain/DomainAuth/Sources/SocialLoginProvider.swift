@@ -7,7 +7,7 @@
 
 import DomainAuthInterface
 
-/// provider별 자격증명 획득 계약. 애플 로그인 추가 시 AppleLoginProvider가 이 protocol을 채택한다.
+/// provider별 자격증명 획득 계약. KakaoLoginProvider·AppleLoginProvider가 채택한다.
 protocol SocialLoginProvider: Sendable {
     func performLogin() async throws -> SocialCredential
 }

@@ -10,7 +10,7 @@ signIn은 `SocialCredential`을 반환한다 — provider별 발급물이 달라
 
 ## Provider 확장 지점
 
-`SocialProvider` enum과 Implementation 내부 `SocialLoginProvider` protocol이 확장 자리다. 애플 로그인이 이 지점으로 추가됐다 — `case apple` + `AppleLoginProvider` + signIn switch 한 갈래, 카카오 코드 무변경. 다음 provider도 같은 경로로 늘어난다.
+`SocialProvider` enum과 Implementation 내부 `SocialLoginProvider` protocol이 확장 자리다. 애플 로그인이 이 지점으로 추가됐다 — `case apple` + `AppleLoginProvider` + signIn switch 한 갈래. 카카오 로그인 흐름은 무변경(SocialCredential enum 마이그레이션으로 생성 문법 1곳만 갱신). 다음 provider도 같은 경로로 늘어난다.
 
 ## 카카오 로그인 흐름
 
