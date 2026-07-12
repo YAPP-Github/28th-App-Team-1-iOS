@@ -26,7 +26,7 @@ public struct AuthView: View {
 
             // 로그인 진행 중에는 모든 provider 버튼을 함께 비활성화한다 —
             // 레이아웃 유지 + 다른 provider로의 동시 로그인 시도 차단.
-            // 애플 로그인 버튼이 추가되면 이 VStack에 넣기만 하면 같은 규칙을 상속받는다.
+            // 새 provider 버튼은 이 VStack에 넣기만 하면 같은 규칙을 상속받는다.
             VStack(spacing: 12) {
                 Button {
                     store.send(.userTappedSignIn(.kakao))
@@ -36,6 +36,19 @@ public struct AuthView: View {
                         .padding()
                 }
                 .buttonStyle(.borderedProminent)
+
+                // 공식 SignInWithAppleButton은 onRequest/onCompletion이 뷰에서 플로우를
+                // 실행해 reducer→authClient seam을 우회하므로 쓰지 않는다 (스펙 결정 4).
+                // 디자인시스템 이관 시 카카오 버튼과 함께 교체 예정.
+                Button {
+                    store.send(.userTappedSignIn(.apple))
+                } label: {
+                    Label("Apple로 로그인", systemImage: "applelogo")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.black)
             }
             .padding(.horizontal, 24)
             .disabled(store.isLoading)
