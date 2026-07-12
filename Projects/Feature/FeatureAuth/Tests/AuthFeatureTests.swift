@@ -86,4 +86,30 @@ final class AuthFeatureTests: XCTestCase {
         // 차단함을 함께 증명한다(effect가 돌면 unimplemented가 테스트를 실패시킴).
         await store.send(.userTappedSignIn(.kakao))
     }
+
+    @MainActor
+    func test_애플로그인성공_provider전달_delegate신호() async {
+        let credential = SocialCredential.apple(
+            identityToken: "test-identity-token",
+            authorizationCode: "test-authorization-code"
+        )
+        let store = TestStore(initialState: AuthFeature.State()) {
+            AuthFeature()
+        } withDependencies: {
+            // 리듀서에 provider별 분기가 없음을 문서화 — 탭한 provider가
+            // signIn까지 그대로 전달되는 것이 이 테스트의 단언 대상이다.
+            $0.authClient.signIn = { provider in
+                XCTAssertEqual(provider, .apple)
+                return credential
+            }
+        }
+
+        await store.send(.userTappedSignIn(.apple)) {
+            $0.isLoading = true
+        }
+        await store.receive(\.signInFinished.success, credential) {
+            $0.isLoading = false
+        }
+        await store.receive(\.delegate.signedIn)
+    }
 }
