@@ -10,12 +10,19 @@ extension AuthClient {
     public static let previewValue = AuthClient(
         configure: { _ in },
         handleOpenURL: { _ in },
-        signIn: { _ in
-            SocialCredential(
-                provider: .kakao,
-                accessToken: "preview-access-token",
-                refreshToken: "preview-refresh-token"
-            )
+        signIn: { provider in
+            switch provider {
+            case .kakao:
+                .kakao(
+                    accessToken: "preview-access-token",
+                    refreshToken: "preview-refresh-token"
+                )
+            case .apple:
+                .apple(
+                    identityToken: "preview-identity-token",
+                    authorizationCode: "preview-authorization-code"
+                )
+            }
         }
     )
 }

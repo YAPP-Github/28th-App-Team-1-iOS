@@ -21,6 +21,9 @@ extension AuthClient: @retroactive DependencyKey {
             switch provider {
             case .kakao:
                 return try await KakaoLoginProvider().performLogin()
+            case .apple:
+                // AppleLoginProvider 연동 전 임시 — 다음 커밋에서 교체.
+                throw AuthError.unexpected
             }
         }
     )

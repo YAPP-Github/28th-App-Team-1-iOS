@@ -34,8 +34,7 @@ final class KakaoLoginProvider: SocialLoginProvider {
     func performLogin() async throws -> SocialCredential {
         do {
             let token = try await requestOAuthToken()
-            return SocialCredential(
-                provider: .kakao,
+            return .kakao(
                 accessToken: token.accessToken,
                 refreshToken: token.refreshToken
             )

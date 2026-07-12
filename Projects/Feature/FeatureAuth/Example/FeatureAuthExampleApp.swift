@@ -51,7 +51,7 @@ struct ExampleRootView: View {
                     .foregroundStyle(.green)
                 Text("로그인 성공")
                     .font(.headline)
-                Text("실제 앱은 여기서 카카오 SDK가 발급한 AT/RT를 signIn 반환값으로 받는다 (Example은 스텁)")
+                Text("실제 앱은 여기서 provider가 발급한 자격증명을 signIn 반환값으로 받는다 (Example은 스텁)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -75,13 +75,20 @@ struct FeatureAuthExampleApp: App {
                     $0.authClient = AuthClient(
                         configure: { _ in },
                         handleOpenURL: { _ in },
-                        signIn: { _ in
+                        signIn: { provider in
                             try await Task.sleep(for: .seconds(1))
-                            return SocialCredential(
-                                provider: .kakao,
-                                accessToken: "example-access-token",
-                                refreshToken: "example-refresh-token"
-                            )
+                            switch provider {
+                            case .kakao:
+                                return .kakao(
+                                    accessToken: "example-access-token",
+                                    refreshToken: "example-refresh-token"
+                                )
+                            case .apple:
+                                return .apple(
+                                    identityToken: "example-identity-token",
+                                    authorizationCode: "example-authorization-code"
+                                )
+                            }
                         }
                     )
                 }
