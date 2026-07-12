@@ -14,8 +14,7 @@ import XCTest
 final class AuthFeatureTests: XCTestCase {
     @MainActor
     func test_로그인성공_토큰수신후_delegate신호() async {
-        let credential = SocialCredential(
-            provider: .kakao,
+        let credential = SocialCredential.kakao(
             accessToken: "test-at",
             refreshToken: "test-rt"
         )
