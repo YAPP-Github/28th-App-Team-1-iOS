@@ -7,4 +7,4 @@ API_BASE_URL = https:/$()/dev-api.architecture.com
 
 // dev·운영과 동시 설치 가능하도록 bundle ID·표시 이름을 분리.
 BUNDLE_ID_SUFFIX = .qa
-APP_DISPLAY_NAME = App QA
+APP_DISPLAY_NAME = Hilit QA

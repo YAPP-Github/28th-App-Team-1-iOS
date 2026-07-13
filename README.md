@@ -19,11 +19,11 @@ tuist install
 tuist generate
 
 # 2) 앱 빌드
-xcodebuild -workspace App.xcworkspace -scheme App \
+xcodebuild -workspace Hilit.xcworkspace -scheme Hilit \
   -destination 'generic/platform=iOS Simulator' build
 ```
 
-- `App.xcworkspace` / 각 `*.xcodeproj` 는 **Tuist 생성물**이라 커밋하지 않는다. clone 후 `tuist generate` 로 만든다.
+- `Hilit.xcworkspace` / 각 `*.xcodeproj` 는 **Tuist 생성물**이라 커밋하지 않는다. clone 후 `tuist generate` 로 만든다.
 - 각 Feature 는 단독 실행용 **Example 앱**을 갖는다 — `Feature{Name}` 스킴(예: `FeatureHome`)의 실행 타겟이 Example 앱이다.
 
 ## 프로젝트 구조 (TMA)
@@ -56,7 +56,7 @@ Domain·Core·Shared 모듈은 `{Layer}{Name}Interface` / `Implementation` / `Te
 ## 테스트
 
 ```bash
-xcodebuild -workspace App.xcworkspace -scheme FeatureHome \
+xcodebuild -workspace Hilit.xcworkspace -scheme FeatureHome \
   -destination 'platform=iOS Simulator,name=iPhone 16' test
 ```
 

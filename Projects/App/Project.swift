@@ -2,7 +2,7 @@ import ProjectDescription
 import ProjectDescriptionHelpers
 
 let project = Project.makeModule(
-    name: "App",
+    name: "Hilit",
     targets: [
         .app(factory: .init(dependencies: [
             .core, .domain, .feature, .shared,
