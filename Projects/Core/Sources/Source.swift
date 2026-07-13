@@ -3,3 +3,4 @@
 // App/다른 모듈은 "import Core" 한 줄로 모든 Core 서브모듈에 접근한다.
 
 @_exported import CoreCommonImplementation
+@_exported import CoreNetworkImplementation
