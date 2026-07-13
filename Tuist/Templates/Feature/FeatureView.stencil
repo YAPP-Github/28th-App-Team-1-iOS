@@ -8,8 +8,10 @@
 import ComposableArchitecture
 import SwiftUI
 
+// @ViewAction 매크로가 send(_:) 를 제공한다 — View 는 store.send(.view(...)) 대신 send(.onAppear) 로만 방출.
+@ViewAction(for: {{ name }}Feature.self)
 public struct {{ name }}View: View {
-    @Bindable var store: StoreOf<{{ name }}Feature>
+    @Bindable public var store: StoreOf<{{ name }}Feature>
 
     public init(store: StoreOf<{{ name }}Feature>) {
         self.store = store
@@ -17,5 +19,6 @@ public struct {{ name }}View: View {
 
     public var body: some View {
         Text("{{ name }}")
+            .onAppear { send(.onAppear) }
     }
 }

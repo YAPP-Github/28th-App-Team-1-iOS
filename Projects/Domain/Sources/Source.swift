@@ -3,3 +3,4 @@
 
 @_exported import DomainCommonImplementation
 @_exported import DomainAuthImplementation
+@_exported import DomainInterviewImplementation

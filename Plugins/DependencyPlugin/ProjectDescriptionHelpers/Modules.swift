@@ -15,13 +15,14 @@ public enum ModulePath {
     public enum Domain: String, CaseIterable {
         case common = "Common"
         case auth = "Auth"
+        case interview = "Interview"
 
         public static let name = "Domain"
     }
 
     public enum Core: String, CaseIterable {
         case common = "Common"
-        // 추후 추가 예시: case network = "Network"
+        case network = "Network"
 
         public static let name = "Core"
     }
