@@ -10,7 +10,7 @@ clone 직후 **처음 빌드까지** 그대로 따라 하면 되는 문서. (아
 
 | 도구 | 용도 | 설치 |
 |---|---|---|
-| Xcode (iOS 26 SDK) | iOS 26 시뮬레이터 | App Store |
+| Xcode (iOS 26 SDK) | iOS 17.0+ | App Store |
 | Homebrew | 패키지 매니저 | https://brew.sh |
 | **Tuist 4.x** | 프로젝트 생성 (필수) | `brew install --cask tuist` 또는 `mise install tuist` |
 | **SwiftLint** | 빌드 시 자동 린트 (없으면 경고만, 빌드는 됨) | `brew install swiftlint` |

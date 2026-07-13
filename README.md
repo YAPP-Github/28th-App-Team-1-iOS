@@ -8,7 +8,7 @@ SwiftUI + TCA(The Composable Architecture) 레퍼런스 프로젝트.
 ## 요구 사항
 
 - [Tuist](https://tuist.io) 4.x (`mise install tuist` 또는 `brew install --cask tuist`)
-- Xcode (iOS 26 SDK) / iOS 26 시뮬레이터 (deployment target)
+- Xcode (iOS 26 SDK) / iOS 17.0+ (deployment target)
 - 의존성: [pointfreeco/swift-composable-architecture](https://github.com/pointfreeco/swift-composable-architecture) (Tuist 가 자동 해결)
 
 ## 빌드 & 실행
