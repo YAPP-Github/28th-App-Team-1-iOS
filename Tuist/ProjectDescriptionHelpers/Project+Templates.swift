@@ -5,8 +5,8 @@ import DependencyPlugin
 
 public extension Project {
     enum Environment {
-        public static let appName = "App"
-        public static let bundlePrefix = "com.yapp01.app"
+        public static let appName = "Hilit"
+        public static let bundlePrefix = "com.hilit.app"
         public static let destinations: Destinations = .iOS
         public static let deploymentTarget: DeploymentTargets = .iOS("26.0")
 

@@ -7,4 +7,4 @@ API_BASE_URL = https:/$()/dev-api.architecture.com
 
 // 운영계와 동시 설치 가능하도록 bundle ID·표시 이름을 분리.
 BUNDLE_ID_SUFFIX = .dev
-APP_DISPLAY_NAME = App Dev
+APP_DISPLAY_NAME = Hilit Dev
