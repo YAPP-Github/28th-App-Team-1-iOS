@@ -19,7 +19,7 @@ App → *Feature → Domain(interface) → Core(interface)
 - 각 레이어 루트 `Project.swift` 는 umbrella — `Sources/Source.swift` 의 `@_exported import` 로 하위 구현을 재노출한다.
 
 ## 핵심 결정 (Trade-off 기록)
-이 아키텍처를 규정하는 네 가지 결정과 각각의 비용.
+이 아키텍처를 규정하는 다섯 가지 결정과 각각의 비용.
 
 ### D1. Feature → Feature 의존 = 0 (delegate-only)
 다른 Feature 로의 전환은 `delegate` 신호만 올리고, 조립은 **AppFeature 에서만** 한다.
@@ -41,6 +41,12 @@ umbrella link 만으로는 liveValue 가 켜지지 않는다. 정적 아카이�
 - **적용 위치**: `Target+Templates.swift` 의 `.app(factory:)` / `feature(example:)` 팩토리 — 새 모듈 추가 시 아무것도 기억할 필요 없다(레지스트리 자동화 철학 유지).
 - **비용**: 미참조 코드까지 실려 바이너리 소폭 증가. 서드파티 **정적** 라이브러리 도입 시 중복 심볼이 링크 에러로 드러날 수 있다 — 침묵 폴백보다 낫고, 그때는 `ModulePath` 순회 `-force_load` 로 좁히는 마이그레이션 경로가 있다.
 - **검증법**: 심볼 검사는 `App.app/App`(debug 에선 123KB 스텁)이 아니라 **`App.debug.dylib`** 을 `nm` 으로 본다. 플래그 없이는 conformance 0개 — 빌드·테스트는 전부 성공하고 런타임에만 testValue 로 침묵 폴백하는 최악의 증상이었다.
+
+### D5. Reducer Action 3분류
+Action enum 을 `view(View)` / `inner(Inner)` / `delegate(Delegate)` 로 나눈다. `view` 는 View 의 `send(...)` 로만, `inner` 는 리듀서만 방출하고, 부모는 자식의 `delegate` 만 매칭한다.
+- **이유**: 경계 강제 — View 가 내부 액션을 쏘거나 부모가 자식 내부 액션을 가로채는 결합을 차단(D1 의 액션 레벨 버전). 커뮤니티 표준(Zabłocki action boundaries + TCA `@ViewAction` 매크로)과 일치. 표준형은 Feature 스캐폴드 템플릿(`Tuist/Templates/Feature/FeatureReducer.stencil`)이 찍어낸다.
+- **비용**: 테스트가 `store.send(.view(.onAppear))` 로 장황해진다. switch 총량은 줄지 않는다 — 길어지면 카테고리별 private `reduceView`/`reduceInner` 로 나눈다.
+- **비채택**: 별도 `async` 카테고리 — "async 트리거"와 "async 응답" 중 무엇을 담는지 경계가 애매해 바이크셰딩을 부른다. 응답은 `inner` 로 흡수. binding 은 `View: BindableAction` + `BindingReducer(action: \.view)` 로 view 아래 중첩.
 
 ## 디자인 시스템
 `Shared/SharedDesignSystem`(이관 대기) 토큰 우선: `Color.dsPrimary` / `Font.dsBody` / `CGFloat.dsL` / `PrimaryButton`. 하드코딩 지양.
