@@ -40,9 +40,10 @@ Projects/
 ## 패턴 — 순수 TCA
 
 - 화면 1개당 파일 2개: `XxxFeature.swift` (Reducer) + `XxxView.swift` (View). 둘 다 `Implementation/Sources/`.
+- **Action 3분류 (D5)**: `view(View)` / `inner(Inner)` / `delegate(Delegate)`. 경계 규칙 — `view` 는 View 의 `send(...)` 로만(사용자 입력·생명주기), `inner` 는 리듀서만(effect 결과·내부 신호), 부모는 자식의 `delegate` 만 매칭. `async` 카테고리는 두지 않는다(응답은 `inner` 로). binding 은 `View: BindableAction` + `BindingReducer(action: \.view)`. switch 가 길어지면 카테고리별 private `reduceView`/`reduceInner` 로 분리.
 - Reducer 가 비즈니스 로직 + 도메인 내부 navigation 처리. 도메인 안 navigation 은 그 Feature 자체 `Path` + `StackState` 로.
 - 외부 IO 는 항상 `@Dependency` 로 주입. Client 는 Domain 모듈(Interface + Implementation)
-- `@ObservableState` + `@Bindable var store` 표준. `WithViewStore` 금지
+- `@ObservableState` + `@Bindable var store` + `@ViewAction(for:)` 표준. `WithViewStore` 금지
 
 ## 새 모듈 추가 흐름
 
@@ -80,7 +81,7 @@ Projects/
 
 - **커밋**: 제목 1 줄 한국어. `type: 설명_부연` 형식. 본문은 정말 필요할 때만 2-3 줄.
 - **public 키워드**: 모듈 경계를 넘는 타입/함수에 필수
-- **Action 네이밍**: 사용자 입력 `userTapped...`, 응답 `...Loaded` / `...Saved`, 생명주기 `onAppear` / `onDisappear`, 부모/코디네이터 통보 `delegate(Delegate)`
+- **Action 네이밍**: 3분류(view/inner/delegate — 위 «패턴» 참조) 안에서 — 사용자 입력 `userTapped...`(View), 응답 `...Loaded` / `...Saved`(Inner), 생명주기 `onAppear` / `onDisappear`(View), 부모/코디네이터 통보 `delegate(Delegate)`
 - **Dependency `testValue`**: 반드시 `unimplemented`. 빈 클로저 금지
 - **DesignSystem 토큰 우선**: `Color.dsPrimary`, `Font.dsBody`, `CGFloat.dsL`, `PrimaryButton` 등. 하드코딩 (`Color.blue`, `16`) 지양
 - **@lat 주석 / lat.md 그래프**: 코드 변경 후 `@lat:` 라벨과 `lat.md/` 노드를 갱신하고 `lat check` 통과 (위 «lat.md 지식 그래프» 워크플로우 참조). cross-feature delegate 의존은 `import` 에 안 보이므로 `depends-on:` 으로 반드시 명시
@@ -93,7 +94,7 @@ Projects/
 - 타이포: `Font.dsLargeTitle` ~ `dsCaption` (8 단계)
 - spacing: `CGFloat.dsXS` (4) ~ `dsXXL` (32)
 - 컴포넌트: `PrimaryButton`
-- 에셋 로드: 새 색·이미지는 `Resources/Colors.xcassets`·`Assets.xcassets` 에 추가 후 `Color.load(_:)`·`Image.load(_:)` 단일 seam 으로 토큰 노출 (번들 해석 일원화 + 개발 빌드 `assert` 로 오타 검출). 이미지 토큰은 `Image.DS` 네임스페이스 — 늘어나면 `Ic`/`Img` 중첩 enum 으로 묶는다 (GmoneyTrans 방식)
+- 에셋 로드: 새 색·이미지는 `Resources/Colors.xcassets`·`Assets.xcassets` 에 추가 후 `Color.load(_:)`·`Image.load(_:)` 단일 seam 으로 토큰 노출 (번들 해석 일원화 + 개발 빌드 `assert` 로 오타 검출). 이미지 토큰은 `Image.DS` 네임스페이스 — 늘어나면 `Ic`/`Img` 중첩 enum 으로 묶는다
 
 ## 참고
 
