@@ -27,7 +27,6 @@ final class AuthFeatureTests: XCTestCase {
         await store.send(.userTappedSignIn(.kakao)) {
             $0.isLoading = true
         }
-        // AT/RT 수신을 payload로 단언 — State에는 보관하지 않는다(스펙 결정).
         await store.receive(\.signInFinished.success, credential) {
             $0.isLoading = false
         }
@@ -45,7 +44,6 @@ final class AuthFeatureTests: XCTestCase {
         await store.send(.userTappedSignIn(.kakao)) {
             $0.isLoading = true
         }
-        // 얼럿·delegate 없이 종료 — exhaustive TestStore라 추가 receive가 있으면 실패한다.
         await store.receive(\.signInFinished.failure) {
             $0.isLoading = false
         }
@@ -82,8 +80,6 @@ final class AuthFeatureTests: XCTestCase {
         let store = TestStore(initialState: initialState) {
             AuthFeature()
         }
-        // authClient 미주입(testValue = unimplemented) — 가드가 effect 실행 전에
-        // 차단함을 함께 증명한다(effect가 돌면 unimplemented가 테스트를 실패시킴).
         await store.send(.userTappedSignIn(.kakao))
     }
 
@@ -96,8 +92,6 @@ final class AuthFeatureTests: XCTestCase {
         let store = TestStore(initialState: AuthFeature.State()) {
             AuthFeature()
         } withDependencies: {
-            // 리듀서에 provider별 분기가 없음을 문서화 — 탭한 provider가
-            // signIn까지 그대로 전달되는 것이 이 테스트의 단언 대상이다.
             $0.authClient.signIn = { provider in
                 XCTAssertEqual(provider, .apple)
                 return credential

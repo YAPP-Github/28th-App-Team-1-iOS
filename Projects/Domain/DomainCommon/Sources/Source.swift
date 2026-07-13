@@ -1,3 +1,8 @@
-import DomainCommonInterface
+//
+//  Source.swift
+//  DomainCommonImplementation
+//
+//  Created by 서정원 on 26/07/13.
+//
 
-// public final class DomainCommonImplementation: DomainCommonInterface {}
+import DomainCommonInterface

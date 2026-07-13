@@ -1,3 +1,10 @@
+//
+//  HilitApp.swift
+//  Hilit
+//
+//  Created by 서정원 on 26/07/13.
+//
+
 import Core
 import Domain
 import Feature
@@ -19,7 +26,6 @@ struct HilitApp: App {
             AppView(store: Store(initialState: AppFeature.State()) {
                 AppFeature()
             })
-            // lifecycle 이벤트 → auth seam 연결. 어느 SDK가 URL을 소비하는지는 App이 모른다.
             .onOpenURL { url in
                 authClient.handleOpenURL(url)
             }

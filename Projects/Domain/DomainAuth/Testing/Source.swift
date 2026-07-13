@@ -1,3 +1,8 @@
-import DomainAuthInterface
+//
+//  Source.swift
+//  DomainAuthTesting
+//
+//  Created by 서정원 on 26/07/13.
+//
 
-// DomainAuth 테스트 지원 헬퍼. 현재 비어 있음.
+import DomainAuthInterface
