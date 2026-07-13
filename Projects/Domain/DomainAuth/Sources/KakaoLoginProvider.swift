@@ -36,11 +36,17 @@ final class KakaoLoginProvider: SocialLoginProvider {
     }
 
     private static func mapKakaoError(_ error: Error) -> AuthError {
-        if let sdkError = error as? SdkError,
-           case .ClientFailed(reason: .Cancelled, errorMessage: _) = sdkError {
+        switch error {
+        case SdkError.ClientFailed(reason: .Cancelled, _),
+            SdkError.AuthFailed(reason: .AccessDenied,_):
             return .cancelled
+        case SdkError.AuthFailed(reason: .ServerError, _):
+            return .serverUnavailable
+        case is URLError:
+            return .networkFailure
+        default:
+            return .unexpected
         }
-        return .unexpected
     }
 
     private func requestOAuthToken() async throws -> OAuthToken {
