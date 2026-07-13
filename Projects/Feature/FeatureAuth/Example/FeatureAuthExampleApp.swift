@@ -69,9 +69,6 @@ struct FeatureAuthExampleApp: App {
                 store: Store(initialState: ExampleRoot.State()) {
                     ExampleRoot()
                 } withDependencies: {
-                    // Example 그래프에는 DomainAuthImplementation(liveValue)이 없다 — Interface까지만
-                    // 링크되므로 이 스텁이 없으면 testValue(unimplemented)로 떨어진다.
-                    // 1초 지연: 로딩 중 버튼 비활성화(반투명) 상태를 눈으로 확인할 수 있게.
                     $0.authClient = AuthClient(
                         configure: { _ in },
                         handleOpenURL: { _ in },

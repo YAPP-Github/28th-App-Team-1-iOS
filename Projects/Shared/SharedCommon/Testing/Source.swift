@@ -1,3 +1,8 @@
-import SharedCommonInterface
+//
+//  Source.swift
+//  SharedCommonTesting
+//
+//  Created by 서정원 on 26/07/13.
+//
 
-// public final class SharedCommonInterfaceMock: SharedCommonInterface {}
+import SharedCommonInterface

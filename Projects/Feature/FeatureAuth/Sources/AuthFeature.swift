@@ -29,9 +29,6 @@ public struct AuthFeature {
 
         public enum Alert: Equatable {}
 
-        // Delegate는 Action의 직접 멤버가 아니라 중첩 타입이라 @Reducer의
-        // MemberAttributeMacro가 @CasePathable을 자동 부여하지 않는다(State/Action 이름의
-        // 직속 멤버에만 적용됨) — store.receive(\.delegate.signedIn)을 쓰려면 명시가 필요하다.
         @CasePathable
         public enum Delegate: Equatable {
             /// 소셜 로그인 완료 — provider 자격증명 수신까지 성공.
@@ -47,8 +44,6 @@ public struct AuthFeature {
         Reduce { state, action in
             switch action {
             case let .userTappedSignIn(provider):
-                // 뷰의 .disabled는 재렌더 전 연속 탭을 막지 못한다 — 동시 로그인 플로우 2개가 뜨면
-                // SDK 싱글턴의 completion 핸들러가 덮어써지므로 리듀서에서 확정적으로 차단한다.
                 guard !state.isLoading else { return .none }
                 state.isLoading = true
                 return .run { send in
@@ -95,7 +90,7 @@ private extension AuthError {
     var alertMessage: String {
         switch self {
         case .cancelled:
-            return "" // 도달 불가 — .cancelled는 얼럿 생성 전에 차단됨 (exhaustive switch 때문에만 존재)
+            return ""
         case .networkFailure:
             return "네트워크 연결을 확인해주세요."
         case .invalidCredential:
