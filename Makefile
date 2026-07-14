@@ -77,11 +77,11 @@ scaffold-shared:
 device ?= iPhone 16
 test:
 	@[ -n "$(scheme)" ] || (echo "❌ scheme 필수. 예: make test scheme=FeatureHome"; exit 1)
-	@dests=$$(xcodebuild -workspace App.xcworkspace -scheme $(scheme) -showdestinations 2>/dev/null \
+	@dests=$$(xcodebuild -workspace Hilit.xcworkspace -scheme $(scheme) -showdestinations 2>/dev/null \
 		| awk '/Ineligible destinations/{exit} /platform:iOS Simulator/ && /OS:/'); \
-	if [ -z "$$dests" ]; then echo "❌ '$(scheme)' 스킴의 destination 조회 실패. App.xcworkspace 가 없으면 make generate 먼저 실행하세요."; exit 1; fi; \
+	if [ -z "$$dests" ]; then echo "❌ '$(scheme)' 스킴의 destination 조회 실패. Hilit.xcworkspace 가 없으면 make generate 먼저 실행하세요."; exit 1; fi; \
 	id=$$(printf '%s\n' "$$dests" | grep -F "name:$(device) }" \
 		| sed -E 's/.*id:([0-9A-Fa-f-]+),.*OS:([0-9.]+).*/\2 \1/' \
 		| sort -t. -k1,1n -k2,2n | tail -1 | awk '{print $$2}'); \
 	if [ -z "$$id" ]; then echo "❌ '$(device)' 는 '$(scheme)' 스킴의 destination 에 없음. 인식되는 시뮬레이터:"; printf '%s\n' "$$dests"; exit 1; fi; \
-	xcodebuild -workspace App.xcworkspace -scheme $(scheme) -destination "platform=iOS Simulator,id=$$id" test
+	xcodebuild -workspace Hilit.xcworkspace -scheme $(scheme) -destination "platform=iOS Simulator,id=$$id" test

@@ -1,4 +1,9 @@
+//
+//  Source.swift
+//  SharedCommonTests
+//
+//  Created by 서정원 on 26/07/13.
+//
+
 import XCTest
 @testable import SharedCommonImplementation
-
-// 단위테스트는 작성하지 않는다. placeholder.

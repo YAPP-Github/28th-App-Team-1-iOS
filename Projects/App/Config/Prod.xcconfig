@@ -1,7 +1,9 @@
+#include? "Secrets.xcconfig"
+
 // 운영계 — Release Configuration 에 연결.
 APP_ENV = prod
 API_BASE_URL = https:/$()/api.architecture.com
 
-// 운영계는 접미사 없음 → com.yapp01.app
+// 운영계는 접미사 없음 → com.hilit.app
 BUNDLE_ID_SUFFIX =
-APP_DISPLAY_NAME = App
+APP_DISPLAY_NAME = Hilit
