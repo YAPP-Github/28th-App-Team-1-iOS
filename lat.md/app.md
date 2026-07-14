@@ -15,6 +15,11 @@
 2. 앱 레벨 sheet 로 Profile 제시: `state.editProfile = ProfileFeature.State(profileId: id)` (`@Presents` + `.ifLet`)
 3. 저장 완료 `editProfile(.presented(.delegate(.profileSaved(profile))))` → sheet 닫고 `users(.profileUpdated(profile))` 로 결과 통보
 
+대표 흐름 — **로그인 루트 게이트**:
+1. `AuthFeature`가 카카오 로그인 성공 시 `delegate(.signedIn)` 방출
+2. AppFeature가 수신해 `state.isAuthenticated = true`로 전환 → `AppView`가 `AuthView`에서 `TabView`로 교체
+3. 토큰 영속화가 없으므로 앱 재실행 시 다시 `AuthView`부터 시작(의도된 범위 제한) → [[auth]]
+
 → 큰 그림은 [[domain.map]].
 
 ## 주의사항

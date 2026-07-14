@@ -1,4 +1,9 @@
+//
+//  Source.swift
+//  CoreCommonTests
+//
+//  Created by 서정원 on 26/07/13.
+//
+
 import XCTest
 @testable import CoreCommonImplementation
-
-// 단위테스트는 작성하지 않는다. 타겟/폴더 구조 유지 목적의 placeholder.

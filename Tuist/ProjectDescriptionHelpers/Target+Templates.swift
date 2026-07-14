@@ -9,6 +9,7 @@ public struct TargetFactory {
     var bundleId: String?
     var deploymentTargets: DeploymentTargets?
     var infoPlist: InfoPlist?
+    var entitlements: Entitlements?
     var sources: SourceFilesList?
     var resources: ResourceFileElements?
     var scripts: [TargetScript]
@@ -22,6 +23,7 @@ public struct TargetFactory {
         bundleId: String? = nil,
         deploymentTargets: DeploymentTargets? = Project.Environment.deploymentTarget,
         infoPlist: InfoPlist? = nil,
+        entitlements: Entitlements? = nil,
         sources: SourceFilesList? = nil,
         resources: ResourceFileElements? = nil,
         scripts: [TargetScript] = [],
@@ -34,6 +36,7 @@ public struct TargetFactory {
         self.bundleId = bundleId
         self.deploymentTargets = deploymentTargets
         self.infoPlist = infoPlist
+        self.entitlements = entitlements
         self.sources = sources
         self.resources = resources
         self.scripts = scripts
@@ -57,6 +60,7 @@ public extension Target {
             infoPlist: factory.infoPlist,
             sources: factory.sources,
             resources: factory.resources,
+            entitlements: factory.entitlements,
             scripts: factory.scripts,
             dependencies: factory.dependencies,
             settings: factory.settings
@@ -91,7 +95,20 @@ public extension Target {
             // xcconfig → Info.plist 치환. AppConfig.fromBundle()(이관 대기)이 여기서 읽는다.
             "APP_ENV": "$(APP_ENV)",
             "API_BASE_URL": "$(API_BASE_URL)",
-            "CFBundleDisplayName": "$(APP_DISPLAY_NAME)"
+            "CFBundleDisplayName": "$(APP_DISPLAY_NAME)",
+            // 카카오 로그인 — AppSecrets 가 여기서 읽는다.
+            "KAKAO_NATIVE_APP_KEY": "$(KAKAO_NATIVE_APP_KEY)",
+            "CFBundleURLTypes": [
+                [
+                    "CFBundleURLSchemes": ["kakao$(KAKAO_NATIVE_APP_KEY)"]
+                ]
+            ],
+            "LSApplicationQueriesSchemes": ["kakaokompassauth", "kakaolink", "kakaotalk"]
+        ])
+        // Sign in with Apple — 시뮬레이터는 이 entitlement만으로 동작하고, 실기기는
+        // Apple Developer 포털에서 App ID(환경별 번들 접미사 각각)에 capability 활성화가 필요하다.
+        f.entitlements = f.entitlements ?? .dictionary([
+            "com.apple.developer.applesignin": ["Default"]
         ])
         f.sources = f.sources ?? ["Sources/**"]
         f.settings = f.settings ?? .settings(

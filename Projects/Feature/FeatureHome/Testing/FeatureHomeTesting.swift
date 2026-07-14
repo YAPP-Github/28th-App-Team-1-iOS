@@ -1,3 +1,8 @@
-import FeatureHomeImplementation
+//
+//  FeatureHomeTesting.swift
+//  FeatureHomeTesting
+//
+//  Created by 서정원 on 26/07/13.
+//
 
-// FeatureHome 테스트 공용 지원 (샘플 State 등). 현재 비어 있음.
+import FeatureHomeImplementation

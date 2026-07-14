@@ -10,7 +10,7 @@ clone 직후 **처음 빌드까지** 그대로 따라 하면 되는 문서. (아
 
 | 도구 | 용도 | 설치 |
 |---|---|---|
-| Xcode (iOS 26 SDK) | iOS 26 시뮬레이터 | App Store |
+| Xcode (iOS 26 SDK) | iOS 17.0+ | App Store |
 | Homebrew | 패키지 매니저 | https://brew.sh |
 | **Tuist 4.x** | 프로젝트 생성 (필수) | `brew install --cask tuist` 또는 `mise install tuist` |
 | **SwiftLint** | 빌드 시 자동 린트 (없으면 경고만, 빌드는 됨) | `brew install swiftlint` |
@@ -39,7 +39,17 @@ tuist generate
 
 `make generate` 한 줄로 위 두 명령을 한 번에 돌릴 수도 있습니다.
 
-생성이 끝나면 `App.xcworkspace` 가 만들어지고 자동으로 Xcode 가 열립니다. (안 열리면 `open App.xcworkspace`)
+생성이 끝나면 `Hilit.xcworkspace` 가 만들어지고 자동으로 Xcode 가 열립니다. (안 열리면 `open Hilit.xcworkspace`)
+
+### 카카오 로그인 키 설정 (로그인 화면을 실제로 띄우려면 필수)
+
+```bash
+cp Projects/App/Config/Secrets.xcconfig.template Projects/App/Config/Secrets.xcconfig
+```
+
+카카오 개발자 콘솔(https://developers.kakao.com) > 내 애플리케이션 > 앱 키 > **Native 앱 키**를 발급받아 `Secrets.xcconfig`의 `KAKAO_NATIVE_APP_KEY =` 뒤에 채워 넣습니다. (`Secrets.xcconfig`는 gitignore 대상 — 커밋되지 않습니다)
+
+키가 비어있으면 Dev 빌드 실행 시 `AppSecrets`에서 `assertionFailure`가 발생합니다(빌드 자체는 성공).
 
 ---
 
@@ -51,7 +61,7 @@ tuist generate
 
 **터미널에서:**
 ```bash
-xcodebuild -workspace App.xcworkspace -scheme App \
+xcodebuild -workspace Hilit.xcworkspace -scheme Hilit \
   -destination 'generic/platform=iOS Simulator' build
 ```
 
@@ -69,7 +79,7 @@ xcodebuild -workspace App.xcworkspace -scheme App \
 
 | 증상 | 원인 / 해결 |
 |---|---|
-| `App.xcworkspace` 가 없다 | `tuist generate` 안 함. → 1번 실행 |
+| `Hilit.xcworkspace` 가 없다 | `tuist generate` 안 함. → 1번 실행 |
 | 빌드 중 `SwiftLint 미설치` 경고 | `brew install swiftlint` (없어도 빌드는 됨 — 경고만) |
 | 첫 빌드가 너무 오래 걸림 | 정상 (swift-syntax 매크로 첫 컴파일). 기다리면 됨 |
 | 의존성/모듈을 못 찾음 | `tuist install` 다시 → `tuist generate`. 그래도면 `tuist clean` 후 재시도 |

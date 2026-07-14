@@ -1,3 +1,8 @@
-import FeatureCommonImplementation
+//
+//  Source.swift
+//  FeatureCommonTesting
+//
+//  Created by 서정원 on 26/07/13.
+//
 
-// FeatureCommon 테스트 공용 지원. 현재 비어 있음.
+import FeatureCommonImplementation

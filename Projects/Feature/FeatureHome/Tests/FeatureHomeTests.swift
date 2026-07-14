@@ -1,4 +1,9 @@
+//
+//  FeatureHomeTests.swift
+//  FeatureHomeTests
+//
+//  Created by 서정원 on 26/07/13.
+//
+
 import XCTest
 @testable import FeatureHomeImplementation
-
-// 단위테스트는 작성하지 않는다. placeholder.

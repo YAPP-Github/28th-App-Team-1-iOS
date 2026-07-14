@@ -5,10 +5,10 @@ import DependencyPlugin
 
 public extension Project {
     enum Environment {
-        public static let appName = "App"
-        public static let bundlePrefix = "com.yapp01.app"
+        public static let appName = "Hilit"
+        public static let bundlePrefix = "com.hilit.app"
         public static let destinations: Destinations = .iOS
-        public static let deploymentTarget: DeploymentTargets = .iOS("26.0")
+        public static let deploymentTarget: DeploymentTargets = .iOS("17.0")
 
         /// 로컬 `tuist generate` 는 기본값(동적) — 개발 중 SwiftUI Previews/컴파일 속도.
         /// 릴리스·CI 아카이브에서만 `TUIST_PRODUCT_TYPE=static-library tuist generate` 로 명시 전환.
