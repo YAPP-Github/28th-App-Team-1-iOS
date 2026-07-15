@@ -7,7 +7,8 @@ public extension Project {
     enum Environment {
         public static let appName = "Hilit"
         public static let bundlePrefix = "com.hilit.app"
-        public static let destinations: Destinations = .iOS
+        /// iPhone 전용 서비스 — iPad·Mac(Designed for iPad) 미지원 결정 (2026-07-15).
+        public static let destinations: Destinations = [.iPhone]
         public static let deploymentTarget: DeploymentTargets = .iOS("17.0")
 
         /// 로컬 `tuist generate` 는 기본값(동적) — 개발 중 SwiftUI Previews/컴파일 속도.
@@ -30,7 +31,8 @@ public extension Settings {
             base: ["GENERATE_INFOPLIST_FILE": "YES"],
             configurations: [
                 .debug(name: "Dev", settings: ["SWIFT_ACTIVE_COMPILATION_CONDITIONS": "$(inherited) DEV"]),
-                .debug(name: "QA"),
+                // QA 는 테스터 배포용 — release 타입(최적화 -O·assert 제거)으로 실사용과 같은 동작을 빌드한다.
+                .release(name: "QA"),
                 .release(name: "Release")
             ]
         )
@@ -42,11 +44,13 @@ public extension Settings {
 public extension Project {
     static func makeModule(
         name: String,
+        options: Project.Options = .options(),
         targets: [Target],
         schemes: [Scheme] = []
     ) -> Self {
         .init(
             name: name,
+            options: options,
             settings: .standard,
             targets: targets,
             schemes: schemes
