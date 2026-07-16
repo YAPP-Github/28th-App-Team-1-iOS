@@ -3,6 +3,8 @@ import ProjectDescriptionHelpers
 
 let project = Project.makeModule(
     name: "Hilit",
+    // 자동 스킴(Run=Dev/Archive=Release 혼합)을 끄고 아래 환경별 스킴만 노출한다 — QA 실행·아카이브 경로 확보.
+    options: .options(automaticSchemesOptions: .disabled),
     targets: [
         .app(factory: .init(dependencies: [
             .core, .domain, .feature, .shared,
@@ -16,6 +18,10 @@ let project = Project.makeModule(
         ]))
     ],
     schemes: [
+        // 환경별 앱 스킴 — Run/Archive 가 같은 계(Configuration)를 가리킨다. → DocC Environments
+        .app(name: "Hilit-Dev", configuration: "Dev"),
+        .app(name: "Hilit-QA", configuration: "QA"),
+        .app(name: "Hilit-Prod", configuration: "Release"),
         .scheme(
             name: "ArchitectureDocs",
             shared: true,

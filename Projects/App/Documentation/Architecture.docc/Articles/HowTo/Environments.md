@@ -20,17 +20,19 @@ App Info.plist  ($(APP_ENV), $(API_BASE_URL), …)
    Feature 는 안 본다 (환경 무관)
 ```
 
-> **현재 상태**: `refactor/#6` 골격에는 **3개 빌드 Configuration(Dev/QA/Release)** + 계별 xcconfig 연결 + Info.plist 치환(`APP_ENV`·`API_BASE_URL`·표시 이름)·번들 접미사까지 들어있다 — Dev(.dev)·QA(.qa)·운영이 번들 ID 가 달라 한 기기에 동시 설치된다. `AppConfig` 주입 모듈(`fromBundle()`)과 계별 스킴은 **이관 대기**다.
+> **현재 상태**: **3개 빌드 Configuration(Dev/QA/Release)** + 계별 xcconfig 연결 + Info.plist 치환(`APP_ENV`·`API_BASE_URL`·표시 이름·버전)·번들 접미사 + **계별 스킴(`Hilit-Dev`/`Hilit-QA`/`Hilit-Prod`)** 까지 들어있다 — Dev(.dev)·QA(.qa)·운영이 번들 ID 가 달라 한 기기에 동시 설치된다. `AppConfig` 주입 모듈(`fromBundle()`)은 **이관 대기**다.
 
 ## 지금 실재하는 것 — 3 Configuration + xcconfig 연결
 
 Tuist 는 워크스페이스 내 모든 프로젝트가 **같은 Configuration 집합**을 갖길 요구한다. 그래서 이름은 `Tuist/ProjectDescriptionHelpers/Project+Templates.swift` 의 `Settings.standard` **한 곳**에서 정의해 전 모듈이 공유한다.
 
-| Configuration | 타입 | 컴파일 조건 | 용도 |
-|---|---|---|---|
-| `Dev` | debug | `+ DEV` | 개발계 — 디버그 표면 노출 |
-| `QA` | debug | — | 테스터 배포 (디버그 메뉴 없음) |
-| `Release` | release | — | 운영계 |
+| Configuration | 타입 | 컴파일 조건 | 스킴 | 용도 |
+|---|---|---|---|---|
+| `Dev` | debug | `+ DEV` | `Hilit-Dev` | 개발계 — 디버그 표면 노출 |
+| `QA` | release | — | `Hilit-QA` | 테스터 배포 — 실사용과 같은 최적화(-O), 디버그 메뉴 없음 |
+| `Release` | release | — | `Hilit-Prod` | 운영계 |
+
+계별 스킴은 Run/Archive/Profile 이 전부 **같은 Configuration** 을 가리킨다(`Scheme.app` 팩토리). Tuist 자동 스킴은 Run=Dev/Archive=Release 로 섞여 QA 를 빌드할 경로가 없어서, App 프로젝트는 자동 스킴을 끄고(`automaticSchemesOptions: .disabled`) 스킴을 명시 선언한다. 앱 버전은 `Config/Version.xcconfig`(`MARKETING_VERSION`·`CURRENT_PROJECT_VERSION`) 단일 소스에서 세 계로 흘러든다. 배포 계(QA/Release)는 `KakaoKeyGuard` 빌드 페이즈가 `KAKAO_NATIVE_APP_KEY` 미설정 시 빌드를 실패시킨다 — Release 에서 assertionFailure 가 침묵해 빈 키로 출시되는 사고를 막는다.
 
 `Dev` 에만 `SWIFT_ACTIVE_COMPILATION_CONDITIONS` 에 `DEV` 가 들어간다. 디버그 전용 코드는 `#if DEV` 로 감싸 **QA·Release 바이너리엔 코드 자체가 존재하지 않게** 한다(런타임 플래그가 아니라 컴파일 타임 제거 → 운영 빌드에 디버그 표면이 새지 않음).
 
@@ -79,8 +81,10 @@ withDependencies {
 ## 관련 파일
 
 - `Tuist/ProjectDescriptionHelpers/Project+Templates.swift` — `Settings.standard` (워크스페이스 전역 3 Configuration)
-- `Projects/App/Config/{Dev,QA,Prod}.xcconfig` — 계별 값
+- `Projects/App/Config/{Dev,QA,Prod}.xcconfig` — 계별 값 · `Version.xcconfig` — 버전 단일 소스
 - `Tuist/ProjectDescriptionHelpers/Target+Templates.swift` — `.app()` 팩토리 (xcconfig 연결 + Info.plist 치환 + 번들 접미사)
+- `Tuist/ProjectDescriptionHelpers/Scheme+Templates.swift` — `Scheme.app` (계별 스킴 팩토리, App `Project.swift` 가 선언)
+- `Tuist/ProjectDescriptionHelpers/TargetScript+SecretsGuard.swift` — `KakaoKeyGuard` (배포 계 시크릿 빌드 게이트)
 
 ## See Also
 

@@ -18,8 +18,8 @@ SwiftUI + TCA(The Composable Architecture) 레퍼런스 프로젝트.
 tuist install
 tuist generate
 
-# 2) 앱 빌드
-xcodebuild -workspace Hilit.xcworkspace -scheme Hilit \
+# 2) 앱 빌드 (환경별 스킴: Hilit-Dev / Hilit-QA / Hilit-Prod)
+xcodebuild -workspace Hilit.xcworkspace -scheme Hilit-Dev \
   -destination 'generic/platform=iOS Simulator' build
 ```
 
