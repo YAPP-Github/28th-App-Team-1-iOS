@@ -12,7 +12,7 @@ clone 직후 **처음 빌드까지** 그대로 따라 하면 되는 문서. (아
 |---|---|---|
 | Xcode (iOS 26 SDK) | iOS 17.0+ | App Store |
 | Homebrew | 패키지 매니저 | https://brew.sh |
-| **Tuist 4.x** | 프로젝트 생성 (필수) | `brew install --cask tuist` 또는 `mise install tuist` |
+| **Tuist 4.x** | 프로젝트 생성 (필수) | `mise install` (권장 — 루트 `.mise.toml` 의 버전 핀 사용) 또는 `brew install --cask tuist` |
 | **SwiftLint** | 빌드 시 자동 린트 (없으면 경고만, 빌드는 됨) | `brew install swiftlint` |
 | ripgrep | `make lat` 검색 가속 (선택) | `brew install ripgrep` |
 
@@ -49,19 +49,19 @@ cp Projects/App/Config/Secrets.xcconfig.template Projects/App/Config/Secrets.xcc
 
 카카오 개발자 콘솔(https://developers.kakao.com) > 내 애플리케이션 > 앱 키 > **Native 앱 키**를 발급받아 `Secrets.xcconfig`의 `KAKAO_NATIVE_APP_KEY =` 뒤에 채워 넣습니다. (`Secrets.xcconfig`는 gitignore 대상 — 커밋되지 않습니다)
 
-키가 비어있으면 Dev 빌드 실행 시 `AppSecrets`에서 `assertionFailure`가 발생합니다(빌드 자체는 성공).
+키가 비어있으면 **Dev 는 빌드 경고**만 내고(카카오 로그인 시도 시 `AppSecrets` 의 `assertionFailure`), **QA/Release 는 빌드가 실패**합니다 — `KakaoKeyGuard` 빌드 페이즈가 빈 키로 배포 빌드가 나가는 걸 차단합니다.
 
 ---
 
 ## 2. 첫 빌드 & 실행
 
 **Xcode 에서:**
-1. 스킴 선택 → **`App`**
+1. 스킴 선택 → **`Hilit-Dev`**
 2. 시뮬레이터(iPhone 16 등) 선택 → **⌘R**
 
 **터미널에서:**
 ```bash
-xcodebuild -workspace Hilit.xcworkspace -scheme Hilit \
+xcodebuild -workspace Hilit.xcworkspace -scheme Hilit-Dev \
   -destination 'generic/platform=iOS Simulator' build
 ```
 
@@ -71,7 +71,7 @@ xcodebuild -workspace Hilit.xcworkspace -scheme Hilit \
 각 Feature 는 단독 실행용 **Example 앱**이 있습니다: `Feature{Name}` 스킴(현재 골격에선 `FeatureHome`)을 선택 후 ⌘R — 그 스킴의 실행 타겟이 Example 앱입니다.
 
 ### 개발계 / QA / 운영계
-빌드 Configuration `Dev` / `QA` / `Release` 로 나뉩니다 (`Dev` 에만 `DEV` 컴파일 조건). 스킴의 Run 구성에서 Configuration 을 바꿔 전환합니다. 동작 원리·값 주입(`@Dependency(\.appConfig)`)·확장법은 DocC `Environments` 아티클 (`ArchitectureDocs` 스킴 → Build Documentation) 참고.
+빌드 Configuration `Dev` / `QA` / `Release` 로 나뉩니다 (`Dev` 에만 `DEV` 컴파일 조건, QA/Release 는 release 타입). **환경별 스킴 `Hilit-Dev` / `Hilit-QA` / `Hilit-Prod` 로 전환합니다** — 각 스킴의 Run/Archive 가 같은 Configuration 을 가리킵니다. 동작 원리·값 주입(`@Dependency(\.appConfig)`)·확장법은 DocC `Environments` 아티클 (`ArchitectureDocs` 스킴 → Build Documentation) 참고.
 
 ---
 

@@ -1,0 +1,4 @@
+# 팀 공통 도구 버전 핀 — mise(https://mise.jdx.dev)가 읽는다.
+# Tuist 버전이 다르면 생성물(xcodeproj)이 달라지므로 반드시 여기서 버전을 올린다.
+[tools]
+tuist = "4.79.7"

@@ -16,7 +16,7 @@ import PackageDescription
         baseSettings: .settings(
             configurations: [
                 .debug(name: "Dev"),
-                .debug(name: "QA"),
+                .release(name: "QA"),   // 워크스페이스와 동일하게 QA 도 release 타입
                 .release(name: "Release")
             ]
         )

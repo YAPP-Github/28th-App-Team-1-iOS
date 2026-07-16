@@ -96,6 +96,9 @@ public extension Target {
             "APP_ENV": "$(APP_ENV)",
             "API_BASE_URL": "$(API_BASE_URL)",
             "CFBundleDisplayName": "$(APP_DISPLAY_NAME)",
+            // 버전 단일 소스는 Config/Version.xcconfig — 여기서 빌드 세팅으로 치환된다.
+            "CFBundleShortVersionString": "$(MARKETING_VERSION)",
+            "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
             // 카카오 로그인 — AppSecrets 가 여기서 읽는다.
             "KAKAO_NATIVE_APP_KEY": "$(KAKAO_NATIVE_APP_KEY)",
             "CFBundleURLTypes": [
@@ -111,11 +114,13 @@ public extension Target {
             "com.apple.developer.applesignin": ["Default"]
         ])
         f.sources = f.sources ?? ["Sources/**"]
+        f.resources = f.resources ?? ["Resources/**"]   // Assets.xcassets(AppIcon 등) — 누락 시 앱 번들에 에셋이 안 들어간다
+        f.scripts = f.scripts + [.kakaoKeyGuard]        // 배포 계(QA/Release)에서 카카오 키 미설정 시 빌드 실패
         f.settings = f.settings ?? .settings(
             base: compositionRootBase,   // -all_load (D4) — settings 를 교체해도 이 base 는 유지할 것
             configurations: [
                 .debug(name: "Dev", xcconfig: "Config/Dev.xcconfig"),
-                .debug(name: "QA", xcconfig: "Config/QA.xcconfig"),
+                .release(name: "QA", xcconfig: "Config/QA.xcconfig"),
                 .release(name: "Release", xcconfig: "Config/Prod.xcconfig")
             ]
         )
