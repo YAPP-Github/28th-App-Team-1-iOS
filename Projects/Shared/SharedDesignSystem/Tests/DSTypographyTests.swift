@@ -1,0 +1,56 @@
+//
+//  DSTypographyTests.swift
+//  SharedDesignSystemTests
+//
+//  Created by EunseoKim on 26/07/18.
+//
+
+import CoreGraphics
+import SwiftUI
+import Testing
+import UIKit
+@testable import SharedDesignSystemImplementation
+
+/// Figma «Hilit_Style Guide_1» 스펙과 토큰 정의의 1:1 을 고정하는 테스트.
+/// 스케일 개정 시 이 표부터 Figma 와 대조해 갱신한다.
+struct DSTypographyTests {
+
+    @Test("토큰은 Figma 스타일명 23종과 정확히 일치한다")
+    func tokenNamesMatchFigmaStyles() {
+        let expected: Set<String> = [
+            "head1_sb_32", "head2_m_32", "head3_sb_24", "head4_m_24", "head5_r_24",
+            "sub1_sb_22", "sub2_m_22", "sub3_r_22",
+            "sub4_sb_20", "sub5_m_20", "sub6_r_20",
+            "sub7_sb_18", "sub8_m_18", "sub9_r_18",
+            "body1_sb_16", "body2_m_16", "body3_r_16",
+            "body4_sb_14", "body5_m_14", "body6_r_14",
+            "body7_sb_12", "body8_m_12", "body9_r_12"
+        ]
+        #expect(Set(DSTypography.allCases.map(\.figmaName)) == expected)
+    }
+
+    @Test("행간은 Figma 표의 px 열과 일치한다")
+    func lineHeightsMatchFigmaTable() {
+        let expectedBySize: [CGFloat: CGFloat] = [32: 38, 24: 31, 22: 29, 20: 26, 18: 23, 16: 21, 14: 18, 12: 16]
+        for typography in DSTypography.allCases {
+            #expect(typography.lineHeight == expectedBySize[typography.size])
+        }
+    }
+
+    @Test("자간은 전 스타일 -2.5% 다")
+    func letterSpacingIsMinusTwoPointFivePercentForAllStyles() {
+        for typography in DSTypography.allCases {
+            #expect(typography.letterSpacing == typography.size * -0.025)
+        }
+    }
+
+    /// 번들 리소스(otf) → CoreText 등록 → UIFont 로드까지의 실런타임 경로 검증.
+    /// static-library 모드에서 Tuist 합성 번들(`Bundle.module`)이 깨지면 여기서 잡힌다.
+    @Test("폰트가 번들에서 등록되어 UIFont 로 로드된다")
+    func fontsRegisterFromBundleAndLoadAsUIFont() {
+        _ = Font.ds(.head1)   // 첫 토큰 접근 → registerOnce 트리거
+        for weight in Pretendard.Weight.allCases {
+            #expect(UIFont(name: weight.postScriptName, size: 16) != nil, "\(weight.postScriptName) 로드 실패")
+        }
+    }
+}
