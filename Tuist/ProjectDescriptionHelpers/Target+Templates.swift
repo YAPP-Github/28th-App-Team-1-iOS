@@ -92,7 +92,7 @@ public extension Target {
         f.bundleId = f.bundleId ?? "\(Project.Environment.bundlePrefix)$(BUNDLE_ID_SUFFIX)"
         f.infoPlist = f.infoPlist ?? .extendingDefault(with: [
             "UILaunchScreen": [:],
-            // xcconfig → Info.plist 치환. AppConfig.fromBundle()(이관 대기)이 여기서 읽는다.
+            // xcconfig → Info.plist 치환. NetworkClient.defaultBaseURL()(API_BASE_URL)·AppSecrets(카카오 키)가 여기서 읽는다.
             "APP_ENV": "$(APP_ENV)",
             "API_BASE_URL": "$(API_BASE_URL)",
             "CFBundleDisplayName": "$(APP_DISPLAY_NAME)",
