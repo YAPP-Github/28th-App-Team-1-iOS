@@ -12,7 +12,8 @@ UI 코드를 작성·수정하기 전에 읽는 진입점. 여기엔 **규칙과
 | 영역 | 상태 | 요약 | 상세 |
 |---|---|---|---|
 | 타이포그래피 | ✅ 구현 | `.dsTypography(.head1)` — Pretendard 23종 (head1~5·sub1~9·body1~9), 행간·자간 내장 | **`.claude/design/typography.md`** |
-| 색상 | 이관 대기 | `Color.dsPrimary` / `dsBackground` / `dsTextPrimary` / `dsTextSecondary` 시맨틱 토큰 예정 | 구현 시 분리 |
+| 색상 | ✅ 구현 | `Color.dsBlack` / `dsWhite` / `dsGreen500` / `dsGray50·400·500·800` — Figma 변수 1:1, `Color.load` seam | **`.claude/design/colors.md`** |
+| 이미지 | ✅ 구현 | `Image.DS.icClose` 등 — `Image.load` seam, template 렌더링 | **`.claude/design/colors.md`** (규칙 동거) |
 | Spacing | 이관 대기 | `CGFloat.dsXS`(4) ~ `dsXXL`(32), `.padding(.dsL)` 식 사용 예정 | 구현 시 분리 |
 | 컴포넌트 | 이관 대기 | `PrimaryButton` 등 — 커스텀 만들기 전에 표준 컴포넌트 먼저 검토 | 구현 시 분리 |
 
