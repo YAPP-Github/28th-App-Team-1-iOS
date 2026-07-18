@@ -18,14 +18,20 @@ extension TokenStore: @retroactive DependencyKey {
             account: "auth-tokens"
         )
         return TokenStore(
-            load: { keychain.load() },
-            save: { keychain.save($0) },
-            clear: { keychain.clear() }
+            load: { try keychain.load() },
+            save: { try keychain.save($0) },
+            clear: { try keychain.clear() }
         )
     }
 }
 
 // MARK: - Keychain
+
+enum KeychainError: Error {
+    case operationFailed(OSStatus)
+    case decodingFailed(Error)
+    case encodingFailed(Error)
+}
 
 private final class KeychainTokenStore: Sendable {
     private let service: String
@@ -44,20 +50,43 @@ private final class KeychainTokenStore: Sendable {
         ]
     }
 
-    func load() -> AuthTokens? {
+    func load() throws -> AuthTokens? {
         var query = baseQuery
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
 
         var item: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
-              let data = item as? Data
-        else { return nil }
-        return try? JSONDecoder().decode(AuthTokens.self, from: data)
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+
+        // 아이템이 없으면 nil 반환 (에러 아님)
+        if status == errSecItemNotFound {
+            return nil
+        }
+
+        // 다른 실패는 에러
+        guard status == errSecSuccess else {
+            throw KeychainError.operationFailed(status)
+        }
+
+        guard let data = item as? Data else {
+            return nil
+        }
+
+        do {
+            return try JSONDecoder().decode(AuthTokens.self, from: data)
+        } catch {
+            throw KeychainError.decodingFailed(error)
+        }
     }
 
-    func save(_ tokens: AuthTokens) {
-        guard let data = try? JSONEncoder().encode(tokens) else { return }
+    func save(_ tokens: AuthTokens) throws {
+        let data: Data
+        do {
+            data = try JSONEncoder().encode(tokens)
+        } catch {
+            throw KeychainError.encodingFailed(error)
+        }
+
         let attributes: [String: Any] = [
             kSecValueData as String: data,
             // 기기 잠금 해제 후 접근 가능 + 이 기기 한정 (백업 이전 금지)
@@ -67,11 +96,20 @@ private final class KeychainTokenStore: Sendable {
         if status == errSecItemNotFound {
             var addQuery = baseQuery
             attributes.forEach { addQuery[$0.key] = $0.value }
-            SecItemAdd(addQuery as CFDictionary, nil)
+            let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+            guard addStatus == errSecSuccess else {
+                throw KeychainError.operationFailed(addStatus)
+            }
+        } else if status != errSecSuccess {
+            throw KeychainError.operationFailed(status)
         }
     }
 
-    func clear() {
-        SecItemDelete(baseQuery as CFDictionary)
+    func clear() throws {
+        let status = SecItemDelete(baseQuery as CFDictionary)
+        // 아이템이 없으면 성공으로 간주 (이미 삭제됨)
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            throw KeychainError.operationFailed(status)
+        }
     }
 }
