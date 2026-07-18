@@ -29,7 +29,7 @@ public enum ModulePath {
 
     public enum Shared: String, CaseIterable {
         case common = "Common"
-        // 추후 추가 예시: case designSystem = "DesignSystem"
+        case designSystem = "DesignSystem"
 
         public static let name = "Shared"
     }

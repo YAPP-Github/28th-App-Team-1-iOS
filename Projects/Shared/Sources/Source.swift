@@ -2,3 +2,4 @@
 // 하위 서브모듈(Implementation)을 재노출(re-export)하는 역할만 한다.
 
 @_exported import SharedCommonImplementation
+@_exported import SharedDesignSystemImplementation
