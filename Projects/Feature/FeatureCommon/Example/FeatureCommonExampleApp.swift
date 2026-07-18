@@ -22,7 +22,7 @@ struct FeatureCommonExampleApp: App {
                     // 최하단 transport(NetworkClient)와 토큰만 스텁으로 교체:
                     // Domain liveValue 와 AuthorizedNetworkClient(Bearer 첨부)의 경로·디코딩 코드는 실제로 실행된다.
                     let tokenStore = TokenStore.inMemory
-                    tokenStore.save(AuthTokens(accessToken: "example-access", refreshToken: "example-refresh"))
+                    try? tokenStore.save(AuthTokens(accessToken: "example-access", refreshToken: "example-refresh"))
                     $0.tokenStore = tokenStore
                     $0.networkClient = NetworkClient(request: { _ in
                         try await Task.sleep(for: .seconds(1))   // 로딩 상태 확인용

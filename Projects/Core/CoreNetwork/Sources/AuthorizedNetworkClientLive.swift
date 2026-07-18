@@ -45,7 +45,7 @@ final class AuthorizedEngine: Sendable {
     }
 
     func authorizedResource(path: String) async throws -> AuthorizedResource {
-        guard let tokens = tokenStore.load() else { throw NotAuthenticatedError() }
+        guard let tokens = try tokenStore.load() else { throw NotAuthenticatedError() }
         let baseURL = try NetworkClient.defaultBaseURL()
         guard let url = try NetworkRequest(path: path).urlRequest(baseURL: baseURL).url else {
             throw NetworkError.invalidURL
@@ -54,7 +54,7 @@ final class AuthorizedEngine: Sendable {
     }
 
     private func perform(_ request: NetworkRequest, allowsRefresh: Bool) async throws -> Data {
-        guard let tokens = tokenStore.load() else { throw NotAuthenticatedError() }
+        guard let tokens = try tokenStore.load() else { throw NotAuthenticatedError() }
         var authorized = request
         authorized.headers["Authorization"] = "Bearer \(tokens.accessToken)"
         do {
@@ -73,20 +73,28 @@ final class AuthorizedEngine: Sendable {
     /// Rotation 재발급 — 성공 시 새 페어 저장. `LOGIN_EXPIRED`(리프레시도 만료)면 토큰 폐기 후 전파.
     /// 동시 다발 만료에서 재발급이 한 번만 나가도록 직렬화한다 — 기존 Refresh Token 이
     /// 재발급 즉시 만료되므로(Rotation) 중복 재발급은 로그아웃 사고로 이어진다.
+    /// 재발급 중 로그인/로그아웃으로 세션이 바뀌면 stale 재발급 결과는 버린다 (세션 충돌 방지).
     private func refreshTokens() async throws {
         do {
             try await refresher.run { [networkClient, tokenStore] in
-                guard let tokens = tokenStore.load() else { throw NotAuthenticatedError() }
+                guard let tokensAtStart = try tokenStore.load() else { throw NotAuthenticatedError() }
                 let request = try NetworkRequest.json(
                     method: .post,
                     path: Self.refreshPath,
-                    body: RefreshBody(refreshToken: tokens.refreshToken)
+                    body: RefreshBody(refreshToken: tokensAtStart.refreshToken)
                 )
                 let renewed: AuthTokens = try await networkClient.api(request)
-                tokenStore.save(renewed)
+
+                // 재발급 중 세션이 바뀌었는지 검사 — 바뀌었으면 stale 결과는 버린다 (세션 충돌 방지)
+                guard let currentTokens = try tokenStore.load(),
+                      currentTokens.refreshToken == tokensAtStart.refreshToken else {
+                    // 세션이 바뀜 (로그아웃 또는 새 로그인) — renewed 는 저장 안 함
+                    return
+                }
+                try tokenStore.save(renewed)
             }
         } catch let error as ServerError where error.code == Self.loginExpiredCode {
-            tokenStore.clear()  // 재로그인 필요 — 세션 잔해 제거
+            try tokenStore.clear()  // 재로그인 필요 — 세션 잔해 제거
             throw error
         }
     }

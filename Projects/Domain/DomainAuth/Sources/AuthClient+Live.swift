@@ -41,12 +41,12 @@ extension AuthClient: @retroactive DependencyKey {
                         body: credential.loginBody
                     )
                     let tokens: AuthTokens = try await network.api(request)
-                    tokenStore.save(tokens)
+                    try tokenStore.save(tokens)
                 }
             },
             refresh: {
                 try await mappingAuthError {
-                    guard let tokens = tokenStore.load() else { throw NotAuthenticatedError() }
+                    guard let tokens = try tokenStore.load() else { throw NotAuthenticatedError() }
                     let request = try NetworkRequest.json(
                         method: .post,
                         path: "/api/v1/auth/token/refresh",
@@ -54,16 +54,16 @@ extension AuthClient: @retroactive DependencyKey {
                     )
                     do {
                         let renewed: AuthTokens = try await network.api(request)
-                        tokenStore.save(renewed)
+                        try tokenStore.save(renewed)
                     } catch let error as ServerError where error.code == "LOGIN_EXPIRED" {
-                        tokenStore.clear()  // 리프레시도 만료 — 재로그인 필요
+                        try tokenStore.clear()  // 리프레시도 만료 — 재로그인 필요
                         throw error
                     }
                 }
             },
             logout: {
                 // Access Token 은 만료까지 서버에서 유효 — 클라이언트 토큰은 서버 응답과 무관하게 반드시 삭제 (Swagger 명세)
-                defer { tokenStore.clear() }
+                defer { try? tokenStore.clear() }
                 try await mappingAuthError {
                     try await authorizedNetwork.api(NetworkRequest(method: .delete, path: "/api/v1/auth/logout"))
                 }
@@ -74,7 +74,7 @@ extension AuthClient: @retroactive DependencyKey {
                 }
             },
             isAuthenticated: {
-                tokenStore.load() != nil
+                (try? tokenStore.load()) != nil
             }
         )
     }
@@ -133,10 +133,14 @@ private extension AuthError {
         case is NotAuthenticatedError:
             self = .sessionExpired
         case let error as NetworkError:
-            if case .transport = error {
+            switch error {
+            case .transport:
                 self = .networkFailure
-            } else {
+            case .statusCode(let status, _) where status >= 500:
                 self = .serverUnavailable
+            default:
+                // .invalidBaseURL, .invalidURL, .invalidResponse, 또는 4xx .statusCode
+                self = .unexpected
             }
         default:
             self = .unexpected
