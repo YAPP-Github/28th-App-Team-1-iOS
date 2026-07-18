@@ -16,6 +16,10 @@ public enum ModulePath {
         case common = "Common"
         case auth = "Auth"
         case interview = "Interview"
+        // D14 서버 API 도메인 미러링 — [[api]]
+        case jd = "JD"
+        case job = "Job"
+        case portfolio = "Portfolio"
 
         public static let name = "Domain"
     }

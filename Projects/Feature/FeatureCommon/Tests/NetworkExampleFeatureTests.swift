@@ -6,7 +6,7 @@
 //
 
 import ComposableArchitecture
-import DomainInterviewInterface
+import DomainJobInterface
 import XCTest
 @testable import FeatureCommonImplementation
 
@@ -16,15 +16,15 @@ final class NetworkExampleFeatureTests: XCTestCase {
         let store = TestStore(initialState: NetworkExampleFeature.State()) {
             NetworkExampleFeature()
         } withDependencies: {
-            $0.interviewClient.fetchInterviews = { Interview.previews }
+            $0.jobClient.jobs = { Job.previews }
         }
 
         await store.send(.view(.onAppear)) {
             $0.isLoading = true
         }
-        await store.receive(\.inner.interviewsLoaded.success) {
+        await store.receive(\.inner.jobsLoaded.success) {
             $0.isLoading = false
-            $0.interviews = Interview.previews
+            $0.jobs = Job.previews
         }
     }
 
@@ -35,30 +35,30 @@ final class NetworkExampleFeatureTests: XCTestCase {
         let store = TestStore(initialState: NetworkExampleFeature.State()) {
             NetworkExampleFeature()
         } withDependencies: {
-            $0.interviewClient.fetchInterviews = {
+            $0.jobClient.jobs = {
                 if shouldFail.value {
                     shouldFail.setValue(false)
                     throw FetchError()
                 }
-                return Interview.previews
+                return Job.previews
             }
         }
 
         await store.send(.view(.onAppear)) {
             $0.isLoading = true
         }
-        await store.receive(\.inner.interviewsLoaded.failure) {
+        await store.receive(\.inner.jobsLoaded.failure) {
             $0.isLoading = false
-            $0.errorMessage = "면접 목록을 불러오지 못했어요."
+            $0.errorMessage = "직무 목록을 불러오지 못했어요."
         }
 
         await store.send(.view(.userTappedRetry)) {
             $0.isLoading = true
             $0.errorMessage = nil
         }
-        await store.receive(\.inner.interviewsLoaded.success) {
+        await store.receive(\.inner.jobsLoaded.success) {
             $0.isLoading = false
-            $0.interviews = Interview.previews
+            $0.jobs = Job.previews
         }
     }
 }
