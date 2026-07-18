@@ -92,7 +92,7 @@ public extension Target {
         f.bundleId = f.bundleId ?? "\(Project.Environment.bundlePrefix)$(BUNDLE_ID_SUFFIX)"
         f.infoPlist = f.infoPlist ?? .extendingDefault(with: [
             "UILaunchScreen": [:],
-            // xcconfig → Info.plist 치환. AppConfig.fromBundle()(이관 대기)이 여기서 읽는다.
+            // xcconfig → Info.plist 치환. NetworkClient.defaultBaseURL()(API_BASE_URL)·AppSecrets(카카오 키)가 여기서 읽는다.
             "APP_ENV": "$(APP_ENV)",
             "API_BASE_URL": "$(API_BASE_URL)",
             "CFBundleDisplayName": "$(APP_DISPLAY_NAME)",
@@ -106,7 +106,10 @@ public extension Target {
                     "CFBundleURLSchemes": ["kakao$(KAKAO_NATIVE_APP_KEY)"]
                 ]
             ],
-            "LSApplicationQueriesSchemes": ["kakaokompassauth", "kakaolink", "kakaotalk"]
+            "LSApplicationQueriesSchemes": ["kakaokompassauth", "kakaolink", "kakaotalk"],
+            // ⚠️ D14 개발 서버가 HTTP + IP 직결이라 임시 전면 허용 (Dev.xcconfig 참조).
+            //    운영 서버 HTTPS 전환 시 반드시 제거 — App Store 심사에서 사유 요구됨.
+            "NSAppTransportSecurity": ["NSAllowsArbitraryLoads": true]
         ])
         // Sign in with Apple — 시뮬레이터는 이 entitlement만으로 동작하고, 실기기는
         // Apple Developer 포털에서 App ID(환경별 번들 접미사 각각)에 capability 활성화가 필요하다.
@@ -212,7 +215,11 @@ public extension Target {
         var f = factory
         f.name = "Feature\(name)Example"
         f.product = .app
-        f.infoPlist = f.infoPlist ?? .extendingDefault(with: ["UILaunchScreen": [:]])
+        f.infoPlist = f.infoPlist ?? .extendingDefault(with: [
+            "UILaunchScreen": [:],
+            // D14 개발 서버(HTTP + IP)로 직접 API 를 칠 수 있도록 앱 타겟과 동일한 ATS 예외 (위 .app() 주석 참조)
+            "NSAppTransportSecurity": ["NSAllowsArbitraryLoads": true]
+        ])
         f.sources = f.sources ?? ["Example/**"]
         f.dependencies = [.target(name: "Feature\(name)Implementation")] + f.dependencies
         f.settings = f.settings ?? compositionRootSettings   // Domain Implementation(liveValue) link 시에도 활성화 보장 (D4)

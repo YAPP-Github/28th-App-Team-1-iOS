@@ -2,9 +2,10 @@
 #include "Version.xcconfig"
 
 // 개발계 — Dev Configuration 에 연결.
-// `https:/$()/` 의 $() 는 xcconfig 가 // 를 주석으로 먹는 걸 피하는 트릭.
+// `http:/$()/` 의 $() 는 xcconfig 가 // 를 주석으로 먹는 걸 피하는 트릭.
+// D14 개발 서버 (HTTP + IP 직결 — ATS 예외는 Target+Templates.swift 참조. HTTPS 전환 시 함께 제거)
 APP_ENV = dev
-API_BASE_URL = https:/$()/dev-api.architecture.com
+API_BASE_URL = http:/$()/43.202.34.84:8080
 
 // 운영계와 동시 설치 가능하도록 bundle ID·표시 이름을 분리.
 BUNDLE_ID_SUFFIX = .dev

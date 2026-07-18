@@ -69,25 +69,25 @@ struct FeatureAuthExampleApp: App {
                 store: Store(initialState: ExampleRoot.State()) {
                     ExampleRoot()
                 } withDependencies: {
-                    $0.authClient = AuthClient(
-                        configure: { _ in },
-                        handleOpenURL: { _ in },
-                        signIn: { provider in
-                            try await Task.sleep(for: .seconds(1))
-                            switch provider {
-                            case .kakao:
-                                return .kakao(
-                                    accessToken: "example-access-token",
-                                    refreshToken: "example-refresh-token"
-                                )
-                            case .apple:
-                                return .apple(
-                                    identityToken: "example-identity-token",
-                                    authorizationCode: "example-authorization-code"
-                                )
-                            }
+                    // 서버 세션 계열(login·refresh·logout·check)은 previewValue 스텁을 그대로 쓰고,
+                    // 이 Example 이 시연하는 signIn 만 지연 붙인 스텁으로 교체한다.
+                    var authClient = AuthClient.previewValue
+                    authClient.signIn = { provider in
+                        try await Task.sleep(for: .seconds(1))
+                        switch provider {
+                        case .kakao:
+                            return .kakao(
+                                accessToken: "example-access-token",
+                                refreshToken: "example-refresh-token"
+                            )
+                        case .apple:
+                            return .apple(
+                                identityToken: "example-identity-token",
+                                authorizationCode: "example-authorization-code"
+                            )
                         }
-                    )
+                    }
+                    $0.authClient = authClient
                 }
             )
         }

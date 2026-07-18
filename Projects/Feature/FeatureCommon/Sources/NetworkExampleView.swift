@@ -6,7 +6,7 @@
 //
 
 import ComposableArchitecture
-import DomainInterviewInterface
+import DomainJobInterface
 import SwiftUI
 
 @ViewAction(for: NetworkExampleFeature.self)
@@ -24,17 +24,17 @@ public struct NetworkExampleView: View {
             } else if let errorMessage = store.errorMessage {
                 errorView(message: errorMessage)
             } else {
-                interviewList
+                jobList
             }
         }
         .onAppear { send(.onAppear) }
     }
 
-    private var interviewList: some View {
-        List(store.interviews) { interview in
+    private var jobList: some View {
+        List(store.jobs) { job in
             VStack(alignment: .leading) {
-                Text(interview.title)
-                Text(interview.createdAt, format: .dateTime.year().month().day())
+                Text(job.label)
+                Text(job.jobRole)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -50,7 +50,7 @@ public struct NetworkExampleView: View {
 }
 
 #Preview {
-    // Preview 는 InterviewClient.previewValue(샘플)가 자동 선택된다 — 네트워크 없음.
+    // Preview 는 JobClient.previewValue(샘플)가 자동 선택된다 — 네트워크 없음.
     NetworkExampleView(
         store: Store(initialState: NetworkExampleFeature.State()) {
             NetworkExampleFeature()
