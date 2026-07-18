@@ -83,18 +83,12 @@ Projects/
 - **public 키워드**: 모듈 경계를 넘는 타입/함수에 필수
 - **Action 네이밍**: 3분류(view/inner/delegate — 위 «패턴» 참조) 안에서 — 사용자 입력 `userTapped...`(View), 응답 `...Loaded` / `...Saved`(Inner), 생명주기 `onAppear` / `onDisappear`(View), 부모/코디네이터 통보 `delegate(Delegate)`
 - **Dependency `testValue`**: 반드시 `unimplemented`. 빈 클로저 금지
-- **DesignSystem 토큰 우선**: `Color.dsPrimary`, `Font.dsBody`, `CGFloat.dsL`, `PrimaryButton` 등. 하드코딩 (`Color.blue`, `16`) 지양
+- **DesignSystem 토큰 우선**: `Color.dsPrimary`, `Font.dsBody`, `CGFloat.dsL`, `PrimaryButton` 등. 하드코딩 (`Color.blue`, `16`) 지양. 토큰 목록·상세 → `.claude/design.md`
 - **@lat 주석 / lat.md 그래프**: 코드 변경 후 `@lat:` 라벨과 `lat.md/` 노드를 갱신하고 `lat check` 통과 (위 «lat.md 지식 그래프» 워크플로우 참조). cross-feature delegate 의존은 `import` 에 안 보이므로 `depends-on:` 으로 반드시 명시
 
 ## 디자인 시스템
 
-디자인 토큰·표준 컴포넌트는 `Shared/SharedDesignSystem` 모듈(이관 대기 — 현재 골격만)에 산다. 모든 레이어가 `.shared(interface: .designSystem)` 로 의존 가능.
-
-- 색상: `Color.dsPrimary` / `dsBackground` / `dsTextPrimary` / `dsTextSecondary`
-- 타이포: `Font.dsLargeTitle` ~ `dsCaption` (8 단계)
-- spacing: `CGFloat.dsXS` (4) ~ `dsXXL` (32)
-- 컴포넌트: `PrimaryButton`
-- 에셋 로드: 새 색·이미지는 `Resources/Colors.xcassets`·`Assets.xcassets` 에 추가 후 `Color.load(_:)`·`Image.load(_:)` 단일 seam 으로 토큰 노출 (번들 해석 일원화 + 개발 빌드 `assert` 로 오타 검출). 이미지 토큰은 `Image.DS` 네임스페이스 — 늘어나면 `Ic`/`Img` 중첩 enum 으로 묶는다
+UI 코드(View·컴포넌트·에셋)를 작성·수정하기 **전에 `.claude/design.md` 를 읽는다** — 토큰(색·타이포·spacing)·표준 컴포넌트·에셋 로드 규칙의 참조 문서. 모듈은 `Shared/SharedDesignSystem`(이관 대기 — 현재 골격만), 의존은 `.shared(interface: .designSystem)`.
 
 ## 참고
 
