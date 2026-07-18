@@ -23,14 +23,14 @@ public struct AuthTokens: Codable, Equatable, Sendable {
 // 토큰 보관소 — live 는 Keychain(Implementation). Feature 는 이 존재를 모른다.
 // 첨부·자동 재발급은 AuthorizedNetworkClient 가, 저장(로그인)·삭제(로그아웃)는 AuthClient(DomainAuth) liveValue 가 수행한다.
 public struct TokenStore: Sendable {
-    public var load: @Sendable () -> AuthTokens?
-    public var save: @Sendable (AuthTokens) -> Void
-    public var clear: @Sendable () -> Void
+    public var load: @Sendable () throws -> AuthTokens?
+    public var save: @Sendable (AuthTokens) throws -> Void
+    public var clear: @Sendable () throws -> Void
 
     public init(
-        load: @escaping @Sendable () -> AuthTokens?,
-        save: @escaping @Sendable (AuthTokens) -> Void,
-        clear: @escaping @Sendable () -> Void
+        load: @escaping @Sendable () throws -> AuthTokens?,
+        save: @escaping @Sendable (AuthTokens) throws -> Void,
+        clear: @escaping @Sendable () throws -> Void
     ) {
         self.load = load
         self.save = save
