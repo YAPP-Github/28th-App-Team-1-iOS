@@ -71,7 +71,7 @@ xcodebuild -workspace Hilit.xcworkspace -scheme Hilit-Dev \
 각 Feature 는 단독 실행용 **Example 앱**이 있습니다: `Feature{Name}` 스킴(현재 골격에선 `FeatureHome`)을 선택 후 ⌘R — 그 스킴의 실행 타겟이 Example 앱입니다.
 
 ### 개발계 / QA / 운영계
-빌드 Configuration `Dev` / `QA` / `Release` 로 나뉩니다 (`Dev` 에만 `DEV` 컴파일 조건, QA/Release 는 release 타입). **환경별 스킴 `Hilit-Dev` / `Hilit-QA` / `Hilit-Prod` 로 전환합니다** — 각 스킴의 Run/Archive 가 같은 Configuration 을 가리킵니다. 동작 원리·값 주입(`@Dependency(\.appConfig)`)·확장법은 DocC `Environments` 아티클 (`ArchitectureDocs` 스킴 → Build Documentation) 참고.
+빌드 Configuration `Dev` / `QA` / `Release` 로 나뉩니다 (`Dev` 에만 `DEV` 컴파일 조건, QA/Release 는 release 타입). **환경별 스킴 `Hilit-Dev` / `Hilit-QA` / `Hilit-Prod` 로 전환합니다** — 각 스킴의 Run/Archive 가 같은 Configuration 을 가리킵니다. 동작 원리·값이 읽히는 seam(`NetworkClient.defaultBaseURL()`·`AppSecrets`)·확장법은 DocC `Environments` 아티클 (`ArchitectureDocs` 스킴 → Build Documentation) 참고.
 
 ---
 

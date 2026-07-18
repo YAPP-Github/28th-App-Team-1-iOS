@@ -95,6 +95,6 @@ UI 코드(View·컴포넌트·에셋)를 작성·수정하기 **전에 `.claude/
 
 - 자세한 패턴/개념은 `Projects/App/Documentation/Architecture.docc/` DocC 카탈로그 (전용 `ArchitectureDocs` 타겟이 호스팅. 현재 Tuist TMA 구조·코드 기준으로 현행화됨)
 - 첫 빌드/세팅 `docs/getting-started.md`, 모듈 추가 `docs/adding-module.md`, 기획→아키텍처 매핑 작업 문서 `docs/work/`, 팀 컨벤션 `CONTRIBUTING.md`, 도메인 지식·의존 그래프 `lat.md/`(진입점 `lat.md/lat.md`, `lat check` 로 검증), lat 방법론 `docs/lat-methodology.md`, 코드 라벨 규칙 `docs/lat-labeling.md`, TMA 학습 노트 `docs/notes/`
-- 개발계/운영계 환경 분리는 DocC `Environments` 아티클 (`Architecture.docc/Articles/HowTo/Environments.md`) — xcconfig + `@Dependency(\.appConfig)`, Feature 는 환경 무관
+- 개발계/운영계 환경 분리는 DocC `Environments` 아티클 (`Architecture.docc/Articles/HowTo/Environments.md`) — xcconfig → Info.plist → 소비 모듈 liveValue seam(`NetworkClient.defaultBaseURL()`·`AppSecrets`), Feature·Domain 은 환경 무관
 - modular architecture 스펙트럼에서 이 프로젝트는 Tuist 멀티프로젝트 TMA (Level 3+, 레이어 × Interface/Implementation)
 - **문서 배치 규칙**: 심볼·개념·Xcode 렌더링이면 **DocC**, 검증되는 도메인 지식이면 **`lat.md/`**, 코드 밖 독립 산문(세팅·과정·외부·방법론)이면 **`docs/`**. 커밋/PR 규칙 단일 소스는 `CONTRIBUTING.md`

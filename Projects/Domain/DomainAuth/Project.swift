@@ -14,7 +14,9 @@ let project = Project.makeModule(
             // 카카오 SDK는 이 Implementation 안에만 존재한다 — Interface·Feature·App은 SDK를 모른다.
             .kakaoSDKCommon,
             .kakaoSDKAuth,
-            .kakaoSDKUser
+            .kakaoSDKUser,
+            // 서버 세션 교환(login·refresh·logout) — NetworkClient·TokenStore 계약 (→ lat.md api#Auth)
+            .core(interface: .network)
         ])),
         .domain(testing: "Auth")
     ]

@@ -4,10 +4,11 @@
 
 - [[architecture]] — 시스템 총론·레이어·핵심 결정(D1~D3)
 - [[domain.map]] — 도메인 간 관계도·cross-feature 숨은 의존
+- [[api]] — D14 서버 API ↔ Domain Client 매핑·공통 규약(envelope·토큰·폴링·스트리밍)
 - [[app]] — AppFeature 코디네이터·cross-feature 라우팅
 - [[home]] — Home 도메인 (현재 유일한 실 Feature)
-- [[auth]] — Auth 도메인 (카카오 소셜 로그인, 애플 확장 지점)
-- [[interview]] — Interview 도메인 (InterviewClient — 첫 실 Domain 모듈)
+- [[auth]] — Auth 도메인 (카카오·애플 소셜 로그인 + 서버 세션 교환)
+- [[interview]] — Interview 도메인 (InterviewClient — 면접 세션 API)
 
 > `refactor/#6` 은 TMA 스켈레톤 단계라 실 Feature 노드는 [[home]] 뿐이다. Users·Profile 등은 이관되면서 노드가 추가된다.
 
