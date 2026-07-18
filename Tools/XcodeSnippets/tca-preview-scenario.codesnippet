@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDECodeSnippetCompletionPrefix</key>
+	<string>tcapreviews</string>
+	<key>IDECodeSnippetCompletionScopes</key>
+	<array>
+		<string>TopLevel</string>
+	</array>
+	<key>IDECodeSnippetContents</key>
+	<string>#Preview("&lt;#시나리오#&gt;") {
+    &lt;#Name#&gt;View(
+        store: Store(initialState: &lt;#Name#&gt;Feature.State(&lt;#상태#&gt;)) {
+            &lt;#Name#&gt;Feature()
+        } withDependencies: {
+            $0.&lt;#someClient#&gt; = &lt;#스텁#&gt;
+        }
+    )
+}</string>
+	<key>IDECodeSnippetIdentifier</key>
+	<string>30CA2054-DCF4-4D58-A889-225F06FC5256</string>
+	<key>IDECodeSnippetLanguage</key>
+	<string>Xcode.SourceCodeLanguage.Swift</string>
+	<key>IDECodeSnippetSummary</key>
+	<string>TCA View 시나리오 프리뷰 — 특정 상태·의존성 스텁을 지정해 로딩/에러/빈 화면 등을 나란히 확인</string>
+	<key>IDECodeSnippetTitle</key>
+	<string>TCA Preview (시나리오·의존성 주입)</string>
+	<key>IDECodeSnippetUserSnippet</key>
+	<true/>
+	<key>IDECodeSnippetVersion</key>
+	<integer>2</integer>
+</dict>
+</plist>
