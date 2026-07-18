@@ -93,6 +93,7 @@ public extension Target {
         f.infoPlist = f.infoPlist ?? .extendingDefault(with: [
             "UILaunchScreen": [:],
             // xcconfig → Info.plist 치환. NetworkClient.defaultBaseURL()(API_BASE_URL)·AppSecrets(카카오 키)가 여기서 읽는다.
+            "UIUserInterfaceStyle": "Light",
             "APP_ENV": "$(APP_ENV)",
             "API_BASE_URL": "$(API_BASE_URL)",
             "CFBundleDisplayName": "$(APP_DISPLAY_NAME)",
