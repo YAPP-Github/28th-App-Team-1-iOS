@@ -1,12 +1,16 @@
 # Auth 도메인 — 소셜 로그인 (DomainAuth · FeatureAuth)
 
-카카오·애플 소셜 로그인으로 provider 자격증명을 받는 것까지 책임지는 도메인. 백엔드 세션 교환·토큰 영속화·자동 로그인은 다음 슬라이스로 미뤄졌다(백엔드 API 미동작으로 스코프 축소 — 백업: `wip/login-backend-snapshot-20260710`).
+카카오·애플 소셜 로그인(자격증명 획득)과 서버 세션 수명주기(교환·재발급·로그아웃 — [[api#Auth]])를 책임지는 도메인. 토큰 영속화는 Keychain(TokenStore), 만료 시 자동 재발급은 AuthorizedNetworkClient — 둘 다 CoreNetwork 인프라다([[api#토큰 수명주기]]).
 
 ## 모듈 구성
 
-공개 seam은 `AuthClient` 파사드 하나 — configure·handleOpenURL·signIn 세 엔드포인트. 소셜 SDK·시스템 프레임워크는 `DomainAuthImplementation`의 provider 클래스(KakaoLoginProvider·AppleLoginProvider)에 격리되고 Interface·Feature·App은 이를 모른다. → [[architecture]]
+공개 seam은 `AuthClient` 파사드 하나 — SDK 접점(configure·handleOpenURL·signIn)과 서버 세션(login·refresh·logout·check·isAuthenticated). → [[architecture]]
 
-signIn은 `SocialCredential`을 반환한다 — provider별 발급물이 달라 enum이다: 카카오는 accessToken(백엔드 전송 예정)/refreshToken(SDK도 자체 보관), 애플은 identityToken(백엔드 검증용 JWT)/authorizationCode(백엔드가 애플 서버와 교환할 5분 TTL 일회성 코드). credential은 액션 payload로만 흐르고 State에 보관하지 않는다 — 백엔드 연동 시 signIn 내부 교환에 즉시 소비될 값이라, State의 토큰은 소비자 없는 죽은 데이터가 된다.
+소셜 SDK·시스템 프레임워크는 `DomainAuthImplementation`의 provider 클래스(KakaoLoginProvider·AppleLoginProvider)에 격리되고 Interface·Feature·App은 이를 모른다.
+
+signIn은 `SocialCredential`을 반환한다 — provider별 발급물이 달라 enum이다: 카카오는 accessToken(login 교환의 credential)/refreshToken(SDK도 자체 보관), 애플은 identityToken(백엔드 검증용 JWT)/authorizationCode(백엔드가 애플 서버와 교환할 5분 TTL 일회성 코드 — D14 는 이것을 credential 로 받는다). credential은 액션 payload로만 흐르고 State에 보관하지 않는다 — `login(credential)` 교환에 즉시 소비될 값이라, State의 토큰은 소비자 없는 죽은 데이터가 된다.
+
+login 성공 시 토큰 페어는 TokenStore(Keychain)로 들어가고 Feature 는 토큰을 만지지 않는다. 서버 에러는 `AuthError` 로 매핑된다(invalidCredential·sessionExpired·serverUnavailable·networkFailure) — 매핑표는 [[api#Auth]].
 
 ## Provider 확장 지점
 
@@ -34,4 +38,8 @@ Sign in with Apple entitlement가 App 타겟에 필요하다(`TargetFactory.enti
 
 ## 다음 작업
 
-백엔드 세션 교환(`POST /api/v1/auth/social/login`)·Keychain 저장(TokenStore)·자동 로그인·refresh가 다음 슬라이스다. `signIn`의 반환값(`SocialCredential`)이 교환의 입력이 되는 이음새이며, 백업 브랜치에 CoreNetwork·TokenStore 구현이 보존돼 있다.
+세션 교환(`login`)·Keychain(TokenStore)·자동 재발급(refresh)은 #23 에서 Client 레벨로 구현됐다([[api#Auth]]). 남은 것은 Feature/App 배선이다.
+
+- **AuthFeature 배선**: `signInFinished(.success(credential))` 뒤에 `authClient.login(credential)` 교환을 잇는다 — 현재는 credential 획득까지만 성공 처리하고 delegate(.signedIn)을 올린다.
+- **자동 로그인**: AppFeature 게이트(`State.isAuthenticated`)를 `authClient.isAuthenticated()` 초기값으로 연결 — 지금은 앱 재실행 시 항상 false 다.
+- **로그아웃 UX**: 설정 화면에서 `authClient.logout()` 호출 + 게이트 복귀.
