@@ -9,6 +9,8 @@ let project = Project.makeModule(
         .feature(implements: "Onboarding", factory: .init(dependencies: [
             .composableArchitecture,
             .domain(interface: .job),
+            .domain(interface: .jd),
+            .domain(interface: .portfolio),
             .shared(interface: .designSystem)
         ])),
         .feature(testing: "Onboarding"),
@@ -16,11 +18,15 @@ let project = Project.makeModule(
         // 누락 시 따뜻한 DerivedData에서만 우연히 빌드되는 거짓 성공이 난다.
         .feature(tests: "Onboarding", factory: .init(dependencies: [
             .composableArchitecture,
-            .domain(interface: .job)
+            .domain(interface: .job),
+            .domain(interface: .jd),
+            .domain(interface: .portfolio)
         ])),
         .feature(example: "Onboarding", factory: .init(dependencies: [
             .composableArchitecture,
-            .domain(interface: .job)
+            .domain(interface: .job),
+            .domain(interface: .jd),
+            .domain(interface: .portfolio)
         ])),
     ]
 )
