@@ -104,15 +104,15 @@ struct OnboardingJobSelectionFeatureTests {
 
 @MainActor
 struct OnboardingCoordinatorTests {
-    @Test("직군 선택 완료 시 jobRole 을 저장하고 다음 스텝을 push 한다")
-    func jobSelectionContinuePushesNextStep() async {
+    @Test("직군 선택 완료 시 jobRole 을 저장하고 연차 스텝을 push 한다")
+    func jobSelectionContinuePushesCareerInput() async {
         let store = TestStore(initialState: OnboardingFeature.State(userName: "재원")) {
             OnboardingFeature()
         }
 
         await store.send(.jobSelection(.delegate(.continueRequested(jobRole: "BACKEND")))) {
             $0.data.jobRole = "BACKEND"
-            $0.path.append(.placeholder(.init(step: 2, totalSteps: 5)))
+            $0.path.append(.careerInput(.init(step: 2, totalSteps: 5)))
         }
     }
 
@@ -129,14 +129,79 @@ struct OnboardingCoordinatorTests {
     @Test("스텝 뒤로가기는 스택을 pop 한다")
     func stepBackPopsStack() async {
         var initialState = OnboardingFeature.State(userName: "재원")
-        initialState.path.append(.placeholder(.init(step: 2, totalSteps: 5)))
+        initialState.path.append(.careerInput(.init(step: 2, totalSteps: 5)))
         let store = TestStore(initialState: initialState) {
             OnboardingFeature()
         }
 
         let id = store.state.path.ids[0]
-        await store.send(.path(.element(id: id, action: .placeholder(.delegate(.backRequested))))) {
+        await store.send(.path(.element(id: id, action: .careerInput(.delegate(.backRequested))))) {
             $0.path.removeAll()
         }
+    }
+
+    @Test("연차 완료는 career 저장 후 JD 링크 스텝을 push 한다")
+    func careerContinuePushesJDLink() async {
+        var initialState = OnboardingFeature.State(userName: "재원")
+        initialState.path.append(.careerInput(.init(step: 2, totalSteps: 5)))
+        let store = TestStore(initialState: initialState) {
+            OnboardingFeature()
+        }
+
+        let id = store.state.path.ids[0]
+        await store.send(
+            .path(.element(id: id, action: .careerInput(.delegate(.continueRequested(career: .overOneYear)))))
+        ) {
+            $0.data.career = .overOneYear
+            $0.path.append(.jdLink(.init(step: 3, totalSteps: 5)))
+        }
+    }
+
+    @Test("JD 링크 스킵(nil)은 jd 필드를 비운 채 포트폴리오 스텝을 push 한다")
+    func jdLinkSkipPushesPortfolioUpload() async {
+        var initialState = OnboardingFeature.State(userName: "재원")
+        initialState.path.append(.jdLink(.init(step: 3, totalSteps: 5)))
+        let store = TestStore(initialState: initialState) {
+            OnboardingFeature()
+        }
+
+        let id = store.state.path.ids[0]
+        await store.send(.path(.element(id: id, action: .jdLink(.delegate(.continueRequested(nil)))))) {
+            $0.path.append(.portfolioUpload(.init(step: 4, totalSteps: 5)))
+        }
+    }
+
+    @Test("집중 프로젝트 완료는 누적 데이터를 들고 분석 스텝을 push 한다")
+    func focusProjectContinuePushesAnalysisWithData() async {
+        var initialState = OnboardingFeature.State(userName: "재원")
+        initialState.data.jobRole = "BACKEND"
+        initialState.path.append(.focusProject(.init(step: 5, totalSteps: 5)))
+        let store = TestStore(initialState: initialState) {
+            OnboardingFeature()
+        }
+
+        var expectedData = initialState.data
+        expectedData.freeText = "결제 시스템 리팩토링"
+
+        let id = store.state.path.ids[0]
+        await store.send(
+            .path(.element(id: id, action: .focusProject(.delegate(.continueRequested(freeText: "결제 시스템 리팩토링")))))
+        ) {
+            $0.data.freeText = "결제 시스템 리팩토링"
+            $0.path.append(.analysis(.init(data: expectedData)))
+        }
+    }
+
+    @Test("분석 완료는 온보딩 완료(finished)로 올린다")
+    func analysisCompletedFinishesOnboarding() async {
+        var initialState = OnboardingFeature.State(userName: "재원")
+        initialState.path.append(.analysis(.init(data: initialState.data)))
+        let store = TestStore(initialState: initialState) {
+            OnboardingFeature()
+        }
+
+        let id = store.state.path.ids[0]
+        await store.send(.path(.element(id: id, action: .analysis(.delegate(.completed)))))
+        await store.receive(\.delegate.finished)
     }
 }

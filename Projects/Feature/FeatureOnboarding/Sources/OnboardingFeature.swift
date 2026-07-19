@@ -13,10 +13,16 @@ import ComposableArchitecture
 /// 스텝 자체 간 직접 의존은 없다 — 조립은 여기서만 (도메인 내 navigation = Path/StackState).
 @Reducer
 public struct OnboardingFeature {
+    /// 위저드 총 스텝 수 — 모든 스텝 디자인의 프로그레스 바가 5칸 (분석 화면은 프로그레스 밖).
+    public static let totalSteps = 5
+
     @Reducer
     public enum Path {
-        /// STEP 2+ 자리표시. 실제 스텝이 오면 case 를 추가한다 (예: case career(OnboardingCareerFeature)).
-        case placeholder(OnboardingPlaceholderStepFeature)
+        case careerInput(OnboardingCareerInputFeature)      // STEP 2 연차
+        case jdLink(OnboardingJDLinkFeature)                // STEP 3 JD 링크(스킵 가능)
+        case portfolioUpload(OnboardingPortfolioUploadFeature) // STEP 4 포트폴리오
+        case focusProject(OnboardingFocusProjectFeature)    // STEP 5 집중 프로젝트(선택)
+        case analysis(OnboardingAnalysisFeature)            // 분석 — 수집 데이터 제출·완료 전환
     }
 
     // @Reducer enum 이 생성하는 Path.State 는 Equatable 을 자동 채택하지 않는다 —
@@ -33,7 +39,11 @@ public struct OnboardingFeature {
 
         public init(userName: String = "") {
             self.data = OnboardingData(userName: userName)
-            self.jobSelection = OnboardingJobSelectionFeature.State(userName: userName, step: 1)
+            self.jobSelection = OnboardingJobSelectionFeature.State(
+                userName: userName,
+                step: 1,
+                totalSteps: OnboardingFeature.totalSteps
+            )
         }
     }
 
@@ -44,8 +54,10 @@ public struct OnboardingFeature {
 
         @CasePathable
         public enum Delegate: Equatable, Sendable {
-            /// 온보딩 종료(이탈 또는 완료) — dismiss 는 코디네이터(AppFeature)가 처리한다.
+            /// 중도 이탈(X) — dismiss 는 부모(AppFeature)가 처리한다.
             case dismiss
+            /// 온보딩 완료(분석까지 끝) — 부모가 메인 진입 등으로 전환한다.
+            case finished
         }
     }
 
@@ -58,12 +70,10 @@ public struct OnboardingFeature {
 
         Reduce { state, action in
             switch action {
-            // STEP 1 완료 → 직군 저장 후 다음 스텝 push.
+            // STEP 1 완료 → 직군 저장 후 연차 입력 push.
             case let .jobSelection(.delegate(.continueRequested(jobRole))):
                 state.data.jobRole = jobRole
-                state.path.append(
-                    .placeholder(.init(step: 2, totalSteps: state.jobSelection.totalSteps))
-                )
+                state.path.append(.careerInput(.init(step: 2, totalSteps: Self.totalSteps)))
                 return .none
 
             case .jobSelection(.delegate(.closeRequested)):
@@ -72,15 +82,77 @@ public struct OnboardingFeature {
             case .jobSelection:
                 return .none
 
-            // 스텝 템플릿(자리표시)의 신호 처리 — 실제 스텝이 붙으면 case 별로 확장.
-            case let .path(.element(id: _, action: .placeholder(.delegate(action)))):
+            // STEP 2 연차 → JD 링크 push.
+            case let .path(.element(id: _, action: .careerInput(.delegate(action)))):
                 switch action {
-                case .continueRequested:
-                    // TODO: 다음 스텝 push (state.path.append(...)). 마지막 스텝이면 제출 후 .delegate(.dismiss).
+                case let .continueRequested(career):
+                    state.data.career = career
+                    state.path.append(.jdLink(.init(step: 3, totalSteps: Self.totalSteps)))
                     return .none
                 case .backRequested:
                     _ = state.path.popLast()
                     return .none
+                case .closeRequested:
+                    return .send(.delegate(.dismiss))
+                }
+
+            // STEP 3 JD 링크(nil = 스킵) → 포트폴리오 push.
+            case let .path(.element(id: _, action: .jdLink(.delegate(action)))):
+                switch action {
+                case let .continueRequested(submission):
+                    switch submission {
+                    case let .link(url):
+                        state.data.jdLink = url
+                        state.data.jdText = nil
+                    case let .text(text):
+                        state.data.jdText = text
+                        state.data.jdLink = nil
+                    case nil:
+                        state.data.jdLink = nil
+                        state.data.jdText = nil
+                    }
+                    state.path.append(.portfolioUpload(.init(step: 4, totalSteps: Self.totalSteps)))
+                    return .none
+                case .backRequested:
+                    _ = state.path.popLast()
+                    return .none
+                case .closeRequested:
+                    return .send(.delegate(.dismiss))
+                }
+
+            // STEP 4 포트폴리오 → 집중 프로젝트 push.
+            case let .path(.element(id: _, action: .portfolioUpload(.delegate(action)))):
+                switch action {
+                case let .continueRequested(portfolioId):
+                    state.data.portfolioId = portfolioId
+                    state.path.append(.focusProject(.init(step: 5, totalSteps: Self.totalSteps)))
+                    return .none
+                case .backRequested:
+                    _ = state.path.popLast()
+                    return .none
+                case .closeRequested:
+                    return .send(.delegate(.dismiss))
+                }
+
+            // STEP 5 집중 프로젝트(마지막 수집 스텝) → 누적 데이터를 들고 분석 push.
+            case let .path(.element(id: _, action: .focusProject(.delegate(action)))):
+                switch action {
+                case let .continueRequested(freeText):
+                    state.data.freeText = freeText
+                    state.path.append(.analysis(.init(data: state.data)))
+                    return .none
+                case .backRequested:
+                    _ = state.path.popLast()
+                    return .none
+                case .closeRequested:
+                    return .send(.delegate(.dismiss))
+                }
+
+            // 분석 — 완료(자동 전환)면 위저드 종료, X 면 이탈.
+            case let .path(.element(id: _, action: .analysis(.delegate(action)))):
+                switch action {
+                case .completed:
+                    return .send(.delegate(.finished))
                 case .closeRequested:
                     return .send(.delegate(.dismiss))
                 }

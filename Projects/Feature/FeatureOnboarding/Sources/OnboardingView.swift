@@ -27,8 +27,16 @@ public struct OnboardingView: View {
             )
         } destination: { store in
             switch store.case {
-            case let .placeholder(store):
-                OnboardingPlaceholderStepView(store: store)
+            case let .careerInput(store):
+                OnboardingCareerInputView(store: store)
+            case let .jdLink(store):
+                OnboardingJDLinkView(store: store)
+            case let .portfolioUpload(store):
+                OnboardingPortfolioUploadView(store: store)
+            case let .focusProject(store):
+                OnboardingFocusProjectView(store: store)
+            case let .analysis(store):
+                OnboardingAnalysisView(store: store)
             }
         }
     }
