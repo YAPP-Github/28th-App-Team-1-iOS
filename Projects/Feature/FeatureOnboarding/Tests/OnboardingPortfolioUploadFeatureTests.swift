@@ -1,0 +1,186 @@
+//
+//  OnboardingPortfolioUploadFeatureTests.swift
+//  FeatureOnboardingTests
+//
+//  Created by EunSeo on 26/07/19.
+//
+
+import ComposableArchitecture
+import DomainPortfolioInterface
+import Foundation
+import Testing
+
+@testable import FeatureOnboardingImplementation
+
+@MainActor
+struct OnboardingPortfolioUploadFeatureTests {
+    private static let portfolioId = UUID(uuidString: "00000000-0000-0000-0000-0000000000a1")!
+    private static let fileURL = URL(fileURLWithPath: "/tmp/포트폴리오.pdf")
+
+    @Test("업로드 카드 탭은 파일 선택 시트를 연다")
+    func uploadCardOpensFileImporter() async {
+        let store = TestStore(initialState: OnboardingPortfolioUploadFeature.State()) {
+            OnboardingPortfolioUploadFeature()
+        }
+
+        await store.send(.view(.userTappedUploadCard)) {
+            $0.isFileImporterPresented = true
+        }
+    }
+
+    @Test("업로드 중에는 카드 탭이 무시된다")
+    func uploadCardIsIgnoredWhileUploading() async {
+        var initialState = OnboardingPortfolioUploadFeature.State()
+        initialState.upload = .uploading(fileName: "포트폴리오.pdf", portfolioId: nil)
+        let store = TestStore(initialState: initialState) {
+            OnboardingPortfolioUploadFeature()
+        }
+
+        await store.send(.view(.userTappedUploadCard))
+    }
+
+    @Test("파일 선택은 등록 접수 후 READY 폴링까지 완료 상태로 이어진다")
+    func fileSelectionRegistersAndPollsUntilReady() async {
+        let store = TestStore(initialState: OnboardingPortfolioUploadFeature.State()) {
+            OnboardingPortfolioUploadFeature()
+        } withDependencies: {
+            $0.continuousClock = ImmediateClock()
+            $0.portfolioFileReader.read = { _ in Data("pdf".utf8) }
+            $0.portfolioClient.register = { _ in
+                PortfolioProcessing(portfolioId: Self.portfolioId, status: .processing, message: nil)
+            }
+            $0.portfolioClient.status = { id in
+                PortfolioProcessing(portfolioId: id, status: .ready, message: nil)
+            }
+        }
+
+        await store.send(.view(.fileSelected(Self.fileURL))) {
+            $0.upload = .uploading(fileName: "포트폴리오.pdf", portfolioId: nil)
+        }
+        await store.receive(\.inner.uploadAccepted) {
+            $0.upload = .uploading(fileName: "포트폴리오.pdf", portfolioId: Self.portfolioId)
+        }
+        await store.receive(\.inner.statusPolled) {
+            $0.upload = .uploaded(fileName: "포트폴리오.pdf", portfolioId: Self.portfolioId)
+        }
+        #expect(store.state.isContinueEnabled)
+    }
+
+    @Test("파일 파싱 실패(FAILED_FILE)는 기본 안내 문구의 실패 상태로 전환한다")
+    func failedFileTransitionsToFailedState() async {
+        let store = TestStore(initialState: OnboardingPortfolioUploadFeature.State()) {
+            OnboardingPortfolioUploadFeature()
+        } withDependencies: {
+            $0.portfolioFileReader.read = { _ in Data("pdf".utf8) }
+            $0.portfolioClient.register = { _ in
+                PortfolioProcessing(portfolioId: Self.portfolioId, status: .failedFile, message: nil)
+            }
+        }
+
+        await store.send(.view(.fileSelected(Self.fileURL))) {
+            $0.upload = .uploading(fileName: "포트폴리오.pdf", portfolioId: nil)
+        }
+        await store.receive(\.inner.uploadAccepted) {
+            $0.upload = .failed(message: OnboardingPortfolioUploadFeature.unreadableFileMessage)
+        }
+        #expect(!store.state.isContinueEnabled)
+    }
+
+    @Test("파일 읽기 실패는 일반 실패 문구의 실패 상태로 전환한다")
+    func fileReadFailureTransitionsToFailedState() async {
+        let store = TestStore(initialState: OnboardingPortfolioUploadFeature.State()) {
+            OnboardingPortfolioUploadFeature()
+        } withDependencies: {
+            $0.portfolioFileReader.read = { _ in throw NSError(domain: "test", code: -1) }
+        }
+
+        await store.send(.view(.fileSelected(Self.fileURL))) {
+            $0.upload = .uploading(fileName: "포트폴리오.pdf", portfolioId: nil)
+        }
+        await store.receive(\.inner.uploadFailed) {
+            $0.upload = .failed(message: OnboardingPortfolioUploadFeature.genericFailureMessage)
+        }
+    }
+
+    @Test("20MB 초과 파일은 등록 요청 없이 실패 처리한다")
+    func oversizedFileFailsWithoutRegister() async {
+        let store = TestStore(initialState: OnboardingPortfolioUploadFeature.State()) {
+            OnboardingPortfolioUploadFeature()
+        } withDependencies: {
+            $0.portfolioFileReader.read = { _ in
+                Data(count: OnboardingPortfolioUploadFeature.maxFileSizeBytes + 1)
+            }
+        }
+
+        await store.send(.view(.fileSelected(Self.fileURL))) {
+            $0.upload = .uploading(fileName: "포트폴리오.pdf", portfolioId: nil)
+        }
+        await store.receive(\.inner.uploadFailed) {
+            $0.upload = .failed(message: OnboardingPortfolioUploadFeature.oversizedFileMessage)
+        }
+    }
+
+    @Test("업로드 중 X 탭은 폴링을 멈추고 등록된 파일을 삭제한다")
+    func removeDuringUploadCancelsAndDeletes() async {
+        let deletedId = LockIsolated<UUID?>(nil)
+        var initialState = OnboardingPortfolioUploadFeature.State()
+        initialState.upload = .uploading(fileName: "포트폴리오.pdf", portfolioId: Self.portfolioId)
+        let store = TestStore(initialState: initialState) {
+            OnboardingPortfolioUploadFeature()
+        } withDependencies: {
+            $0.portfolioClient.delete = { id in
+                deletedId.setValue(id)
+                return PortfolioDeletion(portfolioId: id, deletedAt: nil)
+            }
+        }
+
+        await store.send(.view(.userTappedRemoveFile)) {
+            $0.upload = .idle
+        }
+        await store.finish()
+        #expect(deletedId.value == Self.portfolioId)
+    }
+
+    @Test("계속하기는 업로드 완료 전엔 무시된다")
+    func continueIsIgnoredUntilUploaded() async {
+        let store = TestStore(initialState: OnboardingPortfolioUploadFeature.State()) {
+            OnboardingPortfolioUploadFeature()
+        }
+
+        #expect(!store.state.isContinueEnabled)
+        await store.send(.view(.userTappedContinue))
+    }
+
+    @Test("계속하기는 업로드 완료 상태의 portfolioId 를 delegate 로 올린다")
+    func continueEmitsPortfolioIdWhenUploaded() async {
+        var initialState = OnboardingPortfolioUploadFeature.State()
+        initialState.upload = .uploaded(fileName: "포트폴리오.pdf", portfolioId: Self.portfolioId)
+        let store = TestStore(initialState: initialState) {
+            OnboardingPortfolioUploadFeature()
+        }
+
+        #expect(store.state.isContinueEnabled)
+        await store.send(.view(.userTappedContinue))
+        await store.receive(\.delegate.continueRequested, Self.portfolioId)
+    }
+
+    @Test("이전으로 탭은 delegate 로 코디네이터에 위임한다")
+    func backDelegatesToCoordinator() async {
+        let store = TestStore(initialState: OnboardingPortfolioUploadFeature.State()) {
+            OnboardingPortfolioUploadFeature()
+        }
+
+        await store.send(.view(.userTappedBack))
+        await store.receive(\.delegate.backRequested)
+    }
+
+    @Test("닫기 탭은 delegate 로 코디네이터에 위임한다")
+    func closeDelegatesToCoordinator() async {
+        let store = TestStore(initialState: OnboardingPortfolioUploadFeature.State()) {
+            OnboardingPortfolioUploadFeature()
+        }
+
+        await store.send(.view(.userTappedClose))
+        await store.receive(\.delegate.closeRequested)
+    }
+}
