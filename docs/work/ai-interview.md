@@ -107,7 +107,7 @@ S0→S3.5는 **도메인 내부** navigation → 규칙대로 자체 `Path` + `S
 | PRD | 스텝 (구현) | 필수 | 상태 |
 |---|---|---|---|
 | S0 직무 | 1 JobSelection — `JobClient.jobs` 칩 | 필수 | ✅ (로드 실패 UX TODO) |
-| S0 연차 | 2 CareerInput — 문장형 휠 | 필수 | ⚠ PRD 와 선택지 상이(아래) |
+| S0 연차 | 2 CareerInput — 문장형 휠(0~10년 정수) | 필수 | ✅ 정수 피커 |
 | S1 JD | 3 JDLink — 링크/직접입력 탭 (상호배타) | 선택 — 스킵 상시 | ✅ 직접입력 200~3,000자 검증 완료 (링크 5회 제한·CONTENT_TOO_SHORT 문구 TODO) |
 | S2 포트폴리오 | 4 PortfolioUpload — 202+폴링 | 필수 | ✅ 페이지30·암호 선검증 완료 (폴링 상한·1개제한 dialog TODO) |
 | S3 집중 프로젝트 | 5 FocusProject — 자유입력 | 선택 — 스킵 상시 | ✅ 상단 문구 PRD 확정본 반영 |
@@ -125,7 +125,7 @@ S0→S3.5는 **도메인 내부** navigation → 규칙대로 자체 `Path` + `S
 ### 스텝별 개발 포인트
 
 - **1 직군** — 서버 직무 API ✅. 2회차부터 직무·연차 skip 은 서버 준비 완료 — 반복 연습이 MVP 제외라 클라는 후속.
-- **2 연차 ⚠** — PRD = **정수 드롭다운 0~10년+** (레벨 주니어/미들/시니어는 서버가 0-2/3-7/8+ 결정론 파생 — 클라 미관여). 구현 = `CareerOption` 5구간(신입~3년 이상) 문장형 휠. `careerYears` 는 세션 연결을 막지 않도록 **잠정 매핑**(신입/6개월↓=0·1년↑=1·2년↑=2·3년↑=3)을 CareerOption 에 뒀다 — **정수 피커로 재확정 시 제거**(디자인·서버) 🔴.
+- **2 연차** ✅ — 정수 피커로 확정(사용자 결정 2026-07-20). `CareerOption { years: Int }` 0~10년(10="10년 이상"), 문장형 휠 유지. 페이로드는 `careerYears: Int` 로 `InterviewConfig.careerYears` 에 직결(잠정 매핑 제거). 레벨(주니어/미들/시니어)은 서버가 0-2/3-7/8+ 파생 — 클라 미관여. 휠 라벨: 신입 / N년차 / 10년 이상.
 - **3 JD** — 링크 검증(디바운스 → `validate`) ✅ · 성공 시 직접입력 탭 잠금 ✅ · **스킵 시 입력 있어도 검증·저장 없이 통과**(jd=nil) ✅ · ① 직접입력 **200~3,000자** 검증(유효 길이만 계속하기 활성, 무효 시 카운터·red 보더·안내 문구, 초과 클램프 안 함) ✅. TODO: ② 링크 본문 <200자 = `CONTENT_TOO_SHORT` 문구 노출 ③ **링크 검증 1일 5회 제한** 초과 에러 노출(서버 에러 코드 확인).
 - **4 포트폴리오** — 클라 선검증은 UX 용 빠른 차단, **최종 판정은 서버 실측**(PRD §7 분담): PDF 타입·20MB ✅ / **페이지 ≤30**(PDFKit `pageCount`) ✅ / **암호 PDF**(`PDFDocument.isEncrypted`) ✅ — `PortfolioFileReader` 가 data+pageCount+isEncrypted 반환, register 전 차단, pageCount 는 서버에 전달. 글자 수 ≥30 은 서버 전용(Tika) → FAILED_FILE 문구만. 폴링 3초 ✅. TODO: **폴링 상한**(전체 처리 타임아웃 → FAILED_SYSTEM 취급 문구, 초기값 tentative) · **1개 제한** `PORTFOLIO_ALREADY_EXISTS` → "기존 삭제 후 재업로드" dialog(자동 교체 금지) · 셀룰러 20MB 경고(후속).
 - **5 집중 프로젝트** — 10~300자(하한 10자 서버 위임) · 빈 입력 = 스킵(nil) ✅ · 상단 고정 문구 교체 확정본("입력하면 그 부분을 집중 검증해요. 건너뛰면 포트폴리오 전체에서 질문해요.") 반영 ✅.
@@ -207,7 +207,7 @@ enum CancelID { case session, thinking, silence, tts, stt, hardCap }
 | **H/I** STT 30% 측정·귀책 | SpeechRecognition confidence 제공 여부 | 🟠 인터페이스 확정 시 |
 | **A** 정상완료 vs 포기 구분 | `EndStatus` + Scoring 트리거 | 🟠 P4 착수 전 |
 | **J** Scoring 시점(Part2/3 경계) | Session→Report delegate 계약 | 🟠 P4 착수 전 |
-| **연차 선택지 세트** (PRD S0 = 정수 0~10년+ / 구현 = 5구간 휠) | `CareerOption` → `InterviewConfig.careerYears: Int` 매핑 | 🔴 STEP2 확정 필요 (디자인·서버) |
+| ~~**연차 선택지 세트**~~ → 정수 0~10년 확정(2026-07-20) | `CareerOption{years}` → `careerYears: Int` 직결 | ✅ 완료 |
 | **연관성 4회 실패 카운트** 임계 (PRD tentative) | Analysis State 카운터 + 2선택지 분기 | 🟠 분석 API 연결 시 |
 | **입력 draft** TTL 14일·복원 재검사 (PRD §4.4) | `@Shared` 승격 여부·저장 시각 | 🟡 위저드 안정화 후 |
 | **세션 생성 payload** (Part1↔2 경계, PRD §3.8 부록) | Onboarding→AppFeature→Session delegate 계약 | 🔴 분석 API 연결 시 (서버 정합) |
@@ -226,7 +226,7 @@ v3 로 **닫힌** 논의(초안 미결 → 해소): 재시도/멱등성(전면 �
 6. **AppFeature 배선** — Onboarding delegate(.finished/.dismiss) 수신 + Session/Report fullScreenCover 체인
 7. **InterviewReportFeature** stub → Part 3 본격화
 
-즉시 착수(Part 2 무관, 온보딩 마감): STEP2 연차 세트 재확정 → 분석 스텝 세션 API 연결 → 입력 draft → JD/포폴 잔여 검증(200자·페이지·암호·1개 제한) → AppFeature 배선.
+온보딩 마감 잔여(Part 2 무관): 입력 draft(§4.4) · 재진입 분기(§8) · AppFeature 배선(finished(sessionId) 수신·Part2 진입·포폴 0개→S2 강제). 완료: STEP2 정수 피커 ✅ · 분석 세션 연결 ✅ · 연관성 루프 ✅ · JD/포폴 검증 ✅.
 
 ## 9. 미정/후속
 
