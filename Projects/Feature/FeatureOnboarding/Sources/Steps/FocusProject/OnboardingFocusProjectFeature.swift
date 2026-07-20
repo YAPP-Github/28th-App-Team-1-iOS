@@ -27,16 +27,24 @@ public struct OnboardingFocusProjectFeature {
         public let step: Int
         /// 집중 프로젝트 설명 입력값. 선택 항목 — 비어 있어도 계속하기가 가능하다.
         public var projectDescription: String
+        /// 연관성 실패로 되돌아왔을 때의 경고 문구 (PRD S3.5). 코디네이터가 주입하고 편집 시 사라진다.
+        public var relevanceWarning: String?
 
         /// 입력이 있을 때만 입력창의 클리어(X) 버튼을 노출한다.
         public var isClearButtonVisible: Bool { !projectDescription.isEmpty }
         /// 입력창 우하단 글자수 카운터 (예: "0/300자").
         public var characterCountLabel: String { "\(projectDescription.count)/\(Self.maxTextLength)자" }
 
-        public init(step: Int = 5, totalSteps: Int = 5, projectDescription: String = "") {
+        public init(
+            step: Int = 5,
+            totalSteps: Int = 5,
+            projectDescription: String = "",
+            relevanceWarning: String? = nil
+        ) {
             self.step = step
             self.totalSteps = totalSteps
             self.projectDescription = projectDescription
+            self.relevanceWarning = relevanceWarning
         }
     }
 
@@ -78,10 +86,13 @@ public struct OnboardingFocusProjectFeature {
                 if state.projectDescription.count > State.maxTextLength {
                     state.projectDescription = String(state.projectDescription.prefix(State.maxTextLength))
                 }
+                // 편집을 시작하면 이전 연관성 경고는 지운다.
+                state.relevanceWarning = nil
                 return .none
 
             case .view(.userTappedClearText):
                 state.projectDescription = ""
+                state.relevanceWarning = nil
                 return .none
 
             case .view(.userTappedBack):

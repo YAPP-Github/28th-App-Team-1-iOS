@@ -115,6 +115,19 @@ public struct OnboardingFocusProjectView: View {
                 .dsTypography(.body6)
                 .foregroundStyle(Color.dsGray700)
                 .frame(maxWidth: .infinity, alignment: .trailing)
+
+            if let warning = store.relevanceWarning {
+                HStack(spacing: 6) {
+                    Image.DS.icError
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 16, height: 16)
+                    Text(warning)
+                        .dsTypography(.body5)
+                        .foregroundStyle(Color.dsError500)
+                    Spacer(minLength: 0)
+                }
+            }
         }
     }
 

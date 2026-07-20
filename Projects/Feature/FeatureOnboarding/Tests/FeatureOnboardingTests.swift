@@ -222,7 +222,7 @@ struct OnboardingCoordinatorTests {
         await store.receive(\.delegate.finished, 42)
     }
 
-    @Test("분석 연관성 실패는 집중 프로젝트로 되돌리고 실패 횟수를 센다")
+    @Test("분석 연관성 실패(4회 미만)는 집중 프로젝트로 되돌리고 경고를 주입한다")
     func relevanceFailurePopsBackToFocusProject() async {
         var initialState = OnboardingFeature.State(userName: "재원")
         initialState.path.append(.focusProject(.init(step: 5, totalSteps: 5)))
@@ -231,10 +231,72 @@ struct OnboardingCoordinatorTests {
             OnboardingFeature()
         }
 
+        let focusId = store.state.path.ids[0]
         let analysisId = store.state.path.ids[1]
         await store.send(.path(.element(id: analysisId, action: .analysis(.delegate(.relevanceCheckFailed))))) {
             $0.relevanceFailureCount = 1
             $0.path.removeLast()   // 분석 스텝만 pop — 집중 프로젝트는 남는다.
+            $0.path[id: focusId] = .focusProject(
+                .init(step: 5, totalSteps: 5, relevanceWarning: OnboardingFeature.relevanceWarningMessage)
+            )
+        }
+    }
+
+    @Test("연관성 4회째 실패는 두 선택지 다이얼로그를 띄운다")
+    func fourthRelevanceFailureShowsDialog() async {
+        var initialState = OnboardingFeature.State(userName: "재원")
+        initialState.relevanceFailureCount = 3   // 직전까지 3회
+        initialState.path.append(.focusProject(.init(step: 5, totalSteps: 5)))
+        initialState.path.append(.analysis(.init(data: initialState.data)))
+        let store = TestStore(initialState: initialState) {
+            OnboardingFeature()
+        }
+
+        let analysisId = store.state.path.ids[1]
+        await store.send(.path(.element(id: analysisId, action: .analysis(.delegate(.relevanceCheckFailed))))) {
+            $0.relevanceFailureCount = 4
+            $0.path.removeLast()
+            $0.relevanceChoice = OnboardingFeature.relevanceChoiceDialog()
+        }
+    }
+
+    @Test("다이얼로그 '포폴 다시 올리기'는 포트폴리오 스텝으로 되돌리고 카운트를 리셋한다")
+    func reuploadChoicePopsToPortfolio() async {
+        var initialState = OnboardingFeature.State(userName: "재원")
+        initialState.relevanceFailureCount = 4
+        initialState.path.append(.portfolioUpload(.init(step: 4, totalSteps: 5)))
+        initialState.path.append(.focusProject(.init(step: 5, totalSteps: 5)))
+        initialState.relevanceChoice = OnboardingFeature.relevanceChoiceDialog()
+        let store = TestStore(initialState: initialState) {
+            OnboardingFeature()
+        }
+
+        await store.send(.relevanceChoice(.presented(.reuploadPortfolio))) {
+            $0.relevanceFailureCount = 0
+            $0.relevanceChoice = nil
+            $0.path.removeLast()   // 집중 프로젝트 pop → 포트폴리오 업로드 남음
+        }
+    }
+
+    @Test("다이얼로그 '집중 프로젝트 없이 진행'은 freeText 를 비우고 재분석한다")
+    func proceedWithoutFocusRestartsAnalysis() async {
+        var initialState = OnboardingFeature.State(userName: "재원")
+        initialState.data.jobRole = "BACKEND"
+        initialState.data.freeText = "무관한 내용"
+        initialState.relevanceFailureCount = 4
+        initialState.path.append(.focusProject(.init(step: 5, totalSteps: 5)))
+        initialState.relevanceChoice = OnboardingFeature.relevanceChoiceDialog()
+        let store = TestStore(initialState: initialState) {
+            OnboardingFeature()
+        }
+
+        var expectedData = initialState.data
+        expectedData.freeText = nil
+        await store.send(.relevanceChoice(.presented(.proceedWithoutFocus))) {
+            $0.relevanceFailureCount = 0
+            $0.data.freeText = nil
+            $0.relevanceChoice = nil
+            $0.path.append(.analysis(.init(data: expectedData)))
         }
     }
 }
