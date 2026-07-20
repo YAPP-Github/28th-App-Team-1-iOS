@@ -28,6 +28,11 @@ public struct OnboardingFeature {
     // @Reducer enum 이 생성하는 Path.State 는 Equatable 을 자동 채택하지 않는다 —
     // StackState<Path.State> 를 담는 코디네이터 State 의 Equatable 합성을 위해 명시한다.
 
+    /// 연관성 4회 실패 시 제시하는 두 선택지 — PRD S3.5.
+    public static let relevanceFailureLimit = 4
+    /// 연관성 실패(4회 미만) 시 집중 프로젝트에 노출하는 경고 (PRD 확정 문구).
+    static let relevanceWarningMessage = "포트폴리오에서 그 내용을 찾지 못했어요.\n포트폴리오에 있는 프로젝트로 다시 적어주세요."
+
     @ObservableState
     public struct State: Equatable {
         /// STEP 1 — 루트 화면(직군 선택).
@@ -36,8 +41,10 @@ public struct OnboardingFeature {
         public var path = StackState<Path.State>()
         /// 스텝을 거치며 누적되는 공유 페이로드.
         public var data: OnboardingData
-        /// 집중 프로젝트 연관성 연속 실패 횟수 — PRD S3.5 (4회째 두 선택지 제시는 Phase B).
+        /// 집중 프로젝트 연관성 연속 실패 횟수 — PRD S3.5 (4회째 두 선택지 제시).
         public var relevanceFailureCount = 0
+        /// 4회째 연관성 실패 시 뜨는 선택지 다이얼로그.
+        @Presents public var relevanceChoice: ConfirmationDialogState<Action.RelevanceChoice>?
 
         public init(userName: String = "") {
             self.data = OnboardingData(userName: userName)
@@ -52,7 +59,16 @@ public struct OnboardingFeature {
     public enum Action {
         case jobSelection(OnboardingJobSelectionFeature.Action)
         case path(StackActionOf<Path>)
+        case relevanceChoice(PresentationAction<RelevanceChoice>)
         case delegate(Delegate)
+
+        /// 연관성 4회 실패 다이얼로그의 선택지.
+        public enum RelevanceChoice: Equatable, Sendable {
+            /// 포트폴리오 다시 올리기 — STEP 4 로 되돌린다.
+            case reuploadPortfolio
+            /// 집중 프로젝트 없이 진행 — freeText 를 비우고 재분석한다.
+            case proceedWithoutFocus
+        }
 
         @CasePathable
         public enum Delegate: Equatable, Sendable {
@@ -146,15 +162,35 @@ public struct OnboardingFeature {
                 case let .completed(sessionId):
                     return .send(.delegate(.finished(sessionId: sessionId)))
                 case .relevanceCheckFailed:
-                    // PRD S3.5 — 연관성 부족 시 집중 프로젝트 스텝으로 되돌려 재입력받는다.
+                    // PRD S3.5 — 연관성 부족 시 분석을 pop 하고 집중 프로젝트로 되돌린다.
                     state.relevanceFailureCount += 1
-                    // TODO(Phase B): 4회째면 [포폴 다시 올리기 / 집중 프로젝트 없이 진행] 두 선택지 제시.
-                    //   현재는 매번 pop-back(재입력). 경고 문구 노출도 Phase B.
                     _ = state.path.popLast()
+                    if state.relevanceFailureCount >= Self.relevanceFailureLimit {
+                        // 4회째 — [포폴 다시 올리기 / 집중 프로젝트 없이 진행] 두 선택지.
+                        state.relevanceChoice = Self.relevanceChoiceDialog()
+                    } else {
+                        // 그 전까지는 경고 문구와 함께 재입력을 유도한다.
+                        setFocusProjectWarning(&state, Self.relevanceWarningMessage)
+                    }
                     return .none
                 case .closeRequested:
                     return .send(.delegate(.dismiss))
                 }
+
+            // 4회 실패 다이얼로그 — 포폴 재업로드(STEP4 복귀) / 집중 프로젝트 없이 재분석.
+            case .relevanceChoice(.presented(.reuploadPortfolio)):
+                state.relevanceFailureCount = 0
+                _ = state.path.popLast()   // 집중 프로젝트도 pop → 포트폴리오 업로드(STEP4)
+                return .none
+
+            case .relevanceChoice(.presented(.proceedWithoutFocus)):
+                state.relevanceFailureCount = 0
+                state.data.freeText = nil
+                state.path.append(.analysis(.init(data: state.data)))
+                return .none
+
+            case .relevanceChoice:
+                return .none
 
             case .path:
                 return .none
@@ -164,6 +200,28 @@ public struct OnboardingFeature {
             }
         }
         .forEach(\.path, action: \.path)
+        .ifLet(\.$relevanceChoice, action: \.relevanceChoice)
+    }
+
+    /// 스택 최상단(집중 프로젝트) 스텝에 연관성 경고 문구를 주입한다.
+    private func setFocusProjectWarning(_ state: inout State, _ message: String) {
+        guard let lastId = state.path.ids.last,
+              case var .focusProject(focusProject)? = state.path[id: lastId] else { return }
+        focusProject.relevanceWarning = message
+        state.path[id: lastId] = .focusProject(focusProject)
+    }
+
+    /// 연관성 4회 실패 다이얼로그 (PRD S3.5 확정 문구).
+    static func relevanceChoiceDialog() -> ConfirmationDialogState<Action.RelevanceChoice> {
+        ConfirmationDialogState {
+            TextState("포트폴리오에서 그 내용을 계속 찾지 못했어요")
+        } actions: {
+            ButtonState(action: .reuploadPortfolio) { TextState("포트폴리오 다시 올리기") }
+            ButtonState(action: .proceedWithoutFocus) { TextState("집중 프로젝트 없이 진행") }
+            ButtonState(role: .cancel) { TextState("닫기") }
+        } message: {
+            TextState("포트폴리오를 다시 업로드하거나, 집중 프로젝트 없이 진행할 수 있어요.")
+        }
     }
 }
 

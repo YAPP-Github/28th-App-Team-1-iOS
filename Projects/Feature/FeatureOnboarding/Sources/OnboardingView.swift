@@ -39,6 +39,7 @@ public struct OnboardingView: View {
                 OnboardingAnalysisView(store: store)
             }
         }
+        .confirmationDialog($store.scope(state: \.relevanceChoice, action: \.relevanceChoice))
     }
 }
 
