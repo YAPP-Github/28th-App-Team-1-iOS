@@ -28,7 +28,7 @@ App  (composition root — 레이어 umbrella link → liveValue 활성화)
     ├── OnboardingFeature (Part 1) ─┬ DomainJobInterface
     │   └ Path: jobSelection(S0a)   ├ DomainJDInterface
     │          careerInput(S0b)     ├ DomainPortfolioInterface
-    │          jdLink(S1)           ├ DomainInterviewInterface 🔴 분석 API 연결 시 추가
+    │          jdLink(S1)           ├ DomainInterviewInterface ✅ (분석 스텝 세션 생성)
     │          portfolioUpload(S2)  └ SharedDesignSystem
     │          focusProject(S3)
     │          analysis(S3.5+S4)
@@ -111,7 +111,7 @@ S0→S3.5는 **도메인 내부** navigation → 규칙대로 자체 `Path` + `S
 | S1 JD | 3 JDLink — 링크/직접입력 탭 (상호배타) | 선택 — 스킵 상시 | ✅ 직접입력 200~3,000자 검증 완료 (링크 5회 제한·CONTENT_TOO_SHORT 문구 TODO) |
 | S2 포트폴리오 | 4 PortfolioUpload — 202+폴링 | 필수 | ✅ 페이지30·암호 선검증 완료 (폴링 상한·1개제한 dialog TODO) |
 | S3 집중 프로젝트 | 5 FocusProject — 자유입력 | 선택 — 스킵 상시 | ✅ 상단 문구 PRD 확정본 반영 |
-| S3.5 연관성 + S4 진입 | 6 Analysis — **세션 생성 지점** | — | 🔴 API 미연결 (clock 시뮬레이션) |
+| S3.5 연관성 + S4 진입 | 6 Analysis — **세션 생성 지점** | — | ✅ 세션 생성·폴링 연결 완료 / 🟠 연관성 실패 pop-back·4회 분기는 Phase B |
 
 ### PRD v3 핵심 확정 → 클라 영향
 
@@ -125,15 +125,15 @@ S0→S3.5는 **도메인 내부** navigation → 규칙대로 자체 `Path` + `S
 ### 스텝별 개발 포인트
 
 - **1 직군** — 서버 직무 API ✅. 2회차부터 직무·연차 skip 은 서버 준비 완료 — 반복 연습이 MVP 제외라 클라는 후속.
-- **2 연차 ⚠** — PRD = **정수 드롭다운 0~10년+** (레벨 주니어/미들/시니어는 서버가 0-2/3-7/8+ 결정론 파생 — 클라 미관여). 구현 = `CareerOption` 5구간(신입~3년 이상) 문장형 휠 → `InterviewConfig.careerYears: Int` 로 매핑 불가. **선택지 세트 재확정 필요(디자인·서버)** 🔴.
+- **2 연차 ⚠** — PRD = **정수 드롭다운 0~10년+** (레벨 주니어/미들/시니어는 서버가 0-2/3-7/8+ 결정론 파생 — 클라 미관여). 구현 = `CareerOption` 5구간(신입~3년 이상) 문장형 휠. `careerYears` 는 세션 연결을 막지 않도록 **잠정 매핑**(신입/6개월↓=0·1년↑=1·2년↑=2·3년↑=3)을 CareerOption 에 뒀다 — **정수 피커로 재확정 시 제거**(디자인·서버) 🔴.
 - **3 JD** — 링크 검증(디바운스 → `validate`) ✅ · 성공 시 직접입력 탭 잠금 ✅ · **스킵 시 입력 있어도 검증·저장 없이 통과**(jd=nil) ✅ · ① 직접입력 **200~3,000자** 검증(유효 길이만 계속하기 활성, 무효 시 카운터·red 보더·안내 문구, 초과 클램프 안 함) ✅. TODO: ② 링크 본문 <200자 = `CONTENT_TOO_SHORT` 문구 노출 ③ **링크 검증 1일 5회 제한** 초과 에러 노출(서버 에러 코드 확인).
 - **4 포트폴리오** — 클라 선검증은 UX 용 빠른 차단, **최종 판정은 서버 실측**(PRD §7 분담): PDF 타입·20MB ✅ / **페이지 ≤30**(PDFKit `pageCount`) ✅ / **암호 PDF**(`PDFDocument.isEncrypted`) ✅ — `PortfolioFileReader` 가 data+pageCount+isEncrypted 반환, register 전 차단, pageCount 는 서버에 전달. 글자 수 ≥30 은 서버 전용(Tika) → FAILED_FILE 문구만. 폴링 3초 ✅. TODO: **폴링 상한**(전체 처리 타임아웃 → FAILED_SYSTEM 취급 문구, 초기값 tentative) · **1개 제한** `PORTFOLIO_ALREADY_EXISTS` → "기존 삭제 후 재업로드" dialog(자동 교체 금지) · 셀룰러 20MB 경고(후속).
 - **5 집중 프로젝트** — 10~300자(하한 10자 서버 위임) · 빈 입력 = 스킵(nil) ✅ · 상단 고정 문구 교체 확정본("입력하면 그 부분을 집중 검증해요. 건너뛰면 포트폴리오 전체에서 질문해요.") 반영 ✅.
-- **6 분석 = S3.5 + S4** 🔴 최대 개발 포인트:
-  1. `OnboardingData → InterviewConfig` 변환 → `InterviewClient.createSession` + `sessionStatus` 폴링 (현재 clock 시뮬레이션 자리). `FeatureOnboarding` 에 `.domain(interface: .interview)` 의존 추가.
-  2. 연관성(코사인 ≥0.6 tentative)은 **freeText 있을 때만** 서버가 검사 — 스킵 시 S3.5 자체가 없음. `FREETEXT_NOT_RELEVANT` 수신 → FocusProject 로 pop-back + 경고 문구("포트폴리오에서 그 내용을 찾지 못했어요…") + 필드 재focus.
-  3. **연속 4회 실패**(횟수 tentative — 카운트는 클라 State) → 선택지 2개 제시: [포폴 다시 올리기 → STEP4 이동] / [집중 프로젝트 없이 진행 → freeText=nil 로 재생성]. 스킵이 항상 열려 있어 미입력자와의 비대칭을 사용자 선택으로 해소한 결정.
-  4. 세션 READY → `delegate(.finished)` 에 세션 payload(sessionId·요약 질문) 실어 AppFeature 가 Part 2 제시 — 현재 신호 무페이로드라 확장 필요.
+- **6 분석 = S3.5 + S4** — Phase A ✅ / Phase B 🟠:
+  1. ✅ `OnboardingData.interviewConfig()` → `InterviewClient.createSession` + `sessionStatus` 폴링(3초). `.domain(interface: .interview)` 의존 추가 + `tuist generate`. PROCESSING→폴링 / READY→completed / 실패·config 불완전→failed 화면(재시도 없음, PRD §3.1). ⚠ `careerYears` 는 CareerOption 잠정 매핑(STEP2 정수 피커 확정 시 제거).
+  4. ✅ READY → `delegate(.completed(sessionId:))` → 코디네이터 `delegate(.finished(sessionId:))`. AppFeature 미배선이라 요약 질문 등 payload 확장·Part2 제시는 배선 시.
+  2. 🟠 **Phase B** — 연관성(코사인 ≥0.6 tentative)은 **freeText 있을 때만** 서버 검사. `FREETEXT_NOT_RELEVANT` 는 Core `ServerError` 라 Feature 가 직접 못 잡음(레이어) → DomainInterview 에 도메인 에러 타입 추가 후 FocusProject pop-back + 경고 문구. 현재는 일반 failed 화면으로 처리.
+  3. 🟠 **Phase B** — **연속 4회 실패**(카운트 클라 State) → [포폴 다시 올리기 → STEP4] / [집중 프로젝트 없이 진행 → freeText=nil 재생성] 2선택지 다이얼로그.
 
 ### 입력 draft (PRD §4.4 신설 — 미구현)
 

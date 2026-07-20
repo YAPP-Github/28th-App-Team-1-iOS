@@ -48,11 +48,10 @@ STEP 5 (선택 — 마지막 수집 스텝, 프로그레스 5/5). 300자 자유 
 
 종결 화면 (프로그레스·뒤로가기 없음, 다크 풀스크린). 코디네이터가 누적 OnboardingData 를 init 으로 주입 — 여기가 서버 제출 지점(TODO: API 연결, 현재 clock 시뮬레이션 3s+2s). 분석 중(스피너 체크리스트 3줄) → 완료 자동 전환 → delegate(.completed). X 는 분석 중에도 이탈 가능하며 pop 시 clock effect 자동 취소.
 
-PRD S3.5+S4 = 최대 개발 포인트(clock 시뮬레이션 대체). → [[interview#Client 계약]]
-- ① OnboardingData → InterviewConfig 변환 → InterviewClient.createSession + sessionStatus 폴링 (FeatureOnboarding 에 `.domain(interface: .interview)` 추가).
-- ② 연관성(코사인 ≥0.6 tentative)은 **freeText 있을 때만** 서버가 검사 — `FREETEXT_NOT_RELEVANT` 수신 시 집중 프로젝트 스텝으로 pop-back + 재입력.
-- ③ **연속 4회 실패**(카운트는 클라 State) → [포폴 다시 올리기 / 집중 프로젝트 없이 진행] 2선택지.
-- ④ READY → delegate(.finished) 에 세션 payload(sessionId·요약 질문) 실어 AppFeature 가 Part2 제시 — 현재 신호 무페이로드라 확장 필요.
+세션 생성 연결 = PRD S3.5+S4. → [[interview#Client 계약]]
+- ① OnboardingData.interviewConfig() → InterviewClient.createSession + sessionStatus 폴링(3초) ✅. `.domain(interface: .interview)` 의존 추가. PROCESSING→폴링, READY→completed(sessionId), 실패→failed 화면(재시도 없음), config 불완전→failed. onAppear 가드로 중복 시작 방지. CancelID.session 으로 pop 시 취소.
+- ④ READY → delegate(.completed(sessionId)) → 코디네이터 delegate(.finished(sessionId:)) ✅. AppFeature 미배선이라 요약 질문 등 payload 확장은 배선 시.
+- **Phase B(미구현)** ② 연관성(코사인 ≥0.6 tentative)은 **freeText 있을 때만** 서버 검사 — `FREETEXT_NOT_RELEVANT` 는 Core `ServerError`(레이어상 Feature 직접 못 잡음) → DomainInterview 에 도메인 에러 타입 추가 후 집중 프로젝트 pop-back. ③ **연속 4회 실패** → [포폴 다시 올리기 / 집중 프로젝트 없이 진행] 2선택지 다이얼로그. 현재는 실패를 일반 failed 화면으로 처리.
 
 ## 수집 데이터
 
