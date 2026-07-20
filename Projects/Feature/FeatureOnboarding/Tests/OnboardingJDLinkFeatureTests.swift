@@ -196,20 +196,18 @@ struct OnboardingJDLinkFeatureTests {
         await store.send(.view(.userTappedContinue))
     }
 
-    @Test("직접 입력 텍스트의 계속하기는 text 페이로드로 올린다")
+    @Test("유효 길이(200~3,000자) 직접 입력의 계속하기는 text 페이로드로 올린다")
     func continueWithDirectTextEmitsTextPayload() async {
+        let body = String(repeating: "가", count: OnboardingJDLinkFeature.State.minDirectTextLength)
         var initialState = OnboardingJDLinkFeature.State()
         initialState.mode = .directText
-        initialState.directText = "백엔드 개발자 채용. 자격 요건: Kotlin, Spring…"
+        initialState.directText = "  \(body)  "   // 앞뒤 공백은 제거돼 올라간다.
         let store = TestStore(initialState: initialState) {
             OnboardingJDLinkFeature()
         }
 
         await store.send(.view(.userTappedContinue))
-        await store.receive(
-            \.delegate.continueRequested,
-            .text("백엔드 개발자 채용. 자격 요건: Kotlin, Spring…")
-        )
+        await store.receive(\.delegate.continueRequested, .text(body))
     }
 
     @Test("직접 입력이 비어 있으면 계속하기는 스킵(nil)으로 올린다")
@@ -222,6 +220,55 @@ struct OnboardingJDLinkFeatureTests {
 
         await store.send(.view(.userTappedContinue))
         await store.receive(\.delegate.continueRequested, nil)
+    }
+
+    @Test("200자 미만 직접 입력의 계속하기는 무시된다 (다음 꺼짐)")
+    func continueWithTooShortDirectTextIsIgnored() async {
+        var initialState = OnboardingJDLinkFeature.State()
+        initialState.mode = .directText
+        initialState.directText = String(repeating: "가", count: OnboardingJDLinkFeature.State.minDirectTextLength - 1)
+        let store = TestStore(initialState: initialState) {
+            OnboardingJDLinkFeature()
+        }
+
+        #expect(!store.state.isContinueEnabled)
+        // 무효 입력이라 delegate 방출 없이 무시된다.
+        await store.send(.view(.userTappedContinue))
+    }
+
+    @Test("직접 입력 길이별 검증 상태 — 활성/카운터/안내")
+    func directTextValidationState() {
+        let min = OnboardingJDLinkFeature.State.minDirectTextLength
+        let max = OnboardingJDLinkFeature.State.maxDirectTextLength
+
+        func state(_ length: Int) -> OnboardingJDLinkFeature.State {
+            var s = OnboardingJDLinkFeature.State()
+            s.mode = .directText
+            s.directText = String(repeating: "가", count: length)
+            return s
+        }
+
+        // 빈 입력 — 스킵 가능(활성), 안내 없음.
+        let empty = state(0)
+        #expect(empty.isContinueEnabled)
+        #expect(empty.directTextValidationMessage == nil)
+
+        // 200자 미만 — 비활성 + 짧음 안내.
+        let short = state(min - 1)
+        #expect(!short.isContinueEnabled)
+        #expect(short.directTextValidationMessage == "공고 내용이 너무 짧아요. 200자 이상으로 넣어주세요.")
+
+        // 유효(200자) — 활성 + 안내 없음.
+        let valid = state(min)
+        #expect(valid.isContinueEnabled)
+        #expect(valid.isDirectTextValid)
+        #expect(valid.directTextValidationMessage == nil)
+
+        // 3,000자 초과 — 비활성 + 초과 안내 + 카운터 강조.
+        let long = state(max + 1)
+        #expect(!long.isContinueEnabled)
+        #expect(long.isDirectTextOverLimit)
+        #expect(long.directTextValidationMessage == "공고 내용은 3000자 미만으로 입력해주세요.")
     }
 
     @Test("탭 전환은 입력 모드를 바꾼다")

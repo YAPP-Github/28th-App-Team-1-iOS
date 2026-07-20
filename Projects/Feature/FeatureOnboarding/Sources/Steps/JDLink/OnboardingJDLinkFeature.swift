@@ -35,16 +35,16 @@ public struct OnboardingJDLinkFeature {
         case success
     }
 
-    /// 이 스텝이 수집한 JD — 도메인 `JobDescriptionInput`(.url/.text)과 1:1 로 대응한다.
-    public enum JDSubmission: Equatable, Sendable {
-        /// 검증 성공한 채용공고 URL
-        case link(String)
-        /// 직접 입력한 JD 본문
-        case text(String)
-    }
+    // 수집 결과 타입 JDSubmission 은 공유 페이로드(OnboardingData.swift) 소속 —
+    // 코디네이터가 해체 없이 그대로 저장한다.
 
     @ObservableState
     public struct State: Equatable, Sendable {
+        /// 직접입력 JD 최소 글자 수 — 서버 검증과 동일. 미만이면 질문 재료가 부족하다 (PRD S1 무효-짧음).
+        public static let minDirectTextLength = 200
+        /// 직접입력 JD 최대 글자 수 — 카운터 분모. 초과 시 «다음» 이 꺼진다 (PRD S1 무효-초과, 클램프 안 함).
+        public static let maxDirectTextLength = 3_000
+
         /// 프로그레스 바 분모 — 온보딩 전체 단계 수.
         public let totalSteps: Int
         /// 프로그레스 바 분자 — 이 화면의 단계(1-based).
@@ -60,6 +60,38 @@ public struct OnboardingJDLinkFeature {
         public var isDirectTextDisabled: Bool { linkValidation == .success }
         /// 분석 중에는 링크 필드 편집을 잠근다 (Figma 1716:5283 — 필드 회색 배경).
         public var isLinkFieldDisabled: Bool { linkValidation == .loading }
+
+        /// 직접입력 글자 수 — 카운터 분자.
+        public var directTextCount: Int { directText.count }
+        /// 카운터 라벨 «n/3000자».
+        public var directTextCountLabel: String { "\(directTextCount)/\(Self.maxDirectTextLength)자" }
+        /// 상한 초과 — 카운터를 빨갛게 강조한다.
+        public var isDirectTextOverLimit: Bool { directTextCount > Self.maxDirectTextLength }
+        /// 직접입력이 서버 전송 가능한 유효 길이(200~3,000자)인가.
+        public var isDirectTextValid: Bool {
+            (Self.minDirectTextLength...Self.maxDirectTextLength).contains(directTextCount)
+        }
+        /// 직접입력 검증 안내 — 빈 입력(공백만 포함)·유효 길이면 nil (PRD S1 확정 문구).
+        public var directTextValidationMessage: String? {
+            guard !directText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+            if directTextCount < Self.minDirectTextLength {
+                return "공고 내용이 너무 짧아요. 200자 이상으로 넣어주세요."
+            }
+            if directTextCount > Self.maxDirectTextLength {
+                return "공고 내용은 3000자 미만으로 입력해주세요."
+            }
+            return nil
+        }
+        /// «계속하기» 활성 조건 — 링크 탭은 항상(무효 링크는 스킵 처리),
+        /// 직접입력 탭은 빈 입력(스킵)이거나 유효 길이일 때만 (PRD S1 무효 입력 시 다음 꺼짐).
+        public var isContinueEnabled: Bool {
+            switch mode {
+            case .link:
+                return true
+            case .directText:
+                return directText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isDirectTextValid
+            }
+        }
         /// 스킵 안내 툴팁 — 현재 탭의 입력이 비어 있는 동안만 노출 (1609:8597 · 1991:7433 에만 존재).
         public var showsSkipTooltip: Bool {
             switch mode {
@@ -198,7 +230,10 @@ public struct OnboardingJDLinkFeature {
                 }
             case .directText:
                 let text = state.directText.trimmingCharacters(in: .whitespacesAndNewlines)
-                return .send(.delegate(.continueRequested(text.isEmpty ? nil : .text(text))))
+                // 빈 입력은 스킵(nil). 길이 무효는 «계속하기» 가 꺼져 있어 도달하지 않지만 방어적으로 막는다.
+                guard !text.isEmpty else { return .send(.delegate(.continueRequested(nil))) }
+                guard state.isDirectTextValid else { return .none }
+                return .send(.delegate(.continueRequested(.text(text))))
             }
         }
     }

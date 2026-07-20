@@ -45,7 +45,7 @@ struct OnboardingPortfolioUploadFeatureTests {
             OnboardingPortfolioUploadFeature()
         } withDependencies: {
             $0.continuousClock = ImmediateClock()
-            $0.portfolioFileReader.read = { _ in Data("pdf".utf8) }
+            $0.portfolioFileReader.read = { _ in PortfolioFile(data: Data("pdf".utf8)) }
             $0.portfolioClient.register = { _ in
                 PortfolioProcessing(portfolioId: Self.portfolioId, status: .processing, message: nil)
             }
@@ -71,7 +71,7 @@ struct OnboardingPortfolioUploadFeatureTests {
         let store = TestStore(initialState: OnboardingPortfolioUploadFeature.State()) {
             OnboardingPortfolioUploadFeature()
         } withDependencies: {
-            $0.portfolioFileReader.read = { _ in Data("pdf".utf8) }
+            $0.portfolioFileReader.read = { _ in PortfolioFile(data: Data("pdf".utf8)) }
             $0.portfolioClient.register = { _ in
                 PortfolioProcessing(portfolioId: Self.portfolioId, status: .failedFile, message: nil)
             }
@@ -108,7 +108,7 @@ struct OnboardingPortfolioUploadFeatureTests {
             OnboardingPortfolioUploadFeature()
         } withDependencies: {
             $0.portfolioFileReader.read = { _ in
-                Data(count: OnboardingPortfolioUploadFeature.maxFileSizeBytes + 1)
+                PortfolioFile(data: Data(count: OnboardingPortfolioUploadFeature.maxFileSizeBytes + 1))
             }
         }
 
@@ -117,6 +117,42 @@ struct OnboardingPortfolioUploadFeatureTests {
         }
         await store.receive(\.inner.uploadFailed) {
             $0.upload = .failed(message: OnboardingPortfolioUploadFeature.oversizedFileMessage)
+        }
+    }
+
+    @Test("암호 걸린 PDF 는 등록 요청 없이 실패 처리한다")
+    func encryptedFileFailsWithoutRegister() async {
+        let store = TestStore(initialState: OnboardingPortfolioUploadFeature.State()) {
+            OnboardingPortfolioUploadFeature()
+        } withDependencies: {
+            $0.portfolioFileReader.read = { _ in
+                PortfolioFile(data: Data("pdf".utf8), pageCount: 3, isEncrypted: true)
+            }
+        }
+
+        await store.send(.view(.fileSelected(Self.fileURL))) {
+            $0.upload = .uploading(fileName: "포트폴리오.pdf", portfolioId: nil)
+        }
+        await store.receive(\.inner.uploadFailed) {
+            $0.upload = .failed(message: OnboardingPortfolioUploadFeature.encryptedFileMessage)
+        }
+    }
+
+    @Test("30페이지 초과 PDF 는 등록 요청 없이 실패 처리한다")
+    func tooManyPagesFailsWithoutRegister() async {
+        let store = TestStore(initialState: OnboardingPortfolioUploadFeature.State()) {
+            OnboardingPortfolioUploadFeature()
+        } withDependencies: {
+            $0.portfolioFileReader.read = { _ in
+                PortfolioFile(data: Data("pdf".utf8), pageCount: OnboardingPortfolioUploadFeature.maxPageCount + 1)
+            }
+        }
+
+        await store.send(.view(.fileSelected(Self.fileURL))) {
+            $0.upload = .uploading(fileName: "포트폴리오.pdf", portfolioId: nil)
+        }
+        await store.receive(\.inner.uploadFailed) {
+            $0.upload = .failed(message: OnboardingPortfolioUploadFeature.pageExceededMessage)
         }
     }
 

@@ -171,6 +171,23 @@ struct OnboardingCoordinatorTests {
         }
     }
 
+    @Test("JD 링크 제출은 JDSubmission 을 해체 없이 jd 에 저장한다")
+    func jdLinkSubmissionStoredIntact() async {
+        var initialState = OnboardingFeature.State(userName: "재원")
+        initialState.path.append(.jdLink(.init(step: 3, totalSteps: 5)))
+        let store = TestStore(initialState: initialState) {
+            OnboardingFeature()
+        }
+
+        let id = store.state.path.ids[0]
+        await store.send(
+            .path(.element(id: id, action: .jdLink(.delegate(.continueRequested(.link("https://job.com/1"))))))
+        ) {
+            $0.data.jd = .link("https://job.com/1")
+            $0.path.append(.portfolioUpload(.init(step: 4, totalSteps: 5)))
+        }
+    }
+
     @Test("집중 프로젝트 완료는 누적 데이터를 들고 분석 스텝을 push 한다")
     func focusProjectContinuePushesAnalysisWithData() async {
         var initialState = OnboardingFeature.State(userName: "재원")

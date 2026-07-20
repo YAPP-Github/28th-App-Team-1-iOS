@@ -7,6 +7,15 @@
 
 import Foundation
 
+/// STEP 3 이 수집한 JD — 링크/직접입력 상호 배타를 타입으로 보장한다.
+/// 도메인 `JobDescriptionInput`(.url/.text)과 1:1 로 대응한다.
+public enum JDSubmission: Equatable, Sendable {
+    /// 검증 성공한 채용공고 URL
+    case link(String)
+    /// 직접 입력한 JD 본문
+    case text(String)
+}
+
 // @lat: [[onboarding#수집 데이터]]
 /// 온보딩 위저드가 스텝을 거치며 채우는 공유 페이로드.
 /// 코디네이터(OnboardingFeature)가 소유하고, 각 스텝의 delegate 결과를 여기에 누적한다.
@@ -18,10 +27,8 @@ public struct OnboardingData: Equatable, Sendable {
     public var jobRole: String?
     /// STEP 2 연차 입력 결과. 서버 enum 미정 — rawValue 임시.
     public var career: CareerOption?
-    /// STEP 3 JD 링크 결과 — 링크 제출 시. jdText 와 상호 배타, 스킵 시 둘 다 nil.
-    public var jdLink: String?
-    /// STEP 3 JD 직접입력 결과 — 텍스트 제출 시.
-    public var jdText: String?
+    /// STEP 3 JD 결과 — 스킵 시 nil.
+    public var jd: JDSubmission?
     /// STEP 4 포트폴리오 업로드 결과 — 서버 등록 완료된 포트폴리오 id.
     public var portfolioId: UUID?
     /// STEP 5 집중 프로젝트 설명(선택) — DomainInterview 의 InterviewConfig.freeText 대응.
@@ -31,16 +38,14 @@ public struct OnboardingData: Equatable, Sendable {
         userName: String = "",
         jobRole: String? = nil,
         career: CareerOption? = nil,
-        jdLink: String? = nil,
-        jdText: String? = nil,
+        jd: JDSubmission? = nil,
         portfolioId: UUID? = nil,
         freeText: String? = nil
     ) {
         self.userName = userName
         self.jobRole = jobRole
         self.career = career
-        self.jdLink = jdLink
-        self.jdText = jdText
+        self.jd = jd
         self.portfolioId = portfolioId
         self.freeText = freeText
     }

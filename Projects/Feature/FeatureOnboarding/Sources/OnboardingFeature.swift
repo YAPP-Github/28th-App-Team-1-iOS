@@ -100,17 +100,7 @@ public struct OnboardingFeature {
             case let .path(.element(id: _, action: .jdLink(.delegate(action)))):
                 switch action {
                 case let .continueRequested(submission):
-                    switch submission {
-                    case let .link(url):
-                        state.data.jdLink = url
-                        state.data.jdText = nil
-                    case let .text(text):
-                        state.data.jdText = text
-                        state.data.jdLink = nil
-                    case nil:
-                        state.data.jdLink = nil
-                        state.data.jdText = nil
-                    }
+                    state.data.jd = submission
                     state.path.append(.portfolioUpload(.init(step: 4, totalSteps: Self.totalSteps)))
                     return .none
                 case .backRequested:

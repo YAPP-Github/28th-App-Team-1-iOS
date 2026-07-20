@@ -8,6 +8,7 @@
 import ComposableArchitecture
 import DomainPortfolioInterface
 import Foundation
+import PDFKit
 
 // @lat: [[onboarding#포트폴리오 업로드]]
 /// 온보딩 STEP 4 — 포트폴리오 업로드. PDF 1개(20MB 이하)를 골라 서버에 등록하고,
@@ -100,8 +101,14 @@ public struct OnboardingPortfolioUploadFeature {
     static let genericFailureMessage = "업로드에 실패했어요.\n잠시 후 다시 시도해 주세요."
     /// 용량 초과 문구 — 디자인 미정, 임시 (서버 FILE_TOO_LARGE 와 동일 조건).
     static let oversizedFileMessage = "20MB 이하의 PDF 파일만 업로드할 수 있어요."
+    /// 페이지 초과 문구 — PRD S2 확정 (서버 PAGE_COUNT_EXCEEDED 와 동일 조건).
+    static let pageExceededMessage = "페이지가 너무 많아요.\n30페이지 이하 PDF로 올려주세요."
+    /// 암호 PDF 문구 — PRD S2 확정 (열기 암호 걸린 PDF 는 파싱 불가).
+    static let encryptedFileMessage = "암호가 걸린 PDF는 열 수 없어요.\n암호를 푼 PDF로 올려주세요."
     /// 업로드 상한 20MB — Figma «최대 20Mb» · 서버 검증 FILE_TOO_LARGE.
     static let maxFileSizeBytes = 20 * 1024 * 1024
+    /// 페이지 상한 30p — PRD S2 · 서버 검증 PAGE_COUNT_EXCEEDED. 클라 선검증(서버 실측 재검증).
+    static let maxPageCount = 30
     /// 처리 상태 폴링 주기 — PortfolioClient 가이드(3~5초)의 하한.
     static let pollInterval: Duration = .seconds(3)
 
@@ -158,12 +165,26 @@ public struct OnboardingPortfolioUploadFeature {
             let fileName = url.lastPathComponent
             state.upload = .uploading(fileName: fileName, portfolioId: nil)
             return .run { send in
-                let data = try await fileReader.read(url)
-                guard data.count <= Self.maxFileSizeBytes else {
+                // 클라 선검증 = UX 용 빠른 차단. 최종 판정은 서버 실측 재검증(글자 수·암호 최종 판별은 서버).
+                let file = try await fileReader.read(url)
+                guard file.data.count <= Self.maxFileSizeBytes else {
                     await send(.inner(.uploadFailed(message: Self.oversizedFileMessage)))
                     return
                 }
-                let upload = PortfolioUpload(fileName: fileName, fileSize: data.count, data: data)
+                guard !file.isEncrypted else {
+                    await send(.inner(.uploadFailed(message: Self.encryptedFileMessage)))
+                    return
+                }
+                if let pageCount = file.pageCount, pageCount > Self.maxPageCount {
+                    await send(.inner(.uploadFailed(message: Self.pageExceededMessage)))
+                    return
+                }
+                let upload = PortfolioUpload(
+                    fileName: fileName,
+                    fileSize: file.data.count,
+                    pageCount: file.pageCount,
+                    data: file.data
+                )
                 await send(.inner(.uploadAccepted(try await portfolioClient.register(upload))))
             } catch: { _, send in
                 await send(.inner(.uploadFailed(message: Self.genericFailureMessage)))
@@ -241,12 +262,29 @@ public struct OnboardingPortfolioUploadFeature {
 
 // MARK: - PortfolioFileReader
 
-/// fileImporter 가 준 security-scoped URL 에서 PDF 바이트를 읽는 파일 IO seam.
+/// 선택한 PDF 의 바이트 + 클라 선검증용 메타(페이지 수·암호 여부).
+/// 페이지 수는 파싱 실패 시 nil — 그 경우 서버 실측에 판정을 위임한다.
+public struct PortfolioFile: Equatable, Sendable {
+    /// PDF 바이너리
+    public var data: Data
+    /// PDF 페이지 수 — 파싱 불가(손상·비PDF) 시 nil.
+    public var pageCount: Int?
+    /// 열기 암호가 걸린 PDF 여부.
+    public var isEncrypted: Bool
+
+    public init(data: Data, pageCount: Int? = nil, isEncrypted: Bool = false) {
+        self.data = data
+        self.pageCount = pageCount
+        self.isEncrypted = isEncrypted
+    }
+}
+
+/// fileImporter 가 준 security-scoped URL 에서 PDF 바이트·메타를 읽는 파일 IO seam.
 /// TODO: 외부 IO 는 Domain/Core 모듈이 원칙 — 모듈 추가는 이 스텝 범위 밖이라 임시로 Feature 에 둔다.
 public struct PortfolioFileReader: Sendable {
-    public var read: @Sendable (URL) async throws -> Data
+    public var read: @Sendable (URL) async throws -> PortfolioFile
 
-    public init(read: @escaping @Sendable (URL) async throws -> Data) {
+    public init(read: @escaping @Sendable (URL) async throws -> PortfolioFile) {
         self.read = read
     }
 }
@@ -258,7 +296,14 @@ extension PortfolioFileReader: DependencyKey {
             defer {
                 if isScoped { url.stopAccessingSecurityScopedResource() }
             }
-            return try Data(contentsOf: url)
+            let data = try Data(contentsOf: url)
+            // PDFKit 파싱 — 페이지 수·암호 여부만 뽑는다(내용 추출·글자 수 판정은 서버 Tika).
+            let document = PDFDocument(data: data)
+            return PortfolioFile(
+                data: data,
+                pageCount: document?.pageCount,
+                isEncrypted: document?.isEncrypted ?? false
+            )
         }
     }
 
