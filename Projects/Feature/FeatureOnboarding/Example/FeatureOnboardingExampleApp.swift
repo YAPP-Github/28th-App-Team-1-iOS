@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import DomainInterviewInterface
 import DomainJDInterface
 import DomainJobInterface
 import DomainPortfolioInterface
@@ -75,6 +76,14 @@ struct FeatureOnboardingExampleApp: App {
                             PortfolioDeletion(portfolioId: id, deletedAt: nil)
                         }
                     )
+                    // STEP 6 분석 — 세션 생성 즉시 PROCESSING, 폴링 1회 후 READY.
+                    $0.interviewClient.createSession = { _ in
+                        try await Task.sleep(for: .seconds(1))
+                        return InterviewSessionCreated(sessionId: 1, status: "PROCESSING", statusUrl: nil)
+                    }
+                    $0.interviewClient.sessionStatus = { _ in
+                        InterviewSessionStatus(status: .ready, startedAt: nil, summaryQuestion: nil)
+                    }
                 }
             )
         }

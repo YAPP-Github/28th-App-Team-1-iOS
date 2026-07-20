@@ -27,6 +27,18 @@ public enum CareerOption: String, CaseIterable, Sendable {
         case .overThreeYears: "3년 이상"
         }
     }
+
+    /// 서버 세션 입력(`InterviewConfig.careerYears`)에 넣을 연차(년).
+    /// ⚠️ 잠정 매핑 — PRD 는 정수 드롭다운(0~10년+)을 요구하나 현 디자인은 5구간 휠이다.
+    /// 정수 피커로 재확정되면 이 매핑을 제거하고 Int 를 직접 수집한다. (→ ai-interview.md §5 STEP2 🔴)
+    public var careerYears: Int {
+        switch self {
+        case .newcomer, .underSixMonths: 0
+        case .overOneYear: 1
+        case .overTwoYears: 2
+        case .overThreeYears: 3
+        }
+    }
 }
 
 // @lat: [[onboarding#연차 입력]]

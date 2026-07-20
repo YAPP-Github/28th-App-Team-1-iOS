@@ -11,6 +11,7 @@ let project = Project.makeModule(
             .domain(interface: .job),
             .domain(interface: .jd),
             .domain(interface: .portfolio),
+            .domain(interface: .interview),   // 분석 스텝: 세션 생성(S0~S3 일괄 수집)
             .shared(interface: .designSystem)
         ])),
         .feature(testing: "Onboarding"),
@@ -20,13 +21,15 @@ let project = Project.makeModule(
             .composableArchitecture,
             .domain(interface: .job),
             .domain(interface: .jd),
-            .domain(interface: .portfolio)
+            .domain(interface: .portfolio),
+            .domain(interface: .interview)
         ])),
         .feature(example: "Onboarding", factory: .init(dependencies: [
             .composableArchitecture,
             .domain(interface: .job),
             .domain(interface: .jd),
-            .domain(interface: .portfolio)
+            .domain(interface: .portfolio),
+            .domain(interface: .interview)
         ])),
     ]
 )

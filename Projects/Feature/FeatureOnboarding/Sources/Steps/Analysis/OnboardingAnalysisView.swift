@@ -57,6 +57,8 @@ public struct OnboardingAnalysisView: View {
                 analyzingContent
             case .completed:
                 completedContent
+            case let .failed(message):
+                failedContent(message: message)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -118,6 +120,18 @@ public struct OnboardingAnalysisView: View {
         .padding(.bottom, 136)
     }
 
+    // MARK: - 분석 실패 (세션 생성·폴링 실패 — 디자인 미정, 근사)
+
+    /// 재시도 없음(PRD §3.1) — 좌상단 X 로 이탈해 처음부터 다시 시도한다.
+    private func failedContent(message: String) -> some View {
+        header(
+            title: "면접 준비에 실패했어요",
+            subtitle: message,
+            subtitleColor: Color.dsGray100
+        )
+        .padding(.bottom, 96)
+    }
+
     // MARK: - 공통
 
     private func header(title: String, subtitle: String, subtitleColor: Color) -> some View {
@@ -165,23 +179,37 @@ private extension Color {
 
 // MARK: - Previews
 
+private let previewData = OnboardingData(
+    userName: "재원",
+    jobRole: "BACKEND",
+    career: .overOneYear,
+    portfolioId: UUID(uuidString: "00000000-0000-0000-0000-0000000000f1")!
+)
+
 #Preview("분석 중") {
-    OnboardingAnalysisView(
-        store: Store(
-            initialState: OnboardingAnalysisFeature.State(
-                data: OnboardingData(userName: "재원", jobRole: "BACKEND")
-            )
-        ) {
+    var state = OnboardingAnalysisFeature.State(data: previewData)
+    state.hasStartedAnalysis = true   // onAppear 의 실제 세션 호출을 막고 분석 화면만 본다.
+    return OnboardingAnalysisView(
+        store: Store(initialState: state) {
             OnboardingAnalysisFeature()
         }
     )
 }
 
 #Preview("분석 완료") {
-    var state = OnboardingAnalysisFeature.State(
-        data: OnboardingData(userName: "재원", jobRole: "BACKEND")
-    )
+    var state = OnboardingAnalysisFeature.State(data: previewData)
     state.phase = .completed
+    state.hasStartedAnalysis = true
+    return OnboardingAnalysisView(
+        store: Store(initialState: state) {
+            OnboardingAnalysisFeature()
+        }
+    )
+}
+
+#Preview("분석 실패") {
+    var state = OnboardingAnalysisFeature.State(data: previewData)
+    state.phase = .failed(message: OnboardingAnalysisFeature.failureMessage)
     state.hasStartedAnalysis = true
     return OnboardingAnalysisView(
         store: Store(initialState: state) {
