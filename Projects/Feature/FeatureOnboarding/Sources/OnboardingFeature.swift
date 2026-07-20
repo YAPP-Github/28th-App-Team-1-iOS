@@ -36,6 +36,8 @@ public struct OnboardingFeature {
         public var path = StackState<Path.State>()
         /// 스텝을 거치며 누적되는 공유 페이로드.
         public var data: OnboardingData
+        /// 집중 프로젝트 연관성 연속 실패 횟수 — PRD S3.5 (4회째 두 선택지 제시는 Phase B).
+        public var relevanceFailureCount = 0
 
         public init(userName: String = "") {
             self.data = OnboardingData(userName: userName)
@@ -138,11 +140,18 @@ public struct OnboardingFeature {
                     return .send(.delegate(.dismiss))
                 }
 
-            // 분석 — 완료(자동 전환)면 세션 id 를 들고 위저드 종료, X 면 이탈.
+            // 분석 — 완료면 세션 id 를 들고 위저드 종료, 연관성 실패면 집중 프로젝트로 되돌림, X 면 이탈.
             case let .path(.element(id: _, action: .analysis(.delegate(action)))):
                 switch action {
                 case let .completed(sessionId):
                     return .send(.delegate(.finished(sessionId: sessionId)))
+                case .relevanceCheckFailed:
+                    // PRD S3.5 — 연관성 부족 시 집중 프로젝트 스텝으로 되돌려 재입력받는다.
+                    state.relevanceFailureCount += 1
+                    // TODO(Phase B): 4회째면 [포폴 다시 올리기 / 집중 프로젝트 없이 진행] 두 선택지 제시.
+                    //   현재는 매번 pop-back(재입력). 경고 문구 노출도 Phase B.
+                    _ = state.path.popLast()
+                    return .none
                 case .closeRequested:
                     return .send(.delegate(.dismiss))
                 }

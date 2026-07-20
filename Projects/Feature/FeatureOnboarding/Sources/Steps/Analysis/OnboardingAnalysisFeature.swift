@@ -67,6 +67,8 @@ public struct OnboardingAnalysisFeature {
             case statusPolled(InterviewSessionStatus)
             /// 세션 생성·폴링 실패 — 실패 화면으로 전환.
             case analysisFailed(message: String)
+            /// 집중 프로젝트 연관성 부족(FREETEXT_NOT_RELEVANT) — 코디네이터가 집중 프로젝트로 되돌린다.
+            case relevanceCheckFailed
             /// 완료 화면 유지 시간 경과 — 온보딩 완료 신호를 올릴 시점.
             case completionHoldFinished
         }
@@ -76,6 +78,8 @@ public struct OnboardingAnalysisFeature {
         public enum Delegate: Equatable, Sendable {
             /// 온보딩 전체 완료 — 준비된 세션 id 를 넘긴다. 화면 전환(Part2 진입)은 코디네이터가 처리.
             case completed(sessionId: Int)
+            /// 집중 프로젝트 연관성 부족 — 코디네이터가 집중 프로젝트 스텝으로 pop-back 한다 (PRD S3.5).
+            case relevanceCheckFailed
             /// 온보딩 이탈(X) 요청 — dismiss 는 코디네이터 몫.
             case closeRequested
         }
@@ -111,8 +115,12 @@ public struct OnboardingAnalysisFeature {
             }
             return .run { send in
                 await send(.inner(.sessionCreated(try await interviewClient.createSession(config))))
-            } catch: { _, send in
-                await send(.inner(.analysisFailed(message: Self.failureMessage)))
+            } catch: { error, send in
+                if let error = error as? InterviewError, error == .freeTextNotRelevant {
+                    await send(.inner(.relevanceCheckFailed))
+                } else {
+                    await send(.inner(.analysisFailed(message: Self.failureMessage)))
+                }
             }
             .cancellable(id: CancelID.session)
 
@@ -153,6 +161,10 @@ public struct OnboardingAnalysisFeature {
         case let .analysisFailed(message):
             state.phase = .failed(message: message)
             return .none
+
+        case .relevanceCheckFailed:
+            // 화면 상태는 두지 않는다 — 코디네이터가 집중 프로젝트로 즉시 pop-back 한다.
+            return .send(.delegate(.relevanceCheckFailed))
 
         case .completionHoldFinished:
             guard let sessionId = state.sessionId else { return .none }
