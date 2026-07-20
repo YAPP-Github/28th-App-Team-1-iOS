@@ -243,6 +243,13 @@ public struct OnboardingJDLinkView: View {
     // MARK: - 직접 입력 필드 (멀티라인)
 
     private var directTextField: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            directTextEditorBox
+            directTextFooter
+        }
+    }
+
+    private var directTextEditorBox: some View {
         ZStack(alignment: .topLeading) {
             TextEditor(text: $store.directText)
                 .font(.ds(.body3))
@@ -269,7 +276,32 @@ public struct OnboardingJDLinkView: View {
                     .padding(.trailing, 16)
             }
         }
-        .overlay { Rectangle().strokeBorder(Color.dsGray100, lineWidth: 1.2) }
+        .overlay {
+            // 무효(짧음/초과) 입력이면 링크 에러와 같은 red 보더로 강조한다.
+            Rectangle().strokeBorder(
+                store.directTextValidationMessage == nil ? Color.dsGray100 : Color.dsError500,
+                lineWidth: 1.2
+            )
+        }
+    }
+
+    /// 검증 안내(좌) + 글자수 카운터(우) — PRD S1 200~3,000자 게이팅.
+    private var directTextFooter: some View {
+        HStack(alignment: .top, spacing: 6) {
+            if let message = store.directTextValidationMessage {
+                Image.DS.icError
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 16, height: 16)
+                Text(message)
+                    .dsTypography(.body5)
+                    .foregroundStyle(Color.dsError500)
+            }
+            Spacer(minLength: 0)
+            Text(store.directTextCountLabel)
+                .dsTypography(.body5)
+                .foregroundStyle(store.isDirectTextOverLimit ? Color.dsError500 : Color.dsGray300)
+        }
     }
 
     private func clearButton(size: CGFloat, action: @escaping () -> Void) -> some View {
@@ -327,12 +359,13 @@ public struct OnboardingJDLinkView: View {
             } label: {
                 Text("계속하기")
                     .dsTypography(.sub7)
-                    .foregroundStyle(Color.dsWhite)
+                    .foregroundStyle(store.isContinueEnabled ? Color.dsWhite : Color.dsGray500)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 22)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .disabled(!store.isContinueEnabled)
         }
         .background(Color.dsBlack.ignoresSafeArea(edges: .bottom))
     }
@@ -429,9 +462,20 @@ private enum Copy {
     )
 }
 
-#Preview("직접 입력") {
+#Preview("직접 입력 — 빈 값(스킵)") {
     var state = OnboardingJDLinkFeature.State()
     state.mode = .directText
+    return OnboardingJDLinkView(
+        store: Store(initialState: state) {
+            OnboardingJDLinkFeature()
+        }
+    )
+}
+
+#Preview("직접 입력 — 200자 미만") {
+    var state = OnboardingJDLinkFeature.State()
+    state.mode = .directText
+    state.directText = String(repeating: "가", count: 40)
     return OnboardingJDLinkView(
         store: Store(initialState: state) {
             OnboardingJDLinkFeature()

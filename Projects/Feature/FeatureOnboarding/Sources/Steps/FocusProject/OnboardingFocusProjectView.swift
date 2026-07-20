@@ -84,7 +84,8 @@ public struct OnboardingFocusProjectView: View {
                 Text("집중적으로 보고싶은\n프로젝트 내용을 알려주세요.")
                     .dsTypography(.head3)
                     .foregroundStyle(Color.dsGray800)
-                Text("해당 프로젝트를 중점으로 면접이 진행돼요.")
+                // PRD S3 확정 문구 — 입력/건너뛰기 결과를 함께 안내(기존 스킵과 모순되던 카피 폐기).
+                Text("입력하면 그 부분을 집중 검증해요.\n건너뛰면 포트폴리오 전체에서 질문해요.")
                     .dsTypography(.body3)
                     .foregroundStyle(Color.dsGray500)
             }
