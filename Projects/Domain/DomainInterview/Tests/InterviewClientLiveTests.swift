@@ -118,4 +118,32 @@ final class InterviewClientLiveTests: XCTestCase {
         XCTAssertEqual(stream.url.absoluteString, "http://stub.test/api/v1/interview/sessions/7/questions/13/audio/stream")
         XCTAssertEqual(stream.headers["Authorization"], "Bearer stub-token")
     }
+
+    func test_createSession_FREETEXT_NOT_RELEVANT_서버에러를_도메인에러로_승격한다() async {
+        let body = Data(#"{"success": false, "code": "FREETEXT_NOT_RELEVANT", "message": "연관성이 낮아요."}"#.utf8)
+        let client = makeClient { _ in throw NetworkError.statusCode(422, body) }
+
+        do {
+            _ = try await client.createSession(InterviewConfig(portfolioId: UUID(), jobRole: "BACKEND", careerYears: 1))
+            XCTFail("InterviewError 가 나야 한다")
+        } catch let error as InterviewError {
+            XCTAssertEqual(error, .freeTextNotRelevant)
+        } catch {
+            XCTFail("InterviewError 가 아니라 \(error)")
+        }
+    }
+
+    func test_createSession_그외_서버에러는_server케이스로_승격한다() async {
+        let body = Data(#"{"success": false, "code": "PORTFOLIO_NOT_READY", "message": "포폴 준비 중"}"#.utf8)
+        let client = makeClient { _ in throw NetworkError.statusCode(409, body) }
+
+        do {
+            _ = try await client.createSession(InterviewConfig(portfolioId: UUID(), jobRole: "BACKEND", careerYears: 1))
+            XCTFail("InterviewError 가 나야 한다")
+        } catch let error as InterviewError {
+            XCTAssertEqual(error, .server(code: "PORTFOLIO_NOT_READY", message: "포폴 준비 중"))
+        } catch {
+            XCTFail("InterviewError 가 아니라 \(error)")
+        }
+    }
 }

@@ -221,4 +221,20 @@ struct OnboardingCoordinatorTests {
         await store.send(.path(.element(id: id, action: .analysis(.delegate(.completed(sessionId: 42))))))
         await store.receive(\.delegate.finished, 42)
     }
+
+    @Test("분석 연관성 실패는 집중 프로젝트로 되돌리고 실패 횟수를 센다")
+    func relevanceFailurePopsBackToFocusProject() async {
+        var initialState = OnboardingFeature.State(userName: "재원")
+        initialState.path.append(.focusProject(.init(step: 5, totalSteps: 5)))
+        initialState.path.append(.analysis(.init(data: initialState.data)))
+        let store = TestStore(initialState: initialState) {
+            OnboardingFeature()
+        }
+
+        let analysisId = store.state.path.ids[1]
+        await store.send(.path(.element(id: analysisId, action: .analysis(.delegate(.relevanceCheckFailed))))) {
+            $0.relevanceFailureCount = 1
+            $0.path.removeLast()   // 분석 스텝만 pop — 집중 프로젝트는 남는다.
+        }
+    }
 }

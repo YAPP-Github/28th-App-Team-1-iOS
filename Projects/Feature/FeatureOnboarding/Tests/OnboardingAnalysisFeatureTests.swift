@@ -77,6 +77,19 @@ struct OnboardingAnalysisFeatureTests {
         await store.receive(\.delegate.completed, 7)
     }
 
+    @Test("연관성 부족(FREETEXT_NOT_RELEVANT)은 relevanceCheckFailed 를 delegate 로 올린다")
+    func relevanceFailureDelegates() async {
+        let store = TestStore(initialState: OnboardingAnalysisFeature.State(data: fullData())) {
+            OnboardingAnalysisFeature()
+        } withDependencies: {
+            $0.interviewClient.createSession = { _ in throw InterviewError.freeTextNotRelevant }
+        }
+
+        await store.send(.view(.onAppear)) { $0.hasStartedAnalysis = true }
+        await store.receive(\.inner.relevanceCheckFailed)
+        await store.receive(\.delegate.relevanceCheckFailed)
+    }
+
     @Test("세션 생성 실패는 실패 화면으로 전환한다 (재시도 없음)")
     func analysisFailsOnCreateError() async {
         let store = TestStore(initialState: OnboardingAnalysisFeature.State(data: fullData())) {
