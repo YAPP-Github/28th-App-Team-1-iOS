@@ -209,7 +209,7 @@ struct OnboardingCoordinatorTests {
         }
     }
 
-    @Test("분석 완료는 온보딩 완료(finished)로 올린다")
+    @Test("분석 완료는 세션 id 를 들고 온보딩 완료(finished)로 올린다")
     func analysisCompletedFinishesOnboarding() async {
         var initialState = OnboardingFeature.State(userName: "재원")
         initialState.path.append(.analysis(.init(data: initialState.data)))
@@ -218,7 +218,7 @@ struct OnboardingCoordinatorTests {
         }
 
         let id = store.state.path.ids[0]
-        await store.send(.path(.element(id: id, action: .analysis(.delegate(.completed)))))
-        await store.receive(\.delegate.finished)
+        await store.send(.path(.element(id: id, action: .analysis(.delegate(.completed(sessionId: 42))))))
+        await store.receive(\.delegate.finished, 42)
     }
 }

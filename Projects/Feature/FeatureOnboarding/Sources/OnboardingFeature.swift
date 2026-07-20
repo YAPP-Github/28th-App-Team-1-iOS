@@ -56,8 +56,8 @@ public struct OnboardingFeature {
         public enum Delegate: Equatable, Sendable {
             /// 중도 이탈(X) — dismiss 는 부모(AppFeature)가 처리한다.
             case dismiss
-            /// 온보딩 완료(분석까지 끝) — 부모가 메인 진입 등으로 전환한다.
-            case finished
+            /// 온보딩 완료(분석까지 끝) — 준비된 세션 id 를 넘긴다. 부모가 Part2 진입 등으로 전환한다.
+            case finished(sessionId: Int)
         }
     }
 
@@ -138,11 +138,11 @@ public struct OnboardingFeature {
                     return .send(.delegate(.dismiss))
                 }
 
-            // 분석 — 완료(자동 전환)면 위저드 종료, X 면 이탈.
+            // 분석 — 완료(자동 전환)면 세션 id 를 들고 위저드 종료, X 면 이탈.
             case let .path(.element(id: _, action: .analysis(.delegate(action)))):
                 switch action {
-                case .completed:
-                    return .send(.delegate(.finished))
+                case let .completed(sessionId):
+                    return .send(.delegate(.finished(sessionId: sessionId)))
                 case .closeRequested:
                     return .send(.delegate(.dismiss))
                 }
