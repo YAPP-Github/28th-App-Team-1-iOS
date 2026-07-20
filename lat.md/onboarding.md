@@ -56,17 +56,17 @@ STEP 5 (선택 — 마지막 수집 스텝, 프로그레스 5/5). 300자 자유 
 
 ## 수집 데이터
 
-OnboardingData — 위저드가 스텝을 거치며 채우는 공유 페이로드. 코디네이터가 소유하고 각 스텝 delegate 결과를 누적, 분석 스텝에 통째로 주입된다. 필드: userName(주입) · jobRole · career · jd(JDSubmission — .link/.text 상호 배타를 타입 보장, 스킵 nil) · portfolioId · freeText. JDSubmission 은 OnboardingData.swift 소속 — JD 스텝 delegate 가 올린 값을 코디네이터가 해체 없이 저장한다.
+OnboardingData — 위저드가 스텝을 거치며 채우는 공유 페이로드(Codable — draft 영속용). 코디네이터가 소유하고 각 스텝 delegate 결과를 누적, 분석 스텝에 통째로 주입된다. 필드: userName(주입) · jobRole · careerYears(정수) · jd(JDSubmission — .link/.text 상호 배타를 타입 보장, 스킵 nil) · portfolioId · portfolioFileName(draft 복원용) · freeText. JDSubmission 은 OnboardingData.swift 소속 — JD 스텝 delegate 가 올린 값을 코디네이터가 해체 없이 저장한다.
 
-## 입력 draft (미구현)
+## 입력 draft
 
-PRD §4.4 신설 — S0~S3 입력을 로컬 draft 로 자동 저장해 **앱 진짜 종료(kill/크래시) 시 재입력 방지**. 백그라운드 전환은 프로세스 생존이라 무관.
+PRD §4.4 — S0~S3 입력을 로컬 draft 로 자동 저장해 **앱 진짜 종료(kill/크래시) 시 재입력 방지**(백그라운드 전환은 프로세스 생존이라 무관). **재개식**: 값 + 위저드 위치 복원.
 
-규칙: TTL **14일** · 복원 시 드롭다운 유효성 재검사(직무 목록 대조) · **세션 생성 성공 / 포폴 삭제 시 삭제** · 스킵 필드는 빈 값 허용. 구현 후보: OnboardingData 를 `@Shared(.fileStorage)` 승격 + 저장 시각 동봉(TTL 판정). 서버 무관.
+`OnboardingDraftStore` seam(UserDefaults JSON — PortfolioFileReader 와 같은 로컬 IO 선상, testValue unimplemented). OnboardingData 는 Codable + portfolioFileName. 코디네이터가 각 스텝 완료마다 `persist`(data·furthestStep=path.count+1·savedAt) 저장, **세션 생성 성공 시 clear**. onAppear 는 path 빈 경우만 TTL 14일 안 draft 를 복원 — 분석(6) 제외 집중 프로젝트(5)까지 되쌓고, 직군은 목록 로드 후 preselectedJobRole 매칭, JD 는 restoring init. 잔여: 복원 시 직무 목록 대조 재검증·포폴 삭제 시 clear.
 
-## 재진입 분기 (미구현)
+## 재진입 분기
 
-PRD §8 — 폴링 중 강제종료 후 재진입 시 PortfolioClient.list 로 status 회수, **READY 면 집중 프로젝트 스텝부터** 시작. 업로드 중 백그라운드→복귀는 폴링 재개로 충분(Foreground Service 급 미채택). 포폴 0개(삭제됨)면 다음 진입 시 S2 강제 라우팅은 AppFeature 몫 → [[app]].
+앱 종료 후 재진입은 [[onboarding#입력 draft]] 가 값·위저드 위치를 복원해 처리한다. 🟡 잔여 refinement: 폴링 중 강제종료 시 draft 는 포폴 스텝(미완료)으로 복원되므로 PortfolioClient.list 로 status 재조회해 그새 READY 면 집중 프로젝트로 건너뛰기(draft 와 겹쳐 우선순위 낮음). 포폴 0개(삭제됨) → 다음 진입 시 S2 강제 라우팅은 AppFeature 몫 → [[app]].
 
 ## 스텝 템플릿
 
@@ -74,6 +74,6 @@ OnboardingPlaceholderStepFeature/View — 스텝 골격(내비바·프로그레�
 
 ## 코디네이터 연결
 
-FeatureOnboarding 은 아직 AppFeature 에 배선되지 않았다. 배선 시: 닉네임(userName) 주입, delegate(.dismiss) → 중도 이탈 처리(draft 보존), delegate(.finished) → Part 2 세션 제시. Example 앱은 전체 위저드를 스텁 의존성으로 구동하며 ONBOARDING_START_STEP 환경변수로 특정 스텝부터 시작할 수 있다. → [[app]]
+FeatureOnboarding 은 아직 AppFeature 에 배선되지 않았다. 배선 시: 닉네임(userName) 주입, delegate(.dismiss) → 중도 이탈 처리(draft 보존), **delegate(.finished(sessionId:)) → Part 2 면접 바로 시작**(사용자 결정 2026-07-20, InterviewSessionFeature 생기면 fullScreenCover). 코디네이터 onAppear 가 draft 복원을 트리거하므로 OnboardingView 는 루트에 onAppear 를 발신한다. Example 앱은 전체 위저드를 스텁 의존성으로 구동하며 ONBOARDING_START_STEP 환경변수로 특정 스텝부터 시작할 수 있다(draft 는 no-op 스텁). → [[app]]
 
 PRD §3.8 부록대로 Part1↔2 경계는 세션 생성 API 계약 — .finished 는 현재 무페이로드라 세션 payload(sessionId·요약 질문) 확장 필요(서버 정합). 권한(카메라·마이크)은 iOS = 사용 시점 요청이라 온보딩이 아니라 Part 2 진입 직전.
