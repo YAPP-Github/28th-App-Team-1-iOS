@@ -135,16 +135,19 @@ S0→S3.5는 **도메인 내부** navigation → 규칙대로 자체 `Path` + `S
   2. ✅ 연관성(코사인 ≥0.6 tentative)은 **freeText 있을 때만** 서버 검사. `FREETEXT_NOT_RELEVANT`(Core `ServerError`)를 DomainInterview 가 `InterviewError.freeTextNotRelevant` 로 매핑(레이어 준수) → 분석이 `delegate(.relevanceCheckFailed)` → 코디네이터가 집중 프로젝트로 pop-back + `relevanceFailureCount++`.
   3. ✅ 4회 미만 실패 → 집중 프로젝트에 경고 문구(PRD 확정) 주입 + 재입력. **연속 4회째** → `ConfirmationDialogState` 2선택지: [포폴 다시 올리기 → STEP4 pop] / [집중 프로젝트 없이 진행 → freeText=nil 로 재분석]. 카운트 `relevanceFailureCount`, 편집 시 경고 해제.
 
-### 입력 draft (PRD §4.4 신설 — 미구현)
+### 입력 draft (PRD §4.4) ✅
 
-S0~S3 입력을 로컬 draft 로 자동 저장 — **앱 진짜 종료(kill/크래시) 대비** (백그라운드 전환은 프로세스 생존이라 무관).
-규칙: TTL **14일** · 복원 시 드롭다운 유효성 재검사(직무 목록 대조) · **세션 생성 성공 / 포폴 삭제 시 삭제** · 스킵 필드는 빈 값 허용(직무·연차는 필수라 항상 값 있음).
-구현 후보: 코디네이터의 `OnboardingData` 를 `@Shared(.fileStorage)` 로 승격 + 저장 시각 동봉(TTL 판정). 서버 무관 — Domain Client 불필요.
+S0~S3 입력을 로컬 draft 로 자동 저장 — **앱 진짜 종료(kill/크래시) 대비**. **재개식**(사용자 결정 2026-07-20): 값 + 위저드 위치를 복원해 이어서 시작.
+- `OnboardingDraftStore` seam(UserDefaults JSON, PortfolioFileReader 와 같은 로컬 IO 선상) — load/save/clear. `OnboardingData` 는 Codable, `portfolioFileName` 추가(완료 행 복원용).
+- 저장: 각 스텝 완료(continue)마다 `persist`(data + furthestStep = path.count+1 + savedAt). 폐기: **세션 생성 성공 시** clear.
+- 복원(코디네이터 onAppear): `path` 비었을 때만, TTL **14일** 안이면 data 복원 + 위저드 되쌓기(분석 6은 제외, 집중 프로젝트 5까지). 직군은 목록 로드 후 `preselectedJobRole` 매칭, JD 는 `restoring:` init 으로 탭·검증상태 복원.
+- 잔여(TODO): 복원 시 직무 목록 대조 재검증(현재 로드 후 매칭까지) · 포폴 삭제 시 clear.
 
 ### 재진입 분기 (PRD §8)
 
 - 업로드 중 백그라운드 → 복귀: 폴링 재개로 충분(Foreground Service 급 장치 미채택 결정과 동일 노선). 🍎 background URLSession 도입·완료 푸시 제공 여부는 미결.
-- 폴링 중 강제종료 → 재진입: `PortfolioClient.list` 로 status 회수 — **READY 면 STEP5(집중 프로젝트)부터 시작**하는 분기.
+- 앱 종료 후 재진입: **입력 draft** 가 값·위저드 위치를 복원한다(위 §입력 draft). 
+- 🟡 잔여 refinement: 폴링 중 강제종료 시 draft 는 포폴 스텝(미완료)으로 복원 → `PortfolioClient.list` 로 status 재조회해 **그새 READY 면 STEP5 로 건너뛰기**. draft 와 겹쳐 우선순위 낮음.
 - 포폴 0개(삭제됨): 다음 연습 진입 시 S2 강제 라우팅 — AppFeature 몫(§2 표).
 
 ### 권한·문구·측정
@@ -209,7 +212,7 @@ enum CancelID { case session, thinking, silence, tts, stt, hardCap }
 | **J** Scoring 시점(Part2/3 경계) | Session→Report delegate 계약 | 🟠 P4 착수 전 |
 | ~~**연차 선택지 세트**~~ → 정수 0~10년 확정(2026-07-20) | `CareerOption{years}` → `careerYears: Int` 직결 | ✅ 완료 |
 | **연관성 4회 실패 카운트** 임계 (PRD tentative) | Analysis State 카운터 + 2선택지 분기 | 🟠 분석 API 연결 시 |
-| **입력 draft** TTL 14일·복원 재검사 (PRD §4.4) | `@Shared` 승격 여부·저장 시각 | 🟡 위저드 안정화 후 |
+| ~~**입력 draft** TTL 14일 (PRD §4.4)~~ → 재개식 구현 ✅ | `OnboardingDraftStore`(UserDefaults) | ✅ 완료 |
 | **세션 생성 payload** (Part1↔2 경계, PRD §3.8 부록) | Onboarding→AppFeature→Session delegate 계약 | 🔴 분석 API 연결 시 (서버 정합) |
 | #5 PDF 상한(20MB/30p) / 암호·페이지 클라 선검증 | PortfolioClient 선검증 seam | 🟡 STEP4 (일부 구현) |
 | 카운트다운·상태 인디케이터·토스트 | SharedDesignSystem 컴포넌트 추가 | 🟡 병행 |
