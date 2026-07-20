@@ -104,11 +104,19 @@ struct OnboardingJobSelectionFeatureTests {
 
 @MainActor
 struct OnboardingCoordinatorTests {
+    /// draft 영속을 no-op 으로, date 를 고정으로 스텁한 코디네이터 스토어 (persist/clear·TTL 판정용).
+    private func makeStore(_ state: OnboardingFeature.State) -> TestStoreOf<OnboardingFeature> {
+        TestStore(initialState: state) {
+            OnboardingFeature()
+        } withDependencies: {
+            $0.onboardingDraftStore = OnboardingDraftStore(load: { nil }, save: { _ in }, clear: {})
+            $0.date = .constant(Date(timeIntervalSince1970: 1_782_000_000))
+        }
+    }
+
     @Test("직군 선택 완료 시 jobRole 을 저장하고 연차 스텝을 push 한다")
     func jobSelectionContinuePushesCareerInput() async {
-        let store = TestStore(initialState: OnboardingFeature.State(userName: "재원")) {
-            OnboardingFeature()
-        }
+        let store = makeStore(OnboardingFeature.State(userName: "재원"))
 
         await store.send(.jobSelection(.delegate(.continueRequested(jobRole: "BACKEND")))) {
             $0.data.jobRole = "BACKEND"
@@ -118,9 +126,7 @@ struct OnboardingCoordinatorTests {
 
     @Test("직군 선택 닫기는 온보딩 종료(dismiss)로 올린다")
     func jobSelectionCloseDismissesOnboarding() async {
-        let store = TestStore(initialState: OnboardingFeature.State(userName: "재원")) {
-            OnboardingFeature()
-        }
+        let store = makeStore(OnboardingFeature.State(userName: "재원"))
 
         await store.send(.jobSelection(.delegate(.closeRequested)))
         await store.receive(\.delegate.dismiss)
@@ -130,9 +136,7 @@ struct OnboardingCoordinatorTests {
     func stepBackPopsStack() async {
         var initialState = OnboardingFeature.State(userName: "재원")
         initialState.path.append(.careerInput(.init(step: 2, totalSteps: 5)))
-        let store = TestStore(initialState: initialState) {
-            OnboardingFeature()
-        }
+        let store = makeStore(initialState)
 
         let id = store.state.path.ids[0]
         await store.send(.path(.element(id: id, action: .careerInput(.delegate(.backRequested))))) {
@@ -144,9 +148,7 @@ struct OnboardingCoordinatorTests {
     func careerContinuePushesJDLink() async {
         var initialState = OnboardingFeature.State(userName: "재원")
         initialState.path.append(.careerInput(.init(step: 2, totalSteps: 5)))
-        let store = TestStore(initialState: initialState) {
-            OnboardingFeature()
-        }
+        let store = makeStore(initialState)
 
         let id = store.state.path.ids[0]
         await store.send(
@@ -161,9 +163,7 @@ struct OnboardingCoordinatorTests {
     func jdLinkSkipPushesPortfolioUpload() async {
         var initialState = OnboardingFeature.State(userName: "재원")
         initialState.path.append(.jdLink(.init(step: 3, totalSteps: 5)))
-        let store = TestStore(initialState: initialState) {
-            OnboardingFeature()
-        }
+        let store = makeStore(initialState)
 
         let id = store.state.path.ids[0]
         await store.send(.path(.element(id: id, action: .jdLink(.delegate(.continueRequested(nil)))))) {
@@ -175,9 +175,7 @@ struct OnboardingCoordinatorTests {
     func jdLinkSubmissionStoredIntact() async {
         var initialState = OnboardingFeature.State(userName: "재원")
         initialState.path.append(.jdLink(.init(step: 3, totalSteps: 5)))
-        let store = TestStore(initialState: initialState) {
-            OnboardingFeature()
-        }
+        let store = makeStore(initialState)
 
         let id = store.state.path.ids[0]
         await store.send(
@@ -193,9 +191,7 @@ struct OnboardingCoordinatorTests {
         var initialState = OnboardingFeature.State(userName: "재원")
         initialState.data.jobRole = "BACKEND"
         initialState.path.append(.focusProject(.init(step: 5, totalSteps: 5)))
-        let store = TestStore(initialState: initialState) {
-            OnboardingFeature()
-        }
+        let store = makeStore(initialState)
 
         var expectedData = initialState.data
         expectedData.freeText = "결제 시스템 리팩토링"
@@ -213,13 +209,12 @@ struct OnboardingCoordinatorTests {
     func analysisCompletedFinishesOnboarding() async {
         var initialState = OnboardingFeature.State(userName: "재원")
         initialState.path.append(.analysis(.init(data: initialState.data)))
-        let store = TestStore(initialState: initialState) {
-            OnboardingFeature()
-        }
+        let store = makeStore(initialState)
 
         let id = store.state.path.ids[0]
         await store.send(.path(.element(id: id, action: .analysis(.delegate(.completed(sessionId: 42))))))
         await store.receive(\.delegate.finished, 42)
+        await store.finish()
     }
 
     @Test("분석 연관성 실패(4회 미만)는 집중 프로젝트로 되돌리고 경고를 주입한다")
@@ -227,9 +222,7 @@ struct OnboardingCoordinatorTests {
         var initialState = OnboardingFeature.State(userName: "재원")
         initialState.path.append(.focusProject(.init(step: 5, totalSteps: 5)))
         initialState.path.append(.analysis(.init(data: initialState.data)))
-        let store = TestStore(initialState: initialState) {
-            OnboardingFeature()
-        }
+        let store = makeStore(initialState)
 
         let focusId = store.state.path.ids[0]
         let analysisId = store.state.path.ids[1]
@@ -248,9 +241,7 @@ struct OnboardingCoordinatorTests {
         initialState.relevanceFailureCount = 3   // 직전까지 3회
         initialState.path.append(.focusProject(.init(step: 5, totalSteps: 5)))
         initialState.path.append(.analysis(.init(data: initialState.data)))
-        let store = TestStore(initialState: initialState) {
-            OnboardingFeature()
-        }
+        let store = makeStore(initialState)
 
         let analysisId = store.state.path.ids[1]
         await store.send(.path(.element(id: analysisId, action: .analysis(.delegate(.relevanceCheckFailed))))) {
@@ -267,9 +258,7 @@ struct OnboardingCoordinatorTests {
         initialState.path.append(.portfolioUpload(.init(step: 4, totalSteps: 5)))
         initialState.path.append(.focusProject(.init(step: 5, totalSteps: 5)))
         initialState.relevanceChoice = OnboardingFeature.relevanceChoiceDialog()
-        let store = TestStore(initialState: initialState) {
-            OnboardingFeature()
-        }
+        let store = makeStore(initialState)
 
         await store.send(.relevanceChoice(.presented(.reuploadPortfolio))) {
             $0.relevanceFailureCount = 0
@@ -286,9 +275,7 @@ struct OnboardingCoordinatorTests {
         initialState.relevanceFailureCount = 4
         initialState.path.append(.focusProject(.init(step: 5, totalSteps: 5)))
         initialState.relevanceChoice = OnboardingFeature.relevanceChoiceDialog()
-        let store = TestStore(initialState: initialState) {
-            OnboardingFeature()
-        }
+        let store = makeStore(initialState)
 
         var expectedData = initialState.data
         expectedData.freeText = nil
@@ -298,5 +285,108 @@ struct OnboardingCoordinatorTests {
             $0.relevanceChoice = nil
             $0.path.append(.analysis(.init(data: expectedData)))
         }
+    }
+
+    // MARK: - 입력 draft (PRD §4.4)
+
+    private static let draftSavedAt = Date(timeIntervalSince1970: 1_782_000_000)
+
+    @Test("onAppear 는 TTL 안의 draft 로 값·위저드 위치를 복원한다")
+    func onAppearRestoresDraft() async {
+        let draft = OnboardingDraft(
+            data: OnboardingData(userName: "재원", jobRole: "BACKEND", careerYears: 2, jd: .link("https://job.com/1")),
+            furthestStep: 3,
+            savedAt: Self.draftSavedAt
+        )
+        let store = TestStore(initialState: OnboardingFeature.State(userName: "재원")) {
+            OnboardingFeature()
+        } withDependencies: {
+            $0.onboardingDraftStore = OnboardingDraftStore(load: { draft }, save: { _ in }, clear: {})
+            $0.date = .constant(Self.draftSavedAt.addingTimeInterval(60 * 60 * 24))   // 하루 뒤 — TTL 안
+        }
+
+        await store.send(.onAppear) {
+            $0.data = draft.data
+            $0.jobSelection.preselectedJobRole = "BACKEND"
+            $0.path.append(.careerInput(.init(step: 2, totalSteps: 5, selectedCareer: CareerOption(years: 2))))
+            $0.path.append(.jdLink(.init(step: 3, totalSteps: 5, restoring: .link("https://job.com/1"))))
+        }
+    }
+
+    @Test("onAppear 는 TTL(14일) 초과 draft 를 폐기한다")
+    func onAppearDiscardsExpiredDraft() async {
+        let cleared = LockIsolated(false)
+        let draft = OnboardingDraft(
+            data: OnboardingData(userName: "재원", jobRole: "BACKEND"),
+            furthestStep: 2,
+            savedAt: Self.draftSavedAt
+        )
+        let store = TestStore(initialState: OnboardingFeature.State(userName: "재원")) {
+            OnboardingFeature()
+        } withDependencies: {
+            $0.onboardingDraftStore = OnboardingDraftStore(
+                load: { draft }, save: { _ in }, clear: { cleared.setValue(true) }
+            )
+            $0.date = .constant(Self.draftSavedAt.addingTimeInterval(60 * 60 * 24 * 15))   // 15일 뒤 — TTL 초과
+        }
+
+        await store.send(.onAppear)
+        await store.finish()
+        #expect(cleared.value)
+    }
+
+    @Test("이미 스텝이 쌓여 있으면 onAppear 는 복원하지 않는다")
+    func onAppearSkipsRestoreWhenPathNotEmpty() async {
+        var initialState = OnboardingFeature.State(userName: "재원")
+        initialState.path.append(.careerInput(.init(step: 2, totalSteps: 5)))
+        let store = TestStore(initialState: initialState) {
+            OnboardingFeature()
+        } withDependencies: {
+            $0.onboardingDraftStore = OnboardingDraftStore(
+                load: { OnboardingDraft(data: OnboardingData(), furthestStep: 5, savedAt: Self.draftSavedAt) },
+                save: { _ in }, clear: {}
+            )
+            $0.date = .constant(Self.draftSavedAt)
+        }
+
+        await store.send(.onAppear)   // path 비어있지 않음 → 변화 없음
+    }
+
+    @Test("스텝 완료는 draft(데이터·재개 지점)를 저장한다")
+    func stepCompletionSavesDraft() async {
+        let saved = LockIsolated<OnboardingDraft?>(nil)
+        let store = TestStore(initialState: OnboardingFeature.State(userName: "재원")) {
+            OnboardingFeature()
+        } withDependencies: {
+            $0.onboardingDraftStore = OnboardingDraftStore(load: { nil }, save: { saved.setValue($0) }, clear: {})
+            $0.date = .constant(Self.draftSavedAt)
+        }
+
+        await store.send(.jobSelection(.delegate(.continueRequested(jobRole: "BACKEND")))) {
+            $0.data.jobRole = "BACKEND"
+            $0.path.append(.careerInput(.init(step: 2, totalSteps: 5)))
+        }
+        await store.finish()
+        #expect(saved.value?.data.jobRole == "BACKEND")
+        #expect(saved.value?.furthestStep == 2)
+    }
+
+    @Test("분석 완료는 draft 를 폐기한다")
+    func analysisCompletionClearsDraft() async {
+        let cleared = LockIsolated(false)
+        var initialState = OnboardingFeature.State(userName: "재원")
+        initialState.path.append(.analysis(.init(data: initialState.data)))
+        let store = TestStore(initialState: initialState) {
+            OnboardingFeature()
+        } withDependencies: {
+            $0.onboardingDraftStore = OnboardingDraftStore(load: { nil }, save: { _ in }, clear: { cleared.setValue(true) })
+            $0.date = .constant(Self.draftSavedAt)
+        }
+
+        let id = store.state.path.ids[0]
+        await store.send(.path(.element(id: id, action: .analysis(.delegate(.completed(sessionId: 1))))))
+        await store.receive(\.delegate.finished, 1)
+        await store.finish()
+        #expect(cleared.value)
     }
 }

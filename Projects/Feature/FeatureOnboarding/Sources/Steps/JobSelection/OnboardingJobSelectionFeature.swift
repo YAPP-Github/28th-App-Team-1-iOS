@@ -24,13 +24,16 @@ public struct OnboardingJobSelectionFeature {
         public var jobs: [Job] = []
         public var selectedJobID: Job.ID?
         public var isLoading = false
+        /// draft 복원 시 미리 선택할 직군(jobRole) — 목록 로드 후 매칭해 selectedJobID 로 확정한다.
+        public var preselectedJobRole: String?
 
         public var isContinueEnabled: Bool { selectedJobID != nil }
 
-        public init(userName: String = "", step: Int = 1, totalSteps: Int = 5) {
+        public init(userName: String = "", step: Int = 1, totalSteps: Int = 5, preselectedJobRole: String? = nil) {
             self.userName = userName
             self.step = step
             self.totalSteps = totalSteps
+            self.preselectedJobRole = preselectedJobRole
         }
     }
 
@@ -112,6 +115,10 @@ public struct OnboardingJobSelectionFeature {
         case let .jobsLoaded(jobs):
             state.isLoading = false
             state.jobs = jobs
+            // draft 복원: 저장된 jobRole 을 목록에서 찾아 미리 선택한다.
+            if state.selectedJobID == nil, let role = state.preselectedJobRole {
+                state.selectedJobID = jobs.first(where: { $0.jobRole == role })?.id
+            }
             return .none
 
         case .jobsLoadFailed:

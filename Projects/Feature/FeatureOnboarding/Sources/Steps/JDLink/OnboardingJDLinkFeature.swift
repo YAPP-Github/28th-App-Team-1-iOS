@@ -104,6 +104,23 @@ public struct OnboardingJDLinkFeature {
             self.step = step
             self.totalSteps = totalSteps
         }
+
+        /// draft 복원용 — 저장된 JD(.link/.text)를 탭·입력값·검증상태로 되살린다.
+        public init(step: Int = 3, totalSteps: Int = 5, restoring jd: JDSubmission?) {
+            self.step = step
+            self.totalSteps = totalSteps
+            switch jd {
+            case let .link(url):
+                self.mode = .link
+                self.linkText = url
+                self.linkValidation = .success   // 세션에 실린 링크는 검증 통과분이다.
+            case let .text(text):
+                self.mode = .directText
+                self.directText = text
+            case nil:
+                break
+            }
+        }
     }
 
     public enum Action: ViewAction {

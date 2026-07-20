@@ -86,8 +86,8 @@ public struct OnboardingPortfolioUploadFeature {
         /// 코디네이터(OnboardingFeature) 통보. 부모는 이것만 매칭한다 (D1).
         @CasePathable
         public enum Delegate: Equatable, Sendable {
-            /// 업로드 완료 — 다음 스텝으로. portfolioId 는 서버 등록 결과.
-            case continueRequested(portfolioId: UUID)
+            /// 업로드 완료 — 다음 스텝으로. portfolioId 는 서버 등록 결과, fileName 은 draft 복원용.
+            case continueRequested(portfolioId: UUID, fileName: String)
             /// 하단 «이전으로» — 코디네이터가 스택을 pop.
             case backRequested
             /// 온보딩 이탈(X) 요청 — dismiss 는 코디네이터 몫.
@@ -147,8 +147,8 @@ public struct OnboardingPortfolioUploadFeature {
             return .send(.delegate(.backRequested))
 
         case .userTappedContinue:
-            guard case let .uploaded(_, portfolioId) = state.upload else { return .none }
-            return .send(.delegate(.continueRequested(portfolioId: portfolioId)))
+            guard case let .uploaded(fileName, portfolioId) = state.upload else { return .none }
+            return .send(.delegate(.continueRequested(portfolioId: portfolioId, fileName: fileName)))
 
         case .userTappedUploadCard:
             // 계정당 1개 제한(PORTFOLIO_ALREADY_EXISTS) — 업로드 중·완료엔 재선택을 막는다.
