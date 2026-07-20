@@ -111,7 +111,7 @@ S0→S3.5는 **도메인 내부** navigation → 규칙대로 자체 `Path` + `S
 | S1 JD | 3 JDLink — 링크/직접입력 탭 (상호배타) | 선택 — 스킵 상시 | ✅ 직접입력 200~3,000자 검증 완료 (링크 5회 제한·CONTENT_TOO_SHORT 문구 TODO) |
 | S2 포트폴리오 | 4 PortfolioUpload — 202+폴링 | 필수 | ✅ 페이지30·암호 선검증 완료 (폴링 상한·1개제한 dialog TODO) |
 | S3 집중 프로젝트 | 5 FocusProject — 자유입력 | 선택 — 스킵 상시 | ✅ 상단 문구 PRD 확정본 반영 |
-| S3.5 연관성 + S4 진입 | 6 Analysis — **세션 생성 지점** | — | ✅ 세션 생성·폴링 연결 완료 / 🟠 연관성 실패 pop-back·4회 분기는 Phase B |
+| S3.5 연관성 + S4 진입 | 6 Analysis — **세션 생성 지점** | — | ✅ 세션 생성·폴링·연관성 실패 pop-back 완료 / 🟠 경고 문구·4회 다이얼로그는 Phase B 잔여 |
 
 ### PRD v3 핵심 확정 → 클라 영향
 
@@ -132,8 +132,8 @@ S0→S3.5는 **도메인 내부** navigation → 규칙대로 자체 `Path` + `S
 - **6 분석 = S3.5 + S4** — Phase A ✅ / Phase B 🟠:
   1. ✅ `OnboardingData.interviewConfig()` → `InterviewClient.createSession` + `sessionStatus` 폴링(3초). `.domain(interface: .interview)` 의존 추가 + `tuist generate`. PROCESSING→폴링 / READY→completed / 실패·config 불완전→failed 화면(재시도 없음, PRD §3.1). ⚠ `careerYears` 는 CareerOption 잠정 매핑(STEP2 정수 피커 확정 시 제거).
   4. ✅ READY → `delegate(.completed(sessionId:))` → 코디네이터 `delegate(.finished(sessionId:))`. AppFeature 미배선이라 요약 질문 등 payload 확장·Part2 제시는 배선 시.
-  2. 🟠 **Phase B** — 연관성(코사인 ≥0.6 tentative)은 **freeText 있을 때만** 서버 검사. `FREETEXT_NOT_RELEVANT` 는 Core `ServerError` 라 Feature 가 직접 못 잡음(레이어) → DomainInterview 에 도메인 에러 타입 추가 후 FocusProject pop-back + 경고 문구. 현재는 일반 failed 화면으로 처리.
-  3. 🟠 **Phase B** — **연속 4회 실패**(카운트 클라 State) → [포폴 다시 올리기 → STEP4] / [집중 프로젝트 없이 진행 → freeText=nil 재생성] 2선택지 다이얼로그.
+  2. ✅ 연관성(코사인 ≥0.6 tentative)은 **freeText 있을 때만** 서버 검사. `FREETEXT_NOT_RELEVANT`(Core `ServerError`)를 DomainInterview 가 `InterviewError.freeTextNotRelevant` 로 매핑(레이어 준수) → 분석이 `delegate(.relevanceCheckFailed)` → 코디네이터가 집중 프로젝트로 pop-back + `relevanceFailureCount++`.
+  3. 🟠 **Phase B 잔여** — 경고 문구를 집중 프로젝트에 노출 · **연속 4회째** [포폴 다시 올리기 → STEP4] / [집중 프로젝트 없이 진행 → freeText=nil 재생성] 2선택지 다이얼로그(현재는 매번 pop-back).
 
 ### 입력 draft (PRD §4.4 신설 — 미구현)
 
