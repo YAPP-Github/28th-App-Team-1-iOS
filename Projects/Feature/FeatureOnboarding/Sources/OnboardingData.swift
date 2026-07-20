@@ -26,8 +26,8 @@ public struct OnboardingData: Equatable, Sendable {
     public var userName: String
     /// STEP 1 직군 선택 결과 — 서버 enum 값(예: "BACKEND"). 미선택 시 nil.
     public var jobRole: String?
-    /// STEP 2 연차 입력 결과. 서버 enum 미정 — rawValue 임시.
-    public var career: CareerOption?
+    /// STEP 2 연차 입력 결과 — 정수 연차(년). 그대로 `InterviewConfig.careerYears`.
+    public var careerYears: Int?
     /// STEP 3 JD 결과 — 스킵 시 nil.
     public var jd: JDSubmission?
     /// STEP 4 포트폴리오 업로드 결과 — 서버 등록 완료된 포트폴리오 id.
@@ -38,14 +38,14 @@ public struct OnboardingData: Equatable, Sendable {
     public init(
         userName: String = "",
         jobRole: String? = nil,
-        career: CareerOption? = nil,
+        careerYears: Int? = nil,
         jd: JDSubmission? = nil,
         portfolioId: UUID? = nil,
         freeText: String? = nil
     ) {
         self.userName = userName
         self.jobRole = jobRole
-        self.career = career
+        self.careerYears = careerYears
         self.jd = jd
         self.portfolioId = portfolioId
         self.freeText = freeText
@@ -57,7 +57,7 @@ public extension OnboardingData {
     /// 필수 3종(직군·연차·포트폴리오)이 하나라도 없으면 nil — 위저드 순서상 분석 진입 시엔 항상 채워져 있다.
     /// JD·집중 프로젝트는 nullable. JDSubmission(.link/.text) → JobDescriptionInput(.url/.text) 대응.
     func interviewConfig() -> InterviewConfig? {
-        guard let jobRole, let career, let portfolioId else { return nil }
+        guard let jobRole, let careerYears, let portfolioId else { return nil }
         let jobDescription: JobDescriptionInput? = switch jd {
         case let .link(url): .url(url)
         case let .text(text): .text(text)
@@ -66,7 +66,7 @@ public extension OnboardingData {
         return InterviewConfig(
             portfolioId: portfolioId,
             jobRole: jobRole,
-            careerYears: career.careerYears,
+            careerYears: careerYears,
             jobDescription: jobDescription,
             freeText: freeText
         )
