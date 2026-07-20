@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import Foundation
 
 // @lat: [[onboarding#코디네이터]]
 /// 온보딩 위저드 코디네이터. STEP 1(직군 선택)을 루트로 두고, 이후 스텝은 `path`(StackState)로 push 한다.
@@ -32,6 +33,8 @@ public struct OnboardingFeature {
     public static let relevanceFailureLimit = 4
     /// 연관성 실패(4회 미만) 시 집중 프로젝트에 노출하는 경고 (PRD 확정 문구).
     static let relevanceWarningMessage = "포트폴리오에서 그 내용을 찾지 못했어요.\n포트폴리오에 있는 프로젝트로 다시 적어주세요."
+    /// 입력 draft 유효 기간 — PRD §4.4 (14일). 넘으면 폐기하고 새로 시작.
+    static let draftTTL: TimeInterval = 60 * 60 * 24 * 14
 
     @ObservableState
     public struct State: Equatable {
@@ -57,6 +60,7 @@ public struct OnboardingFeature {
     }
 
     public enum Action {
+        case onAppear
         case jobSelection(OnboardingJobSelectionFeature.Action)
         case path(StackActionOf<Path>)
         case relevanceChoice(PresentationAction<RelevanceChoice>)
@@ -79,6 +83,9 @@ public struct OnboardingFeature {
         }
     }
 
+    @Dependency(\.onboardingDraftStore) var draftStore
+    @Dependency(\.date) var date
+
     public init() {}
 
     public var body: some ReducerOf<Self> {
@@ -88,11 +95,20 @@ public struct OnboardingFeature {
 
         Reduce { state, action in
             switch action {
+            // 진입 — 저장된 draft 가 있고 TTL 안이면 값·위저드 위치를 복원한다 (PRD §4.4).
+            case .onAppear:
+                guard state.path.isEmpty, let draft = draftStore.load() else { return .none }
+                guard date.now.timeIntervalSince(draft.savedAt) < Self.draftTTL else {
+                    return .run { [draftStore] _ in draftStore.clear() }
+                }
+                restore(&state, from: draft)
+                return .none
+
             // STEP 1 완료 → 직군 저장 후 연차 입력 push.
             case let .jobSelection(.delegate(.continueRequested(jobRole))):
                 state.data.jobRole = jobRole
                 state.path.append(.careerInput(.init(step: 2, totalSteps: Self.totalSteps)))
-                return .none
+                return persist(state)
 
             case .jobSelection(.delegate(.closeRequested)):
                 return .send(.delegate(.dismiss))
@@ -106,7 +122,7 @@ public struct OnboardingFeature {
                 case let .continueRequested(careerYears):
                     state.data.careerYears = careerYears
                     state.path.append(.jdLink(.init(step: 3, totalSteps: Self.totalSteps)))
-                    return .none
+                    return persist(state)
                 case .backRequested:
                     _ = state.path.popLast()
                     return .none
@@ -120,7 +136,7 @@ public struct OnboardingFeature {
                 case let .continueRequested(submission):
                     state.data.jd = submission
                     state.path.append(.portfolioUpload(.init(step: 4, totalSteps: Self.totalSteps)))
-                    return .none
+                    return persist(state)
                 case .backRequested:
                     _ = state.path.popLast()
                     return .none
@@ -131,10 +147,11 @@ public struct OnboardingFeature {
             // STEP 4 포트폴리오 → 집중 프로젝트 push.
             case let .path(.element(id: _, action: .portfolioUpload(.delegate(action)))):
                 switch action {
-                case let .continueRequested(portfolioId):
+                case let .continueRequested(portfolioId, fileName):
                     state.data.portfolioId = portfolioId
+                    state.data.portfolioFileName = fileName
                     state.path.append(.focusProject(.init(step: 5, totalSteps: Self.totalSteps)))
-                    return .none
+                    return persist(state)
                 case .backRequested:
                     _ = state.path.popLast()
                     return .none
@@ -148,7 +165,7 @@ public struct OnboardingFeature {
                 case let .continueRequested(freeText):
                     state.data.freeText = freeText
                     state.path.append(.analysis(.init(data: state.data)))
-                    return .none
+                    return persist(state)
                 case .backRequested:
                     _ = state.path.popLast()
                     return .none
@@ -160,7 +177,11 @@ public struct OnboardingFeature {
             case let .path(.element(id: _, action: .analysis(.delegate(action)))):
                 switch action {
                 case let .completed(sessionId):
-                    return .send(.delegate(.finished(sessionId: sessionId)))
+                    // 세션 생성 성공 → draft 폐기 (PRD §4.4).
+                    return .merge(
+                        .send(.delegate(.finished(sessionId: sessionId))),
+                        .run { [draftStore] _ in draftStore.clear() }
+                    )
                 case .relevanceCheckFailed:
                     // PRD S3.5 — 연관성 부족 시 분석을 pop 하고 집중 프로젝트로 되돌린다.
                     state.relevanceFailureCount += 1
@@ -187,7 +208,7 @@ public struct OnboardingFeature {
                 state.relevanceFailureCount = 0
                 state.data.freeText = nil
                 state.path.append(.analysis(.init(data: state.data)))
-                return .none
+                return persist(state)
 
             case .relevanceChoice:
                 return .none
@@ -201,6 +222,48 @@ public struct OnboardingFeature {
         }
         .forEach(\.path, action: \.path)
         .ifLet(\.$relevanceChoice, action: \.relevanceChoice)
+    }
+
+    /// 현재 data·위저드 위치를 draft 로 저장한다 — furthestStep 은 최상단 스텝(루트=1, path.count+1).
+    private func persist(_ state: State) -> Effect<Action> {
+        let draft = OnboardingDraft(
+            data: state.data,
+            furthestStep: state.path.count + 1,
+            savedAt: date.now
+        )
+        return .run { [draftStore] _ in draftStore.save(draft) }
+    }
+
+    /// draft 로 data·위저드 위치를 복원한다 — 분석(6)은 복원하지 않고 집중 프로젝트(5)까지만 되쌓는다.
+    private func restore(_ state: inout State, from draft: OnboardingDraft) {
+        state.data = draft.data
+        state.jobSelection.preselectedJobRole = draft.data.jobRole
+        let total = Self.totalSteps
+        let top = min(draft.furthestStep, 5)
+        if top >= 2 {
+            state.path.append(.careerInput(.init(
+                step: 2, totalSteps: total,
+                selectedCareer: CareerOption(years: draft.data.careerYears ?? 0)
+            )))
+        }
+        if top >= 3 {
+            state.path.append(.jdLink(.init(step: 3, totalSteps: total, restoring: draft.data.jd)))
+        }
+        if top >= 4 {
+            let upload: OnboardingPortfolioUploadFeature.UploadState
+            if let id = draft.data.portfolioId, let name = draft.data.portfolioFileName {
+                upload = .uploaded(fileName: name, portfolioId: id)
+            } else {
+                upload = .idle
+            }
+            state.path.append(.portfolioUpload(.init(step: 4, totalSteps: total, upload: upload)))
+        }
+        if top >= 5 {
+            state.path.append(.focusProject(.init(
+                step: 5, totalSteps: total,
+                projectDescription: draft.data.freeText ?? ""
+            )))
+        }
     }
 
     /// 스택 최상단(집중 프로젝트) 스텝에 연관성 경고 문구를 주입한다.

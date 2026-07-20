@@ -197,7 +197,7 @@ struct OnboardingPortfolioUploadFeatureTests {
 
         #expect(store.state.isContinueEnabled)
         await store.send(.view(.userTappedContinue))
-        await store.receive(\.delegate.continueRequested, Self.portfolioId)
+        await store.receive(\.delegate.continueRequested)   // (portfolioId, fileName) — 완료 상태에서 파생
     }
 
     @Test("이전으로 탭은 delegate 로 코디네이터에 위임한다")

@@ -25,6 +25,7 @@ public struct OnboardingView: View {
             OnboardingJobSelectionView(
                 store: store.scope(state: \.jobSelection, action: \.jobSelection)
             )
+            .onAppear { store.send(.onAppear) }
         } destination: { store in
             switch store.case {
             case let .careerInput(store):
@@ -58,6 +59,7 @@ public struct OnboardingView: View {
                     Job(jobId: 6, jobRole: "INFRA_SRE", label: "인프라 ⋅ SRE")
                 ]
             })
+            $0.onboardingDraftStore = OnboardingDraftStore(load: { nil }, save: { _ in }, clear: {})
         }
     )
 }

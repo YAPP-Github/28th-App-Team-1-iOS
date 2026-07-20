@@ -84,6 +84,8 @@ struct FeatureOnboardingExampleApp: App {
                     $0.interviewClient.sessionStatus = { _ in
                         InterviewSessionStatus(status: .ready, startedAt: nil, summaryQuestion: nil)
                     }
+                    // draft — Example 은 항상 새로 시작(복원 끔), 저장/삭제는 무시.
+                    $0.onboardingDraftStore = OnboardingDraftStore(load: { nil }, save: { _ in }, clear: {})
                 }
             )
         }
