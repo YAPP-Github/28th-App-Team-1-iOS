@@ -22,6 +22,15 @@
 
 → 큰 그림은 [[domain.map]].
 
+## 푸시 배선
+알림 권한·FCM 토큰·알림 탭 라우팅의 조립 지점. AppDelegate(APNs lifecycle)와 AppFeature(스트림 구독)가 [[domain.map#푸시 인프라]] 의 PushClient seam 에 연결된다.
+
+1. `AppDelegate.didFinishLaunching` → `pushClient.configure()` — cold-start 알림 탭을 받으려면 리턴 전에 delegate 연결이 끝나야 한다
+2. `AppView.onAppear` → AppFeature 가 `fcmTokenUpdates`/`events` 두 스트림 구독(단일 소비자, `CancelID.pushStreams`)
+3. 로그인 성공(`auth(.delegate(.signedIn))`) 직후 권한 요청 — denied 재요청 UX 는 설정 화면 몫(후속)
+4. 알림 탭(`pushEventReceived(.tapped)`) → 탭 전환. payload(data) 기반 딥링크 분기는 Feature 가 늘면 여기서 조립
+5. FCM 토큰 백엔드 등록은 TODO seam(`fcmTokenUpdated`) — 서버 스펙 확정 후 Domain 모듈 경유
+
 ## 주의사항
 코디네이터 패턴을 유지하기 위한 규칙.
 - **Feature → Feature 의존 0.** 새 cross-feature 전환이 생기면 leaf Feature 엔 `delegate` case 만 추가하고, 조립(State 생성·제시·결과 통보)은 전부 여기서 한다. 직접 import/push 금지.

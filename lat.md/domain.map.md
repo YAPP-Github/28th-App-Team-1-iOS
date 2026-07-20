@@ -37,6 +37,14 @@ Domain `Implementation`(`liveValue`)은 App / Example 만 link. → [[home]]
 
 실패는 전부 `NetworkError` 로 정규화된다 — `transport(URLError.Code)`(오프라인·타임아웃), `statusCode(코드, body)`(body = 서버 에러 payload, Domain 이 도메인 에러로 매핑), `invalidResponse`, `invalidURL`/`invalidBaseURL`. 취소는 실패가 아니므로 `CancellationError` 로 나간다. 요청 편의는 `NetworkRequest.json(...)`(Content-Type + Encodable body), Testing 타겟은 `mock(returning:/json:/throwing:)` 을 제공. Feature→Domain→Core 로 이어지는 화면 표준형은 FeatureCommon `NetworkExampleFeature` (Example 앱은 transport 만 스텁해 Domain liveValue 를 실 구동).
 
+## 푸시 인프라
+모든 푸시(FCM/APNs) IO 는 `CorePush` 의 `PushClient` 계약을 거친다. Firebase SDK 는 CorePushImplementation(PushCenter)에 격리 — App 은 AppDelegate lifecycle 을 seam 에 연결만 하고 SDK 를 모른다. 스트림의 유일 소비자는 AppFeature. → [[app#푸시 배선]]
+
+- 계약: `configure`(Firebase 초기화 — GoogleService-Info.plist 없으면 경고 후 no-op graceful), `requestAuthorization`(권한 + APNs 등록), `registerAPNSToken`(AppDelegate 콜백 전달), `fcmTokenUpdates`/`events`(AsyncStream).
+- 스위즐링 비활성(`FirebaseAppDelegateProxyEnabled=NO`) — APNs 토큰은 AppDelegate 가 명시적으로 전달한다. 스트림 continuation 은 eager 생성이라 cold-start 알림 탭도 구독(onAppear) 전 버퍼에 보존된다.
+- 수신 payload 는 `PushNotification`(title/body + String 전용 data)으로 정제되어 경계를 넘는다 — UN/FCM 원본 타입은 Implementation 밖으로 안 나간다.
+- FCM 토큰의 백엔드 등록은 미구현(TODO seam: AppFeature `fcmTokenUpdated`) — 서버 스펙 확정 시 Domain 모듈(예: DomainNotification)이 이 인프라와 위 네트워킹 인프라를 조합한다. Testing 타겟은 `mock(authorizationGranted:/tokens:/events:)` 제공.
+
 ## 계획 — AI 면접
 YAPP APP 1팀 「AI 면접 연습 앱」을 우리 아키텍처에 녹인 후속 도메인 설계(현재 데모 탭과 별개) — Setup/Session/Report Feature + Domain 군.
 

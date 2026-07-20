@@ -8,6 +8,11 @@ public extension TargetDependency {
     static let kakaoSDKCommon: TargetDependency = .external(name: "KakaoSDKCommon")
     static let kakaoSDKAuth: TargetDependency = .external(name: "KakaoSDKAuth")
     static let kakaoSDKUser: TargetDependency = .external(name: "KakaoSDKUser")
+    static let firebaseCore: TargetDependency = .external(name: "FirebaseCore")
+    static let firebaseMessaging: TargetDependency = .external(name: "FirebaseMessaging")
+    /// Firebase(GoogleDataTransport)의 전이 static 의존. Tuist 가 생성한 nanopb modulemap 에
+    /// link 선언이 없어 autolink 힌트가 안 나온다 — composition root(App)가 명시 링크해야 한다.
+    static let nanopb: TargetDependency = .external(name: "nanopb")
 
     // MARK: Layer Umbrellas
     //

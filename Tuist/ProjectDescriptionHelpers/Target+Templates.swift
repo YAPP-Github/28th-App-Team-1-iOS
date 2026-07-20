@@ -106,12 +106,19 @@ public extension Target {
                     "CFBundleURLSchemes": ["kakao$(KAKAO_NATIVE_APP_KEY)"]
                 ]
             ],
-            "LSApplicationQueriesSchemes": ["kakaokompassauth", "kakaolink", "kakaotalk"]
+            "LSApplicationQueriesSchemes": ["kakaokompassauth", "kakaolink", "kakaotalk"],
+            // FCM(CorePush) — 스위즐링을 끄고 APNs 콜백을 AppDelegate 가 명시적으로 배선한다.
+            "FirebaseAppDelegateProxyEnabled": false,
+            // silent push(content-available) 백그라운드 수신 허용
+            "UIBackgroundModes": ["remote-notification"]
         ])
         // Sign in with Apple — 시뮬레이터는 이 entitlement만으로 동작하고, 실기기는
         // Apple Developer 포털에서 App ID(환경별 번들 접미사 각각)에 capability 활성화가 필요하다.
         f.entitlements = f.entitlements ?? .dictionary([
-            "com.apple.developer.applesignin": ["Default"]
+            "com.apple.developer.applesignin": ["Default"],
+            // APNs(FCM) — 개발 빌드는 development, 배포는 archive 서명 시 프로비저닝 프로파일이
+            // production 으로 재작성한다. 실기기는 App ID(환경별 번들 각각)에 Push Notifications capability 필요.
+            "aps-environment": "development"
         ])
         f.sources = f.sources ?? ["Sources/**"]
         f.resources = f.resources ?? ["Resources/**"]   // Assets.xcassets(AppIcon 등) — 누락 시 앱 번들에 에셋이 안 들어간다

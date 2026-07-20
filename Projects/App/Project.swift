@@ -9,7 +9,9 @@ let project = Project.makeModule(
         .app(factory: .init(dependencies: [
             .core, .domain, .feature, .shared,
             .domain(interface: .auth),
-            .composableArchitecture
+            .core(interface: .push),
+            .composableArchitecture,
+            .nanopb   // Firebase 전이 static — autolink 힌트 누락(→ TargetDependency+Modules.swift 주석)
         ])),
         // 전역 DocC 카탈로그 호스트 (코드 없음). Xcode: 스킴 ArchitectureDocs → Product → Build Documentation
         .docs(factory: .init(dependencies: [

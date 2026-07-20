@@ -51,6 +51,18 @@ cp Projects/App/Config/Secrets.xcconfig.template Projects/App/Config/Secrets.xcc
 
 키가 비어있으면 **Dev 는 빌드 경고**만 내고(카카오 로그인 시도 시 `AppSecrets` 의 `assertionFailure`), **QA/Release 는 빌드가 실패**합니다 — `KakaoKeyGuard` 빌드 페이즈가 빈 키로 배포 빌드가 나가는 걸 차단합니다.
 
+### Firebase(FCM) 설정 (푸시를 실제로 받으려면 필수 — 없어도 빌드·실행은 됨)
+
+[Firebase Console](https://console.firebase.google.com) > 프로젝트 만들기 > **iOS 앱 추가**(번들 ID `com.hilit.app.dev`) 후 `GoogleService-Info.plist` 를 내려받아 앱 리소스에 넣습니다:
+
+```bash
+cp ~/Downloads/GoogleService-Info.plist Projects/App/Resources/
+```
+
+plist 가 없으면 앱 시작 시 경고 로그만 남기고 푸시가 비활성화됩니다 — `PushClient.configure` 의 graceful guard 라 빌드·실행은 정상입니다. (plist 는 gitignore 대상, 커밋되지 않음 — 팀 공유는 별도 채널로)
+
+실기기에서 수신까지 확인하려면 추가로: Apple Developer 포털에서 APNs 인증 키(.p8)를 발급해 Firebase **프로젝트 설정 > 클라우드 메시징**에 업로드하고, App ID 에 **Push Notifications** capability 를 활성화합니다. QA/운영은 번들 ID 가 달라(`com.hilit.app.qa` / `com.hilit.app`) Firebase iOS 앱을 각각 추가해야 합니다 — 환경별 plist 분리 전략은 Firebase 프로젝트가 실제로 생기면 그때 확장합니다.
+
 ---
 
 ## 2. 첫 빌드 & 실행

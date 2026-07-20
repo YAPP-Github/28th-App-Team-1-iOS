@@ -23,6 +23,7 @@ public enum ModulePath {
     public enum Core: String, CaseIterable {
         case common = "Common"
         case network = "Network"
+        case push = "Push"
 
         public static let name = "Core"
     }
