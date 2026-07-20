@@ -42,7 +42,9 @@ STEP 4 (필수). PDF 1개(최대 20Mb)를 fileImporter 로 받아 PortfolioClien
 
 ## 집중 프로젝트
 
-STEP 5 (선택 — 마지막 수집 스텝, 프로그레스 5/5). 300자 자유 입력 + «나중에 등록해도 괜찮아요!» 툴팁. 빈 입력·공백만이면 nil(건너뜀)로 올린다. 필드는 InterviewConfig.freeText(10~300자)에 대응 — 하한 10자는 서버 위임. 상단 안내는 PRD S3 확정 문구(«입력하면 그 부분을 집중 검증해요. 건너뛰면 포트폴리오 전체에서 질문해요.») — 스킵과 모순되던 구 카피 폐기 ✅. `relevanceWarning`(옵셔널)로 연관성 실패 시 경고를 노출하고 편집(입력/클리어) 시 해제한다 — 주입은 코디네이터 [[onboarding#분석]].
+STEP 5 (선택 — 마지막 수집 스텝, 프로그레스 5/5). 300자 자유 입력 + «나중에 등록해도 괜찮아요!» 툴팁. 빈 입력·공백만이면 nil(건너뜀)로 올린다. 필드는 InterviewConfig.freeText(10~300자)에 대응 — 하한 10자는 서버 위임.
+
+상단 안내는 PRD S3 확정 문구(«입력하면 그 부분을 집중 검증해요. 건너뛰면 포트폴리오 전체에서 질문해요.») — 스킵과 모순되던 구 카피 폐기 ✅. `relevanceWarning`(옵셔널)로 연관성 실패 시 경고를 노출하고 편집(입력/클리어) 시 해제한다 — 주입은 코디네이터 [[onboarding#분석]].
 
 ## 분석
 
@@ -56,7 +58,9 @@ STEP 5 (선택 — 마지막 수집 스텝, 프로그레스 5/5). 300자 자유 
 
 ## 수집 데이터
 
-OnboardingData — 위저드가 스텝을 거치며 채우는 공유 페이로드(Codable — draft 영속용). 코디네이터가 소유하고 각 스텝 delegate 결과를 누적, 분석 스텝에 통째로 주입된다. 필드: userName(주입) · jobRole · careerYears(정수) · jd(JDSubmission — .link/.text 상호 배타를 타입 보장, 스킵 nil) · portfolioId · portfolioFileName(draft 복원용) · freeText. JDSubmission 은 OnboardingData.swift 소속 — JD 스텝 delegate 가 올린 값을 코디네이터가 해체 없이 저장한다.
+OnboardingData — 위저드가 스텝을 거치며 채우는 공유 페이로드(Codable — draft 영속용). 코디네이터가 소유하고 각 스텝 delegate 결과를 누적, 분석 스텝에 통째로 주입된다.
+
+필드: userName(주입) · jobRole · careerYears(정수) · jd(JDSubmission — .link/.text 상호 배타를 타입 보장, 스킵 nil) · portfolioId · portfolioFileName(draft 복원용) · freeText. JDSubmission 은 OnboardingData.swift 소속 — JD 스텝 delegate 가 올린 값을 코디네이터가 해체 없이 저장한다.
 
 ## 입력 draft
 
@@ -74,6 +78,8 @@ OnboardingPlaceholderStepFeature/View — 스텝 골격(내비바·프로그레�
 
 ## 코디네이터 연결
 
-FeatureOnboarding 은 아직 AppFeature 에 배선되지 않았다. 배선 시: 닉네임(userName) 주입, delegate(.dismiss) → 중도 이탈 처리(draft 보존), **delegate(.finished(sessionId:)) → Part 2 면접 바로 시작**(사용자 결정 2026-07-20, InterviewSessionFeature 생기면 fullScreenCover). 코디네이터 onAppear 가 draft 복원을 트리거하므로 OnboardingView 는 루트에 onAppear 를 발신한다. Example 앱은 전체 위저드를 스텁 의존성으로 구동하며 ONBOARDING_START_STEP 환경변수로 특정 스텝부터 시작할 수 있다(draft 는 no-op 스텁). → [[app]]
+FeatureOnboarding 은 아직 AppFeature 에 배선되지 않았다. 배선 시: 닉네임(userName) 주입, delegate(.dismiss) → 중도 이탈(draft 보존), **delegate(.finished(sessionId:)) → Part 2 면접 바로 시작**(사용자 결정 2026-07-20, InterviewSessionFeature 생기면 fullScreenCover).
+
+코디네이터 onAppear 가 draft 복원을 트리거하므로 OnboardingView 는 루트에 onAppear 를 발신한다. Example 앱은 전체 위저드를 스텁 의존성으로 구동하며 ONBOARDING_START_STEP 환경변수로 특정 스텝부터 시작할 수 있다(draft 는 no-op 스텁). → [[app]]
 
 PRD §3.8 부록대로 Part1↔2 경계는 세션 생성 API 계약 — .finished 는 현재 무페이로드라 세션 payload(sessionId·요약 질문) 확장 필요(서버 정합). 권한(카메라·마이크)은 iOS = 사용 시점 요청이라 온보딩이 아니라 Part 2 진입 직전.
