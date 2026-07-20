@@ -51,7 +51,8 @@ STEP 5 (선택 — 마지막 수집 스텝, 프로그레스 5/5). 300자 자유 
 세션 생성 연결 = PRD S3.5+S4. → [[interview#Client 계약]]
 - ① OnboardingData.interviewConfig() → InterviewClient.createSession + sessionStatus 폴링(3초) ✅. `.domain(interface: .interview)` 의존 추가. PROCESSING→폴링, READY→completed(sessionId), 실패→failed 화면(재시도 없음), config 불완전→failed. onAppear 가드로 중복 시작 방지. CancelID.session 으로 pop 시 취소.
 - ④ READY → delegate(.completed(sessionId)) → 코디네이터 delegate(.finished(sessionId:)) ✅. AppFeature 미배선이라 요약 질문 등 payload 확장은 배선 시.
-- **Phase B(미구현)** ② 연관성(코사인 ≥0.6 tentative)은 **freeText 있을 때만** 서버 검사 — `FREETEXT_NOT_RELEVANT` 는 Core `ServerError`(레이어상 Feature 직접 못 잡음) → DomainInterview 에 도메인 에러 타입 추가 후 집중 프로젝트 pop-back. ③ **연속 4회 실패** → [포폴 다시 올리기 / 집중 프로젝트 없이 진행] 2선택지 다이얼로그. 현재는 실패를 일반 failed 화면으로 처리.
+- ② 연관성 실패 pop-back ✅ — `FREETEXT_NOT_RELEVANT` 를 DomainInterview 가 `InterviewError.freeTextNotRelevant` 로 매핑, 분석이 delegate(.relevanceCheckFailed) → 코디네이터가 집중 프로젝트로 popLast + relevanceFailureCount++.
+- **Phase B 잔여** ③ 경고 문구를 집중 프로젝트에 노출 · **연속 4회째** [포폴 다시 올리기 / 집중 프로젝트 없이 진행] 2선택지 다이얼로그(현재는 매번 pop-back).
 
 ## 수집 데이터
 
