@@ -18,9 +18,9 @@ STEP 1 (필수). 진입 시 JobClient.jobs 로 선택지를 로드해 칩으로 
 
 ## 연차 입력
 
-STEP 2 (필수). 문장형 휠 피커 «내 경력은 [휠] 이다.» — 선택지 5개(신입~3년 이상, CareerOption). 휠은 native Picker 가 아니라 iOS 17 ScrollView(viewAligned + scrollPosition) 커스텀. 항상 값이 있어 CTA 상시 활성. 서버 연차 enum 미정 — rawValue 임시.
+STEP 2 (필수). 문장형 휠 피커 «내 경력은 [휠] 이다.» — 정수 연차 0~10년(`CareerOption { years: Int }`, 10="10년 이상", 라벨 신입/N년차/10년 이상). 휠은 native Picker 가 아니라 iOS 17 ScrollView(viewAligned + scrollPosition) 커스텀. 항상 값이 있어 CTA 상시 활성.
 
-⚠ PRD 불일치: PRD S0 = **정수 드롭다운 0~10년+**(레벨 주니어/미들/시니어는 서버가 0-2/3-7/8+ 결정론 파생, 클라 미관여), 세션 입력은 `InterviewConfig.careerYears: Int`. 현 5구간 CareerOption 은 Int 로 매핑 불가 → 선택지 세트·표현(휠 유지 여부) 재확정 필요(디자인·서버).
+delegate 는 `continueRequested(careerYears: Int)` — 페이로드(`OnboardingData.careerYears`)·세션 입력(`InterviewConfig.careerYears`)에 정수 그대로 직결한다(잠정 매핑 없음). 레벨(주니어/미들/시니어)은 서버가 0-2/3-7/8+ 파생 — 클라 미관여.
 
 이 스텝부터 하단 CTA 가 «이전으로 | 계속하기» 2분할 바(가운데 dsGray700 구분선)이고, 내비바에는 닫기(X)만 있다 — 뒤로가기는 하단 바 담당 (STEP 2~5 공통 골격).
 
