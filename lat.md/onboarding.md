@@ -42,7 +42,7 @@ STEP 4 (필수). PDF 1개(최대 20Mb)를 fileImporter 로 받아 PortfolioClien
 
 ## 집중 프로젝트
 
-STEP 5 (선택 — 마지막 수집 스텝, 프로그레스 5/5). 300자 자유 입력 + «나중에 등록해도 괜찮아요!» 툴팁. 빈 입력·공백만이면 nil(건너뜀)로 올린다. 필드는 InterviewConfig.freeText(10~300자)에 대응 — 하한 10자는 서버 위임. 상단 안내는 PRD S3 확정 문구(«입력하면 그 부분을 집중 검증해요. 건너뛰면 포트폴리오 전체에서 질문해요.») — 스킵과 모순되던 구 카피 폐기 ✅.
+STEP 5 (선택 — 마지막 수집 스텝, 프로그레스 5/5). 300자 자유 입력 + «나중에 등록해도 괜찮아요!» 툴팁. 빈 입력·공백만이면 nil(건너뜀)로 올린다. 필드는 InterviewConfig.freeText(10~300자)에 대응 — 하한 10자는 서버 위임. 상단 안내는 PRD S3 확정 문구(«입력하면 그 부분을 집중 검증해요. 건너뛰면 포트폴리오 전체에서 질문해요.») — 스킵과 모순되던 구 카피 폐기 ✅. `relevanceWarning`(옵셔널)로 연관성 실패 시 경고를 노출하고 편집(입력/클리어) 시 해제한다 — 주입은 코디네이터 [[onboarding#분석]].
 
 ## 분석
 
@@ -51,8 +51,8 @@ STEP 5 (선택 — 마지막 수집 스텝, 프로그레스 5/5). 300자 자유 
 세션 생성 연결 = PRD S3.5+S4. → [[interview#Client 계약]]
 - ① OnboardingData.interviewConfig() → InterviewClient.createSession + sessionStatus 폴링(3초) ✅. `.domain(interface: .interview)` 의존 추가. PROCESSING→폴링, READY→completed(sessionId), 실패→failed 화면(재시도 없음), config 불완전→failed. onAppear 가드로 중복 시작 방지. CancelID.session 으로 pop 시 취소.
 - ④ READY → delegate(.completed(sessionId)) → 코디네이터 delegate(.finished(sessionId:)) ✅. AppFeature 미배선이라 요약 질문 등 payload 확장은 배선 시.
-- ② 연관성 실패 pop-back ✅ — `FREETEXT_NOT_RELEVANT` 를 DomainInterview 가 `InterviewError.freeTextNotRelevant` 로 매핑, 분석이 delegate(.relevanceCheckFailed) → 코디네이터가 집중 프로젝트로 popLast + relevanceFailureCount++.
-- **Phase B 잔여** ③ 경고 문구를 집중 프로젝트에 노출 · **연속 4회째** [포폴 다시 올리기 / 집중 프로젝트 없이 진행] 2선택지 다이얼로그(현재는 매번 pop-back).
+- ② 연관성 실패 처리 ✅ — `FREETEXT_NOT_RELEVANT` 를 DomainInterview 가 `InterviewError.freeTextNotRelevant` 로 매핑, 분석이 delegate(.relevanceCheckFailed) → 코디네이터가 분석 popLast + relevanceFailureCount++.
+- ③ 재입력 유도 ✅ — 4회 미만은 집중 프로젝트에 경고 문구 주입(편집 시 해제), **4회째**는 코디네이터의 `ConfirmationDialogState` 2선택지([포폴 다시 올리기→STEP4 pop] / [집중 프로젝트 없이 진행→freeText=nil 재분석]).
 
 ## 수집 데이터
 
