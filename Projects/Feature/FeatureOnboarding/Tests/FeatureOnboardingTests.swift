@@ -150,9 +150,9 @@ struct OnboardingCoordinatorTests {
 
         let id = store.state.path.ids[0]
         await store.send(
-            .path(.element(id: id, action: .careerInput(.delegate(.continueRequested(career: .overOneYear)))))
+            .path(.element(id: id, action: .careerInput(.delegate(.continueRequested(careerYears: 1)))))
         ) {
-            $0.data.career = .overOneYear
+            $0.data.careerYears = 1
             $0.path.append(.jdLink(.init(step: 3, totalSteps: 5)))
         }
     }

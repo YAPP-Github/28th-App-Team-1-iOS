@@ -103,8 +103,8 @@ public struct OnboardingFeature {
             // STEP 2 연차 → JD 링크 push.
             case let .path(.element(id: _, action: .careerInput(.delegate(action)))):
                 switch action {
-                case let .continueRequested(career):
-                    state.data.career = career
+                case let .continueRequested(careerYears):
+                    state.data.careerYears = careerYears
                     state.path.append(.jdLink(.init(step: 3, totalSteps: Self.totalSteps)))
                     return .none
                 case .backRequested:

@@ -211,11 +211,11 @@ private enum WheelMetric {
     )
 }
 
-/// Figma 목업이 보여 주는 상태 — 휠 중앙에 «1년 이상».
-#Preview("연차 입력 — 1년 이상 선택") {
+/// 휠 중앙에 «3년차».
+#Preview("연차 입력 — 3년차 선택") {
     OnboardingCareerInputView(
         store: Store(
-            initialState: OnboardingCareerInputFeature.State(selectedCareer: .overOneYear)
+            initialState: OnboardingCareerInputFeature.State(selectedCareer: CareerOption(years: 3))
         ) {
             OnboardingCareerInputFeature()
         }

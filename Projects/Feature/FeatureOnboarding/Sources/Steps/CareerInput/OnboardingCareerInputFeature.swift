@@ -7,37 +7,28 @@
 
 import ComposableArchitecture
 
-/// 온보딩 STEP 2 연차 선택지 — Figma «STEP 2_연차» 휠 목록 원문 순서.
-/// 서버 연차 enum 이 아직 없어 rawValue 는 임시 식별자다.
-// TODO: API 연결 — 서버 연차 enum 확정 시 rawValue·케이스 목록 정합 확인.
-public enum CareerOption: String, CaseIterable, Sendable {
-    case newcomer = "NEWCOMER"
-    case underSixMonths = "UNDER_6_MONTHS"
-    case overOneYear = "OVER_1_YEAR"
-    case overTwoYears = "OVER_2_YEARS"
-    case overThreeYears = "OVER_3_YEARS"
+/// 온보딩 STEP 2 연차 선택지 — 정수 연차(0~10년, 10 = "10년 이상"). PRD S0 정수 드롭다운.
+/// `years` 가 그대로 서버 세션 입력(`InterviewConfig.careerYears`)이 된다.
+public struct CareerOption: Hashable, Sendable, Identifiable {
+    /// 상한 — 10 은 "10년 이상"을 뜻한다.
+    public static let maxYears = 10
+    /// 휠에 나열되는 전체 선택지 (0~10년).
+    public static let all: [CareerOption] = (0...maxYears).map(CareerOption.init)
 
-    /// 화면 표기 라벨 (Figma 원문).
+    public let years: Int
+    public var id: Int { years }
+
+    /// 문장형 휠 라벨 — «내 경력은 [label] 이다.»
     public var label: String {
-        switch self {
-        case .newcomer: "신입"
-        case .underSixMonths: "6개월 이하"
-        case .overOneYear: "1년 이상"
-        case .overTwoYears: "2년 이상"
-        case .overThreeYears: "3년 이상"
+        switch years {
+        case 0: "신입"
+        case Self.maxYears: "\(Self.maxYears)년 이상"
+        default: "\(years)년차"
         }
     }
 
-    /// 서버 세션 입력(`InterviewConfig.careerYears`)에 넣을 연차(년).
-    /// ⚠️ 잠정 매핑 — PRD 는 정수 드롭다운(0~10년+)을 요구하나 현 디자인은 5구간 휠이다.
-    /// 정수 피커로 재확정되면 이 매핑을 제거하고 Int 를 직접 수집한다. (→ ai-interview.md §5 STEP2 🔴)
-    public var careerYears: Int {
-        switch self {
-        case .newcomer, .underSixMonths: 0
-        case .overOneYear: 1
-        case .overTwoYears: 2
-        case .overThreeYears: 3
-        }
+    public init(years: Int) {
+        self.years = years
     }
 }
 
@@ -53,7 +44,7 @@ public struct OnboardingCareerInputFeature {
         public let totalSteps: Int
         /// 프로그레스 바 분자 — 이 화면의 단계(1-based).
         public let step: Int
-        /// 휠 선택지 — 디자인 고정 목록 (외부 IO 없음).
+        /// 휠 선택지 — 0~10년 정수 목록 (외부 IO 없음).
         public let options: [CareerOption]
         /// 휠 중앙에 놓인 현재 선택.
         public var selectedCareer: CareerOption
@@ -61,11 +52,11 @@ public struct OnboardingCareerInputFeature {
         public init(
             step: Int = 2,
             totalSteps: Int = 5,
-            selectedCareer: CareerOption = .newcomer
+            selectedCareer: CareerOption = CareerOption(years: 0)
         ) {
             self.step = step
             self.totalSteps = totalSteps
-            self.options = CareerOption.allCases
+            self.options = CareerOption.all
             self.selectedCareer = selectedCareer
         }
     }
@@ -86,8 +77,8 @@ public struct OnboardingCareerInputFeature {
         /// 코디네이터(OnboardingFeature) 통보. 부모는 이것만 매칭한다 (D1).
         @CasePathable
         public enum Delegate: Equatable, Sendable {
-            /// 연차 선택 완료 — 다음 스텝으로.
-            case continueRequested(career: CareerOption)
+            /// 연차 선택 완료 — 정수 연차(년)를 올린다. 그대로 `InterviewConfig.careerYears`.
+            case continueRequested(careerYears: Int)
             /// 뒤로(하단 «이전으로») — 코디네이터가 스택을 pop.
             case backRequested
             /// 온보딩 이탈(X) 요청 — dismiss 는 코디네이터 몫.
@@ -111,7 +102,7 @@ public struct OnboardingCareerInputFeature {
                 return .send(.delegate(.closeRequested))
 
             case .view(.userTappedContinue):
-                return .send(.delegate(.continueRequested(career: state.selectedCareer)))
+                return .send(.delegate(.continueRequested(careerYears: state.selectedCareer.years)))
 
             case .delegate:
                 return .none

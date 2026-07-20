@@ -21,7 +21,7 @@ struct OnboardingAnalysisFeatureTests {
         OnboardingData(
             userName: "재원",
             jobRole: "BACKEND",
-            career: .overOneYear,
+            careerYears: 1,
             portfolioId: Self.portfolioId
         )
     }

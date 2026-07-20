@@ -182,7 +182,7 @@ private extension Color {
 private let previewData = OnboardingData(
     userName: "재원",
     jobRole: "BACKEND",
-    career: .overOneYear,
+    careerYears: 1,
     portfolioId: UUID(uuidString: "00000000-0000-0000-0000-0000000000f1")!
 )
 

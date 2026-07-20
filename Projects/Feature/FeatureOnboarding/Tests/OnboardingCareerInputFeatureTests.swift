@@ -12,12 +12,13 @@ import Testing
 
 @MainActor
 struct OnboardingCareerInputFeatureTests {
-    @Test("초기 상태는 첫 선택지(신입)와 전체 선택지 목록을 갖는다")
+    @Test("초기 상태는 첫 선택지(신입=0년)와 0~10년 목록을 갖는다")
     func initialStateDefaultsToNewcomer() {
         let state = OnboardingCareerInputFeature.State()
 
-        #expect(state.selectedCareer == .newcomer)
-        #expect(state.options == CareerOption.allCases)
+        #expect(state.selectedCareer == CareerOption(years: 0))
+        #expect(state.options == CareerOption.all)
+        #expect(state.options.count == 11)   // 0~10년
     }
 
     @Test("휠 선택은 선택 연차를 갱신한다")
@@ -26,21 +27,21 @@ struct OnboardingCareerInputFeatureTests {
             OnboardingCareerInputFeature()
         }
 
-        await store.send(.view(.userSelectedCareer(.overOneYear))) {
-            $0.selectedCareer = .overOneYear
+        await store.send(.view(.userSelectedCareer(CareerOption(years: 1)))) {
+            $0.selectedCareer = CareerOption(years: 1)
         }
     }
 
-    @Test("계속하기는 선택 연차를 delegate 로 올린다")
+    @Test("계속하기는 선택 연차(정수)를 delegate 로 올린다")
     func continueEmitsSelectedCareer() async {
         let store = TestStore(
-            initialState: OnboardingCareerInputFeature.State(selectedCareer: .overTwoYears)
+            initialState: OnboardingCareerInputFeature.State(selectedCareer: CareerOption(years: 2))
         ) {
             OnboardingCareerInputFeature()
         }
 
         await store.send(.view(.userTappedContinue))
-        await store.receive(\.delegate.continueRequested, .overTwoYears)
+        await store.receive(\.delegate.continueRequested, 2)
     }
 
     @Test("이전으로 탭은 delegate 로 코디네이터에 위임한다")
