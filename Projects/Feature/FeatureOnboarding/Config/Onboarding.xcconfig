@@ -1,0 +1,6 @@
+// 온보딩 데모(Example) 서명 설정.
+// Secrets.xcconfig 의 DEVELOPMENT_TEAM 을 재사용해, tuist generate 마다 서명 팀이
+// 리셋되는 걸 막는다 (본체 Hilit 이 Config/*.xcconfig 로 하는 것과 동일 방식).
+// Secrets.xcconfig 는 .gitignore 대상(로컬 전용)이라 옵셔널 include — 없는 환경(CI 등)에선
+// 그냥 건너뛰고 Automatic 서명으로 동작한다.
+#include? "../../../App/Config/Secrets.xcconfig"

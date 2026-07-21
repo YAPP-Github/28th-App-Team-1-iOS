@@ -51,15 +51,23 @@ let project = Project.makeModule(
                 .domain(interface: .portfolio),
                 .domain(interface: .interview)
             ],
-            settings: .settings(base: [
-                // -all_load 는 팩토리(compositionRootSettings) 관례 유지 (D4). Example 은 가짜 의존성이라 무해.
-                "OTHER_LDFLAGS": "$(inherited) -all_load",
-                // dev 앱 레코드의 TestFlight 빌드 트랙. 업로드마다 CURRENT_PROJECT_VERSION 을 올린다.
-                "MARKETING_VERSION": "0.0.1",
-                "CURRENT_PROJECT_VERSION": "1",
-                // 서명은 Xcode 자동 관리 — Archive 시 팀(DEVELOPMENT_TEAM)만 고르면 된다.
-                "CODE_SIGN_STYLE": "Automatic"
-            ])
+            settings: .settings(
+                base: [
+                    // -all_load 는 팩토리(compositionRootSettings) 관례 유지 (D4). Example 은 가짜 의존성이라 무해.
+                    "OTHER_LDFLAGS": "$(inherited) -all_load",
+                    // dev 앱 레코드의 TestFlight 빌드 트랙. 업로드마다 CURRENT_PROJECT_VERSION 을 올린다.
+                    "MARKETING_VERSION": "0.0.1",
+                    "CURRENT_PROJECT_VERSION": "1",
+                    "CODE_SIGN_STYLE": "Automatic"
+                ],
+                // 서명 팀(DEVELOPMENT_TEAM)을 Secrets.xcconfig 에서 주입 — generate 마다 팀이 리셋되는 걸 막는다.
+                // Onboarding.xcconfig 가 Secrets 를 옵셔널 include (본체 Hilit 과 동일 방식).
+                configurations: [
+                    .debug(name: "Dev", xcconfig: "Config/Onboarding.xcconfig"),
+                    .release(name: "QA", xcconfig: "Config/Onboarding.xcconfig"),
+                    .release(name: "Release", xcconfig: "Config/Onboarding.xcconfig")
+                ]
+            )
         )),
     ],
     schemes: [
