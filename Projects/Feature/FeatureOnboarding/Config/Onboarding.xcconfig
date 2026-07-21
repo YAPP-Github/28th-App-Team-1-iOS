@@ -4,3 +4,8 @@
 // Secrets.xcconfig 는 .gitignore 대상(로컬 전용)이라 옵셔널 include — 없는 환경(CI 등)에선
 // 그냥 건너뛰고 Automatic 서명으로 동작한다.
 #include? "../../../App/Config/Secrets.xcconfig"
+
+// 온보딩 데모 배포 버전 — 본체(App/Config/Version.xcconfig)와 독립 트랙.
+// TestFlight 업로드마다 CURRENT_PROJECT_VERSION 을 +1 한다. (배포 버전은 여기서만 바꾼다)
+MARKETING_VERSION = 0.0.1
+CURRENT_PROJECT_VERSION = 1

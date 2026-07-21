@@ -38,12 +38,18 @@ let project = Project.makeModule(
                 "UILaunchScreen": [:],
                 "UIUserInterfaceStyle": "Light",
                 "CFBundleDisplayName": "Hilit 온보딩",
-                // 버전은 아래 settings 의 빌드 세팅에서 치환된다.
+                // InfoPlist 를 명시(extendingDefault)하면 asset catalog 기반 CFBundleIconName 자동 주입이
+                // 안 되므로 직접 지정한다 (업로드 90713 방지). 값은 ASSETCATALOG_COMPILER_APPICON_NAME 과 일치.
+                "CFBundleIconName": "AppIcon",
+                // 버전은 Config/Onboarding.xcconfig 의 빌드 세팅에서 치환된다.
                 "CFBundleShortVersionString": "$(MARKETING_VERSION)",
                 "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
                 // 온보딩 데모는 네트워크·암호화 미사용 → TestFlight 업로드 시 수출규정 질문 스킵.
                 "ITSAppUsesNonExemptEncryption": false
             ]),
+            // 앱 아이콘 — 임시 단색(Resources/Assets.xcassets/AppIcon). feature(example:) 는 기본 리소스가 없어
+            // 명시하지 않으면 아이콘 누락(업로드 90713·90022)이 난다.
+            resources: ["Resources/**"],
             dependencies: [
                 .composableArchitecture,
                 .domain(interface: .job),
@@ -55,10 +61,10 @@ let project = Project.makeModule(
                 base: [
                     // -all_load 는 팩토리(compositionRootSettings) 관례 유지 (D4). Example 은 가짜 의존성이라 무해.
                     "OTHER_LDFLAGS": "$(inherited) -all_load",
-                    // dev 앱 레코드의 TestFlight 빌드 트랙. 업로드마다 CURRENT_PROJECT_VERSION 을 올린다.
-                    "MARKETING_VERSION": "0.0.1",
-                    "CURRENT_PROJECT_VERSION": "1",
-                    "CODE_SIGN_STYLE": "Automatic"
+                    // 버전(MARKETING_VERSION·CURRENT_PROJECT_VERSION)은 Config/Onboarding.xcconfig 에서 관리한다.
+                    "CODE_SIGN_STYLE": "Automatic",
+                    // asset catalog 의 AppIcon 을 앱 아이콘으로 지정 (CFBundleIconName 자동 생성).
+                    "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon"
                 ],
                 // 서명 팀(DEVELOPMENT_TEAM)을 Secrets.xcconfig 에서 주입 — generate 마다 팀이 리셋되는 걸 막는다.
                 // Onboarding.xcconfig 가 Secrets 를 옵셔널 include (본체 Hilit 과 동일 방식).
