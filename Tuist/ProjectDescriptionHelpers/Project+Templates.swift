@@ -28,7 +28,14 @@ public extension Project {
 public extension Settings {
     static var standard: Settings {
         .settings(
-            base: ["GENERATE_INFOPLIST_FILE": "YES"],
+            base: [
+                "GENERATE_INFOPLIST_FILE": "YES",
+                // 모든 모듈 framework 의 Info.plist 에 버전 키를 채운다 — dynamic 임베드 시
+                // CFBundleShortVersionString 누락으로 인한 TestFlight 업로드 거부(90057)를 막는다.
+                // (앱/Example 타겟은 자체 settings 의 버전으로 override 된다)
+                "MARKETING_VERSION": "1.0.0",
+                "CURRENT_PROJECT_VERSION": "1"
+            ],
             configurations: [
                 .debug(name: "Dev", settings: ["SWIFT_ACTIVE_COMPILATION_CONDITIONS": "$(inherited) DEV"]),
                 // QA 는 테스터 배포용 — release 타입(최적화 -O·assert 제거)으로 실사용과 같은 동작을 빌드한다.
