@@ -20,6 +20,11 @@
 2. AppFeature가 수신해 `state.isAuthenticated = true`로 전환 → `AppView`가 `AuthView`에서 `TabView`로 교체
 3. 토큰 영속화가 없으므로 앱 재실행 시 다시 `AuthView`부터 시작(의도된 범위 제한) → [[auth]]
 
+대표 흐름 — **온보딩 dev 진입** (본체 통합 전 임시):
+1. dev 계에서만 `AppFeature.onAppear` 가 `home.showsOnboardingEntry` 를 켜고, Home 진입 버튼이 `delegate(.onboardingRequested)` 방출
+2. AppFeature 수신 → `state.onboarding = OnboardingFeature.State()` (`@Presents` + `.ifLet`) → `AppView` 가 `fullScreenCover` 로 위저드 제시
+3. 온보딩 `delegate(.finished(sessionId:))`·`.dismiss` → cover 닫음. **로그인 이후에만** 열어 토큰을 보유한다(온보딩 API 는 인증 필요) → [[onboarding]]
+
 → 큰 그림은 [[domain.map]].
 
 ## 주의사항

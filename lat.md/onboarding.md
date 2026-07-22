@@ -78,7 +78,9 @@ OnboardingPlaceholderStepFeature/View — 스텝 골격(내비바·프로그레�
 
 ## 코디네이터 연결
 
-FeatureOnboarding 은 아직 AppFeature 에 배선되지 않았다. 배선 시: 닉네임(userName) 주입, delegate(.dismiss) → 중도 이탈(draft 보존), **delegate(.finished(sessionId:)) → Part 2 면접 바로 시작**(사용자 결정 2026-07-20, InterviewSessionFeature 생기면 fullScreenCover).
+**dev 전용 임시 진입**만 배선된 상태다 — Home 의 dev 버튼 신호를 AppFeature 가 받아 로그인 이후 `fullScreenCover` 로 위저드를 연다(토큰 보유). 정식 통합은 아직. → [[app]]
+
+현재는 `OnboardingFeature.State()`(닉네임 없음)로 열고 `.finished`·`.dismiss` 는 cover 를 닫기만 한다. 정식 배선 시: 닉네임(userName) 주입, delegate(.dismiss) → 중도 이탈(draft 보존), **delegate(.finished(sessionId:)) → Part 2 면접 바로 시작**(사용자 결정 2026-07-20, InterviewSessionFeature 생기면 fullScreenCover).
 
 코디네이터 onAppear 가 draft 복원을 트리거하므로 OnboardingView 는 루트에 onAppear 를 발신한다. Example 앱은 전체 위저드를 스텁 의존성으로 구동하며 ONBOARDING_START_STEP 환경변수로 특정 스텝부터 시작할 수 있다(draft 는 no-op 스텁). → [[app]]
 
