@@ -125,6 +125,36 @@ struct OnboardingJDLinkFeatureTests {
         }
     }
 
+    @Test("형식이 잘못된 링크는 서버 호출 없이 즉시 에러가 된다")
+    func invalidFormatFailsWithoutServerCall() async {
+        let clock = TestClock()
+        // jdClient.validate 를 스텁하지 않는다 — 서버 호출이 일어나면 unimplemented 로 테스트가 실패한다.
+        let store = TestStore(initialState: OnboardingJDLinkFeature.State()) {
+            OnboardingJDLinkFeature()
+        } withDependencies: {
+            $0.continuousClock = clock
+        }
+
+        let pastedBody = "백엔드 개발자 채용 — 3년 이상, 코틀린/스프링"
+        await store.send(\.view.binding.linkText, pastedBody) {
+            $0.linkText = pastedBody
+        }
+        await clock.advance(by: OnboardingJDLinkFeature.validationDebounce)
+        await store.receive(\.inner.validationStarted) {
+            $0.linkValidation = .failure(message: OnboardingJDLinkFeature.invalidFormatMessage)
+        }
+    }
+
+    @Test("URL 형식 1차 검사 — http(s) 스킴 + 호스트만 통과한다")
+    func linkFormatValidation() {
+        #expect(OnboardingJDLinkFeature.isValidLinkFormat("https://recruit.hilit.dev/jobs/123"))
+        #expect(OnboardingJDLinkFeature.isValidLinkFormat("http://43.202.34.84:8080/jd"))
+        #expect(!OnboardingJDLinkFeature.isValidLinkFormat("recruit.hilit.dev/jobs/123"))   // 스킴 없음
+        #expect(!OnboardingJDLinkFeature.isValidLinkFormat("ftp://recruit.hilit.dev"))      // 비 http(s)
+        #expect(!OnboardingJDLinkFeature.isValidLinkFormat("https://"))                     // 호스트 없음
+        #expect(!OnboardingJDLinkFeature.isValidLinkFormat("채용공고 본문 텍스트"))            // URL 아님
+    }
+
     @Test("키보드 제출은 디바운스 없이 즉시 검증을 시작한다")
     func submitValidatesImmediately() async {
         var initialState = OnboardingJDLinkFeature.State()

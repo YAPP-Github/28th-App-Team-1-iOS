@@ -26,7 +26,9 @@ delegate 는 `continueRequested(careerYears: Int)` — 페이로드(`OnboardingD
 
 ## JD 링크
 
-STEP 3 (선택 — 스킵 가능). 탭 «JD 붙여넣기 / 직접 입력하기»는 화면 전환이 아니라 State 의 InputMode. 링크 입력은 600ms 디바운스 후 JDClient.validate — 로딩/에러/성공을 LinkValidation 하위 상태로 표현하고 필드 하단 4px 스트립 색으로 구분한다. 결과는 delegate(.continueRequested(JDSubmission?)) — .link/.text/nil(스킵).
+STEP 3 (선택 — 스킵 가능). 탭 «JD 붙여넣기 / 직접 입력하기»는 화면 전환이 아니라 State 의 InputMode. 링크 검증은 **1초 디바운스 → 클라이언트 형식 검사 → 통과분만 서버(JDClient.validate)** 2단. 결과는 delegate(.continueRequested(JDSubmission?)) — .link/.text/nil(스킵).
+
+형식 검사는 http/https 스킴+호스트(`isValidLinkFormat`) — 불일치는 서버 왕복 없이 즉시 에러 문구. 로딩/에러/성공은 LinkValidation 하위 상태로 표현하고 필드 하단 4px 스트립 색으로 구분한다. 키패드 밖 터치 시 내림(`dismissesKeyboardOnTap` — SharedDS 공통).
 
 - 성공 후엔 직접입력 탭 비활성, 검증 중 계속하기 무시. 스킵 시 입력이 있어도 검증·저장 없이 통과(jd=nil).
 - 직접입력 **200~3,000자** 검증 ✅ — 유효 길이만 계속하기 활성(무효 시 카운터·red 보더·안내 문구, 초과는 클램프 안 함). 빈 입력은 스킵.
