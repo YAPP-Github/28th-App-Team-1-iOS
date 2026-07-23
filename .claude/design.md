@@ -11,10 +11,10 @@ UI 코드를 작성·수정하기 전에 읽는 진입점. 여기엔 **규칙과
 
 | 영역 | 상태 | 요약 | 상세 |
 |---|---|---|---|
-| 타이포그래피 | ✅ 구현 | `.dsTypography(.head1)` — Pretendard 23종 (head1~5·sub1~9·body1~9), 행간·자간 내장 | **`.claude/design/typography.md`** |
-| 색상 | 이관 대기 | `Color.dsPrimary` / `dsBackground` / `dsTextPrimary` / `dsTextSecondary` 시맨틱 토큰 예정 | 구현 시 분리 |
-| Spacing | 이관 대기 | `CGFloat.dsXS`(4) ~ `dsXXL`(32), `.padding(.dsL)` 식 사용 예정 | 구현 시 분리 |
-| 컴포넌트 | 이관 대기 | `PrimaryButton` 등 — 커스텀 만들기 전에 표준 컴포넌트 먼저 검토 | 구현 시 분리 |
+| 타이포그래피 | ✅ 구현 | `.dsTypography(.head1)` — Pretendard 25종 (head1~6·sub1~9·body1~10), 행간·자간 내장 | **`.claude/design/typography.md`** |
+| 색상 | ✅ 구현 | 2-tier — 프리미티브 `Color.ds(.green800)`(20색) + 시맨틱 `Color.dsBrand`·`dsBgDark`·`dsTextPrimary` 등 | **`.claude/design/color.md`** |
+| Spacing | ✅ 구현 | `.padding(.ds(.p20))` — Figma padding 4~24, 테두리 `.ds(.medium)`(outline small/medium/large/mega) | **`.claude/design/spacing.md`** |
+| 컴포넌트 | ✅ 구현 | `PrimaryButton(_:isLoading:action:)` — 블랙 풀블리드 CTA 1종. 나머지는 커스텀 만들기 전에 먼저 검토 | **`Projects/Shared/SharedDesignSystem/Interface/Component/PrimaryButton.swift`** |
 
 상세 문서 분리 기준: **구현이 실체를 갖는 시점**에 `.claude/design/<영역>.md` 로 뺀다. 몇 줄짜리 예정 항목까지 미리 쪼개지 않는다 (파일 하나당 Read 비용).
 
