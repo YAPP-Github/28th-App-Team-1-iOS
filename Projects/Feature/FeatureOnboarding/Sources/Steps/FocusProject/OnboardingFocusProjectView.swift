@@ -38,6 +38,7 @@ public struct OnboardingFocusProjectView: View {
             bottomBar
         }
         .background(Color.dsWhite.ignoresSafeArea())
+        .dismissesKeyboardOnTap()
         .navigationBarBackButtonHidden(true)
     }
 

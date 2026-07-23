@@ -163,10 +163,12 @@ public struct OnboardingJDLinkFeature {
         }
     }
 
-    /// 붙여넣기 후 자동 검증까지의 디바운스 — «JD 붙여넣기» UX (붙여넣으면 곧바로 분석 시작).
-    static let validationDebounce: Duration = .milliseconds(600)
+    /// 마지막 입력 후 자동 검증까지의 디바운스 — 입력이 1초간 멈추면 검증을 시작한다.
+    static let validationDebounce: Duration = .seconds(1)
     /// 네트워크 오류 등 서버 message 가 없을 때의 기본 에러 문구.
     static let fallbackErrorMessage = "링크를 분석하지 못했어요. 링크를 확인해 주세요." // TODO: 확정 카피 반영
+    /// 클라이언트 1차 형식 검사 실패 문구 — 서버 왕복 전에 걸러진 경우.
+    static let invalidFormatMessage = "올바른 링크 형식이 아니에요. 링크를 확인해 주세요." // TODO: 확정 카피 반영
 
     private enum CancelID { case validate }
 
@@ -258,8 +260,13 @@ public struct OnboardingJDLinkFeature {
     private func reduceInner(_ state: inout State, _ action: Action.Inner) -> Effect<Action> {
         switch action {
         case .validationStarted:
-            state.linkValidation = .loading
             let url = trimmedLink(state)
+            // 클라이언트 1차 형식 검사 — 불일치는 서버 왕복 없이 즉시 에러. 서버 검증은 형식 통과분만 받는다.
+            guard Self.isValidLinkFormat(url) else {
+                state.linkValidation = .failure(message: Self.invalidFormatMessage)
+                return .none
+            }
+            state.linkValidation = .loading
             return .run { send in
                 await send(.inner(.linkValidated(try await jdClient.validate(url))))
             } catch: { _, send in
@@ -282,5 +289,16 @@ public struct OnboardingJDLinkFeature {
 
     private func trimmedLink(_ state: State) -> String {
         state.linkText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// 클라이언트 1차 형식 검사 — http(s) 스킴 + 호스트를 갖춘 URL 인지.
+    /// 공고 본문을 통째로 붙여넣는 실수(공백·한글 포함) 등을 서버 왕복 없이 거른다.
+    static func isValidLinkFormat(_ raw: String) -> Bool {
+        guard let components = URLComponents(string: raw),
+              let scheme = components.scheme?.lowercased(),
+              scheme == "http" || scheme == "https",
+              let host = components.host, !host.isEmpty
+        else { return false }
+        return true
     }
 }
