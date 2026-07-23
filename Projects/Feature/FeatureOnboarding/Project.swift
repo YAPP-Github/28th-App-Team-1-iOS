@@ -25,15 +25,9 @@ let project = Project.makeModule(
             .domain(interface: .interview)
         ])),
         // Example = 온보딩 단독 데모 앱. 가짜 의존성으로 네트워크 없이 위저드 전체를 돌린다.
-        // TestFlight 배포 타겟도 겸한다 → 이미 등록된 dev 앱(com.hilit.app.dev)을 재활용해 올린다.
-        // ⚠️ 본체 Hilit 의 Dev 빌드와 Bundle ID 가 겹친다 — "온보딩 데모만 TestFlight 에 올리고,
-        //    본체 dev 는 TestFlight/실기기에 올리지 않는다"는 전제. 한 기기엔 둘 중 하나만 설치된다.
-        // TODO: dev 번들 재활용은 임시 절충. 다음 중 하나가 생기면 Example 전용 번들
-        //       (com.hilit.app.onboarding 등)로 분리 + App Store Connect 앱 신규 등록으로 전환할 것.
-        //       ① 본체 Hilit-Dev 를 TestFlight/실기기에 올려야 할 때
-        //       ② 온보딩이 앱에 정식 통합되어 이 데모 배포가 불필요해질 때
+        // 번들은 템플릿 기본값(com.hilit.app.featureonboardingexample) — 로컬 실행 용도.
+        // TestFlight 단독 배포(TMA)를 할 땐 전용 번들 override + Apple Developer App ID·ASC 앱 등록이 필요하다.
         .feature(example: "Onboarding", factory: .init(
-            bundleId: "com.hilit.app.dev",
             infoPlist: .extendingDefault(with: [
                 "UILaunchScreen": [:],
                 "UIUserInterfaceStyle": "Light",
