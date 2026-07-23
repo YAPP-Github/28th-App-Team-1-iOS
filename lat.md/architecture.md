@@ -49,8 +49,9 @@ Action enum 을 `view(View)` / `inner(Inner)` / `delegate(Delegate)` 로 나눈�
 - **비채택**: 별도 `async` 카테고리 — "async 트리거"와 "async 응답" 중 무엇을 담는지 경계가 애매해 바이크셰딩을 부른다. 응답은 `inner` 로 흡수. binding 은 `View: BindableAction` + `BindingReducer(action: \.view)` 로 view 아래 중첩.
 
 ## 디자인 시스템
-`Shared/SharedDesignSystem` 토큰 우선, 하드코딩 지양. 타이포그래피는 Figma «Hilit_Style Guide_1» 스케일과 1:1 — `DSTypography`(head1~5·sub1~9·body1~9, Pretendard 3웨이트) + `.dsTypography(_:)` 모디파이어(행간·자간 포함). 색·spacing·컴포넌트 토큰은 이관 대기.
+`Shared/SharedDesignSystem` 토큰 우선, 하드코딩 지양. 타이포그래피는 Figma «Hilit_Style Guide_1» 스케일과 1:1 — `DSTypography`(head1~5·sub1~9·body1~9, Pretendard 3웨이트) + `.dsTypography(_:)` 모디파이어(행간·자간 포함). 색상도 구현 완료(Figma «Hilit_Color_Guide» 확정), spacing·컴포넌트는 이관 대기.
 
 - **토큰 위치**: 전부 Interface — 상수 계약이라 live/test 분리가 없다. 폰트 otf 도 Interface 리소스로 싣고, 첫 토큰 접근 시 `Pretendard.registerOnce`(static let)가 CoreText 등록 — App 배선 불필요.
 - **행간 구현**: SwiftUI 에 line-height 가 없어 `lineSpacing + 상하 패딩` 보정으로 Figma px 값을 재현. Dynamic Type 은 미반영(고정 사이즈) — 도입 결정 시 `relativeTo:` 전환.
 - **스펙 대조**: 토큰 ↔ Figma 스타일명 1:1 은 `DSTypographyTests` 가 고정한다. 상세 토큰 표 → `.claude/design/typography.md` (인덱스: `.claude/design.md`).
+- **색상**: Figma «Hilit_Color_Guide»(node 366-173) 확정 팔레트 — `DSColor` 원시 23색 + `Color.ds*` 시맨틱 별칭. 값은 `Colors.xcassets`, 로드는 `Color.load` 단일 seam, 토큰↔HEX 대조는 `DSColorTests`. 상세 표 → `.claude/design/color.md`.
