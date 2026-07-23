@@ -45,6 +45,7 @@ Projects/
 - 테스트: `make test scheme=FeatureHome` 권장 (시뮬레이터 UDID 자동 해석).
 - **umbrella 의존 변경 후 `tuist generate` 필수** — 캐시 그래프 빌드는 "거짓 성공".
 - DocC: `ArchitectureDocs` 스킴 → Product → Build Documentation.
+- - **PR 올리기**: base 는 항상 `dev`(feature→dev). `gh pr create --repo YAPP-Github/28th-App-Team-1-iOS --base dev --head "$(git branch --show-current)" --title "type: 요약" --body-file <본문.md>` — 본문은 `.github/pull_request_template.md` 형식으로 채운다(관련 이슈 `Close #N` / 작업 내역 / 리뷰 포인트 / 체크리스트). 규칙 상세는 `CONTRIBUTING.md`, 머지는 squash. gh 미인증이면 `gh auth login` 먼저.
 
 ## lat.md 지식 그래프
 
@@ -54,7 +55,7 @@ Projects/
 
 ## 컨벤션
 
-- 커밋: 한국어 1줄 `type: 설명_부연`.
+- **커밋**: 제목 1 줄 한국어. `type: 설명_부연` 형식. 본문은 정말 필요할 때만 2-3 줄.
 - 네이밍: Swift API Design Guidelines. 외부 명칭(Figma 토큰 등)은 Swift 식별자화 + 원본은 매핑 프로퍼티 보존(`figmaName`). 테스트 함수 camelCase, 한글 설명은 `@Test("…")` 표시명.
 - 모듈 경계 넘는 타입/함수는 `public` 필수.
 - Action 네이밍: `userTapped…`(view) / `…Loaded`·`…Saved`(inner) / `onAppear`·`onDisappear`(view).
