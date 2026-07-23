@@ -1,0 +1,40 @@
+//
+//  InterviewError.swift
+//  DomainInterviewInterface
+//
+//  Created by EunseoKim on 26/07/23.
+//
+
+/// Interview API 에러 — State 가 다르게 반응해야 하는 경우의 수만큼만 둔다 (AuthError 와 같은 원칙).
+/// 서버 코드 ↔ 케이스 매핑 표는 [[api#Interview]].
+public enum InterviewError: Error, Equatable, Sendable {
+    /// NO_REMAINING_TICKET (403) — 이용권 소진. 결제/안내 분기.
+    case noRemainingTicket
+    /// PORTFOLIO_NOT_FOUND (404) — 세션 생성 입력의 포트폴리오가 없거나 본인 소유가 아님.
+    case portfolioNotFound
+    /// PORTFOLIO_PROCESSING (400) — 포트폴리오 분석 중. READY 폴링 후 재시도 유도.
+    case portfolioProcessing
+    /// PORTFOLIO_UPLOAD_FAILED (400) — 포트폴리오 처리 실패. 재업로드 유도.
+    case portfolioUploadFailed
+    /// JD_NOT_VALIDATED (400) — jdUrl 이 사전 검증(JDClient.validate)을 통과하지 않음.
+    case jdNotValidated
+    /// FREETEXT_NOT_RELEVANT (400) — 집중 프로젝트 설명이 포트폴리오와 무관. 재작성 유도.
+    case freeTextNotRelevant
+    /// INTERVIEW_SESSION_NOT_FOUND (404)
+    case sessionNotFound
+    /// QUESTION_NOT_FOUND (404)
+    case questionNotFound
+    /// ANSWER_ALREADY_SUBMITTED (409) — 재시도 차단. 다음 질문으로 진행.
+    case answerAlreadySubmitted
+    /// SESSION_ALREADY_ENDED (409) — 이미 종료된 세션. 보고서 화면으로 이탈.
+    case sessionAlreadyEnded
+    /// VALIDATION_ERROR·INVALID_JOB_ROLE·INVALID_CAREER_YEARS·INVALID_JD_LENGTH·
+    /// INVALID_FREETEXT_LENGTH·INVALID_PLAYBACK_RANGE·INVALID_ANSWER_RANGE·
+    /// INVALID_END_TYPE·INVALID_AUDIO_PRESENCE (400) — `message` 는 그대로 사용자 노출 가능.
+    case invalid(message: String)
+    /// 재로그인 필요 (LOGIN_EXPIRED — 자동 재발급까지 실패한 뒤 도달)
+    case sessionExpired
+    case networkFailure
+    case serverUnavailable
+    case unexpected
+}

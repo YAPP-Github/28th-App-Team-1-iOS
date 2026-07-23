@@ -20,6 +20,10 @@ public enum ModulePath {
         case jd = "JD"
         case job = "Job"
         case portfolio = "Portfolio"
+        case user = "User"
+        case interviewReport = "InterviewReport"
+        case feedbackShare = "FeedbackShare"
+        case guestFeedback = "GuestFeedback"
 
         public static let name = "Domain"
     }
