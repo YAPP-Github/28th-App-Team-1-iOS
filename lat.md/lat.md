@@ -9,6 +9,7 @@
 - [[home]] — Home 도메인 (현재 유일한 실 Feature)
 - [[auth]] — Auth 도메인 (카카오·애플 소셜 로그인 + 서버 세션 교환)
 - [[interview]] — Interview 도메인 (InterviewClient — 면접 세션 API)
+- [[feedback]] — Feedback 도메인 (G4 게스트 평가 — 무인증 토큰 진입·태도 척도 제출)
 
 > `refactor/#6` 은 TMA 스켈레톤 단계라 실 Feature 노드는 [[home]] 뿐이다. Users·Profile 등은 이관되면서 노드가 추가된다.
 

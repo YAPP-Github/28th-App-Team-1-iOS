@@ -20,11 +20,12 @@ AppFeature  --.users(.profileUpdated)-->       Users   (list/detail 갱신)
 - **검색**: import 추적으론 안 잡히는 이 의존을 `make lat q=profile` 로 한 번에 찾는다.
 
 ## Feature ↔ Domain
-각 Feature 가 의존하는 Domain(Interface) 매핑. Repository(Client)는 Domain 레이어 모듈이 보유한다. 서버 API Domain 5종(Auth·Interview·JD·Job·Portfolio)의 엔드포인트·규약은 [[api]].
+각 Feature 가 의존하는 Domain(Interface) 매핑. Repository(Client)는 Domain 레이어 모듈이 보유한다. 서버 API Domain 6종(Auth·Interview·JD·Job·Portfolio·Feedback)의 엔드포인트·규약은 [[api]].
 
 | Feature | 의존 Domain (Interface) | Client |
 |---|---|---|
 | Home | (없음 — 외부 IO 없는 화면) | — |
+| GuestFeedback (G4 게스트 평가) | DomainFeedback | GuestFeedbackClient · GuestFeedbackLocalStore → [[feedback]] |
 | Auth (로그인 게이트) | DomainAuth | AuthClient → [[auth]] |
 | Common — NetworkExample (네트워킹 화면 템플릿) | DomainJob | JobClient → [[api#Job]] |
 | InterviewSetup (예정 — [ai-interview](../docs/work/ai-interview.md)) | DomainJob · DomainJD · DomainPortfolio · DomainInterview | JobClient · JDClient · PortfolioClient · InterviewClient |
