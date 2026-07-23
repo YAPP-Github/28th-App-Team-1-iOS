@@ -47,11 +47,11 @@ public struct OnboardingFocusProjectView: View {
             Button {
                 send(.userTappedClose)
             } label: {
-                Image.DS.icClose
+                Image.Ic.close
                     .resizable()
                     .scaledToFit()
                     .frame(width: 24, height: 24)
-                    .foregroundStyle(Color.HilitBlack.b900)
+                    .foregroundStyle(Color.HilitBlack.b800)
             }
             .buttonStyle(.plain)
             Spacer(minLength: 0)
@@ -64,7 +64,7 @@ public struct OnboardingFocusProjectView: View {
         HStack(spacing: 2) {
             ForEach(1...store.totalSteps, id: \.self) { step in
                 Rectangle()
-                    .fill(step <= store.step ? Color.HilitBlack.b900 : Color.Gray.g50)
+                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.Gray.g50)
                     .frame(height: 4)
             }
         }
@@ -97,7 +97,7 @@ public struct OnboardingFocusProjectView: View {
         VStack(alignment: .leading, spacing: 11) {
             Text("프로젝트 내용 입력")
                 .dsTypography(.body1)
-                .foregroundStyle(Color.HilitBlack.b900)
+                .foregroundStyle(Color.HilitBlack.b800)
 
             HStack(spacing: 4) {
                 projectTextField
@@ -119,7 +119,7 @@ public struct OnboardingFocusProjectView: View {
 
             if let warning = store.relevanceWarning {
                 HStack(spacing: 6) {
-                    Image.DS.icError
+                    Image.Ic.error
                         .resizable()
                         .scaledToFit()
                         .frame(width: 16, height: 16)
@@ -143,7 +143,7 @@ public struct OnboardingFocusProjectView: View {
         // TODO: 입력(filled) 상태 텍스트 색 Figma 미확인 — placeholder 상태만 제공돼 우선 gray800.
         .font(.ds(.body2))
         .foregroundStyle(Color.Gray.g800)
-        .tint(Color.HilitBlack.b900)
+        .tint(Color.HilitBlack.b800)
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(minHeight: 24) // 클리어 버튼(24pt) 유무와 무관하게 입력창 높이 고정.
     }
@@ -153,7 +153,7 @@ public struct OnboardingFocusProjectView: View {
             send(.userTappedClearText)
         } label: {
             // 원본 컬러 에셋(회색 원 + 블랙 X) — template 틴트 없이 그대로 렌더.
-            Image.DS.icCancelMini
+            Image.Ic.cancelMini
                 .resizable()
                 .scaledToFit()
                 .frame(width: 24, height: 24)
@@ -170,8 +170,8 @@ public struct OnboardingFocusProjectView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 11)
                 .frame(maxWidth: .infinity)
-                .background(Color.HilitBlack.b900)
-            Image.DS.imgTooltipTail
+                .background(Color.HilitBlack.b800)
+            Image.Img.tooltipTail
                 .resizable()
                 .scaledToFit()
                 .frame(width: 97, height: 11)
@@ -211,7 +211,7 @@ public struct OnboardingFocusProjectView: View {
             }
             .buttonStyle(.plain)
         }
-        .background(Color.HilitBlack.b900.ignoresSafeArea(edges: .bottom))
+        .background(Color.HilitBlack.b800.ignoresSafeArea(edges: .bottom))
     }
 }
 

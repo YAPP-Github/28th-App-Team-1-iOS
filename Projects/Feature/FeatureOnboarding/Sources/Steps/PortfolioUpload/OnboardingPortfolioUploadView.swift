@@ -92,11 +92,11 @@ public struct OnboardingPortfolioUploadView: View {
             Button {
                 send(.userTappedClose)
             } label: {
-                Image.DS.icClose
+                Image.Ic.close
                     .resizable()
                     .scaledToFit()
                     .frame(width: 24, height: 24)
-                    .foregroundStyle(Color.HilitBlack.b900)
+                    .foregroundStyle(Color.HilitBlack.b800)
             }
             .buttonStyle(.plain)
             Spacer(minLength: 0)
@@ -109,7 +109,7 @@ public struct OnboardingPortfolioUploadView: View {
         HStack(spacing: 2) {
             ForEach(1...store.totalSteps, id: \.self) { step in
                 Rectangle()
-                    .fill(step <= store.step ? Color.HilitBlack.b900 : Color.Gray.g50)
+                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.Gray.g50)
                     .frame(height: 4)
             }
         }
@@ -124,7 +124,7 @@ public struct OnboardingPortfolioUploadView: View {
                 .foregroundStyle(Color.HilitGreen.g500)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 4)
-                .background(Color.HilitBlack.b900, in: RoundedRectangle(cornerRadius: 2))
+                .background(Color.HilitBlack.b800, in: RoundedRectangle(cornerRadius: 2))
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("포트폴리오를\n업로드해 주세요.")
@@ -143,7 +143,7 @@ public struct OnboardingPortfolioUploadView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("업로드한 포트폴리오")
                 .dsTypography(.body1)
-                .foregroundStyle(Color.HilitBlack.b900)
+                .foregroundStyle(Color.HilitBlack.b800)
 
             uploadCard
 
@@ -162,10 +162,10 @@ public struct OnboardingPortfolioUploadView: View {
         } label: {
             VStack(spacing: 11) {
                 Circle()
-                    .fill(Color.HilitBlack.b900)
+                    .fill(Color.HilitBlack.b800)
                     .frame(width: 44, height: 44)
                     .overlay {
-                        Image.DS.icUpload
+                        Image.Ic.upload
                             .resizable()
                             .scaledToFit()
                             .frame(width: 20, height: 22)
@@ -195,7 +195,7 @@ public struct OnboardingPortfolioUploadView: View {
     /// 업로드 실패 배너 (Figma 1716:5517) — failed 하위 상태에서만 노출.
     private func errorBanner(_ message: String) -> some View {
         HStack(spacing: 10) {
-            Image.DS.icError
+            Image.Ic.error
                 .resizable()
                 .scaledToFit()
                 .frame(width: 16, height: 16)
@@ -257,7 +257,7 @@ public struct OnboardingPortfolioUploadView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(fileName)
                         .dsTypography(.body4)
-                        .foregroundStyle(Color.HilitBlack.b900)
+                        .foregroundStyle(Color.HilitBlack.b800)
                         .lineLimit(1)
                         .truncationMode(.tail)
                     Text(statusText)
@@ -269,7 +269,7 @@ public struct OnboardingPortfolioUploadView: View {
                 Button {
                     send(.userTappedRemoveFile)
                 } label: {
-                    Image.DS.icCancelSmall
+                    Image.Ic.cancelSmall
                         .resizable()
                         .scaledToFit()
                         .frame(width: 20, height: 20)
@@ -339,7 +339,7 @@ public struct OnboardingPortfolioUploadView: View {
             .buttonStyle(.plain)
             .disabled(!store.isContinueEnabled)
         }
-        .background(Color.HilitBlack.b900.ignoresSafeArea(edges: .bottom))
+        .background(Color.HilitBlack.b800.ignoresSafeArea(edges: .bottom))
     }
 }
 

@@ -45,11 +45,11 @@ public struct OnboardingJobSelectionView: View {
             Button {
                 send(.userTappedClose)
             } label: {
-                Image.DS.icClose
+                Image.Ic.close
                     .resizable()
                     .scaledToFit()
                     .frame(width: 24, height: 24)
-                    .foregroundStyle(Color.HilitBlack.b900)
+                    .foregroundStyle(Color.HilitBlack.b800)
             }
             .buttonStyle(.plain)
             Spacer(minLength: 0)
@@ -62,7 +62,7 @@ public struct OnboardingJobSelectionView: View {
         HStack(spacing: 2) {
             ForEach(1...store.totalSteps, id: \.self) { step in
                 Rectangle()
-                    .fill(step <= store.step ? Color.HilitBlack.b900 : Color.Gray.g50)
+                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.Gray.g50)
                     .frame(height: 4)
             }
         }
@@ -77,7 +77,7 @@ public struct OnboardingJobSelectionView: View {
                 .foregroundStyle(Color.HilitGreen.g500)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 4)
-                .background(Color.HilitBlack.b900, in: RoundedRectangle(cornerRadius: 2))
+                .background(Color.HilitBlack.b800, in: RoundedRectangle(cornerRadius: 2))
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("\(store.userName)님의 직군을\n선택해 주세요.")
@@ -111,14 +111,14 @@ public struct OnboardingJobSelectionView: View {
         } label: {
             Text(job.label)
                 .font(.ds(.body2))
-                .foregroundStyle(Color.HilitBlack.b900)
+                .foregroundStyle(Color.HilitBlack.b800)
                 .padding(.horizontal, 32)
                 .padding(.vertical, 16)
                 .background(Color.BlackWhite.white)
                 .overlay {
                     // TODO: 선택 상태 Figma 미확인 — 우선 보더 강조. 디자인 확정 시 조정.
                     Rectangle()
-                        .strokeBorder(isSelected ? Color.HilitBlack.b900 : Color.chipBorder, lineWidth: 1.2)
+                        .strokeBorder(isSelected ? Color.HilitBlack.b800 : Color.chipBorder, lineWidth: 1.2)
                 }
         }
         .buttonStyle(.plain)
@@ -138,7 +138,7 @@ public struct OnboardingJobSelectionView: View {
         }
         .buttonStyle(.plain)
         .disabled(!store.isContinueEnabled)
-        .background(Color.HilitBlack.b900.ignoresSafeArea(edges: .bottom))
+        .background(Color.HilitBlack.b800.ignoresSafeArea(edges: .bottom))
     }
 }
 

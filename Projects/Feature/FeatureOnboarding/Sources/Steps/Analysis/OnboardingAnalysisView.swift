@@ -10,7 +10,7 @@ import SharedDesignSystemInterface
 import SwiftUI
 
 // Figma «6. 분석 중»(node 1609:9019) · «6.1 분석 완료»(node 1609:9075) 구현.
-// 풀스크린 다크(HilitBlack.b900) 화면 — 프로그레스 바·STEP 라벨·뒤로가기 없음, 좌상단 닫기(X)만 있다.
+// 풀스크린 다크(HilitBlack.b800) 화면 — 프로그레스 바·STEP 라벨·뒤로가기 없음, 좌상단 닫기(X)만 있다.
 // @ViewAction 매크로가 send(_:) 를 제공한다 — View 는 store.send(.view(...)) 대신 send(.onAppear) 로만 방출.
 @ViewAction(for: OnboardingAnalysisFeature.self)
 public struct OnboardingAnalysisView: View {
@@ -25,7 +25,7 @@ public struct OnboardingAnalysisView: View {
             navigationBar
             content
         }
-        .background(Color.HilitBlack.b900.ignoresSafeArea())
+        .background(Color.HilitBlack.b800.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
         .animation(.easeInOut(duration: 0.3), value: store.phase)
         .onAppear { send(.onAppear) }
@@ -36,7 +36,7 @@ public struct OnboardingAnalysisView: View {
             Button {
                 send(.userTappedClose)
             } label: {
-                Image.DS.icClose
+                Image.Ic.close
                     .resizable()
                     .scaledToFit()
                     .frame(width: 24, height: 24)
@@ -113,7 +113,7 @@ public struct OnboardingAnalysisView: View {
     @ViewBuilder
     private func stageIndicator(index: Int) -> some View {
         if index < store.completedStages {
-            Image.DS.icSuccess
+            Image.Ic.success
                 .resizable()
                 .scaledToFit()
                 .frame(width: SpinnerMetrics.box, height: SpinnerMetrics.box)
