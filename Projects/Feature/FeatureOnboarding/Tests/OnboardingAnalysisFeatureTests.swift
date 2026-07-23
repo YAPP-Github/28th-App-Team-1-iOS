@@ -26,7 +26,7 @@ struct OnboardingAnalysisFeatureTests {
         )
     }
 
-    @Test("진입 시 세션을 생성하고 READY 폴링 후 세션 id 를 delegate 로 올린다")
+    @Test("READY 가 먼저 와도 가짜 스테이지가 다 지나야 3행이 체크되고 완료로 넘어간다")
     func analysisCreatesSessionAndCompletes() async {
         let clock = TestClock()
         let store = TestStore(initialState: OnboardingAnalysisFeature.State(data: fullData())) {
@@ -43,7 +43,15 @@ struct OnboardingAnalysisFeatureTests {
 
         await store.send(.view(.onAppear)) { $0.hasStartedAnalysis = true }
         await store.receive(\.inner.sessionCreated) { $0.sessionId = 7 }
-        await store.receive(\.inner.statusPolled) { $0.phase = .completed }
+        // READY 선착 — 3행은 아직 체크되지 않는다 (가짜 스테이지 대기).
+        await store.receive(\.inner.statusPolled) { $0.isSessionReady = true }
+        await clock.advance(by: OnboardingAnalysisFeature.stageDuration)
+        await store.receive(\.inner.stageAdvanced) { $0.completedStages = 1 }
+        // 2행 체크 + READY 기수신 → 같은 리듀스에서 3행까지 체크된다.
+        await clock.advance(by: OnboardingAnalysisFeature.stageDuration)
+        await store.receive(\.inner.stageAdvanced) { $0.completedStages = 3 }
+        await clock.advance(by: OnboardingAnalysisFeature.finalCheckHold)
+        await store.receive(\.inner.finalCheckShown) { $0.phase = .completed }
         await clock.advance(by: OnboardingAnalysisFeature.completionHoldDuration)
         await store.receive(\.inner.completionHoldFinished)
         await store.receive(\.delegate.completed, 7)
@@ -70,8 +78,17 @@ struct OnboardingAnalysisFeatureTests {
         await store.send(.view(.onAppear)) { $0.hasStartedAnalysis = true }
         await store.receive(\.inner.sessionCreated) { $0.sessionId = 7 }
         await store.receive(\.inner.statusPolled)   // 1회차 PROCESSING — 상태 변화 없음
+        // 폴링 간격(3s) 사이에 가짜 스테이지(1.2s·2.4s)가 먼저 지나 1·2행이 체크된다.
+        // READY 전이므로 3행은 스피너 유지 — READY 도착 액션에서 비로소 체크된다.
         await clock.advance(by: OnboardingAnalysisFeature.pollInterval)
-        await store.receive(\.inner.statusPolled) { $0.phase = .completed }
+        await store.receive(\.inner.stageAdvanced) { $0.completedStages = 1 }
+        await store.receive(\.inner.stageAdvanced) { $0.completedStages = 2 }
+        await store.receive(\.inner.statusPolled) {
+            $0.isSessionReady = true
+            $0.completedStages = 3
+        }
+        await clock.advance(by: OnboardingAnalysisFeature.finalCheckHold)
+        await store.receive(\.inner.finalCheckShown) { $0.phase = .completed }
         await clock.advance(by: OnboardingAnalysisFeature.completionHoldDuration)
         await store.receive(\.inner.completionHoldFinished)
         await store.receive(\.delegate.completed, 7)
@@ -82,6 +99,7 @@ struct OnboardingAnalysisFeatureTests {
         let store = TestStore(initialState: OnboardingAnalysisFeature.State(data: fullData())) {
             OnboardingAnalysisFeature()
         } withDependencies: {
+            $0.continuousClock = TestClock()   // 가짜 스테이지 타이머용 — 실패 시 취소된다.
             $0.interviewClient.createSession = { _ in throw InterviewError.freeTextNotRelevant }
         }
 
@@ -95,6 +113,7 @@ struct OnboardingAnalysisFeatureTests {
         let store = TestStore(initialState: OnboardingAnalysisFeature.State(data: fullData())) {
             OnboardingAnalysisFeature()
         } withDependencies: {
+            $0.continuousClock = TestClock()   // 가짜 스테이지 타이머용 — 실패 시 취소된다.
             $0.interviewClient.createSession = { _ in throw NSError(domain: "test", code: -1) }
         }
 
@@ -138,9 +157,15 @@ struct OnboardingAnalysisFeatureTests {
 
         await store.send(.view(.onAppear)) { $0.hasStartedAnalysis = true }
         await store.receive(\.inner.sessionCreated) { $0.sessionId = 7 }
-        await store.receive(\.inner.statusPolled) { $0.phase = .completed }
-        // 완료 홀드 중 재진입 — 이미 시작됐으므로 상태 변화도, 새 세션 생성도 없어야 한다.
+        await store.receive(\.inner.statusPolled) { $0.isSessionReady = true }
+        // 분석 진행 중 재진입 — 이미 시작됐으므로 상태 변화도, 새 세션 생성도 없어야 한다.
         await store.send(.view(.onAppear))
+        await clock.advance(by: OnboardingAnalysisFeature.stageDuration)
+        await store.receive(\.inner.stageAdvanced) { $0.completedStages = 1 }
+        await clock.advance(by: OnboardingAnalysisFeature.stageDuration)
+        await store.receive(\.inner.stageAdvanced) { $0.completedStages = 3 }
+        await clock.advance(by: OnboardingAnalysisFeature.finalCheckHold)
+        await store.receive(\.inner.finalCheckShown) { $0.phase = .completed }
         await clock.advance(by: OnboardingAnalysisFeature.completionHoldDuration)
         await store.receive(\.inner.completionHoldFinished)
         await store.receive(\.delegate.completed, 7)
