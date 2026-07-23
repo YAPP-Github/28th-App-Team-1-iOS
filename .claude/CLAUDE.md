@@ -89,7 +89,7 @@ Projects/
 
 ## 디자인 시스템
 
-UI 코드(View·컴포넌트·에셋)를 작성·수정하기 **전에 `.claude/design.md` 를 읽는다** — 토큰(색·타이포·spacing)·표준 컴포넌트·에셋 로드 규칙의 참조 문서. 모듈은 `Shared/SharedDesignSystem`(이관 대기 — 현재 골격만), 의존은 `.shared(interface: .designSystem)`.
+UI 코드(View·컴포넌트·에셋)를 작성·수정하기 **전에 `.claude/design.md` 를 읽는다** — 토큰(색·타이포·spacing)·표준 컴포넌트·에셋 로드 규칙의 참조 문서. 모듈은 `Shared/SharedDesignSystem`(타이포·색상 구현, spacing·컴포넌트 이관 대기), 의존은 `.shared(interface: .designSystem)`.
 
 ## 참고
 
