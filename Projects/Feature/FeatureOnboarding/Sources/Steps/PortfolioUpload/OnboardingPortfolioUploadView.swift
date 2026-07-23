@@ -16,6 +16,10 @@ import UniformTypeIdentifiers
 public struct OnboardingPortfolioUploadView: View {
     @Bindable public var store: StoreOf<OnboardingPortfolioUploadFeature>
 
+    /// 업로드 진행 스트립 비율(0~1) — 실제 진행률 이벤트가 없어(register 단일 호출) 시각적 가짜 진행이다.
+    /// uploading 이면 0→0.9 로 천천히 차오르다 멈추고(폴링 대기), uploaded(READY) 시 1.0 으로 꽉 채운다.
+    @State private var uploadProgress: CGFloat = 0
+
     public init(store: StoreOf<OnboardingPortfolioUploadFeature>) {
         self.store = store
     }
@@ -47,6 +51,24 @@ public struct OnboardingPortfolioUploadView: View {
             case .failure:
                 send(.fileSelectionFailed)
             }
+        }
+        .onAppear { syncUploadProgress(store.upload) }
+        .onChange(of: store.upload) { _, state in syncUploadProgress(state) }
+    }
+
+    /// upload 하위 상태에 맞춰 가짜 진행 스트립을 애니메이트한다.
+    /// - uploading: 0 → 0.9 로 천천히(폴링이 끝날 때까지 90%에서 정지).
+    /// - uploaded : 0.9 → 1.0 으로 빠르게 꽉 채움.
+    /// - idle/failed: 0 으로 초기화.
+    private func syncUploadProgress(_ state: OnboardingPortfolioUploadFeature.UploadState) {
+        switch state {
+        case .uploading:
+            uploadProgress = 0
+            withAnimation(.easeOut(duration: 12)) { uploadProgress = 0.9 }
+        case .uploaded:
+            withAnimation(.easeOut(duration: 0.35)) { uploadProgress = 1.0 }
+        case .idle, .failed:
+            uploadProgress = 0
         }
     }
 
@@ -187,8 +209,8 @@ public struct OnboardingPortfolioUploadView: View {
         case let .uploading(fileName, _):
             fileRow(fileName: fileName, statusText: "Processing...", showsProgress: true)
         case let .uploaded(fileName, _):
-            // TODO: 업로드 완료 행 Figma 미확인 — 업로드 중 행에서 진행 스트립만 뺀 레이아웃으로 둔다.
-            fileRow(fileName: fileName, statusText: "업로드 완료", showsProgress: false)
+            // READY — 스트립을 100%(uploadProgress=1.0)로 꽉 채워 완료를 보여준다.
+            fileRow(fileName: fileName, statusText: "업로드 완료", showsProgress: true)
         }
     }
 
@@ -265,14 +287,11 @@ public struct OnboardingPortfolioUploadView: View {
                 Rectangle().fill(Color.dsGrayScale100)
                 Rectangle()
                     .fill(Color.dsGreen500)
-                    .frame(width: proxy.size.width * Self.uploadingProgressFraction)
+                    .frame(width: proxy.size.width * uploadProgress)
             }
         }
         .frame(height: 10)
     }
-
-    /// Figma 4.2 의 진행 스트립 비율 (52/335).
-    private static let uploadingProgressFraction: CGFloat = 52.0 / 335.0
 
     // MARK: - 하단 CTA (이 스텝은 이전으로/계속하기 2버튼 — STEP 1 과 다름)
 
