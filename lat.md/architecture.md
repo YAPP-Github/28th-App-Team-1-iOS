@@ -54,4 +54,4 @@ Action enum 을 `view(View)` / `inner(Inner)` / `delegate(Delegate)` 로 나눈�
 - **토큰 위치**: 전부 Interface — 상수 계약이라 live/test 분리가 없다. 폰트 otf 도 Interface 리소스로 싣고, 첫 토큰 접근 시 `Pretendard.registerOnce`(static let)가 CoreText 등록 — App 배선 불필요.
 - **행간 구현**: SwiftUI 에 line-height 가 없어 `lineSpacing + 상하 패딩` 보정으로 Figma px 값을 재현. Dynamic Type 은 미반영(고정 사이즈) — 도입 결정 시 `relativeTo:` 전환.
 - **스펙 대조**: 토큰 ↔ Figma 스타일명 1:1 은 `DSTypographyTests` 가 고정한다. 상세 토큰 표 → `.claude/design/typography.md` (인덱스: `.claude/design.md`).
-- **색상**: Figma «Hilit_Color_Guide»(node 366-173) 확정 팔레트 — `DSColor` 원시 23색 + `Color.ds*` 시맨틱 별칭. 값은 `Colors.xcassets`, 로드는 `Color.load` 단일 seam, 토큰↔HEX 대조는 `DSColorTests`. 상세 표 → `.claude/design/color.md`.
+- **색상**: Figma «Hilit_Color_Guide»(node 366-173) 확정 팔레트 23색 — 패밀리 enum(`Color.HilitGreen.g500`·`Color.Gray.g600`…). 에셋명은 HEX(`Color636777`), 로드는 `Color.load` 단일 seam, 토큰↔HEX 대조는 `ColorPaletteTests`. 상세 표 → `.claude/design/color.md`.

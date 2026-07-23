@@ -12,7 +12,7 @@ UI 코드를 작성·수정하기 전에 읽는 진입점. 여기엔 **규칙과
 | 영역 | 상태 | 요약 | 상세 |
 |---|---|---|---|
 | 타이포그래피 | ✅ 구현 | `.dsTypography(.head1)` — Pretendard 23종 (head1~5·sub1~9·body1~9), 행간·자간 내장 | **`.claude/design/typography.md`** |
-| 색상 | ✅ 구현 | `Color.dsPrimary`·`dsTextPrimary`·`dsBackground`… 시맨틱 + `Color.ds(.gray900)` 원시 23색 (Colors.xcassets) | **`.claude/design/color.md`** |
+| 색상 | ✅ 구현 | 패밀리 enum 팔레트 23색 — `Color.HilitGreen.g500`·`Color.Gray.g600` 등 (에셋명 = HEX) | **`.claude/design/color.md`** |
 | Spacing | 이관 대기 | `CGFloat.dsXS`(4) ~ `dsXXL`(32), `.padding(.dsL)` 식 사용 예정 | 구현 시 분리 |
 | 컴포넌트 | 이관 대기 | `PrimaryButton` 등 — 커스텀 만들기 전에 표준 컴포넌트 먼저 검토 | 구현 시 분리 |
 
@@ -20,6 +20,6 @@ UI 코드를 작성·수정하기 전에 읽는 진입점. 여기엔 **규칙과
 
 ## 에셋 로드 규칙 (새 색·이미지 추가 시)
 
-1. `SharedDesignSystem/Interface/Resources/Colors.xcassets`(색상) · `App/Resources/Assets.xcassets`(앱 에셋) 에 에셋 추가
+1. `SharedDesignSystem/Interface/Resources/Colors.xcassets`(색상, colorset 명 = HEX 예 `Color636777`) · `App/Resources/Assets.xcassets`(앱 에셋) 에 에셋 추가
 2. `Color.load(_:)` · `Image.load(_:)` **단일 seam** 으로만 로드해 토큰으로 노출 — 번들 해석 일원화 + 개발 빌드 `assert` 로 오타 검출
 3. 이미지 토큰은 `Image.DS` 네임스페이스 — 늘어나면 `Ic`/`Img` 중첩 enum 으로 묶는다 (GmoneyTrans 방식)

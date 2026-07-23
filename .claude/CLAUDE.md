@@ -85,7 +85,7 @@ Projects/
 - **public 키워드**: 모듈 경계를 넘는 타입/함수에 필수
 - **Action 네이밍**: 3분류(view/inner/delegate — 위 «패턴» 참조) 안에서 — 사용자 입력 `userTapped...`(View), 응답 `...Loaded` / `...Saved`(Inner), 생명주기 `onAppear` / `onDisappear`(View), 부모/코디네이터 통보 `delegate(Delegate)`
 - **Dependency `testValue`**: 반드시 `unimplemented`. 빈 클로저 금지
-- **DesignSystem 토큰 우선**: `.dsTypography(.head1)`, `Color.dsPrimary`, `CGFloat.dsL`, `PrimaryButton` 등. 하드코딩 (`Color.blue`, `16`, `.font(.system(size:))`) 지양. 토큰 목록·상세 → `.claude/design.md`
+- **DesignSystem 토큰 우선**: `.dsTypography(.head1)`, `Color.HilitGreen.g500`, `CGFloat.dsL`, `PrimaryButton` 등. 하드코딩 (`Color.blue`, `16`, `.font(.system(size:))`) 지양. 토큰 목록·상세 → `.claude/design.md`
 - **@lat 주석 / lat.md 그래프**: 코드 변경 후 `@lat:` 라벨과 `lat.md/` 노드를 갱신하고 `lat check` 통과 (위 «lat.md 지식 그래프» 워크플로우 참조). cross-feature delegate 의존은 `import` 에 안 보이므로 `depends-on:` 으로 반드시 명시
 
 ## 디자인 시스템
