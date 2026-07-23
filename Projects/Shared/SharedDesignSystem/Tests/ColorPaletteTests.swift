@@ -20,7 +20,7 @@ struct ColorPaletteTests {
         let cases: [(token: Color, hex: String)] = [
             (Color.HilitBlack.b800, "1A1B1F"), (Color.HilitBlack.b900, "121316"),
             (Color.HilitGreen.g500, "ACEBA0"), (Color.HilitGreen.g600, "88C97C"), (Color.HilitGreen.g800, "106100"),
-            (Color.Negative.n200, "FFEBEB"), (Color.Negative.n300, "FFA6A6"), (Color.Negative.n400, "FF8383"), (Color.Negative.n500, "FF5757"),
+            (Color.Error.e200, "FFEBEB"), (Color.Error.e300, "FFA6A6"), (Color.Error.e400, "FF8383"), (Color.Error.e500, "FF5757"),
             (Color.Positive.p200, "DDFAFF"), (Color.Positive.p500, "00CFEF"), (Color.Positive.p800, "008A9F"),
             (Color.Gray.g50, "F6F7F9"), (Color.Gray.g100, "EBECF1"), (Color.Gray.g200, "BCBEC6"), (Color.Gray.g300, "9DA0AC"),
             (Color.Gray.g400, "8A8D9C"), (Color.Gray.g500, "6D7183"), (Color.Gray.g600, "636777"), (Color.Gray.g700, "494C58"),

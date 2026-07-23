@@ -23,11 +23,11 @@ public extension Color {
         public static var g800: Color { .load("Color106100") }   // 그린 텍스트
     }
 
-    enum Negative {
-        public static var n200: Color { .load("ColorFFEBEB") }   // 레드 배경
-        public static var n300: Color { .load("ColorFFA6A6") }
-        public static var n400: Color { .load("ColorFF8383") }
-        public static var n500: Color { .load("ColorFF5757") }   // 메인 레드·레드 텍스트
+    enum Error {
+        public static var e200: Color { .load("ColorFFEBEB") }   // 레드 배경
+        public static var e300: Color { .load("ColorFFA6A6") }
+        public static var e400: Color { .load("ColorFF8383") }
+        public static var e500: Color { .load("ColorFF5757") }   // 메인 레드·레드 텍스트
     }
 
     enum Positive {
