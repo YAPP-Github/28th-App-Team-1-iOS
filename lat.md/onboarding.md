@@ -50,7 +50,7 @@ STEP 5 (선택 — 마지막 수집 스텝, 프로그레스 5/5). 300자 자유 
 
 ## 분석
 
-종결 화면 (프로그레스·뒤로가기 없음, 다크 풀스크린). 코디네이터가 누적 OnboardingData 를 init 으로 주입 — 여기가 서버 제출 지점(TODO: API 연결, 현재 clock 시뮬레이션 3s+2s). 분석 중(스피너 체크리스트 3줄) → 완료 자동 전환 → delegate(.completed). X 는 분석 중에도 이탈 가능하며 pop 시 clock effect 자동 취소.
+종결 화면 (프로그레스·뒤로가기 없음, 다크 풀스크린). 코디네이터가 누적 OnboardingData 를 init 으로 주입 — 서버 제출 지점(세션 생성+폴링). 체크리스트 3행은 순차 진행 — 1·2행은 가짜 타이머(1.2s), 3행만 가짜 완료 AND 세션 READY 로 체크. 잠깐 노출 후 완료 화면 → delegate(.completed). X 는 분석 중에도 이탈 가능, pop 시 effect 자동 취소.
 
 세션 생성 연결 = PRD S3.5+S4. → [[interview#Client 계약]]
 - ① OnboardingData.interviewConfig() → InterviewClient.createSession + sessionStatus 폴링(3초) ✅. `.domain(interface: .interview)` 의존 추가. PROCESSING→폴링, READY→completed(sessionId), 실패→failed 화면(재시도 없음), config 불완전→failed. onAppear 가드로 중복 시작 방지. CancelID.session 으로 pop 시 취소.

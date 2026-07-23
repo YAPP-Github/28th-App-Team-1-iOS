@@ -52,22 +52,35 @@ public struct OnboardingPortfolioUploadView: View {
                 send(.fileSelectionFailed)
             }
         }
-        .onAppear { syncUploadProgress(store.upload) }
-        .onChange(of: store.upload) { _, state in syncUploadProgress(state) }
+        .onAppear { syncUploadProgress(progressPhase) }
+        .onChange(of: progressPhase) { _, phase in syncUploadProgress(phase) }
     }
 
-    /// upload 하위 상태에 맞춰 가짜 진행 스트립을 애니메이트한다.
+    /// 진행 스트립 애니메이션을 좌우하는 "단계"만 추린 값. `.uploading` 의 portfolioId 가
+    /// nil→UUID 로 바뀌는(register 접수) associated value 변화로는 애니메이션이 0 부터
+    /// 재시작하지 않도록, 원본 `UploadState` 대신 이 값으로 onChange 를 건다.
+    private enum ProgressPhase: Equatable { case inactive, uploading, completed }
+
+    private var progressPhase: ProgressPhase {
+        switch store.upload {
+        case .uploading: .uploading
+        case .uploaded: .completed
+        case .idle, .failed: .inactive
+        }
+    }
+
+    /// 단계 전환에 맞춰 가짜 진행 스트립을 애니메이트한다.
     /// - uploading: 0 → 0.9 로 천천히(폴링이 끝날 때까지 90%에서 정지).
-    /// - uploaded : 0.9 → 1.0 으로 빠르게 꽉 채움.
-    /// - idle/failed: 0 으로 초기화.
-    private func syncUploadProgress(_ state: OnboardingPortfolioUploadFeature.UploadState) {
-        switch state {
+    /// - completed: 0.9 → 1.0 으로 빠르게 꽉 채움.
+    /// - inactive : 0 으로 초기화.
+    private func syncUploadProgress(_ phase: ProgressPhase) {
+        switch phase {
         case .uploading:
             uploadProgress = 0
             withAnimation(.easeOut(duration: 12)) { uploadProgress = 0.9 }
-        case .uploaded:
+        case .completed:
             withAnimation(.easeOut(duration: 0.35)) { uploadProgress = 1.0 }
-        case .idle, .failed:
+        case .inactive:
             uploadProgress = 0
         }
     }

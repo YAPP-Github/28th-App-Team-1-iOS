@@ -11,7 +11,9 @@ import DomainInterviewInterface
 // @lat: [[onboarding#분석]]
 /// 온보딩 STEP 6 — 분석 중/분석 완료 (Figma «6. 분석 중» 1609:9019 · «6.1 분석 완료» 1609:9075).
 /// 앞선 스텝들이 채운 OnboardingData 를 InterviewConfig 로 변환해 세션 생성(PRD §3.8 — S0~S3 일괄 수집)을
-/// 요청하고, PROCESSING 이면 status 를 폴링해 READY 를 기다린다. READY 면 완료 화면을 잠시 보여준 뒤
+/// 요청하고, PROCESSING 이면 status 를 폴링해 READY 를 기다린다.
+/// 체크리스트 3행은 순차 진행 — 1·2행은 가짜 타이머로 차례로 체크되고, 마지막 행만 실제 세션 READY 에
+/// 묶인다(가짜 2행 완료 AND READY). 3행 체크를 잠깐 보여준 뒤 완료 화면 → 유지 시간 경과 →
 /// delegate(.completed(sessionId:))로 세션을 코디네이터에 넘긴다 — dismiss·Part2 진입은 코디네이터 몫.
 @Reducer
 public struct OnboardingAnalysisFeature {
@@ -19,6 +21,10 @@ public struct OnboardingAnalysisFeature {
     static let pollInterval: Duration = .seconds(3)
     /// 완료 화면 노출 유지 시간 — 지나면 자동으로 delegate(.completed)를 올린다.
     static let completionHoldDuration: Duration = .seconds(2)
+    /// 가짜 진행 스테이지(1·2행) 각각의 유지 시간 — API 진행률이 없어 연출로 채운다 (포폴 업로드 스트립과 같은 패턴).
+    static let stageDuration: Duration = .milliseconds(1200)
+    /// 3행이 체크로 바뀐 상태의 노출 유지 — 지나면 완료 화면으로 전환한다.
+    static let finalCheckHold: Duration = .milliseconds(500)
     /// 세션 생성/폴링 실패 문구 — 재시도 없음(PRD §3.1), X 로 이탈해 처음부터.
     static let failureMessage = "면접 준비에 실패했어요.\n잠시 후 다시 시도해 주세요."
     /// 수집 데이터가 불완전해 세션 입력을 만들지 못한 경우 — 위저드 순서상 정상 진입이면 발생하지 않는다.
@@ -41,6 +47,10 @@ public struct OnboardingAnalysisFeature {
         public var sessionId: Int?
         /// onAppear 재진입 가드 — 분석 effect 중복 실행 방지.
         public var hasStartedAnalysis = false
+        /// 체크로 바뀐 체크리스트 행 수(0~3). 1·2행은 가짜 타이머가, 3행은 세션 READY 가 채운다.
+        public var completedStages = 0
+        /// 세션 READY 도달 여부 — 가짜 스테이지와 독립 기록. 둘 다 끝나야 3행이 체크된다.
+        public var isSessionReady = false
 
         public init(data: OnboardingData) {
             self.data = data
@@ -69,6 +79,10 @@ public struct OnboardingAnalysisFeature {
             case analysisFailed(message: String)
             /// 집중 프로젝트 연관성 부족(FREETEXT_NOT_RELEVANT) — 코디네이터가 집중 프로젝트로 되돌린다.
             case relevanceCheckFailed
+            /// 가짜 진행 타이머 틱 — 1·2행을 차례로 체크로 바꾼다.
+            case stageAdvanced
+            /// 3행 체크 노출 유지 경과 — 완료 화면으로 전환할 시점.
+            case finalCheckShown
             /// 완료 화면 유지 시간 경과 — 온보딩 완료 신호를 올릴 시점.
             case completionHoldFinished
         }
@@ -85,7 +99,7 @@ public struct OnboardingAnalysisFeature {
         }
     }
 
-    private enum CancelID { case session }
+    private enum CancelID { case session, stageTimer }
 
     @Dependency(\.interviewClient) var interviewClient
     @Dependency(\.continuousClock) var clock
@@ -113,16 +127,26 @@ public struct OnboardingAnalysisFeature {
             guard let config = state.data.interviewConfig() else {
                 return .send(.inner(.analysisFailed(message: Self.configMissingMessage)))
             }
-            return .run { send in
-                await send(.inner(.sessionCreated(try await interviewClient.createSession(config))))
-            } catch: { error, send in
-                if let error = error as? InterviewError, error == .freeTextNotRelevant {
-                    await send(.inner(.relevanceCheckFailed))
-                } else {
-                    await send(.inner(.analysisFailed(message: Self.failureMessage)))
+            return .merge(
+                .run { send in
+                    await send(.inner(.sessionCreated(try await interviewClient.createSession(config))))
+                } catch: { error, send in
+                    if let error = error as? InterviewError, error == .freeTextNotRelevant {
+                        await send(.inner(.relevanceCheckFailed))
+                    } else {
+                        await send(.inner(.analysisFailed(message: Self.failureMessage)))
+                    }
                 }
-            }
-            .cancellable(id: CancelID.session)
+                .cancellable(id: CancelID.session),
+                // 가짜 진행 — 1·2행을 stageDuration 간격으로 체크. 3행은 세션 READY 가 채운다.
+                .run { send in
+                    for _ in 0..<2 {
+                        try await clock.sleep(for: Self.stageDuration)
+                        await send(.inner(.stageAdvanced))
+                    }
+                }
+                .cancellable(id: CancelID.stageTimer)
+            )
 
         case .userTappedClose:
             return .send(.delegate(.closeRequested))
@@ -138,12 +162,8 @@ public struct OnboardingAnalysisFeature {
         case let .statusPolled(status):
             switch status.status {
             case .ready:
-                state.phase = .completed
-                return .run { send in
-                    try await clock.sleep(for: Self.completionHoldDuration)
-                    await send(.inner(.completionHoldFinished))
-                }
-                .cancellable(id: CancelID.session)
+                state.isSessionReady = true
+                return completeFinalStageIfReady(&state)
             case .processing:
                 guard let sessionId = state.sessionId else { return .none }
                 return .run { send in
@@ -155,21 +175,49 @@ public struct OnboardingAnalysisFeature {
                 .cancellable(id: CancelID.session)
             case .failed:
                 state.phase = .failed(message: Self.failureMessage)
-                return .none
+                return .cancel(id: CancelID.stageTimer)
             }
 
         case let .analysisFailed(message):
             state.phase = .failed(message: message)
-            return .none
+            return .cancel(id: CancelID.stageTimer)
 
         case .relevanceCheckFailed:
             // 화면 상태는 두지 않는다 — 코디네이터가 집중 프로젝트로 즉시 pop-back 한다.
-            return .send(.delegate(.relevanceCheckFailed))
+            return .merge(
+                .send(.delegate(.relevanceCheckFailed)),
+                .cancel(id: CancelID.stageTimer)
+            )
+
+        case .stageAdvanced:
+            guard state.phase == .analyzing else { return .none }
+            state.completedStages = min(state.completedStages + 1, 2)
+            return completeFinalStageIfReady(&state)
+
+        case .finalCheckShown:
+            state.phase = .completed
+            return .run { send in
+                try await clock.sleep(for: Self.completionHoldDuration)
+                await send(.inner(.completionHoldFinished))
+            }
+            .cancellable(id: CancelID.session)
 
         case .completionHoldFinished:
             guard let sessionId = state.sessionId else { return .none }
             return .send(.delegate(.completed(sessionId: sessionId)))
         }
+    }
+
+    /// 가짜 스테이지(1·2행)와 세션 READY 가 모두 끝났을 때만 3행을 체크로 바꾼다 —
+    /// 어느 쪽이 먼저 끝나든 나중에 끝나는 쪽의 액션에서 이 조건이 성립한다.
+    private func completeFinalStageIfReady(_ state: inout State) -> Effect<Action> {
+        guard state.isSessionReady, state.completedStages == 2 else { return .none }
+        state.completedStages = 3
+        return .run { send in
+            try await clock.sleep(for: Self.finalCheckHold)
+            await send(.inner(.finalCheckShown))
+        }
+        .cancellable(id: CancelID.session)
     }
 
     /// 접수(sessionCreated) 후 첫 상태 조회 — PROCESSING 이면 이후 statusPolled 가 폴링을 잇는다.

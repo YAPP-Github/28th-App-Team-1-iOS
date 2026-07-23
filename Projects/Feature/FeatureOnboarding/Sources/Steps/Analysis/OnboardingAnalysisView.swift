@@ -91,20 +91,38 @@ public struct OnboardingAnalysisView: View {
         .rotationEffect(.degrees(7))
     }
 
+    /// 순차 진행 체크리스트 — completedStages 앞은 체크, 그 자리는 스피너, 뒤는 대기 링.
     private var checklist: some View {
         VStack(alignment: .leading, spacing: 10) {
-            analysisRow("기본정보 분석 중")
-            analysisRow("채용 정보 분석 중")
-            analysisRow("나의 포폴 분석 중")
+            analysisRow("기본정보 분석 중", index: 0)
+            analysisRow("채용 정보 분석 중", index: 1)
+            analysisRow("나의 포폴 분석 중", index: 2)
         }
+        .animation(.easeInOut(duration: 0.25), value: store.completedStages)
     }
 
-    private func analysisRow(_ title: String) -> some View {
+    private func analysisRow(_ title: String, index: Int) -> some View {
         HStack(spacing: 6) {
-            AnalysisSpinner()
+            stageIndicator(index: index)
             Text(title)
                 .dsTypography(.body2)
                 .foregroundStyle(Color.dsWhite)
+        }
+    }
+
+    @ViewBuilder
+    private func stageIndicator(index: Int) -> some View {
+        if index < store.completedStages {
+            Image.DS.icSuccess
+                .resizable()
+                .scaledToFit()
+                .frame(width: SpinnerMetrics.box, height: SpinnerMetrics.box)
+                .foregroundStyle(Color.dsGreen500)
+                .transition(.scale.combined(with: .opacity))
+        } else if index == store.completedStages {
+            AnalysisSpinner()
+        } else {
+            AnalysisTrackRing()
         }
     }
 
@@ -150,25 +168,42 @@ public struct OnboardingAnalysisView: View {
 
 // MARK: - AnalysisSpinner
 
+/// Figma «Component 5/24px» 공통 치수 — 24px 박스 안 링 지름 17.35 · 선굵기 2.37 근사.
+private enum SpinnerMetrics {
+    static let box: CGFloat = 24
+    static let ring: CGFloat = 17.4
+    static let line: CGFloat = 2.4
+}
+
 /// Figma «Component 5/24px/dark default» 근사 — gray-700 트랙 링 위를 도는 그린 아크.
-/// 원본 에셋(scratchpad step6-assets/IcAnalysisSpinner*.svg): 24px 박스 안 링 지름 17.35 ·
-/// 선굵기 2.37 · 아크 약 108°. Lottie 등 외부 라이브러리 없이 회전 애니메이션으로 재현한다.
+/// 원본 에셋(scratchpad step6-assets/IcAnalysisSpinner*.svg): 아크 약 108°.
+/// Lottie 등 외부 라이브러리 없이 회전 애니메이션으로 재현한다.
 private struct AnalysisSpinner: View {
     @State private var isSpinning = false
 
     var body: some View {
         ZStack {
             Circle()
-                .stroke(Color.dsGray700, lineWidth: 2.4)
+                .stroke(Color.dsGray700, lineWidth: SpinnerMetrics.line)
             Circle()
                 .trim(from: 0, to: 0.3)
-                .stroke(Color.dsGreen500, lineWidth: 2.4)
+                .stroke(Color.dsGreen500, lineWidth: SpinnerMetrics.line)
                 .rotationEffect(.degrees(isSpinning ? 360 : 0))
                 .animation(.linear(duration: 1).repeatForever(autoreverses: false), value: isSpinning)
         }
-        .frame(width: 17.4, height: 17.4)
-        .frame(width: 24, height: 24)
+        .frame(width: SpinnerMetrics.ring, height: SpinnerMetrics.ring)
+        .frame(width: SpinnerMetrics.box, height: SpinnerMetrics.box)
         .onAppear { isSpinning = true }
+    }
+}
+
+/// 아직 차례가 오지 않은 행의 대기 인디케이터 — 스피너와 같은 치수의 트랙 링만.
+private struct AnalysisTrackRing: View {
+    var body: some View {
+        Circle()
+            .stroke(Color.dsGray700, lineWidth: SpinnerMetrics.line)
+            .frame(width: SpinnerMetrics.ring, height: SpinnerMetrics.ring)
+            .frame(width: SpinnerMetrics.box, height: SpinnerMetrics.box)
     }
 }
 
@@ -189,6 +224,17 @@ private let previewData = OnboardingData(
 #Preview("분석 중") {
     var state = OnboardingAnalysisFeature.State(data: previewData)
     state.hasStartedAnalysis = true   // onAppear 의 실제 세션 호출을 막고 분석 화면만 본다.
+    return OnboardingAnalysisView(
+        store: Store(initialState: state) {
+            OnboardingAnalysisFeature()
+        }
+    )
+}
+
+#Preview("분석 중 — 2행 진행") {
+    var state = OnboardingAnalysisFeature.State(data: previewData)
+    state.hasStartedAnalysis = true
+    state.completedStages = 1   // 1행 체크 · 2행 스피너 · 3행 대기 링
     return OnboardingAnalysisView(
         store: Store(initialState: state) {
             OnboardingAnalysisFeature()
