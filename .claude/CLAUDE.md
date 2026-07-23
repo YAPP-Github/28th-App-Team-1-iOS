@@ -98,3 +98,11 @@ UI 코드(View·컴포넌트·에셋)를 작성·수정하기 **전에 `.claude/
 - 개발계/운영계 환경 분리는 DocC `Environments` 아티클 (`Architecture.docc/Articles/HowTo/Environments.md`) — xcconfig → Info.plist → 소비 모듈 liveValue seam(`NetworkClient.defaultBaseURL()`·`AppSecrets`), Feature·Domain 은 환경 무관
 - modular architecture 스펙트럼에서 이 프로젝트는 Tuist 멀티프로젝트 TMA (Level 3+, 레이어 × Interface/Implementation)
 - **문서 배치 규칙**: 심볼·개념·Xcode 렌더링이면 **DocC**, 검증되는 도메인 지식이면 **`lat.md/`**, 코드 밖 독립 산문(세팅·과정·외부·방법론)이면 **`docs/`**. 커밋/PR 규칙 단일 소스는 `CONTRIBUTING.md`
+
+## superpowers 서브에이전트 모델 (오버라이드)
+
+`superpowers:subagent-driven-development`(및 이를 위임하는 `executing-plans`)로 구현을 진행할 때, **코드를 작성하는 implementer 서브에이전트는 항상 Opus 4.8 로 디스패치**한다 (Agent 호출 시 `model: opus`). 그 스킬 `SKILL.md` 의 «Model Selection» 섹션이 스펙 명확한 구현 태스크에 싼 티어(Sonnet/Haiku)를 고르라고 지시해도, **implementer 에 한해 이 지시가 우선**한다.
+
+- **대상**: 코드를 작성하는 implementer 서브에이전트만.
+- **그대로 둠**: `task-reviewer`·최종 whole-branch 리뷰 등 리뷰 서브에이전트는 스킬 기본값(diff 크기·복잡도·리스크에 맞춘 티어)을 유지 — 손대지 않는다.
+- **이미 Opus**: 계획(`brainstorming`·`writing-plans`)은 서브에이전트 없이 인라인이라 세션 모델(Opus 4.8)로 돈다 — 변경 없음.

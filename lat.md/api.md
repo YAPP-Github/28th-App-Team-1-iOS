@@ -80,3 +80,10 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 | `register` | POST `/api/v1/portfolios` | 메타=query + PDF=multipart `file` |
 | `status` | GET `/api/v1/portfolios/{id}/status` | 3~5초 폴링 |
 | `delete` | DELETE `/api/v1/portfolios/{id}` | 재등록 전 필수 (1개 제한) |
+
+## Guest Feedback
+
+지인 평가 게스트측 API — **무인증**. 공유 토큰 경로 + `Device-Id` 헤더(클라 생성 UUID, 중복 제출 방지 용도 하나뿐)로 식별한다. 진입 `GET /feedback/guest/{token}` 은 게이트 판정과 영상·지정 항목·질문 경계를, 제출 `POST /feedback/guest/{token}/submissions` 은 지정 항목 전부의 4단계 척도를 요구한다(201). 구현 → [[feedback#Client 계약]].
+
+- 409 는 비공개/정원/중복, 400 은 제출 값 오류.
+- 사용자측 Feedback Share API(공유 링크 생성·비공개 전환)는 후속 F4 작업에서 잇는다.
