@@ -25,8 +25,8 @@ let project = Project.makeModule(
             .domain(interface: .interview)
         ])),
         // Example = 온보딩 단독 데모 앱. 가짜 의존성으로 네트워크 없이 위저드 전체를 돌린다.
-        // 번들은 템플릿 기본값(com.hilit.app.featureonboardingexample) — 로컬 실행 용도.
-        // TestFlight 단독 배포(TMA)를 할 땐 전용 번들 override + Apple Developer App ID·ASC 앱 등록이 필요하다.
+        // 번들은 템플릿 규칙으로 com.hilit.app.example.onboarding 이 자동 부여된다 (feature(example:) 팩토리).
+        // TestFlight 단독 배포(TMA) 시 이 번들과 일치하는 App Store Connect 앱 레코드 등록이 필요하다.
         .feature(example: "Onboarding", factory: .init(
             infoPlist: .extendingDefault(with: [
                 "UILaunchScreen": [:],
