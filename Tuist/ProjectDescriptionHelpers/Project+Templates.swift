@@ -28,7 +28,13 @@ public extension Project {
 public extension Settings {
     static var standard: Settings {
         .settings(
-            base: ["GENERATE_INFOPLIST_FILE": "YES"],
+            base: [
+                "GENERATE_INFOPLIST_FILE": "YES",
+                // 임베드되는 동적 프레임워크 plist 에도 버전이 실려야 ASC 업로드 검증을 통과한다.
+                // 프로젝트 레벨 base 라 App/Example 타겟의 Version.xcconfig(타겟 xcconfig)가 우선한다.
+                "MARKETING_VERSION": "1.0.0",
+                "CURRENT_PROJECT_VERSION": "1"
+            ],
             configurations: [
                 .debug(name: "Dev", settings: ["SWIFT_ACTIVE_COMPILATION_CONDITIONS": "$(inherited) DEV"]),
                 // QA 는 테스터 배포용 — release 타입(최적화 -O·assert 제거)으로 실사용과 같은 동작을 빌드한다.

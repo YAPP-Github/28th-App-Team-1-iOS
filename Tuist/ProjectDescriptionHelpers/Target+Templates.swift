@@ -78,7 +78,6 @@ public extension Target {
     private static let compositionRootBase: SettingsDictionary = [
         "OTHER_LDFLAGS": "$(inherited) -all_load"
     ]
-    private static let compositionRootSettings: Settings = .settings(base: compositionRootBase)
 
     /// App 앱 타겟.
     ///
@@ -218,11 +217,27 @@ public extension Target {
         f.infoPlist = f.infoPlist ?? .extendingDefault(with: [
             "UILaunchScreen": [:],
             // D14 개발 서버(HTTP + IP)로 직접 API 를 칠 수 있도록 앱 타겟과 동일한 ATS 예외 (위 .app() 주석 참조)
-            "NSAppTransportSecurity": ["NSAllowsArbitraryLoads": true]
+            "NSAppTransportSecurity": ["NSAllowsArbitraryLoads": true],
+            // Example 도 TestFlight 배포 대상이 될 수 있다(G4 단독 검증 등) — 버전 키가 비면 ASC 업로드가 거부된다.
+            // 단일 소스는 앱과 동일한 Config/Version.xcconfig (아래 settings 에서 연결).
+            "CFBundleShortVersionString": "$(MARKETING_VERSION)",
+            "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
+            // actool 부분 plist 병합에 기대지 않고 명시 — 없으면 ASC 가 아이콘 누락으로 거부한다.
+            // 모듈이 Example/Resources/Assets.xcassets 에 AppIcon 을 두면 이 이름으로 컴파일된다.
+            "CFBundleIconName": "AppIcon"
         ])
         f.sources = f.sources ?? ["Example/**"]
         f.dependencies = [.target(name: "Feature\(name)Implementation")] + f.dependencies
-        f.settings = f.settings ?? compositionRootSettings   // Domain Implementation(liveValue) link 시에도 활성화 보장 (D4)
+        // base 의 -all_load: Domain Implementation(liveValue) link 시에도 활성화 보장 (D4)
+        f.settings = f.settings ?? .settings(
+            // AppIcon 컴파일 지정 — 모듈이 Example/Resources 에 에셋을 두면 CFBundleIconName 이 자동 주입된다(ASC 필수).
+            base: compositionRootBase.merging(["ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon"]) { _, new in new },
+            configurations: [
+                .debug(name: "Dev", xcconfig: "../../App/Config/Version.xcconfig"),
+                .release(name: "QA", xcconfig: "../../App/Config/Version.xcconfig"),
+                .release(name: "Release", xcconfig: "../../App/Config/Version.xcconfig")
+            ]
+        )
         return make(factory: f)
     }
 

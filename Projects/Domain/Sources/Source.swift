@@ -7,3 +7,4 @@
 @_exported import DomainJDImplementation
 @_exported import DomainJobImplementation
 @_exported import DomainPortfolioImplementation
+@_exported import DomainFeedbackImplementation

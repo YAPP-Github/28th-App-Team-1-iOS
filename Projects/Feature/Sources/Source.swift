@@ -5,3 +5,4 @@
 @_exported import FeatureCommonImplementation
 @_exported import FeatureHomeImplementation
 @_exported import FeatureAuthImplementation
+@_exported import FeatureGuestFeedbackImplementation
