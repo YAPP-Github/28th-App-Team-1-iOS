@@ -37,7 +37,7 @@ public struct OnboardingJDLinkView: View {
             }
             bottomBar
         }
-        .background(Color.dsWhite.ignoresSafeArea())
+        .background(Color.BlackWhite.white.ignoresSafeArea())
         .dismissesKeyboardOnTap()
         .navigationBarBackButtonHidden(true)
     }
@@ -54,7 +54,7 @@ public struct OnboardingJDLinkView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 24, height: 24)
-                    .foregroundStyle(Color.dsBlack)
+                    .foregroundStyle(Color.HilitBlack.b900)
             }
             .buttonStyle(.plain)
             Spacer(minLength: 0)
@@ -67,7 +67,7 @@ public struct OnboardingJDLinkView: View {
         HStack(spacing: 2) {
             ForEach(1...store.totalSteps, id: \.self) { step in
                 Rectangle()
-                    .fill(step <= store.step ? Color.dsBlack : Color.dsGray50)
+                    .fill(step <= store.step ? Color.HilitBlack.b900 : Color.Gray.g50)
                     .frame(height: 4)
             }
         }
@@ -82,18 +82,18 @@ public struct OnboardingJDLinkView: View {
             // 선택 스텝 뱃지 — STEP 1 «필수»(black/green)와 달리 회색 톤.
             Text("선택")
                 .dsTypography(.body7)
-                .foregroundStyle(Color.dsGray800) // Figma 값 #31333B(grayscale/gray-800) — 토큰 충돌로 근사 (보고 참조)
+                .foregroundStyle(Color.Gray.g800) // Figma 값 #31333B(grayscale/gray-800) — 토큰 충돌로 근사 (보고 참조)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 4)
-                .background(Color.dsGray50, in: RoundedRectangle(cornerRadius: 2))
+                .background(Color.Gray.g50, in: RoundedRectangle(cornerRadius: 2))
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("채용공고 링크를\n업로드해 주세요.")
                     .dsTypography(.head3)
-                    .foregroundStyle(Color.dsGray800)
+                    .foregroundStyle(Color.Gray.g800)
                 Text("채용 페이지에 직접 올라온 공고 링크를 넣어주세요.")
                     .dsTypography(.body3)
-                    .foregroundStyle(Color.dsGray500)
+                    .foregroundStyle(Color.Gray.g500)
             }
         }
     }
@@ -127,7 +127,7 @@ public struct OnboardingJDLinkView: View {
         } label: {
             Text(title)
                 .font(.ds(.body1))
-                .foregroundStyle(isDisabled ? Color.dsGray200 : Color.dsBlack)
+                .foregroundStyle(isDisabled ? Color.Gray.g200 : Color.HilitBlack.b900)
                 .frame(maxWidth: .infinity)
                 .padding(10)
                 .contentShape(Rectangle())
@@ -137,7 +137,7 @@ public struct OnboardingJDLinkView: View {
         .overlay(alignment: .bottom) {
             if isSelected {
                 Rectangle()
-                    .fill(Color.dsBlack)
+                    .fill(Color.HilitBlack.b900)
                     .frame(height: 1)
             }
         }
@@ -158,10 +158,10 @@ public struct OnboardingJDLinkView: View {
                 TextField(
                     "",
                     text: $store.linkText,
-                    prompt: Text(Copy.fieldPlaceholder).foregroundStyle(Color.dsGray600)
+                    prompt: Text(Copy.fieldPlaceholder).foregroundStyle(Color.Gray.g600)
                 )
                 .font(.ds(.body3))
-                .foregroundStyle(store.linkValidation == .loading ? Color.dsGray600 : Color.dsBlack)
+                .foregroundStyle(store.linkValidation == .loading ? Color.Gray.g600 : Color.HilitBlack.b900)
                 .keyboardType(.URL)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -173,7 +173,7 @@ public struct OnboardingJDLinkView: View {
                 case .loading:
                     Text("분석 중")
                         .dsTypography(.body8)
-                        .foregroundStyle(Color.dsGray900)
+                        .foregroundStyle(Color.Gray.g900)
                 case .idle, .failure, .success:
                     if !store.linkText.isEmpty {
                         clearButton(size: 16) { send(.userTappedClearLink) }
@@ -182,7 +182,7 @@ public struct OnboardingJDLinkView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(store.linkValidation == .loading ? Color.dsGray50 : Color.dsWhite)
+            .background(store.linkValidation == .loading ? Color.Gray.g50 : Color.BlackWhite.white)
 
             linkFieldBottomStrip
         }
@@ -198,9 +198,9 @@ public struct OnboardingJDLinkView: View {
         case .loading:
             AnalyzingProgressStrip()
         case .failure:
-            Rectangle().fill(Color.dsError500).frame(height: 4)
+            Rectangle().fill(Color.Error.e500).frame(height: 4)
         case .success:
-            Rectangle().fill(Color.dsGreen500).frame(height: 4)
+            Rectangle().fill(Color.HilitGreen.g500).frame(height: 4)
         }
     }
 
@@ -208,9 +208,9 @@ public struct OnboardingJDLinkView: View {
     @ViewBuilder
     private var linkFieldBorder: some View {
         if store.linkValidation == .idle {
-            Rectangle().strokeBorder(Color.dsGray100, lineWidth: 1.2)
+            Rectangle().strokeBorder(Color.Gray.g100, lineWidth: 1.2)
         } else {
-            OpenBottomBorder().stroke(Color.dsGray100, lineWidth: 1.2)
+            OpenBottomBorder().stroke(Color.Gray.g100, lineWidth: 1.2)
         }
     }
 
@@ -218,13 +218,13 @@ public struct OnboardingJDLinkView: View {
     private var linkHelperRow: some View {
         switch store.linkValidation {
         case .idle:
-            helperRow(icon: Image.DS.icInfo, text: Copy.idleHelper, color: Color.dsGray300)
+            helperRow(icon: Image.DS.icInfo, text: Copy.idleHelper, color: Color.Gray.g300)
         case .loading:
             EmptyView()
         case let .failure(message):
-            helperRow(icon: Image.DS.icError, text: message, color: Color.dsError500)
+            helperRow(icon: Image.DS.icError, text: message, color: Color.Error.e500)
         case .success:
-            helperRow(icon: Image.DS.icSuccess, text: Copy.successHelper, color: Color.dsGreen800)
+            helperRow(icon: Image.DS.icSuccess, text: Copy.successHelper, color: Color.HilitGreen.g800)
         }
     }
 
@@ -254,7 +254,7 @@ public struct OnboardingJDLinkView: View {
         ZStack(alignment: .topLeading) {
             TextEditor(text: $store.directText)
                 .font(.ds(.body3))
-                .foregroundStyle(Color.dsBlack)
+                .foregroundStyle(Color.HilitBlack.b900)
                 .scrollContentBackground(.hidden)
                 // TextEditor 고유 인셋(~5/8pt) 보정 — Figma px 16 / py 14 근사.
                 .padding(.horizontal, 11)
@@ -263,7 +263,7 @@ public struct OnboardingJDLinkView: View {
             if store.directText.isEmpty {
                 Text(Copy.fieldPlaceholder)
                     .font(.ds(.body3))
-                    .foregroundStyle(Color.dsGray600)
+                    .foregroundStyle(Color.Gray.g600)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 14)
                     .allowsHitTesting(false)
@@ -280,7 +280,7 @@ public struct OnboardingJDLinkView: View {
         .overlay {
             // 무효(짧음/초과) 입력이면 링크 에러와 같은 red 보더로 강조한다.
             Rectangle().strokeBorder(
-                store.directTextValidationMessage == nil ? Color.dsGray100 : Color.dsError500,
+                store.directTextValidationMessage == nil ? Color.Gray.g100 : Color.Error.e500,
                 lineWidth: 1.2
             )
         }
@@ -296,12 +296,12 @@ public struct OnboardingJDLinkView: View {
                     .frame(width: 16, height: 16)
                 Text(message)
                     .dsTypography(.body5)
-                    .foregroundStyle(Color.dsError500)
+                    .foregroundStyle(Color.Error.e500)
             }
             Spacer(minLength: 0)
             Text(store.directTextCountLabel)
                 .dsTypography(.body5)
-                .foregroundStyle(store.isDirectTextOverLimit ? Color.dsError500 : Color.dsGray300)
+                .foregroundStyle(store.isDirectTextOverLimit ? Color.Error.e500 : Color.Gray.g300)
         }
     }
 
@@ -322,10 +322,10 @@ public struct OnboardingJDLinkView: View {
         VStack(alignment: .trailing, spacing: 0) {
             Text("링크 입력을 원하지 않으면 넘어가도 괜찮아요.")
                 .dsTypography(.body4)
-                .foregroundStyle(Color.dsWhite)
+                .foregroundStyle(Color.BlackWhite.white)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 11)
-                .background(Color.dsBlack)
+                .background(Color.HilitBlack.b900)
             Image.DS.imgTooltipTail
                 .resizable()
                 .scaledToFit()
@@ -344,7 +344,7 @@ public struct OnboardingJDLinkView: View {
             } label: {
                 Text("이전으로")
                     .dsTypography(.sub7)
-                    .foregroundStyle(Color.dsWhite)
+                    .foregroundStyle(Color.BlackWhite.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 22)
                     .contentShape(Rectangle())
@@ -352,7 +352,7 @@ public struct OnboardingJDLinkView: View {
             .buttonStyle(.plain)
 
             Rectangle()
-                .fill(Color.dsGray700) // 구분선 — Figma 벡터 색 미확인, gray-700 추정 (보고 참조)
+                .fill(Color.Gray.g700) // 구분선 — Figma 벡터 색 미확인, gray-700 추정 (보고 참조)
                 .frame(width: 1, height: 25)
 
             Button {
@@ -360,7 +360,7 @@ public struct OnboardingJDLinkView: View {
             } label: {
                 Text("계속하기")
                     .dsTypography(.sub7)
-                    .foregroundStyle(store.isContinueEnabled ? Color.dsWhite : Color.dsGray500)
+                    .foregroundStyle(store.isContinueEnabled ? Color.BlackWhite.white : Color.Gray.g500)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 22)
                     .contentShape(Rectangle())
@@ -368,7 +368,7 @@ public struct OnboardingJDLinkView: View {
             .buttonStyle(.plain)
             .disabled(!store.isContinueEnabled)
         }
-        .background(Color.dsBlack.ignoresSafeArea(edges: .bottom))
+        .background(Color.HilitBlack.b900.ignoresSafeArea(edges: .bottom))
     }
 }
 
@@ -381,9 +381,9 @@ private struct AnalyzingProgressStrip: View {
     var body: some View {
         GeometryReader { geometry in
             let chunkWidth = geometry.size.width * 0.26
-            Color.dsGray100
+            Color.Gray.g100
             Rectangle()
-                .fill(Color.dsGreen500)
+                .fill(Color.HilitGreen.g500)
                 .frame(width: chunkWidth)
                 .offset(x: isAnimating ? geometry.size.width : -chunkWidth)
                 .animation(.linear(duration: 1.2).repeatForever(autoreverses: false), value: isAnimating)

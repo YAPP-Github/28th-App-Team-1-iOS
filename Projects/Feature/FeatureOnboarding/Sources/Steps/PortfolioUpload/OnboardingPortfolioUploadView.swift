@@ -39,7 +39,7 @@ public struct OnboardingPortfolioUploadView: View {
             }
             bottomBar
         }
-        .background(Color.dsWhite.ignoresSafeArea())
+        .background(Color.BlackWhite.white.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
         .fileImporter(
             isPresented: $store.isFileImporterPresented,
@@ -96,7 +96,7 @@ public struct OnboardingPortfolioUploadView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 24, height: 24)
-                    .foregroundStyle(Color.dsBlack)
+                    .foregroundStyle(Color.HilitBlack.b900)
             }
             .buttonStyle(.plain)
             Spacer(minLength: 0)
@@ -109,7 +109,7 @@ public struct OnboardingPortfolioUploadView: View {
         HStack(spacing: 2) {
             ForEach(1...store.totalSteps, id: \.self) { step in
                 Rectangle()
-                    .fill(step <= store.step ? Color.dsBlack : Color.dsGray50)
+                    .fill(step <= store.step ? Color.HilitBlack.b900 : Color.Gray.g50)
                     .frame(height: 4)
             }
         }
@@ -121,18 +121,18 @@ public struct OnboardingPortfolioUploadView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("필수")
                 .dsTypography(.body7)
-                .foregroundStyle(Color.dsGreen500)
+                .foregroundStyle(Color.HilitGreen.g500)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 4)
-                .background(Color.dsBlack, in: RoundedRectangle(cornerRadius: 2))
+                .background(Color.HilitBlack.b900, in: RoundedRectangle(cornerRadius: 2))
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("포트폴리오를\n업로드해 주세요.")
                     .dsTypography(.head3)
-                    .foregroundStyle(Color.dsGray800)
+                    .foregroundStyle(Color.Gray.g800)
                 Text("포트폴리오를 분석해 면접 질문이 나와요.")
                     .dsTypography(.body3)
-                    .foregroundStyle(Color.dsGray500)
+                    .foregroundStyle(Color.Gray.g500)
             }
         }
     }
@@ -143,7 +143,7 @@ public struct OnboardingPortfolioUploadView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("업로드한 포트폴리오")
                 .dsTypography(.body1)
-                .foregroundStyle(Color.dsBlack)
+                .foregroundStyle(Color.HilitBlack.b900)
 
             uploadCard
 
@@ -162,30 +162,30 @@ public struct OnboardingPortfolioUploadView: View {
         } label: {
             VStack(spacing: 11) {
                 Circle()
-                    .fill(Color.dsBlack)
+                    .fill(Color.HilitBlack.b900)
                     .frame(width: 44, height: 44)
                     .overlay {
                         Image.DS.icUpload
                             .resizable()
                             .scaledToFit()
                             .frame(width: 20, height: 22)
-                            .foregroundStyle(Color.dsWhite)
+                            .foregroundStyle(Color.BlackWhite.white)
                     }
 
                 VStack(spacing: 4) {
                     Text("파일을 업로드해주세요")
                         .dsTypography(.body1)
-                        .foregroundStyle(Color.dsGrayScale700)
+                        .foregroundStyle(Color.Gray.g800)
                     Text("1개 파일, 최대 20Mb까지 가능합니다")
                         .dsTypography(.body8)
-                        .foregroundStyle(Color.dsGrayScale600)
+                        .foregroundStyle(Color.Gray.g500)
                 }
             }
             .frame(maxWidth: .infinity)
             .frame(height: 150)
-            .background(Color.dsGrayScale100)
+            .background(Color.Gray.g50)
             .overlay {
-                Rectangle().strokeBorder(Color.dsGrayScale200, lineWidth: 1)
+                Rectangle().strokeBorder(Color.Gray.g100, lineWidth: 1)
             }
             .contentShape(Rectangle())
         }
@@ -201,15 +201,15 @@ public struct OnboardingPortfolioUploadView: View {
                 .frame(width: 16, height: 16)
             Text(message)
                 .dsTypography(.body8)
-                .foregroundStyle(Color.dsError500)
+                .foregroundStyle(Color.Error.e500)
                 .multilineTextAlignment(.leading)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.dsError200)
+        .background(Color.Error.e200)
         .overlay {
-            Rectangle().strokeBorder(Color.dsError300, lineWidth: 1)
+            Rectangle().strokeBorder(Color.Error.e300, lineWidth: 1)
         }
     }
 
@@ -234,7 +234,7 @@ public struct OnboardingPortfolioUploadView: View {
             .foregroundStyle(Color.emptyPlaceholderText)
             .frame(maxWidth: .infinity)
             .frame(height: 72)
-            .background(Color.dsWhite)
+            .background(Color.BlackWhite.white)
             .overlay {
                 // dash 간격은 Figma 수치 미제공 — 스크린샷 근사치.
                 Rectangle().strokeBorder(
@@ -250,14 +250,14 @@ public struct OnboardingPortfolioUploadView: View {
             HStack(spacing: 8) {
                 Text("PDF")
                     .dsTypography(.body7)
-                    .foregroundStyle(Color.dsGreen500)
+                    .foregroundStyle(Color.HilitGreen.g500)
                     .frame(width: 40, height: 40)
-                    .background(Color.dsGray800)
+                    .background(Color.Gray.g800)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(fileName)
                         .dsTypography(.body4)
-                        .foregroundStyle(Color.dsBlack)
+                        .foregroundStyle(Color.HilitBlack.b900)
                         .lineLimit(1)
                         .truncationMode(.tail)
                     Text(statusText)
@@ -273,7 +273,7 @@ public struct OnboardingPortfolioUploadView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 20, height: 20)
-                        .foregroundStyle(Color.dsGrayScale400)
+                        .foregroundStyle(Color.Gray.g200)
                 }
                 .buttonStyle(.plain)
             }
@@ -286,9 +286,9 @@ public struct OnboardingPortfolioUploadView: View {
             }
         }
         .frame(height: 72)
-        .background(Color.dsWhite)
+        .background(Color.BlackWhite.white)
         .overlay {
-            Rectangle().strokeBorder(Color.dsGrayScale200, lineWidth: 1)
+            Rectangle().strokeBorder(Color.Gray.g100, lineWidth: 1)
         }
     }
 
@@ -297,9 +297,9 @@ public struct OnboardingPortfolioUploadView: View {
     private var uploadingProgressStrip: some View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
-                Rectangle().fill(Color.dsGrayScale100)
+                Rectangle().fill(Color.Gray.g50)
                 Rectangle()
-                    .fill(Color.dsGreen500)
+                    .fill(Color.HilitGreen.g500)
                     .frame(width: proxy.size.width * uploadProgress)
             }
         }
@@ -315,7 +315,7 @@ public struct OnboardingPortfolioUploadView: View {
             } label: {
                 Text("이전으로")
                     .dsTypography(.sub7)
-                    .foregroundStyle(Color.dsWhite)
+                    .foregroundStyle(Color.BlackWhite.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 22)
                     .contentShape(Rectangle())
@@ -323,7 +323,7 @@ public struct OnboardingPortfolioUploadView: View {
             .buttonStyle(.plain)
 
             Rectangle()
-                .fill(Color.dsGray700)
+                .fill(Color.Gray.g700)
                 .frame(width: 1, height: 25)
 
             Button {
@@ -331,7 +331,7 @@ public struct OnboardingPortfolioUploadView: View {
             } label: {
                 Text("계속하기")
                     .dsTypography(.sub7)
-                    .foregroundStyle(store.isContinueEnabled ? Color.dsWhite : Color.dsGray400)
+                    .foregroundStyle(store.isContinueEnabled ? Color.BlackWhite.white : Color.Gray.g400)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 22)
                     .contentShape(Rectangle())
@@ -339,7 +339,7 @@ public struct OnboardingPortfolioUploadView: View {
             .buttonStyle(.plain)
             .disabled(!store.isContinueEnabled)
         }
-        .background(Color.dsBlack.ignoresSafeArea(edges: .bottom))
+        .background(Color.HilitBlack.b900.ignoresSafeArea(edges: .bottom))
     }
 }
 

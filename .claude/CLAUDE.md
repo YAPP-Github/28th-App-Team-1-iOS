@@ -56,10 +56,16 @@ Projects/
 ## 컨벤션
 
 - **커밋**: 제목 1 줄 한국어. `type: 설명_부연` 형식. 본문은 정말 필요할 때만 2-3 줄.
-- 네이밍: Swift API Design Guidelines. 외부 명칭(Figma 토큰 등)은 Swift 식별자화 + 원본은 매핑 프로퍼티 보존(`figmaName`). 테스트 함수 camelCase, 한글 설명은 `@Test("…")` 표시명.
-- 모듈 경계 넘는 타입/함수는 `public` 필수.
-- Action 네이밍: `userTapped…`(view) / `…Loaded`·`…Saved`(inner) / `onAppear`·`onDisappear`(view).
-- **UI 작업 전 `.claude/design.md` 필독** — DS 토큰(`.dsTypography(.head1)`, `Color.dsBlack`, `Image.DS.icClose`) 우선, 하드코딩(`Color.blue`, `16`, `.font(.system(size:))`) 지양.
+- **네이밍**: Swift API Design Guidelines — 변수·함수 lowerCamelCase, 타입 UpperCamelCase, 식별자에 언더스코어·한글 금지. 외부 명칭(Figma 토큰 `head1_sb_32` 등)은 Swift 식별자로 변환하고 원본은 매핑 프로퍼티로 보존(예: `DSTypography.figmaName`). 테스트 함수도 camelCase — 한글 설명은 swift-testing `@Test("설명")` 표시명으로 단다.
+- **public 키워드**: 모듈 경계를 넘는 타입/함수에 필수
+- **Action 네이밍**: 3분류(view/inner/delegate — 위 «패턴» 참조) 안에서 — 사용자 입력 `userTapped...`(View), 응답 `...Loaded` / `...Saved`(Inner), 생명주기 `onAppear` / `onDisappear`(View), 부모/코디네이터 통보 `delegate(Delegate)`
+- **Dependency `testValue`**: 반드시 `unimplemented`. 빈 클로저 금지
+- **DesignSystem 토큰 우선**: `.dsTypography(.head1)`, `Color.HilitGreen.g500`, `CGFloat.dsL`, `PrimaryButton` 등. 하드코딩 (`Color.blue`, `16`, `.font(.system(size:))`) 지양. 토큰 목록·상세 → `.claude/design.md`
+- **@lat 주석 / lat.md 그래프**: 코드 변경 후 `@lat:` 라벨과 `lat.md/` 노드를 갱신하고 `lat check` 통과 (위 «lat.md 지식 그래프» 워크플로우 참조). cross-feature delegate 의존은 `import` 에 안 보이므로 `depends-on:` 으로 반드시 명시
+
+## 디자인 시스템
+
+UI 코드(View·컴포넌트·에셋)를 작성·수정하기 **전에 `.claude/design.md` 를 읽는다** — 토큰(색·타이포·spacing)·표준 컴포넌트·에셋 로드 규칙의 참조 문서. 모듈은 `Shared/SharedDesignSystem`(타이포·색상 구현, spacing·컴포넌트 이관 대기), 의존은 `.shared(interface: .designSystem)`.
 
 ## 참고
 
