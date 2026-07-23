@@ -50,11 +50,11 @@ public struct OnboardingJDLinkView: View {
             Button {
                 send(.userTappedClose)
             } label: {
-                Image.DS.icClose
+                Image.Ic.close
                     .resizable()
                     .scaledToFit()
                     .frame(width: 24, height: 24)
-                    .foregroundStyle(Color.HilitBlack.b900)
+                    .foregroundStyle(Color.HilitBlack.b800)
             }
             .buttonStyle(.plain)
             Spacer(minLength: 0)
@@ -67,7 +67,7 @@ public struct OnboardingJDLinkView: View {
         HStack(spacing: 2) {
             ForEach(1...store.totalSteps, id: \.self) { step in
                 Rectangle()
-                    .fill(step <= store.step ? Color.HilitBlack.b900 : Color.Gray.g50)
+                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.Gray.g50)
                     .frame(height: 4)
             }
         }
@@ -127,7 +127,7 @@ public struct OnboardingJDLinkView: View {
         } label: {
             Text(title)
                 .font(.ds(.body1))
-                .foregroundStyle(isDisabled ? Color.Gray.g200 : Color.HilitBlack.b900)
+                .foregroundStyle(isDisabled ? Color.Gray.g200 : Color.HilitBlack.b800)
                 .frame(maxWidth: .infinity)
                 .padding(10)
                 .contentShape(Rectangle())
@@ -137,7 +137,7 @@ public struct OnboardingJDLinkView: View {
         .overlay(alignment: .bottom) {
             if isSelected {
                 Rectangle()
-                    .fill(Color.HilitBlack.b900)
+                    .fill(Color.HilitBlack.b800)
                     .frame(height: 1)
             }
         }
@@ -161,7 +161,7 @@ public struct OnboardingJDLinkView: View {
                     prompt: Text(Copy.fieldPlaceholder).foregroundStyle(Color.Gray.g600)
                 )
                 .font(.ds(.body3))
-                .foregroundStyle(store.linkValidation == .loading ? Color.Gray.g600 : Color.HilitBlack.b900)
+                .foregroundStyle(store.linkValidation == .loading ? Color.Gray.g600 : Color.HilitBlack.b800)
                 .keyboardType(.URL)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -218,13 +218,13 @@ public struct OnboardingJDLinkView: View {
     private var linkHelperRow: some View {
         switch store.linkValidation {
         case .idle:
-            helperRow(icon: Image.DS.icInfo, text: Copy.idleHelper, color: Color.Gray.g300)
+            helperRow(icon: Image.Ic.info, text: Copy.idleHelper, color: Color.Gray.g300)
         case .loading:
             EmptyView()
         case let .failure(message):
-            helperRow(icon: Image.DS.icError, text: message, color: Color.Error.e500)
+            helperRow(icon: Image.Ic.error, text: message, color: Color.Error.e500)
         case .success:
-            helperRow(icon: Image.DS.icSuccess, text: Copy.successHelper, color: Color.HilitGreen.g800)
+            helperRow(icon: Image.Ic.success, text: Copy.successHelper, color: Color.HilitGreen.g800)
         }
     }
 
@@ -254,7 +254,7 @@ public struct OnboardingJDLinkView: View {
         ZStack(alignment: .topLeading) {
             TextEditor(text: $store.directText)
                 .font(.ds(.body3))
-                .foregroundStyle(Color.HilitBlack.b900)
+                .foregroundStyle(Color.HilitBlack.b800)
                 .scrollContentBackground(.hidden)
                 // TextEditor 고유 인셋(~5/8pt) 보정 — Figma px 16 / py 14 근사.
                 .padding(.horizontal, 11)
@@ -290,7 +290,7 @@ public struct OnboardingJDLinkView: View {
     private var directTextFooter: some View {
         HStack(alignment: .top, spacing: 6) {
             if let message = store.directTextValidationMessage {
-                Image.DS.icError
+                Image.Ic.error
                     .resizable()
                     .scaledToFit()
                     .frame(width: 16, height: 16)
@@ -307,7 +307,7 @@ public struct OnboardingJDLinkView: View {
 
     private func clearButton(size: CGFloat, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image.DS.icCancelMini
+            Image.Ic.cancelMini
                 .resizable()
                 .scaledToFit()
                 .frame(width: size, height: size)
@@ -325,8 +325,8 @@ public struct OnboardingJDLinkView: View {
                 .foregroundStyle(Color.BlackWhite.white)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 11)
-                .background(Color.HilitBlack.b900)
-            Image.DS.imgTooltipTail
+                .background(Color.HilitBlack.b800)
+            Image.Img.tooltipTail
                 .resizable()
                 .scaledToFit()
                 .frame(width: 97)
@@ -368,7 +368,7 @@ public struct OnboardingJDLinkView: View {
             .buttonStyle(.plain)
             .disabled(!store.isContinueEnabled)
         }
-        .background(Color.HilitBlack.b900.ignoresSafeArea(edges: .bottom))
+        .background(Color.HilitBlack.b800.ignoresSafeArea(edges: .bottom))
     }
 }
 

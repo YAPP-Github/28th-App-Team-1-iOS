@@ -43,11 +43,11 @@ public struct OnboardingCareerInputView: View {
             Button {
                 send(.userTappedClose)
             } label: {
-                Image.DS.icClose
+                Image.Ic.close
                     .resizable()
                     .scaledToFit()
                     .frame(width: 24, height: 24)
-                    .foregroundStyle(Color.HilitBlack.b900)
+                    .foregroundStyle(Color.HilitBlack.b800)
             }
             .buttonStyle(.plain)
             Spacer(minLength: 0)
@@ -60,7 +60,7 @@ public struct OnboardingCareerInputView: View {
         HStack(spacing: 2) {
             ForEach(1...store.totalSteps, id: \.self) { step in
                 Rectangle()
-                    .fill(step <= store.step ? Color.HilitBlack.b900 : Color.Gray.g50)
+                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.Gray.g50)
                     .frame(height: 4)
             }
         }
@@ -75,7 +75,7 @@ public struct OnboardingCareerInputView: View {
                 .foregroundStyle(Color.HilitGreen.g500)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 4)
-                .background(Color.HilitBlack.b900, in: RoundedRectangle(cornerRadius: 2))
+                .background(Color.HilitBlack.b800, in: RoundedRectangle(cornerRadius: 2))
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("연차를 입력해 주세요.")
@@ -95,11 +95,11 @@ public struct OnboardingCareerInputView: View {
         HStack(spacing: 12) {
             Text("내 경력은")
                 .dsTypography(.sub4)
-                .foregroundStyle(Color.HilitBlack.b900)
+                .foregroundStyle(Color.HilitBlack.b800)
             careerWheel
             Text("이다.")
                 .dsTypography(.sub4)
-                .foregroundStyle(Color.HilitBlack.b900)
+                .foregroundStyle(Color.HilitBlack.b800)
         }
     }
 
@@ -112,7 +112,7 @@ public struct OnboardingCareerInputView: View {
                 ForEach(store.options, id: \.self) { option in
                     Text(option.label)
                         .dsTypography(.sub4)
-                        .foregroundStyle(Color.HilitBlack.b900)
+                        .foregroundStyle(Color.HilitBlack.b800)
                         .frame(height: WheelMetric.rowHeight)
                 }
             }
@@ -186,7 +186,7 @@ public struct OnboardingCareerInputView: View {
             .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity)
-        .background(Color.HilitBlack.b900.ignoresSafeArea(edges: .bottom))
+        .background(Color.HilitBlack.b800.ignoresSafeArea(edges: .bottom))
     }
 }
 

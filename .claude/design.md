@@ -13,7 +13,7 @@ UI 코드를 작성·수정하기 전에 읽는 진입점. 여기엔 **규칙과
 |---|---|---|---|
 | 타이포그래피 | ✅ 구현 | `.dsTypography(.head1)` — Pretendard 23종 (head1~5·sub1~9·body1~9), 행간·자간 내장 | **`.claude/design/typography.md`** |
 | 색상 | ✅ 구현 | 패밀리 enum 팔레트 23색 — `Color.HilitGreen.g500`·`Color.Gray.g600` 등 (에셋명 = HEX) | **`.claude/design/color.md`** |
-| 이미지 | ✅ 구현 | `Image.DS.icClose` 등 — `Image.load` seam, template 렌더링 | **`.claude/design/colors.md`** (규칙 동거) |
+| 이미지 | ✅ 구현 | `Image.Ic.close`(아이콘)·`Image.Img.tooltipTail`(일러스트) 패밀리 — `Image.load` seam | **`.claude/design/image.md`** |
 | 인터랙션 | ✅ 구현 | `.dismissesKeyboardOnTap()` — 키패드 밖 터치 시 내림. 입력 필드 있는 화면 루트에 부착 | 인라인 (Interface/Interaction) |
 | Spacing | 이관 대기 | `CGFloat.dsXS`(4) ~ `dsXXL`(32), `.padding(.dsL)` 식 사용 예정 | 구현 시 분리 |
 | 컴포넌트 | 이관 대기 | `PrimaryButton` 등 — 커스텀 만들기 전에 표준 컴포넌트 먼저 검토 | 구현 시 분리 |
@@ -24,4 +24,4 @@ UI 코드를 작성·수정하기 전에 읽는 진입점. 여기엔 **규칙과
 
 1. `SharedDesignSystem/Interface/Resources/Colors.xcassets`(색상, colorset 명 = HEX 예 `Color636777`) · `App/Resources/Assets.xcassets`(앱 에셋) 에 에셋 추가
 2. `Color.load(_:)` · `Image.load(_:)` **단일 seam** 으로만 로드해 토큰으로 노출 — 번들 해석 일원화 + 개발 빌드 `assert` 로 오타 검출
-3. 이미지 토큰은 `Image.DS` 네임스페이스 — 늘어나면 `Ic`/`Img` 중첩 enum 으로 묶는다 (GmoneyTrans 방식)
+3. 이미지 토큰은 `Image.Ic`(아이콘) / `Image.Img`(일러스트·이미지) 패밀리 enum — Color 팔레트와 같은 접근 방식
