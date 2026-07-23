@@ -14,6 +14,7 @@ public enum Pretendard {
         case regular = "Regular"
         case medium = "Medium"
         case semiBold = "SemiBold"
+        case bold = "Bold"
 
         /// 번들 파일명이자 PostScript 이름 (예: "Pretendard-SemiBold")
         public var postScriptName: String { "Pretendard-\(rawValue)" }
@@ -24,6 +25,7 @@ public enum Pretendard {
             case .regular: "r"
             case .medium: "m"
             case .semiBold: "sb"
+            case .bold: "b"
             }
         }
     }
