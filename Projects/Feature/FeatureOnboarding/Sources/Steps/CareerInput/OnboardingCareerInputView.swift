@@ -33,7 +33,7 @@ public struct OnboardingCareerInputView: View {
             Spacer(minLength: 0)
             bottomBar
         }
-        .background(Color.dsWhite.ignoresSafeArea())
+        .background(Color.BlackWhite.white.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
     }
 
@@ -47,7 +47,7 @@ public struct OnboardingCareerInputView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 24, height: 24)
-                    .foregroundStyle(Color.dsBlack)
+                    .foregroundStyle(Color.HilitBlack.b900)
             }
             .buttonStyle(.plain)
             Spacer(minLength: 0)
@@ -60,7 +60,7 @@ public struct OnboardingCareerInputView: View {
         HStack(spacing: 2) {
             ForEach(1...store.totalSteps, id: \.self) { step in
                 Rectangle()
-                    .fill(step <= store.step ? Color.dsBlack : Color.dsGray50)
+                    .fill(step <= store.step ? Color.HilitBlack.b900 : Color.Gray.g50)
                     .frame(height: 4)
             }
         }
@@ -72,18 +72,18 @@ public struct OnboardingCareerInputView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("필수")
                 .dsTypography(.body7)
-                .foregroundStyle(Color.dsGreen500)
+                .foregroundStyle(Color.HilitGreen.g500)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 4)
-                .background(Color.dsBlack, in: RoundedRectangle(cornerRadius: 2))
+                .background(Color.HilitBlack.b900, in: RoundedRectangle(cornerRadius: 2))
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("연차를 입력해 주세요.")
                     .dsTypography(.head3)
-                    .foregroundStyle(Color.dsGray800)
+                    .foregroundStyle(Color.Gray.g800)
                 Text("지금까지 근무한 모든 기간의 합\n(정규직·계약직·프리랜서 포함, 인턴)입니다.")
                     .dsTypography(.body3)
-                    .foregroundStyle(Color.dsGray500)
+                    .foregroundStyle(Color.Gray.g500)
             }
         }
     }
@@ -95,11 +95,11 @@ public struct OnboardingCareerInputView: View {
         HStack(spacing: 12) {
             Text("내 경력은")
                 .dsTypography(.sub4)
-                .foregroundStyle(Color.dsBlack)
+                .foregroundStyle(Color.HilitBlack.b900)
             careerWheel
             Text("이다.")
                 .dsTypography(.sub4)
-                .foregroundStyle(Color.dsBlack)
+                .foregroundStyle(Color.HilitBlack.b900)
         }
     }
 
@@ -112,7 +112,7 @@ public struct OnboardingCareerInputView: View {
                 ForEach(store.options, id: \.self) { option in
                     Text(option.label)
                         .dsTypography(.sub4)
-                        .foregroundStyle(Color.dsBlack)
+                        .foregroundStyle(Color.HilitBlack.b900)
                         .frame(height: WheelMetric.rowHeight)
                 }
             }
@@ -141,12 +141,12 @@ public struct OnboardingCareerInputView: View {
     private var wheelFade: some View {
         LinearGradient(
             stops: [
-                .init(color: Color.dsWhite, location: 0),
-                .init(color: Color.dsWhite.opacity(0.75), location: 0.22),
-                .init(color: Color.dsWhite.opacity(0), location: 0.38),
-                .init(color: Color.dsWhite.opacity(0), location: 0.62),
-                .init(color: Color.dsWhite.opacity(0.75), location: 0.78),
-                .init(color: Color.dsWhite, location: 1)
+                .init(color: Color.BlackWhite.white, location: 0),
+                .init(color: Color.BlackWhite.white.opacity(0.75), location: 0.22),
+                .init(color: Color.BlackWhite.white.opacity(0), location: 0.38),
+                .init(color: Color.BlackWhite.white.opacity(0), location: 0.62),
+                .init(color: Color.BlackWhite.white.opacity(0.75), location: 0.78),
+                .init(color: Color.BlackWhite.white, location: 1)
             ],
             startPoint: .top,
             endPoint: .bottom
@@ -163,7 +163,7 @@ public struct OnboardingCareerInputView: View {
             } label: {
                 Text("이전으로")
                     .dsTypography(.sub7)
-                    .foregroundStyle(Color.dsWhite)
+                    .foregroundStyle(Color.BlackWhite.white)
                     .padding(.vertical, 22)
                     .contentShape(Rectangle())
             }
@@ -171,7 +171,7 @@ public struct OnboardingCareerInputView: View {
 
             // 세로 구분선 — Figma grayscale/gray-700(#494C58). dsGray700 토큰은 부모 세션이 일괄 추가.
             Rectangle()
-                .fill(Color.dsGray700)
+                .fill(Color.Gray.g700)
                 .frame(width: 1, height: 25)
 
             Button {
@@ -179,14 +179,14 @@ public struct OnboardingCareerInputView: View {
             } label: {
                 Text("계속하기")
                     .dsTypography(.sub7)
-                    .foregroundStyle(Color.dsWhite)
+                    .foregroundStyle(Color.BlackWhite.white)
                     .padding(.vertical, 22)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity)
-        .background(Color.dsBlack.ignoresSafeArea(edges: .bottom))
+        .background(Color.HilitBlack.b900.ignoresSafeArea(edges: .bottom))
     }
 }
 

@@ -35,7 +35,7 @@ public struct OnboardingJobSelectionView: View {
             }
             continueButton
         }
-        .background(Color.dsWhite.ignoresSafeArea())
+        .background(Color.BlackWhite.white.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
         .onAppear { send(.onAppear) }
     }
@@ -49,7 +49,7 @@ public struct OnboardingJobSelectionView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 24, height: 24)
-                    .foregroundStyle(Color.dsBlack)
+                    .foregroundStyle(Color.HilitBlack.b900)
             }
             .buttonStyle(.plain)
             Spacer(minLength: 0)
@@ -62,7 +62,7 @@ public struct OnboardingJobSelectionView: View {
         HStack(spacing: 2) {
             ForEach(1...store.totalSteps, id: \.self) { step in
                 Rectangle()
-                    .fill(step <= store.step ? Color.dsBlack : Color.dsGray50)
+                    .fill(step <= store.step ? Color.HilitBlack.b900 : Color.Gray.g50)
                     .frame(height: 4)
             }
         }
@@ -74,18 +74,18 @@ public struct OnboardingJobSelectionView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("필수")
                 .dsTypography(.body7)
-                .foregroundStyle(Color.dsGreen500)
+                .foregroundStyle(Color.HilitGreen.g500)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 4)
-                .background(Color.dsBlack, in: RoundedRectangle(cornerRadius: 2))
+                .background(Color.HilitBlack.b900, in: RoundedRectangle(cornerRadius: 2))
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("\(store.userName)님의 직군을\n선택해 주세요.")
                     .dsTypography(.head3)
-                    .foregroundStyle(Color.dsGray800)
+                    .foregroundStyle(Color.Gray.g800)
                 Text("\(store.userName)님의 현재 직군을 선택해 주세요.")
                     .dsTypography(.body3)
-                    .foregroundStyle(Color.dsGray500)
+                    .foregroundStyle(Color.Gray.g500)
             }
         }
     }
@@ -111,14 +111,14 @@ public struct OnboardingJobSelectionView: View {
         } label: {
             Text(job.label)
                 .font(.ds(.body2))
-                .foregroundStyle(Color.dsBlack)
+                .foregroundStyle(Color.HilitBlack.b900)
                 .padding(.horizontal, 32)
                 .padding(.vertical, 16)
-                .background(Color.dsWhite)
+                .background(Color.BlackWhite.white)
                 .overlay {
                     // TODO: 선택 상태 Figma 미확인 — 우선 보더 강조. 디자인 확정 시 조정.
                     Rectangle()
-                        .strokeBorder(isSelected ? Color.dsBlack : Color.chipBorder, lineWidth: 1.2)
+                        .strokeBorder(isSelected ? Color.HilitBlack.b900 : Color.chipBorder, lineWidth: 1.2)
                 }
         }
         .buttonStyle(.plain)
@@ -131,14 +131,14 @@ public struct OnboardingJobSelectionView: View {
             Text("계속하기")
                 // TODO: 활성 상태 Figma 미확인 — 우선 텍스트 white. 디자인 확정 시 조정.
                 .dsTypography(.sub7)
-                .foregroundStyle(store.isContinueEnabled ? Color.dsWhite : Color.dsGray400)
+                .foregroundStyle(store.isContinueEnabled ? Color.BlackWhite.white : Color.Gray.g400)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 22)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(!store.isContinueEnabled)
-        .background(Color.dsBlack.ignoresSafeArea(edges: .bottom))
+        .background(Color.HilitBlack.b900.ignoresSafeArea(edges: .bottom))
     }
 }
 

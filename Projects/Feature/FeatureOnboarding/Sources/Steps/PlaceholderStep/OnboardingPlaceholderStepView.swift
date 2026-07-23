@@ -26,15 +26,15 @@ public struct OnboardingPlaceholderStepView: View {
             Spacer()
             Text(store.title)
                 .dsTypography(.head3)
-                .foregroundStyle(Color.dsGray800)
+                .foregroundStyle(Color.Gray.g800)
             Text("STEP \(store.step) — 디자인 연결 예정")
                 .dsTypography(.body3)
-                .foregroundStyle(Color.dsGray500)
+                .foregroundStyle(Color.Gray.g500)
                 .padding(.top, 8)
             Spacer()
             continueButton
         }
-        .background(Color.dsWhite.ignoresSafeArea())
+        .background(Color.BlackWhite.white.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
     }
 
@@ -47,7 +47,7 @@ public struct OnboardingPlaceholderStepView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 24, height: 24)
-                    .foregroundStyle(Color.dsBlack)
+                    .foregroundStyle(Color.HilitBlack.b900)
                     .rotationEffect(.degrees(45)) // TODO: 뒤로(chevron) 아이콘 에셋 추가 시 교체
             }
             .buttonStyle(.plain)
@@ -59,7 +59,7 @@ public struct OnboardingPlaceholderStepView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 24, height: 24)
-                    .foregroundStyle(Color.dsBlack)
+                    .foregroundStyle(Color.HilitBlack.b900)
             }
             .buttonStyle(.plain)
         }
@@ -71,7 +71,7 @@ public struct OnboardingPlaceholderStepView: View {
         HStack(spacing: 2) {
             ForEach(1...store.totalSteps, id: \.self) { step in
                 Rectangle()
-                    .fill(step <= store.step ? Color.dsBlack : Color.dsGray50)
+                    .fill(step <= store.step ? Color.HilitBlack.b900 : Color.Gray.g50)
                     .frame(height: 4)
             }
         }
@@ -85,13 +85,13 @@ public struct OnboardingPlaceholderStepView: View {
         } label: {
             Text("계속하기")
                 .dsTypography(.sub7)
-                .foregroundStyle(Color.dsWhite)
+                .foregroundStyle(Color.BlackWhite.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 22)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .background(Color.dsBlack.ignoresSafeArea(edges: .bottom))
+        .background(Color.HilitBlack.b900.ignoresSafeArea(edges: .bottom))
     }
 }
 

@@ -10,7 +10,7 @@ import SharedDesignSystemInterface
 import SwiftUI
 
 // Figma «6. 분석 중»(node 1609:9019) · «6.1 분석 완료»(node 1609:9075) 구현.
-// 풀스크린 다크(dsBlack) 화면 — 프로그레스 바·STEP 라벨·뒤로가기 없음, 좌상단 닫기(X)만 있다.
+// 풀스크린 다크(HilitBlack.b900) 화면 — 프로그레스 바·STEP 라벨·뒤로가기 없음, 좌상단 닫기(X)만 있다.
 // @ViewAction 매크로가 send(_:) 를 제공한다 — View 는 store.send(.view(...)) 대신 send(.onAppear) 로만 방출.
 @ViewAction(for: OnboardingAnalysisFeature.self)
 public struct OnboardingAnalysisView: View {
@@ -25,7 +25,7 @@ public struct OnboardingAnalysisView: View {
             navigationBar
             content
         }
-        .background(Color.dsBlack.ignoresSafeArea())
+        .background(Color.HilitBlack.b900.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
         .animation(.easeInOut(duration: 0.3), value: store.phase)
         .onAppear { send(.onAppear) }
@@ -40,7 +40,7 @@ public struct OnboardingAnalysisView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 24, height: 24)
-                    .foregroundStyle(Color.dsWhite)
+                    .foregroundStyle(Color.BlackWhite.white)
             }
             .buttonStyle(.plain)
             Spacer(minLength: 0)
@@ -71,7 +71,7 @@ public struct OnboardingAnalysisView: View {
             header(
                 title: "최적의 면접 환경을\n준비하고 있어요",
                 subtitle: "잠시만 기다려주세요",
-                subtitleColor: Color.dsGray100
+                subtitleColor: Color.Gray.g100
             )
             .background { gradientBand }
             checklist
@@ -83,7 +83,7 @@ public struct OnboardingAnalysisView: View {
     /// Figma 1991:10274 — 타이틀 뒤 대각선 그라데이션 밴드. 화면 폭(375)을 넘어 좌우로 흘러나간다.
     private var gradientBand: some View {
         LinearGradient(
-            colors: [Color.dsGreen500, Color.analysisBandTail],
+            colors: [Color.HilitGreen.g500, Color.analysisBandTail],
             startPoint: .leading,
             endPoint: .trailing
         )
@@ -106,7 +106,7 @@ public struct OnboardingAnalysisView: View {
             stageIndicator(index: index)
             Text(title)
                 .dsTypography(.body2)
-                .foregroundStyle(Color.dsWhite)
+                .foregroundStyle(Color.BlackWhite.white)
         }
     }
 
@@ -117,7 +117,7 @@ public struct OnboardingAnalysisView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: SpinnerMetrics.box, height: SpinnerMetrics.box)
-                .foregroundStyle(Color.dsGreen500)
+                .foregroundStyle(Color.HilitGreen.g500)
                 .transition(.scale.combined(with: .opacity))
         } else if index == store.completedStages {
             AnalysisSpinner()
@@ -132,7 +132,7 @@ public struct OnboardingAnalysisView: View {
         header(
             title: "면접 환경을\n준비했어요",
             subtitle: "이제부터 시작해볼까요?",
-            subtitleColor: Color.dsGrayScale400
+            subtitleColor: Color.Gray.g200
         )
         // Figma: 완료 블록 중심 y ≈ 369.5/812 — 중앙 정렬에 위쪽 보정.
         .padding(.bottom, 136)
@@ -145,7 +145,7 @@ public struct OnboardingAnalysisView: View {
         header(
             title: "면접 준비에 실패했어요",
             subtitle: message,
-            subtitleColor: Color.dsGray100
+            subtitleColor: Color.Gray.g100
         )
         .padding(.bottom, 96)
     }
@@ -156,7 +156,7 @@ public struct OnboardingAnalysisView: View {
         VStack(spacing: 12) {
             Text(title)
                 .dsTypography(.head3)
-                .foregroundStyle(Color.dsWhite)
+                .foregroundStyle(Color.BlackWhite.white)
             Text(subtitle)
                 .dsTypography(.sub8)
                 .foregroundStyle(subtitleColor)
@@ -184,10 +184,10 @@ private struct AnalysisSpinner: View {
     var body: some View {
         ZStack {
             Circle()
-                .stroke(Color.dsGray700, lineWidth: SpinnerMetrics.line)
+                .stroke(Color.Gray.g700, lineWidth: SpinnerMetrics.line)
             Circle()
                 .trim(from: 0, to: 0.3)
-                .stroke(Color.dsGreen500, lineWidth: SpinnerMetrics.line)
+                .stroke(Color.HilitGreen.g500, lineWidth: SpinnerMetrics.line)
                 .rotationEffect(.degrees(isSpinning ? 360 : 0))
                 .animation(.linear(duration: 1).repeatForever(autoreverses: false), value: isSpinning)
         }
@@ -201,7 +201,7 @@ private struct AnalysisSpinner: View {
 private struct AnalysisTrackRing: View {
     var body: some View {
         Circle()
-            .stroke(Color.dsGray700, lineWidth: SpinnerMetrics.line)
+            .stroke(Color.Gray.g700, lineWidth: SpinnerMetrics.line)
             .frame(width: SpinnerMetrics.ring, height: SpinnerMetrics.ring)
             .frame(width: SpinnerMetrics.box, height: SpinnerMetrics.box)
     }
