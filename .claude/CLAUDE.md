@@ -66,6 +66,7 @@ Projects/
 - Feature 단독 실행: `Feature{Name}` 스킴 ⌘R — Example 앱이 그 스킴의 실행 타겟 (예: `FeatureHome` 스킴 → `FeatureHomeExample.app`. `FeatureHomeExample` 이라는 스킴은 없다)
 - **umbrella 의존을 고치면 반드시 `tuist generate` 재실행** — 캐시된 그래프로 빌드하면 새 의존이 누락된 채 "거짓 성공" 이 난다.
 - DocC: Xcode 의 Product → Build Documentation (`ArchitectureDocs` 스킴)
+- **PR 올리기**: base 는 항상 `dev`(feature→dev). `gh pr create --repo YAPP-Github/28th-App-Team-1-iOS --base dev --head "$(git branch --show-current)" --title "type: 요약" --body-file <본문.md>` — 본문은 `.github/pull_request_template.md` 형식으로 채운다(관련 이슈 `Close #N` / 작업 내역 / 리뷰 포인트 / 체크리스트). 규칙 상세는 `CONTRIBUTING.md`, 머지는 squash. gh 미인증이면 `gh auth login` 먼저.
 
 ## lat.md 지식 그래프 — 작업 워크플로우
 
