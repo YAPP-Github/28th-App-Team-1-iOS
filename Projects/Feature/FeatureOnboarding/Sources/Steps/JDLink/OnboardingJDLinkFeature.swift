@@ -276,10 +276,18 @@ public struct OnboardingJDLinkFeature {
 
         case let .linkValidated(validation):
             // HTTP 200 이어도 valid 로 성공을 판단한다 (JDClient 계약).
-            state.linkValidation = validation.valid
-                ? .success
-                : .failure(message: validation.message ?? Self.fallbackErrorMessage)
-            return .none
+            guard validation.valid else {
+                state.linkValidation = .failure(message: validation.message ?? Self.fallbackErrorMessage)
+                return .none
+            }
+            state.linkValidation = .success
+            // 검증 성공 시 버튼 없이 자동 진행 — 성공 상태를 잠깐 보여준 뒤 다음 스텝으로.
+            let url = trimmedLink(state)
+            return .run { send in
+                try await clock.sleep(for: .seconds(0.6))
+                await send(.delegate(.continueRequested(.link(url))))
+            }
+            .cancellable(id: CancelID.validate, cancelInFlight: true)
 
         case .linkValidationFailed:
             state.linkValidation = .failure(message: Self.fallbackErrorMessage)
