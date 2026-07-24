@@ -37,6 +37,8 @@ public struct GuestFeedbackFeature {
         public var isSubmitting = false
         // 저장 인디케이터 구동 — levelSelected 로 debounce 저장이 도는 축 코드(draftSaved 가 해제).
         public var savingAxisCode: String?
+        // 객관식 전 축 완료 토스트(«모든 평가가 끝났어요!») 표출 — 마지막 축 평가 시 켜지고 2초 뒤 자동 해제.
+        public var isCompletionToastVisible = false
         @Presents public var confirmDialog: ConfirmationDialogState<ConfirmDialog>?
         @Presents public var alert: AlertState<Alert>?
 
@@ -49,10 +51,16 @@ public struct GuestFeedbackFeature {
             entry?.submissionOpen == true && !isSubmitting
         }
 
+        /// 객관식 전 축 level 선택 완료 — 완료 토스트 트리거(제출 가능 여부와 무관한 순수 입력 상태).
+        public var isAllRated: Bool {
+            guard let entry, !entry.axes.isEmpty else { return false }
+            return entry.axes.allSatisfy { ratings[$0.code]?.level != nil }
+        }
+
         /// 제출 성립 조건 (PRD §2-3): 지정 항목 전부 level 선택.
         public var isSubmitEnabled: Bool {
-            guard let entry, entry.submissionOpen, !isSubmitting, !entry.axes.isEmpty else { return false }
-            return entry.axes.allSatisfy { ratings[$0.code]?.level != nil }
+            guard let entry, entry.submissionOpen, !isSubmitting else { return false }
+            return isAllRated
         }
 
         var draft: GuestFeedbackDraft {
@@ -126,6 +134,7 @@ public struct GuestFeedbackFeature {
             case submitFinished(Result<GuestSubmissionReceipt, GuestFeedbackError>)
             case videoReady                    // starting 연출 종료 → evaluating
             case draftSaved                    // debounce draft 저장 완료 → 저장 인디케이터 해제
+            case completionToastExpired        // 완료 토스트 2초 경과 → 자동 해제
         }
 
         /// 부모(코디네이터·Example 루트) 통보. 부모는 이것만 매칭한다 (D1).

@@ -1,39 +1,47 @@
-# 색상 토큰
+# 색상 — 상세
 
-`SharedDesignSystem/Interface/Color/` — 순수 Swift 2-tier. 화면 코드는 **시맨틱 별칭 우선**, 원색이 꼭 필요할 때만 `Color.ds(.gray300)`.
+`Color` 팔레트 토큰 레퍼런스. 단일 소스는 [Color+Palette.swift](../../Projects/Shared/SharedDesignSystem/Interface/Color/Color+Palette.swift) — 어긋나면 코드가 우선이고 이 문서를 갱신한다. 원본 스펙: Figma «Hilit_Color_Guide» (node 366-173).
 
-## Tier 1 · 프리미티브 (`DSColorToken`)
+## 사용법
 
-Figma «Part4 지인 피드백 · 여기가 최종» 변수 1:1. 접근: `Color.ds(.green800)`. Figma 변수명 대조는 `DSColorToken.figmaName`.
+```swift
+Text("제목").foregroundStyle(Color.HilitGreen.g500)   // 패밀리 enum . 토큰
+Rectangle().fill(Color.Gray.g50)
+```
 
-| 그룹 | 토큰 (hex) |
-|---|---|
-| green | `green500 #ACEBA0` · `green600 #88C97C` · `green800 #106100` |
-| gray | `gray50 #F6F7F9` · `gray100 #EBECF1` · `gray200 #BCBEC6` · `gray300 #9DA0AC` · `gray400 #8A8D9C` · `gray500 #6D7183` · `gray600 #636777` · `gray700 #494C58` · `gray800 #31333B` · `gray900 #27282F` |
-| neutral | `white #FFFFFF` · `black800 #1A1B1F` |
-| positive | `positive200 #DDFAFF` · `positive500 #00CFEF` · `positive800 #008A9F` |
-| error | `error200 #FFEBEB` · `error500 #FF5757` |
+## 팔레트 (23색)
 
-## Tier 2 · 시맨틱 별칭 (`Color.ds*`)
+에셋명은 HEX(`Color636777`), 접근은 패밀리 enum. 토큰명은 색 약어 + Figma 스케일 번호(`g600` = gray 600).
 
-프리미티브 참조. **잠정 매핑** — 화면 단계에서 실제 컴포넌트에 대보며 확정.
+| enum | 토큰 | HEX | 용도 |
+|---|---|---|---|
+| `HilitBlack` | `b800` | #1A1B1F | 메인 블랙·텍스트 |
+| | `b900` | #121316 | 다크모드 배경 |
+| `HilitGreen` | `g500` | #ACEBA0 | 메인 그린 |
+| | `g600` | #88C97C | — |
+| | `g800` | #106100 | 그린 텍스트 |
+| `Error` | `e200` | #FFEBEB | 레드 배경 |
+| | `e300` | #FFA6A6 | — |
+| | `e400` | #FF8383 | — |
+| | `e500` | #FF5757 | 메인 레드·레드 텍스트 |
+| `Positive` | `p200` | #DDFAFF | 블루 배경 |
+| | `p500` | #00CFEF | 메인 블루 |
+| | `p800` | #008A9F | 블루 텍스트 |
+| `Gray` | `g50` | #F6F7F9 | 그레이 배경 |
+| | `g100` | #EBECF1 | — |
+| | `g200` | #BCBEC6 | — |
+| | `g300` | #9DA0AC | disabled 상태 텍스트 |
+| | `g400` | #8A8D9C | — |
+| | `g500` | #6D7183 | 그레이 텍스트 |
+| | `g600` | #636777 | — |
+| | `g700` | #494C58 | — |
+| | `g800` | #31333B | — |
+| | `g900` | #27282F | — |
+| `BlackWhite` | `white` | #FFFFFF | — |
 
-| 별칭 | → 프리미티브 | 용도 |
-|---|---|---|
-| `dsBrand` | green800 | primary 액션·강조 |
-| `dsBrandSoft` | green500 | 옅은 강조·선택 배경 |
-| `dsBgLight` | gray50 | 라이트 화면 배경 |
-| `dsBgDark` | black800 | 다크 화면 배경(영상·로딩) |
-| `dsSurfaceDark` | gray900 | 다크 위 표면 |
-| `dsTextPrimary` | gray900 | 기본 텍스트(라이트 위) |
-| `dsTextOnDark` | white | 다크 위 텍스트 |
-| `dsTextSecondary` | gray500 | 보조 텍스트 |
-| `dsTextTertiary` | gray400 | 3차·비활성 |
-| `dsSeparator` | gray100 | 구분선 |
-| `dsPositive` | positive500 | 긍정 상태 |
-| `dsError` | error500 | 오류·부정 |
+## 구현 노트
 
-## 규칙
-
-- 라이트/다크 **적응형 아님** — 최종 디자인이 화면마다 고정 톤을 쓴다. 화면이 어느 배경인지에 따라 `dsBgLight`/`dsBgDark`·`dsTextPrimary`/`dsTextOnDark` 를 명시적으로 고른다.
-- 팔레트 확장은 `DSColorToken` 케이스 추가(+`hex`/`figmaName`). 값 단일 소스 = 코드(`DSColorToken`) — 이 문서와 어긋나면 코드 우선. 시맨틱 별칭 매핑(별칭→프리미티브)은 `DSColorTests` 가 고정.
+- **에셋 로드**: 값은 `Interface/Resources/Colors.xcassets`(에셋명 = `Color<HEX>`), 로드는 `Color.load(_:)` 단일 seam ([Color+Load.swift](../../Projects/Shared/SharedDesignSystem/Interface/Color/Color+Load.swift)). 개발 빌드에서 이름 오타를 `assert` 로 조기 검출 — 폰트의 `Pretendard.registerOnce` 와 같은 역할.
+- **스펙 검증**: `ColorPaletteTests` 가 토큰 → 에셋 RGB 를 Figma 확정 HEX 와 1:1 대조. static-library 모드의 번들(`Bundle.module`) 파손도 여기서 잡힌다.
+- **알려진 Figma 불일치**: Color Guide 스크린샷의 positive 계열 HEX **텍스트 라벨**(#FEF4E7·#F29411·#FEEFF4, 주황)은 낡았다 — 실제 스와치·바인딩 변수·"블루" 설명과 어긋난다. 바인딩 변수값(#DDFAFF·#00CFEF·#008A9F, 청록)을 확정으로 채택 (2026-07-23). 디자이너에게 라벨 정정 요청 상태.
+- **다크모드 미반영**: 각 토큰은 현재 단일 appearance(universal). 도입 결정 시 colorset 에 dark variant 추가.

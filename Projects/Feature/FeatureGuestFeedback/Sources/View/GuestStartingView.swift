@@ -39,20 +39,20 @@ struct GuestStartingView: View {
             HStack(spacing: 0) {
                 Text("평가를 위해")
                     .dsTypography(.head3)
-                    .foregroundStyle(Color.dsTextOnDark)
+                    .foregroundStyle(Color.BlackWhite.white)
                 // 그린 형광펜 마커 — 온보딩과 동일한 dsBrandSoft 사각형 위 다크 텍스트.
                 Text("태도")
                     .dsTypography(.head3)
-                    .foregroundStyle(Color.dsTextPrimary)
+                    .foregroundStyle(Color.Gray.g900)
                     .padding(.horizontal, .ds(.p8))
-                    .background(Color.dsBrandSoft)
+                    .background(Color.HilitGreen.g500, in: Parallelogram())
                 Text("에")
                     .dsTypography(.head3)
-                    .foregroundStyle(Color.dsTextOnDark)
+                    .foregroundStyle(Color.BlackWhite.white)
             }
             Text("집중해서 시청해 주세요")
                 .dsTypography(.head3)
-                .foregroundStyle(Color.dsTextOnDark)
+                .foregroundStyle(Color.BlackWhite.white)
         }
         .multilineTextAlignment(.center)
     }

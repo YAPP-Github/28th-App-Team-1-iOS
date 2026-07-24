@@ -21,7 +21,7 @@ struct GuestSummaryView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Color.ds(.white).ignoresSafeArea()
+            Color.BlackWhite.white.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 ScrollView {
@@ -46,22 +46,22 @@ struct GuestSummaryView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text("\(requesterName)님에게")
                     .dsTypography(.head3)
-                    .foregroundStyle(Color.dsTextPrimary)
+                    .foregroundStyle(Color.Gray.g900)
                 HStack(spacing: 0) {
                     // 그린 형광펜 마커 — 온보딩 "피드백" 과 동일한 사각형(dsBrandSoft).
                     Text("이렇게 전달")
                         .dsTypography(.head3)
-                        .foregroundStyle(Color.dsTextPrimary)
+                        .foregroundStyle(Color.Gray.g900)
                         .padding(.horizontal, .ds(.p8))
-                        .background(Color.dsBrandSoft)
+                        .background(Color.HilitGreen.g500, in: Parallelogram())
                     Text("될 거예요")
                         .dsTypography(.head3)
-                        .foregroundStyle(Color.dsTextPrimary)
+                        .foregroundStyle(Color.Gray.g900)
                 }
             }
             Text("항목을 누르면 바로 수정할 수 있어요")
                 .dsTypography(.body3)
-                .foregroundStyle(Color.dsTextSecondary)
+                .foregroundStyle(Color.Gray.g500)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -75,7 +75,7 @@ struct GuestSummaryView: View {
         HStack(spacing: 0) {
             Text("평가 항목")
                 .dsTypography(.body2)
-                .foregroundStyle(Color.dsTextPrimary)
+                .foregroundStyle(Color.Gray.g900)
             Spacer(minLength: .ds(.p8))
             Button {
                 send(.rewatchTapped)
@@ -87,11 +87,11 @@ struct GuestSummaryView: View {
                     Text("영상 다시보기")
                         .dsTypography(.body5)
                 }
-                .foregroundStyle(Color.ds(.black800))
+                .foregroundStyle(Color.HilitBlack.b800)
                 .padding(.horizontal, .ds(.p10))
                 .padding(.vertical, .ds(.p8))
                 // DS 에 radius 토큰이 없어 리터럴 유지(6pt).
-                .background(Color.ds(.gray100), in: RoundedRectangle(cornerRadius: 6))
+                .background(Color.Gray.g100, in: RoundedRectangle(cornerRadius: 6))
             }
             .buttonStyle(.plain)
         }
@@ -117,13 +117,13 @@ struct GuestSummaryView: View {
             VStack(alignment: .leading, spacing: .ds(.p4)) {
                 Text(axis.displayName)
                     .dsTypography(.body9)
-                    .foregroundStyle(Color.ds(.gray400))
+                    .foregroundStyle(Color.Gray.g400)
 
                 HStack(spacing: .ds(.p4)) {
                     selectedLabel(for: axis, level: rating?.level)
                     Text("(이)라고 평가했어요")
                         .dsTypography(.body2)
-                        .foregroundStyle(Color.ds(.gray900))
+                        .foregroundStyle(Color.Gray.g900)
                 }
 
                 if let comment = rating?.comment, !comment.isEmpty {
@@ -138,7 +138,7 @@ struct GuestSummaryView: View {
             .overlay(alignment: .topTrailing) {
                 Image(systemName: "square.and.pencil")
                     .font(.ds(.body5))
-                    .foregroundStyle(Color.ds(.gray400))
+                    .foregroundStyle(Color.Gray.g400)
                     .padding(.ds(.p12))
             }
             .contentShape(RoundedRectangle(cornerRadius: 6))
@@ -153,33 +153,33 @@ struct GuestSummaryView: View {
             let isPositive = level <= 2
             labelChip(
                 AxisScaleCopy.labels(for: axis.code)[level - 1],
-                foreground: isPositive ? Color.ds(.positive800) : Color.dsError,
-                background: isPositive ? Color.ds(.positive200) : Color.ds(.error200)
+                foreground: isPositive ? Color.Positive.p800 : Color.Error.e500,
+                background: isPositive ? Color.Positive.p200 : Color.Error.e200
             )
         } else {
-            labelChip("-", foreground: Color.ds(.gray600), background: Color.dsSeparator)
+            labelChip("-", foreground: Color.Gray.g600, background: Color.Gray.g100)
         }
     }
 
-    /// px4 배경 칩 — 라벨 텍스트(body3_m_16). 모서리 4pt(대응 radius 토큰 없어 리터럴).
+    /// 평행사변형 배경 칩 — 라벨 텍스트(body3_m_16). Figma highlighted-text: 양옆 8pt(경사 4 + 평면 4).
     private func labelChip(_ text: String, foreground: Color, background: Color) -> some View {
         Text(text)
             .dsTypography(.body3)
             .foregroundStyle(foreground)
-            .padding(.horizontal, .ds(.p4))
-            .background(background, in: RoundedRectangle(cornerRadius: 4))
+            .padding(.horizontal, .ds(.p8))
+            .background(background, in: Parallelogram())
     }
 
     /// 코멘트 한 줄 — 세로 바 + 회색 텍스트(body9_m_12), 넘치면 말줄임.
     private func commentRow(_ comment: String) -> some View {
         HStack(spacing: .ds(.p4)) {
             Rectangle()
-                .fill(Color.dsSeparator)
+                .fill(Color.Gray.g100)
                 // Figma 2px 세로 바 — 대응 두께 토큰 없어 리터럴 유지.
                 .frame(width: 2)
             Text(comment)
                 .dsTypography(.body9)
-                .foregroundStyle(Color.ds(.gray400))
+                .foregroundStyle(Color.Gray.g400)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -190,7 +190,7 @@ struct GuestSummaryView: View {
     /// 카드 테두리 — gray100 스트로크(outline-m), 모서리 6pt(대응 radius 토큰 없어 리터럴).
     private var cardBorder: some View {
         RoundedRectangle(cornerRadius: 6)
-            .strokeBorder(Color.dsSeparator, lineWidth: .ds(.medium))
+            .strokeBorder(Color.Gray.g100, lineWidth: .ds(.medium))
     }
 
     // MARK: - 하단 CTA

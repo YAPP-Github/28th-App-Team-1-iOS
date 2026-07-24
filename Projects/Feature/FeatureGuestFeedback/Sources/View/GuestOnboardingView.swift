@@ -35,7 +35,7 @@ struct GuestOnboardingView: View {
             footer
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(Color.dsBgLight.ignoresSafeArea())
+        .background(Color.Gray.g50.ignoresSafeArea())
     }
 
     // MARK: - Title
@@ -45,22 +45,22 @@ struct GuestOnboardingView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text("\(requesterName)님이 당신께")
                     .dsTypography(.head4)
-                    .foregroundStyle(Color.dsTextPrimary)
+                    .foregroundStyle(Color.Gray.g900)
                 HStack(spacing: 0) {
                     // 그린 형광펜 마커 — dsBrandSoft 사각형 위 다크 텍스트.
                     Text("피드백")
                         .dsTypography(.head4)
-                        .foregroundStyle(Color.dsTextPrimary)
+                        .foregroundStyle(Color.Gray.g900)
                         .padding(.horizontal, .ds(.p8))
-                        .background(Color.dsBrandSoft)
+                        .background(Color.HilitGreen.g500, in: Parallelogram())
                     Text("을 요청했어요")
                         .dsTypography(.head4)
-                        .foregroundStyle(Color.dsTextPrimary)
+                        .foregroundStyle(Color.Gray.g900)
                 }
             }
             Text("이동 시간 중 딱 10분만 빌려줄 수 있나요?")
                 .dsTypography(.body3)
-                .foregroundStyle(Color.dsTextSecondary)
+                .foregroundStyle(Color.Gray.g500)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -70,11 +70,11 @@ struct GuestOnboardingView: View {
     /// 온보딩 히어로 일러스트 자리(승인된 플레이스홀더). 실 에셋이 도착하면 이 프로퍼티만 교체한다.
     private var illustration: some View {
         Rectangle() // 풀블리드 — 코너 0(각진 edge).
-            .fill(Color.ds(.gray100))
+            .fill(Color.Gray.g100)
             .overlay {
                 Image(systemName: "photo")
                     .font(.largeTitle)
-                    .foregroundStyle(Color.dsTextTertiary)
+                    .foregroundStyle(Color.Gray.g400)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -100,20 +100,20 @@ struct GuestOnboardingView: View {
     private func guideRow(icon: String, title: String, subtitle: String) -> some View {
         HStack(spacing: .ds(.p12)) {
             RoundedRectangle(cornerRadius: 8) // 아이콘 타일 자리 — 실 에셋 도착 시 이미지로 교체.
-                .fill(Color.ds(.gray100))
+                .fill(Color.Gray.g100)
                 .frame(width: 44, height: 44)
                 .overlay {
                     Image(systemName: icon)
                         .imageScale(.medium)
-                        .foregroundStyle(Color.dsTextTertiary)
+                        .foregroundStyle(Color.Gray.g400)
                 }
             VStack(alignment: .leading, spacing: .ds(.p4)) {
                 Text(title)
                     .dsTypography(.body2)
-                    .foregroundStyle(Color.dsTextPrimary)
+                    .foregroundStyle(Color.Gray.g900)
                 Text(subtitle)
                     .dsTypography(.body7)
-                    .foregroundStyle(Color.dsTextSecondary)
+                    .foregroundStyle(Color.Gray.g500)
             }
             Spacer(minLength: 0)
         }

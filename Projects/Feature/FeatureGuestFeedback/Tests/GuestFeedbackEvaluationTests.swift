@@ -217,8 +217,8 @@ struct GuestFeedbackEvaluationTests {
         #expect(store.state.isSubmitEnabled == false)
         await store.send(.view(.reviewTapped))   // 미완이라 phase 는 .evaluating 그대로
 
-        // 나머지 축까지 모두 채운다
-        for axis in AttitudeAxis.allFive.dropFirst() {
+        // 마지막 하나만 남기고 나머지 축을 채운다
+        for axis in AttitudeAxis.allFive.dropFirst().dropLast() {
             await store.send(.view(.axisSelected(axis))) {
                 $0.activeAxis = axis
                 $0.isImmersiveWatching = false
@@ -232,10 +232,76 @@ struct GuestFeedbackEvaluationTests {
             }
         }
 
+        // 마지막 축 — 완료 전이 순간이라 완료 토스트가 함께 뜬다
+        let last = AttitudeAxis.allFive.last!
+        await store.send(.view(.axisSelected(last))) {
+            $0.activeAxis = last
+            $0.isImmersiveWatching = false
+        }
+        await store.send(.view(.levelSelected(1))) {
+            $0.ratings[last.code] = RatingDraft(level: 1, comment: "")
+            $0.savingAxisCode = last.code
+            $0.isCompletionToastVisible = true
+        }
+        await store.receive(\.inner.draftSaved) {
+            $0.savingAxisCode = nil
+        }
+        await store.receive(\.inner.completionToastExpired) {
+            $0.isCompletionToastVisible = false
+        }
+
         // 모든 축 완료 → reviewTapped 가 summary 로 전이한다
         #expect(store.state.isSubmitEnabled)
         await store.send(.view(.reviewTapped)) {
             $0.phase = .summary
+        }
+        await store.finish()
+    }
+
+    @Test("마지막 축을 채우면 완료 토스트가 뜨고 2초 뒤 자동으로 사라진다")
+    func completionToastShowsOnTransitionAndAutoDismisses() async {
+        let clock = TestClock()
+        var state = GuestFeedbackFeature.State(token: "t1")
+        state.entry = .fixture()
+        state.phase = .evaluating
+        state.startedEvaluation = true
+        state.isImmersiveWatching = false
+        for axis in AttitudeAxis.allFive.dropLast() {
+            state.ratings[axis.code] = RatingDraft(level: 1, comment: "")
+        }
+        let last = AttitudeAxis.allFive.last!
+        state.activeAxis = last
+        let store = TestStore(initialState: state) {
+            GuestFeedbackFeature()
+        } withDependencies: {
+            $0.guestFeedbackClient = .mock()
+            $0.guestFeedbackLocalStore = .inMemory()
+            $0.continuousClock = clock
+        }
+
+        // 마지막 축을 채우는 전이 순간 → 토스트 on
+        await store.send(.view(.levelSelected(2))) {
+            $0.ratings[last.code] = RatingDraft(level: 2, comment: "")
+            $0.savingAxisCode = last.code
+            $0.isCompletionToastVisible = true
+        }
+        await clock.advance(by: .milliseconds(500))   // debounce 저장 완료
+        await store.receive(\.inner.draftSaved) {
+            $0.savingAxisCode = nil
+        }
+        await clock.advance(by: .milliseconds(1500))  // 토스트 타이머 누적 2초 도달
+        await store.receive(\.inner.completionToastExpired) {
+            $0.isCompletionToastVisible = false
+        }
+
+        // 이미 전부 평가된 뒤 레벨만 바꾸면 다시 뜨지 않는다
+        await store.send(.view(.levelSelected(3))) {
+            $0.ratings[last.code] = RatingDraft(level: 3, comment: "")
+            $0.savingAxisCode = last.code
+        }
+        await clock.advance(by: .milliseconds(500))
+        await store.receive(\.inner.draftSaved) {
+            $0.savingAxisCode = nil
         }
         await store.finish()
     }

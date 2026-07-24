@@ -52,18 +52,18 @@ struct AxisLevelChip: View {
     }
 
     private var fill: Color {
-        guard isSelected else { return Color.ds(.white) }
-        return tone == .positive ? Color.ds(.positive200) : Color.ds(.error200)
+        guard isSelected else { return Color.BlackWhite.white }
+        return tone == .positive ? Color.Positive.p200 : Color.Error.e200
     }
 
     private var border: Color {
-        guard isSelected else { return Color.dsSeparator }
-        return tone == .positive ? Color.dsPositive : Color.dsError
+        guard isSelected else { return Color.Gray.g100 }
+        return tone == .positive ? Color.Positive.p500 : Color.Error.e500
     }
 
     private var text: Color {
-        guard isSelected else { return Color.ds(.gray700) }
-        return tone == .positive ? Color.ds(.positive800) : Color.dsError
+        guard isSelected else { return Color.Gray.g700 }
+        return tone == .positive ? Color.Positive.p800 : Color.Error.e500
     }
 }
 
@@ -84,5 +84,5 @@ struct AxisLevelChip: View {
     }
     .padding(.ds(.p20))
     .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .background(Color.ds(.white))  // 평가 카드(흰 배경) 시뮬레이션
+    .background(Color.BlackWhite.white)  // 평가 카드(흰 배경) 시뮬레이션
 }

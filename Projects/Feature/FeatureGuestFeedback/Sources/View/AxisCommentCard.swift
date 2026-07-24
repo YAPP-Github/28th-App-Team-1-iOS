@@ -36,14 +36,14 @@ struct AxisCommentCard: View {
                     axis: .vertical
                 )
                 .dsTypography(.body7)  // Regular 14
-                .foregroundStyle(Color.ds(.black800))
+                .foregroundStyle(Color.HilitBlack.b800)
                 .lineLimit(3...6)
                 .frame(minHeight: 90, alignment: .topLeading)
             }
             .padding(.horizontal, .ds(.p24))
             .padding(.vertical, .ds(.p14))
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.ds(.white))
+            .background(Color.BlackWhite.white)
 
             PrimaryButton("다음", action: onDone)
         }
@@ -53,13 +53,13 @@ struct AxisCommentCard: View {
         HStack(spacing: .ds(.p4)) {
             Text("왜 그렇게 느꼈나요?")
                 .dsTypography(.body5)  // SemiBold 14
-                .foregroundStyle(Color.ds(.black800))
+                .foregroundStyle(Color.HilitBlack.b800)
             optionalTag
             Spacer()
             Button(action: onDismiss) {
                 Image(systemName: "xmark")
                     .font(.ds(.body5))
-                    .foregroundStyle(Color.ds(.gray600))
+                    .foregroundStyle(Color.Gray.g600)
             }
             .buttonStyle(.plain)
         }
@@ -69,9 +69,9 @@ struct AxisCommentCard: View {
     private var optionalTag: some View {
         Text("선택")
             .dsTypography(.body8)  // SemiBold 12
-            .foregroundStyle(Color.ds(.gray600))
+            .foregroundStyle(Color.Gray.g600)
             .padding(.horizontal, .ds(.p4))
-            .background(Color.dsSeparator)
+            .background(Color.Gray.g100)
     }
 }
 
@@ -85,5 +85,5 @@ struct AxisCommentCard: View {
         )  // 입력됨
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-    .background(Color.dsBgDark)  // 영상 위 시트 시뮬레이션
+    .background(Color.HilitBlack.b800)  // 영상 위 시트 시뮬레이션
 }

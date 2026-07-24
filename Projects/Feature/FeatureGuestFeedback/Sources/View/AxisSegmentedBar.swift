@@ -61,17 +61,17 @@ struct AxisSegmentedBar: View {
 
     /// 선택=green/800, 완료=green/800, 미완료=흰색(다크 위 기본 텍스트).
     private func textColor(for axis: AttitudeAxis) -> Color {
-        if isSelected(axis) { return .dsBrand }
-        if completedCodes.contains(axis.code) { return .dsBrand }
-        return .dsTextOnDark
+        if isSelected(axis) { return Color.HilitGreen.g800 }
+        if completedCodes.contains(axis.code) { return Color.HilitGreen.g800 }
+        return Color.BlackWhite.white
     }
 
     /// 선택 칩만 green/500 필. 나머지는 투명(영상 배경 노출).
     @ViewBuilder
     private func fillColor(for axis: AttitudeAxis) -> some View {
         if isSelected(axis) {
-            // DS에 radius 토큰이 없어 리터럴 유지(Figma 필 코너 ≈ 6pt).
-            RoundedRectangle(cornerRadius: 6).fill(Color.dsBrandSoft)
+            // Figma ButtonTag: 모서리 직각(라운드 없음).
+            Rectangle().fill(Color.HilitGreen.g500)
         } else {
             Color.clear
         }
@@ -103,5 +103,5 @@ struct AxisSegmentedBar: View {
         )
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .background(Color.dsBgDark)  // 영상 위 다크 배경 시뮬레이션
+    .background(Color.HilitBlack.b800)  // 영상 위 다크 배경 시뮬레이션
 }

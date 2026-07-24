@@ -66,6 +66,7 @@ Projects/
 - Feature 단독 실행: `Feature{Name}` 스킴 ⌘R — Example 앱이 그 스킴의 실행 타겟 (예: `FeatureHome` 스킴 → `FeatureHomeExample.app`. `FeatureHomeExample` 이라는 스킴은 없다)
 - **umbrella 의존을 고치면 반드시 `tuist generate` 재실행** — 캐시된 그래프로 빌드하면 새 의존이 누락된 채 "거짓 성공" 이 난다.
 - DocC: Xcode 의 Product → Build Documentation (`ArchitectureDocs` 스킴)
+- **PR 올리기**: base 는 항상 `dev`(feature→dev). `gh pr create --repo YAPP-Github/28th-App-Team-1-iOS --base dev --head "$(git branch --show-current)" --title "type: 요약" --body-file <본문.md>` — 본문은 `.github/pull_request_template.md` 형식으로 채운다(관련 이슈 `Close #N` / 작업 내역 / 리뷰 포인트 / 체크리스트). 규칙 상세는 `CONTRIBUTING.md`, 머지는 squash. gh 미인증이면 `gh auth login` 먼저.
 
 ## lat.md 지식 그래프 — 작업 워크플로우
 
@@ -84,12 +85,12 @@ Projects/
 - **public 키워드**: 모듈 경계를 넘는 타입/함수에 필수
 - **Action 네이밍**: 3분류(view/inner/delegate — 위 «패턴» 참조) 안에서 — 사용자 입력 `userTapped...`(View), 응답 `...Loaded` / `...Saved`(Inner), 생명주기 `onAppear` / `onDisappear`(View), 부모/코디네이터 통보 `delegate(Delegate)`
 - **Dependency `testValue`**: 반드시 `unimplemented`. 빈 클로저 금지
-- **DesignSystem 토큰 우선**: `.dsTypography(.head1)`, `Color.dsPrimary`, `CGFloat.dsL`, `PrimaryButton` 등. 하드코딩 (`Color.blue`, `16`, `.font(.system(size:))`) 지양. 토큰 목록·상세 → `.claude/design.md`
+- **DesignSystem 토큰 우선**: `.dsTypography(.head1)`, `Color.HilitGreen.g500`, `CGFloat.dsL`, `PrimaryButton` 등. 하드코딩 (`Color.blue`, `16`, `.font(.system(size:))`) 지양. 토큰 목록·상세 → `.claude/design.md`
 - **@lat 주석 / lat.md 그래프**: 코드 변경 후 `@lat:` 라벨과 `lat.md/` 노드를 갱신하고 `lat check` 통과 (위 «lat.md 지식 그래프» 워크플로우 참조). cross-feature delegate 의존은 `import` 에 안 보이므로 `depends-on:` 으로 반드시 명시
 
 ## 디자인 시스템
 
-UI 코드(View·컴포넌트·에셋)를 작성·수정하기 **전에 `.claude/design.md` 를 읽는다** — 토큰(색·타이포·spacing)·표준 컴포넌트·에셋 로드 규칙의 참조 문서. 모듈은 `Shared/SharedDesignSystem`(이관 대기 — 현재 골격만), 의존은 `.shared(interface: .designSystem)`.
+UI 코드(View·컴포넌트·에셋)를 작성·수정하기 **전에 `.claude/design.md` 를 읽는다** — 토큰(색·타이포·spacing)·표준 컴포넌트·에셋 로드 규칙의 참조 문서. 모듈은 `Shared/SharedDesignSystem`(타이포·색상 구현, spacing·컴포넌트 이관 대기), 의존은 `.shared(interface: .designSystem)`.
 
 ## 참고
 
