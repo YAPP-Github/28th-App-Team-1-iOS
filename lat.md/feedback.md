@@ -1,6 +1,8 @@
 # Feedback — 지인 피드백
 
-지인(게스트)이 사용자의 면접 영상을 보고 태도 항목을 4단계 척도로 평가하는 도메인. MVP 범위는 G4(게스트 평가) — 무인증 공유 토큰으로 진입해 영상·지정 항목·질문 경계를 받고 제출한다. 서버 태그는 [[api#Guest Feedback]], 사용자측 F4(공유 설정)·R1 지인 섹션은 후속. 스펙: docs/superpowers/specs/2026-07-20-guest-feedback-design.md.
+지인(게스트)이 사용자의 면접 영상을 보고 태도 항목을 4단계 척도로 평가하는 도메인. MVP 범위는 G4(게스트 평가) — 무인증 공유 토큰으로 진입해 영상·지정 항목·질문 경계를 받고 제출한다. 도메인 모듈은 `DomainGuestFeedback`(서버 계약 [[api#Guest Feedback]] + 로컬 임시저장).
+
+사용자측 F4(공유 설정)·R1 지인 섹션은 후속. 스펙: docs/superpowers/specs/2026-07-20-guest-feedback-design.md.
 
 ## G4 게스트 평가
 
@@ -12,7 +14,7 @@ GuestEvaluationView 는 시트가 아니라 자유전환이다 — 최초 진입
 
 AxisLevelChip 은 Figma «button-medium»(node 2150:7297·2192:5191) 1:1 직사각형(radius 0) — 기본은 흰 필+gray100 테두리, 선택 시 Tone 분기로 1~2단계(좋았어요 쪽)는 positive(cyan) 200/500/800, 3~4단계(아쉬웠어요 쪽)는 error(red) 200/500 필·테두리·텍스트를 쓴다. questionRow 우측엔 축별 저장 인디케이터가 붙는다(node 2555:7558) — State.savingAxisCode(축 코드)로 구동해 없음(미평가)→«저장 중 ...»(스피너, levelSelected 로 세팅)→«저장됨»(그린 체크, 500ms debounce 로컬 draft 저장이 끝나 Inner.draftSaved 가 axisCode 를 nil 로 해제)순으로 표시한다.
 
-지정 항목 전부를 4단계 척도(1=좋았어요~4=아쉬웠어요)로 채워야 제출이 활성화되고, 항목 코멘트(100자)·전반 피드백(300자)은 선택이다. 마지막 축을 채우는 전이 순간에는 완료 토스트 «모든 평가가 끝났어요!»(Figma BubbleField, node 2555:7543 — 폭 274·b800 직각 박스, CTA 위 10pt)가 뜨고 2초 뒤 자동 해제된다(State.isCompletionToastVisible + Inner.completionToastExpired) — 이미 전부 평가된 뒤 레벨만 바꾸면 다시 뜨지 않는다.
+지정 항목 전부를 4단계 척도(1=좋았어요~4=아쉬웠어요)로 채워야 제출이 활성화되고, 항목 코멘트(100자)·전반 피드백(300자)은 선택이다. 전반 피드백은 서버 제출 스키마(`{nickname, ratings}`)에 필드가 없어 로컬 draft 전용 휴면 상태다 — 서버 협의 전까지 payload 에 담지 않는다. 마지막 축을 채우는 전이 순간에는 완료 토스트 «모든 평가가 끝났어요!»(Figma BubbleField, node 2555:7543 — 폭 274·b800 직각 박스, CTA 위 10pt)가 뜨고 2초 뒤 자동 해제된다(State.isCompletionToastVisible + Inner.completionToastExpired) — 이미 전부 평가된 뒤 레벨만 바꾸면 다시 뜨지 않는다.
 
 - 제출은 확정 — 확인 다이얼로그 1회 후 수정 불가. 성공 시 임시저장 삭제.
 - 제출 중 409 는 게이트 전환으로 흡수: closed→비공개 차단, capacityFull→시청 전용 강등, alreadySubmitted→기제출 안내.
@@ -21,23 +23,31 @@ AxisLevelChip 은 Figma «button-medium»(node 2150:7297·2192:5191) 1:1 직사�
 
 ## 게이트 판정
 
-진입 GET 의 gate 로 화면을 분기한다 — OPEN(평가 진행) / PRIVATE(비공개·무효) / EXPIRED(영상 만료) / FULL(정원 4명 마감, 영상 시청만 가능) / ALREADY_SUBMITTED(이 기기 제출 완료). 미지 값은 unknown 으로 방어 디코딩해 일반 차단 문구를 쓴다. FULL 은 submissionOpen=false 로 평가 입력만 막고 시청은 허용한다.
+진입 GET 의 gate 로 화면을 분기한다 — OPEN(평가 진행) / PRIVATE(비공개·무효) / EXPIRED(영상 만료) / FULL(정원 4명 마감, 영상 시청만 가능) / ALREADY_SUBMITTED(이 기기 제출 완료).
+
+gate 는 닫힌 raw-String enum — 서버가 새 게이트 값을 추가하면 디코딩이 실패해 entryLoaded(.failure)→재시도 알럿으로 흐른다(unknown 방어 케이스 없음). FULL 은 submissionOpen=false 로 평가 입력만 막고 시청은 허용한다. Feature 내부 GateReason.unknown 은 엔트리 없이 차단해야 하는 경우(진입 실패의 정원 마감 등) 전용이다.
 
 - 진입 실패의 영구 도메인 에러도 같은 차단 화면으로 매핑한다 — closed→비공개, 기제출→기제출(임시저장 삭제), 정원 마감→일반 차단(엔트리 없이는 시청 전용 불가).
 
 ## Client 계약
 
-GuestFeedbackClient(enter·submit)가 Feature 의 유일한 접근 계약. 무인증 API 라 AuthorizedNetworkClient 가 아닌 NetworkClient 를 쓴다 — [[domain.map#네트워킹 인프라]]. 서버 에러 코드는 Implementation 의 promote 가 GuestFeedbackError 로 흡수해 Feature 에 코드 문자열이 새지 않는다.
+`DomainGuestFeedback` 의 GuestFeedbackClient(entry·submit)가 Feature 의 유일한 접근 계약 — 상세 명세·에러 매핑 표는 [[api#Guest Feedback]] 이 단일 소스다. 두 메서드 모두 deviceId 를 명시 인자로 받는다(Feature 가 GuestFeedbackLocalStore.deviceID() 를 전달).
 
-- GuestFeedbackError 케이스: closed·capacityFull·alreadySubmitted·invalidToken·invalidSubmission·underlying.
+무인증 API 라 AuthorizedNetworkClient 가 아닌 NetworkClient 를 쓴다 — [[domain.map#네트워킹 인프라]]. 서버 에러 코드는 Implementation 이 GuestFeedbackError 로 흡수해 Feature 에 코드 문자열이 새지 않는다.
+
+- GuestFeedbackError 케이스: tokenNotFound·shareClosed·capacityFull·alreadySubmitted·invalid(message:)·networkFailure·serverUnavailable·unexpected.
+- 사용자 노출 문구(userMessage)는 표현 관심사라 Feature(GuestFeedbackSupport)가 소유한다.
+- 응답 모델은 옵셔널 필드(axes·videoUrl·submissionOpen 등) — Feature 어댑터(axisList·videoURL)가 화면 형태로 좁힌다.
 
 ## 임시저장과 Device-Id
 
-GuestFeedbackLocalStore 가 게스트 로컬 상태를 담당한다(UserDefaults). Device-Id 는 liveValue 가 최초 생성해 영속하고 enter/submit 헤더에 내부 첨부한다 — 역할은 같은 기기 중복 제출 방지 하나뿐(PRD §2-5), Feature 는 존재를 모른다. 임시저장(이어하기)은 토큰별 draft 로 저장하고 제출 성공 시 지운다.
+GuestFeedbackLocalStore(`DomainGuestFeedback`)가 게스트 로컬 상태를 담당한다(UserDefaults). Device-Id 는 deviceID() 최초 호출 시 UUID 를 생성해 영속하고, Feature 의 effect 가 client.entry·submit 의 명시 인자로 전달한다 — 역할은 같은 기기 중복 제출 방지 하나뿐(PRD §2-5).
+
+임시저장(이어하기)은 토큰별 draft 로 저장하고 제출 성공 시 지운다.
 
 - draft 쓰기는 latest-wins — 500ms debounce 저장과 즉시 저장(saveDraftNow)이 같은 취소 ID 를 공유해, 대기 중 stale 스냅샷이 뒤늦게 완료돼 최신 쓰기(예: 코멘트 확정)를 덮지 않는다. 즉시 저장도 draftSaved 를 보내 저장 인디케이터를 해제한다.
 - 서버 저장 전환(PRD 🔴협의 3)이 확정되면 이 계약 뒤만 교체한다.
 
 ## 영상 보관 연장
 
-클라 관점의 보관 사이클 접점 두 곳 — 지인 최초 조회(enter)가 +7일, 첫 제출(submit)이 +30일 연장을 서버에서 유발한다. 클라는 트리거를 호출할 뿐 계산하지 않는다. 만료되면 gate=EXPIRED 로 시청·평가가 차단되고 "보관 기간이 지나 영상이 삭제되었어요" 를 보여준다.
+클라 관점의 보관 사이클 접점 두 곳 — 지인 최초 조회(entry)가 +7일, 첫 제출(submit)이 +30일 연장을 서버에서 유발한다. 클라는 트리거를 호출할 뿐 계산하지 않는다. 만료되면 gate=EXPIRED 로 시청·평가가 차단되고 "보관 기간이 지나 영상이 삭제되었어요" 를 보여준다.
