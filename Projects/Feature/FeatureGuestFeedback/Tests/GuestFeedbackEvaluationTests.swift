@@ -19,7 +19,8 @@ struct GuestFeedbackEvaluationTests {
     /// 평가 중 상태에서 시작하는 스토어 — 진입 플로우는 EntryFlowTests 가 검증하므로 생략한다.
     /// activeAxis 는 videoReady 진입과 동일하게 첫 축(GAZE)으로 세팅한다.
     private func makeEvaluatingStore(
-        localStore: GuestFeedbackLocalStore = .inMemory()
+        localStore: GuestFeedbackLocalStore = .inMemory(),
+        clock: any Clock<Duration> = ImmediateClock()
     ) -> TestStoreOf<GuestFeedbackFeature> {
         var state = GuestFeedbackFeature.State(token: "t1")
         state.entry = .fixture()
@@ -31,7 +32,7 @@ struct GuestFeedbackEvaluationTests {
         } withDependencies: {
             $0.guestFeedbackClient = .mock()
             $0.guestFeedbackLocalStore = localStore
-            $0.continuousClock = ImmediateClock()
+            $0.continuousClock = clock
         }
     }
 
@@ -125,9 +126,27 @@ struct GuestFeedbackEvaluationTests {
             $0.commentEditing = false
             $0.ratings["GAZE"] = RatingDraft(level: 1, comment: "좋았어요")
         }
+        await store.receive(\.inner.draftSaved)
         await store.finish()
 
         #expect(localStore.loadDraft("t1")?.ratings["GAZE"] == RatingDraft(level: 1, comment: "좋았어요"))
+    }
+
+    @Test("debounce 저장이 대기 중이어도 코멘트 확정이 최종 영속값으로 남는다")
+    func commentDoneDuringPendingDebounceKeepsLatestDraft() async {
+        let clock = TestClock()
+        let localStore = GuestFeedbackLocalStore.inMemory()
+        let store = makeEvaluatingStore(localStore: localStore, clock: clock)
+        store.exhaustivity = .off   // 검증 대상은 쓰기 순서의 최종 영속값 하나뿐
+
+        await store.send(.view(.levelSelected(2)))   // debounce 저장 500ms 대기 시작
+        await store.send(.view(.commentEditTapped))
+        await store.send(.view(.binding(.set(\.commentDraft, "좋았어요"))))
+        await store.send(.view(.commentDoneTapped))          // 즉시 저장 — 대기 중 debounce 를 취소해야 한다
+        await clock.advance(by: .milliseconds(500))          // stale 스냅샷이 살아 있다면 여기서 덮어쓴다
+        await store.finish()
+
+        #expect(localStore.loadDraft("t1")?.ratings["GAZE"] == RatingDraft(level: 2, comment: "좋았어요"))
     }
 
     @Test("코멘트를 저장 없이 닫으면 편집분은 확정값에 반영되지 않는다")

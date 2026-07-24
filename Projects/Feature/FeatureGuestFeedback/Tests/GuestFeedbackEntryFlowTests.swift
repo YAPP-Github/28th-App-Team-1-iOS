@@ -158,11 +158,13 @@ struct GuestFeedbackEntryFlowTests {
             $0.isEnteringNickname = false
             $0.phase = .starting
         }
+        await store.receive(\.inner.draftSaved)   // 닉네임 확정 시점 즉시 저장
         await store.receive(\.inner.videoReady) {
             $0.phase = .evaluating
             $0.startedEvaluation = true
             $0.activeAxis = AttitudeAxis.allFive[0]
         }
+        await store.receive(\.inner.draftSaved)   // 평가 진입(startedEvaluation) 저장
         await store.finish()
     }
 

@@ -338,10 +338,15 @@ extension GuestFeedbackFeature {
         }
     }
 
+    /// 즉시 저장도 debounce 와 같은 CancelID 를 공유한다 — 대기 중인 stale 스냅샷이
+    /// 나중에 완료돼 최신 쓰기를 덮지 않도록(latest-wins). 취소된 debounce 대신
+    /// draftSaved 를 직접 보내 저장 인디케이터(savingAxisCode)도 해제한다.
     private func saveDraftNow(_ state: State) -> Effect<Action> {
-        .run { [token = state.token, draft = state.draft] _ in
+        .run { [token = state.token, draft = state.draft] send in
             localStore.saveDraft(token, draft)
+            await send(.inner(.draftSaved))
         }
+        .cancellable(id: CancelID.draftDebounce, cancelInFlight: true)
     }
 
     private func debouncedDraftSave(_ state: State) -> Effect<Action> {

@@ -8,10 +8,10 @@
 import CoreGraphics
 
 // @lat: [[architecture#디자인 시스템]]
-/// HILIT 간격 토큰 — Figma padding 스케일(4·8·10·12·14·20·22·24) 1:1.
+/// HILIT 간격 토큰 — Figma padding 스케일(4·8·10·12·14·16·20·22·24) 1:1.
 /// 사용: `.padding(.ds(.p20))`.
 public enum DSSpacing: CaseIterable, Sendable {
-    case p4, p8, p10, p12, p14, p20, p22, p24
+    case p4, p8, p10, p12, p14, p16, p20, p22, p24
 
     public var value: CGFloat {
         switch self {
@@ -20,6 +20,7 @@ public enum DSSpacing: CaseIterable, Sendable {
         case .p10: 10
         case .p12: 12
         case .p14: 14
+        case .p16: 16
         case .p20: 20
         case .p22: 22
         case .p24: 24
