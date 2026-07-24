@@ -1,0 +1,14 @@
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="icon">
+<g id="info/16px/disabled" clip-path="url(#clip0_988_2768)">
+<circle id="Ellipse 2418" cx="8" cy="8" r="7" stroke="#BCBEC6" stroke-width="2"/>
+<rect id="Rectangle 1954125235" x="9" y="12.998" width="2" height="7" transform="rotate(-180 9 12.998)" fill="#BCBEC6"/>
+<rect id="Rectangle 1954125236" x="9" y="5" width="2" height="2" transform="rotate(-180 9 5)" fill="#BCBEC6"/>
+</g>
+</g>
+<defs>
+<clipPath id="clip0_988_2768">
+<rect width="16" height="16" fill="white"/>
+</clipPath>
+</defs>
+</svg>

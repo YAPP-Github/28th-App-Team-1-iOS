@@ -1,0 +1,11 @@
+// 온보딩 데모(Example) 서명 설정.
+// Secrets.xcconfig 의 DEVELOPMENT_TEAM 을 재사용해, tuist generate 마다 서명 팀이
+// 리셋되는 걸 막는다 (본체 Hilit 이 Config/*.xcconfig 로 하는 것과 동일 방식).
+// Secrets.xcconfig 는 .gitignore 대상(로컬 전용)이라 옵셔널 include — 없는 환경(CI 등)에선
+// 그냥 건너뛰고 Automatic 서명으로 동작한다.
+#include? "../../../App/Config/Secrets.xcconfig"
+
+// 온보딩 데모 배포 버전 — 본체(App/Config/Version.xcconfig)와 독립 트랙.
+// TestFlight 업로드마다 CURRENT_PROJECT_VERSION 을 +1 한다. (배포 버전은 여기서만 바꾼다)
+MARKETING_VERSION = 0.0.1
+CURRENT_PROJECT_VERSION = 1
