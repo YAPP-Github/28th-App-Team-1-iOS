@@ -5,6 +5,9 @@
 APP_ENV = prod
 API_BASE_URL = https:/$()/api.architecture.com
 
+// 카카오 Native 앱 키 — 운영계 Kakao 앱 (Secrets.xcconfig)
+KAKAO_NATIVE_APP_KEY = $(KAKAO_NATIVE_APP_KEY_PROD)
+
 // 운영계는 접미사 없음 → com.hilit.app
 BUNDLE_ID_SUFFIX =
 APP_DISPLAY_NAME = Hilit

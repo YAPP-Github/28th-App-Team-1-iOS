@@ -6,6 +6,9 @@
 APP_ENV = qa
 API_BASE_URL = https:/$()/dev-api.architecture.com
 
+// 카카오 Native 앱 키 — QA Kakao 앱 (Secrets.xcconfig)
+KAKAO_NATIVE_APP_KEY = $(KAKAO_NATIVE_APP_KEY_QA)
+
 // dev·운영과 동시 설치 가능하도록 bundle ID·표시 이름을 분리.
 BUNDLE_ID_SUFFIX = .qa
 APP_DISPLAY_NAME = Hilit QA

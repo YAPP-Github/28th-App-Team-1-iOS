@@ -7,6 +7,9 @@
 APP_ENV = dev
 API_BASE_URL = http:/$()/43.202.34.84:8080
 
+// 카카오 Native 앱 키 — 개발계 Kakao 앱 (Secrets.xcconfig)
+KAKAO_NATIVE_APP_KEY = $(KAKAO_NATIVE_APP_KEY_DEV)
+
 // 운영계와 동시 설치 가능하도록 bundle ID·표시 이름을 분리.
 BUNDLE_ID_SUFFIX = .dev
 APP_DISPLAY_NAME = Hilit Dev
