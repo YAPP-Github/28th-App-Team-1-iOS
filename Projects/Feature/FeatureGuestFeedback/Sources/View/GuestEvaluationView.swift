@@ -9,6 +9,7 @@ import ComposableArchitecture
 import DomainFeedbackInterface
 import SharedDesignSystemInterface
 import SwiftUI
+import UIKit
 
 // @lat: [[feedback#G4 게스트 평가]]
 /// G4 핵심 평가 화면 — 몰입/카드 두 모드를 오간다.
@@ -20,55 +21,66 @@ import SwiftUI
 struct GuestEvaluationView: View {
     @Bindable var store: StoreOf<GuestFeedbackFeature>
 
+    /// 키보드 상단 y(글로벌) 실측 — 코멘트 아일랜드 도킹 기준. ∞ = 키보드 없음.
+    /// 시스템 키보드 세이프에어리어는 한국어 후보 바(input accessory) 높이를 반영하지
+    /// 못해 CTA 가 후보 바 뒤에 남는다 — willChangeFrame 의 endFrame 은 후보 바를 포함한다.
+    @State private var keyboardTopY: CGFloat = .infinity
+
     var body: some View {
-        ZStack(alignment: .bottom) {
-            Color.HilitBlack.b800.ignoresSafeArea()
+        // 코멘트 키보드는 닉네임 오버레이와 같은 2계층 위상으로 다룬다 — 배경+본문+토스트 계층을
+        // **통째로** 키보드 무시로 고정하고, 코멘트 오버레이만 바깥 형제로 두어 키보드 회피에 참여시킨다.
+        // 본문 VStack 에만 무시를 걸면 같은 ZStack 의 바닥 정렬이 본문이 확장한(키보드 뒤) 좌표계를
+        // 기준 삼아 오버레이 CTA 가 키보드 뒤에 남는다.
+        ZStack {
+            ZStack(alignment: .bottom) {
+                Color.HilitBlack.b800.ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                GuestVideoPlayerView(
-                    videoURL: store.entry?.videoURL,
-                    boundaries: store.entry?.questionBoundaries ?? [],
-                    isImmersive: store.isImmersiveWatching,
-                    onExpandTapped: { send(.expandVideoTapped) }
-                )
-                .padding(.horizontal, store.isImmersiveWatching ? 0 : .ds(.p20))
-                .padding(.top, store.isImmersiveWatching ? 0 : .ds(.p8))
-                // 몰입에선 상태바 뒤까지 풀블리드 — 카드 모드는 세이프에어리어 안에 머문다.
-                .ignoresSafeArea(.container, edges: store.isImmersiveWatching ? .top : [])
-
-                // 세그먼트 바는 자체 px20/py14 패딩 보유 — 다크 영상 배경 위에 얹힌다. 몰입에서 축 탭 = 카드 모드 진입(리듀서).
-                // starting 동안엔 화면 밖(프로토타입 Flow 1: 카드 블록 top 812) — evaluating 전환 때 아래에서 슬라이드업.
-                if store.phase != .starting {
-                    AxisSegmentedBar(
-                        axes: store.entry?.axes ?? [],
-                        selected: store.activeAxis,
-                        completedCodes: completedCodes,
-                        onSelect: { send(.axisSelected($0)) }
+                VStack(spacing: 0) {
+                    GuestVideoPlayerView(
+                        videoURL: store.entry?.videoURL,
+                        boundaries: store.entry?.questionBoundaries ?? [],
+                        isImmersive: store.isImmersiveWatching,
+                        onExpandTapped: { send(.expandVideoTapped) }
                     )
-                    .background(alignment: .bottom) {
-                        if store.isImmersiveWatching {
-                            immersiveBottomScrim
+                    .padding(.horizontal, store.isImmersiveWatching ? 0 : .ds(.p20))
+                    .padding(.top, store.isImmersiveWatching ? 0 : .ds(.p8))
+                    // 몰입에선 상태바 뒤까지 풀블리드 — 카드 모드는 세이프에어리어 안에 머문다.
+                    .ignoresSafeArea(.container, edges: store.isImmersiveWatching ? .top : [])
+
+                    // 세그먼트 바는 자체 px20/py14 패딩 보유 — 다크 영상 배경 위에 얹힌다. 몰입에서 축 탭 = 카드 모드 진입(리듀서).
+                    // starting 동안엔 화면 밖(프로토타입 Flow 1: 카드 블록 top 812) — evaluating 전환 때 아래에서 슬라이드업.
+                    if store.phase != .starting {
+                        AxisSegmentedBar(
+                            axes: store.entry?.axes ?? [],
+                            selected: store.activeAxis,
+                            completedCodes: completedCodes,
+                            onSelect: { send(.axisSelected($0)) }
+                        )
+                        .background(alignment: .bottom) {
+                            if store.isImmersiveWatching {
+                                immersiveBottomScrim
+                            }
                         }
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+
+                    if !store.isImmersiveWatching {
+                        whiteCard
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                            .background(Color.BlackWhite.white)
+                        bottomCTA
+                    }
                 }
 
-                if !store.isImmersiveWatching {
-                    whiteCard
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                        .background(Color.BlackWhite.white)
-                    bottomCTA
+                if store.isCompletionToastVisible {
+                    completionToast
+                        // Figma 시안(node 2555:7543): CTA(55pt) 위 10pt — 55 는 PrimaryButton 고정 높이(대응 토큰 없어 리터럴).
+                        .padding(.bottom, 55 + CGFloat.ds(.p10))
+                        .transition(.opacity)
                 }
             }
-            // 코멘트 시트가 뜰 때 키보드가 본문(영상·카드)을 밀어올리지 않도록 고정한다.
+            // 코멘트 시트가 뜰 때 키보드가 본문(영상·카드·토스트)을 밀어올리지 않도록 계층째 고정한다.
             .ignoresSafeArea(.keyboard, edges: .bottom)
-
-            if store.isCompletionToastVisible {
-                completionToast
-                    // Figma 시안(node 2555:7543): CTA(55pt) 위 10pt — 55 는 PrimaryButton 고정 높이(대응 토큰 없어 리터럴).
-                    .padding(.bottom, 55 + CGFloat.ds(.p10))
-                    .transition(.opacity)
-            }
 
             if store.commentEditing, store.activeAxis != nil {
                 commentOverlay
@@ -268,19 +280,52 @@ struct GuestEvaluationView: View {
         .disabled(!store.isSubmitEnabled)
     }
 
-    // MARK: - 코멘트 오버레이 (흰 시트)
+    // MARK: - 코멘트 오버레이 (플로팅 아일랜드)
 
+    /// 딤은 화면 전체(키보드 뒤까지) 고정, 카드+CTA 아일랜드만 키보드 위에 도킹한다.
+    /// 도킹은 시스템 키보드 세이프에어리어가 아니라 **키보드 프레임 노티피케이션 실측**으로 민다 —
+    /// 세이프에어리어 회피는 한국어 후보 바(input accessory)를 빼고 계산해 CTA 가 후보 바 뒤에
+    /// 남는다(닉네임 패널의 "수동 계산 없음" 원칙의 예외 — 여기선 시스템 회피가 실측과 어긋난다).
+    /// Figma «[4] 서술형»(2101:8370)의 묶음 노드 2227:5014 실측 — px20 / py14, 아일랜드 바닥 = 키보드 상단.
     private var commentOverlay: some View {
-        ZStack(alignment: .bottom) {
-            Color.HilitBlack.b800.opacity(0.4)
-                .ignoresSafeArea()
-                .onTapGesture { send(.commentDismissed) }
-            AxisCommentCard(
-                text: $store.commentDraft,
-                onDone: { send(.commentDoneTapped) },
-                onDismiss: { send(.commentDismissed) }
-            )
+        GeometryReader { geo in
+            ZStack {
+                Color.HilitBlack.b800.opacity(0.4)
+                    .ignoresSafeArea()
+                    .onTapGesture { send(.commentDismissed) }
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    AxisCommentCard(
+                        text: $store.commentDraft,
+                        onDone: { send(.commentDoneTapped) },
+                        onDismiss: { send(.commentDismissed) }
+                    )
+                }
+                .padding(.horizontal, .ds(.p20))
+                .padding(.vertical, .ds(.p14))
+                .padding(.bottom, keyboardOverlap(in: geo))
+            }
         }
+        // 시스템 회피를 끄고 실측만 쓴다 — 둘이 겹치면 이중 오프셋.
+        .ignoresSafeArea(.keyboard)
+        .onReceive(
+            NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)
+        ) { note in
+            guard let endFrame = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?
+                .cgRectValue else { return }
+            keyboardTopY = endFrame.minY
+        }
+        .onReceive(
+            NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)
+        ) { _ in
+            keyboardTopY = .infinity
+        }
+        .animation(.easeOut(duration: 0.25), value: keyboardTopY)
+    }
+
+    /// 아일랜드 기준 바닥(홈 인디케이터 위)과 키보드 상단(후보 바 포함)의 겹침 — 키보드 없으면 0.
+    private func keyboardOverlap(in geo: GeometryProxy) -> CGFloat {
+        max(0, geo.frame(in: .global).maxY - keyboardTopY)
     }
 }
 
