@@ -7,6 +7,7 @@
 
 import ComposableArchitecture
 import DomainInterviewInterface
+import DomainJDInterface
 
 // @lat: [[onboarding#분석]]
 /// 온보딩 STEP 6 — 분석 중/분석 완료 (Figma «6. 분석 중» 1609:9019 · «6.1 분석 완료» 1609:9075).
@@ -47,6 +48,9 @@ public struct OnboardingAnalysisFeature {
         public var sessionId: Int?
         /// onAppear 재진입 가드 — 분석 effect 중복 실행 방지.
         public var hasStartedAnalysis = false
+        /// JD 검증 만료 복구 1회성 가드 — 서버 JD 캐시 만료(JD_NOT_VALIDATED) 시 재검증 후 세션 생성을
+        /// 딱 한 번만 재시도한다(재검증해도 또 거부되면 무한 루프 대신 실패 처리).
+        public var didRetryJDValidation = false
         /// 체크로 바뀐 체크리스트 행 수(0~3). 1·2행은 가짜 타이머가, 3행은 세션 READY 가 채운다.
         public var completedStages = 0
         /// 세션 READY 도달 여부 — 가짜 스테이지와 독립 기록. 둘 다 끝나야 3행이 체크된다.
@@ -79,6 +83,10 @@ public struct OnboardingAnalysisFeature {
             case analysisFailed(message: String)
             /// 집중 프로젝트 연관성 부족(FREETEXT_NOT_RELEVANT) — 코디네이터가 집중 프로젝트로 되돌린다.
             case relevanceCheckFailed
+            /// 서버 JD 검증 캐시 만료(JD_NOT_VALIDATED) — 저장된 링크로 재검증 복구를 시도한다.
+            case jdValidationExpired
+            /// JD 재검증 성공 — 세션 생성을 재시도한다.
+            case sessionRetryRequested
             /// 가짜 진행 타이머 틱 — 1·2행을 차례로 체크로 바꾼다.
             case stageAdvanced
             /// 3행 체크 노출 유지 경과 — 완료 화면으로 전환할 시점.
@@ -102,6 +110,7 @@ public struct OnboardingAnalysisFeature {
     private enum CancelID { case session, stageTimer }
 
     @Dependency(\.interviewClient) var interviewClient
+    @Dependency(\.jdClient) var jdClient
     @Dependency(\.continuousClock) var clock
 
     public init() {}
@@ -128,16 +137,7 @@ public struct OnboardingAnalysisFeature {
                 return .send(.inner(.analysisFailed(message: Self.configMissingMessage)))
             }
             return .merge(
-                .run { send in
-                    await send(.inner(.sessionCreated(try await interviewClient.createSession(config))))
-                } catch: { error, send in
-                    if let error = error as? InterviewError, error == .freeTextNotRelevant {
-                        await send(.inner(.relevanceCheckFailed))
-                    } else {
-                        await send(.inner(.analysisFailed(message: Self.failureMessage)))
-                    }
-                }
-                .cancellable(id: CancelID.session),
+                startSession(config: config),
                 // 가짜 진행 — 1·2행을 stageDuration 간격으로 체크. 3행은 세션 READY 가 채운다.
                 .run { send in
                     for _ in 0..<2 {
@@ -160,23 +160,7 @@ public struct OnboardingAnalysisFeature {
             return pollStatus(sessionId: created.sessionId)
 
         case let .statusPolled(status):
-            switch status.status {
-            case .ready:
-                state.isSessionReady = true
-                return completeFinalStageIfReady(&state)
-            case .processing:
-                guard let sessionId = state.sessionId else { return .none }
-                return .run { send in
-                    try await clock.sleep(for: Self.pollInterval)
-                    await send(.inner(.statusPolled(try await interviewClient.sessionStatus(sessionId))))
-                } catch: { _, send in
-                    await send(.inner(.analysisFailed(message: Self.failureMessage)))
-                }
-                .cancellable(id: CancelID.session)
-            case .failed:
-                state.phase = .failed(message: Self.failureMessage)
-                return .cancel(id: CancelID.stageTimer)
-            }
+            return reduceStatus(&state, status)
 
         case let .analysisFailed(message):
             state.phase = .failed(message: message)
@@ -188,6 +172,15 @@ public struct OnboardingAnalysisFeature {
                 .send(.delegate(.relevanceCheckFailed)),
                 .cancel(id: CancelID.stageTimer)
             )
+
+        case .jdValidationExpired:
+            return recoverFromJDExpiry(&state)
+
+        case .sessionRetryRequested:
+            guard let config = state.data.interviewConfig() else {
+                return .send(.inner(.analysisFailed(message: Self.configMissingMessage)))
+            }
+            return startSession(config: config)
 
         case .stageAdvanced:
             guard state.phase == .analyzing else { return .none }
@@ -216,6 +209,67 @@ public struct OnboardingAnalysisFeature {
         return .run { send in
             try await clock.sleep(for: Self.finalCheckHold)
             await send(.inner(.finalCheckShown))
+        }
+        .cancellable(id: CancelID.session)
+    }
+
+    /// 세션 준비 상태 응답 처리 — READY 는 3행 완료 판정, PROCESSING 은 폴링 지속, FAILED 는 실패 화면.
+    private func reduceStatus(_ state: inout State, _ status: InterviewSessionStatus) -> Effect<Action> {
+        switch status.status {
+        case .ready:
+            state.isSessionReady = true
+            return completeFinalStageIfReady(&state)
+        case .processing:
+            guard let sessionId = state.sessionId else { return .none }
+            return .run { send in
+                try await clock.sleep(for: Self.pollInterval)
+                await send(.inner(.statusPolled(try await interviewClient.sessionStatus(sessionId))))
+            } catch: { _, send in
+                await send(.inner(.analysisFailed(message: Self.failureMessage)))
+            }
+            .cancellable(id: CancelID.session)
+        case .failed:
+            state.phase = .failed(message: Self.failureMessage)
+            return .cancel(id: CancelID.stageTimer)
+        }
+    }
+
+    /// 서버 JD 검증 캐시 만료(JD_NOT_VALIDATED) 복구 — 저장된 링크로 1회 재검증해 세션 생성을 재시도한다.
+    /// draft 는 jd 를 영구 유효로 착각하므로 서버 부작용 직전에 서버와 화해한다(draft=재개 힌트, 서버=진실).
+    /// 재검증해도 invalid 이거나 링크가 아니면(직접 입력·스킵) 복구 불가 — 실패 처리.
+    private func recoverFromJDExpiry(_ state: inout State) -> Effect<Action> {
+        guard !state.didRetryJDValidation else {
+            return .send(.inner(.analysisFailed(message: Self.failureMessage)))
+        }
+        state.didRetryJDValidation = true
+        guard case let .link(jdURL) = state.data.jd else {
+            return .send(.inner(.analysisFailed(message: Self.failureMessage)))
+        }
+        return .run { send in
+            let validation = try await jdClient.validate(jdURL)
+            await send(.inner(validation.valid
+                ? .sessionRetryRequested
+                : .analysisFailed(message: Self.failureMessage)))
+        } catch: { _, send in
+            await send(.inner(.analysisFailed(message: Self.failureMessage)))
+        }
+        .cancellable(id: CancelID.session)
+    }
+
+    /// 세션 생성 요청 — onAppear 최초 시도와 JD 재검증 후 재시도가 공유한다.
+    /// 에러는 종류별로 분기한다: 연관성 부족 → 코디네이터 pop-back, JD 검증 만료 → 재검증 복구, 그 외 → 실패.
+    private func startSession(config: InterviewConfig) -> Effect<Action> {
+        .run { send in
+            await send(.inner(.sessionCreated(try await interviewClient.createSession(config))))
+        } catch: { error, send in
+            switch error as? InterviewError {
+            case .freeTextNotRelevant?:
+                await send(.inner(.relevanceCheckFailed))
+            case .jdNotValidated?:
+                await send(.inner(.jdValidationExpired))
+            default:
+                await send(.inner(.analysisFailed(message: Self.failureMessage)))
+            }
         }
         .cancellable(id: CancelID.session)
     }

@@ -14,9 +14,12 @@ public struct HomeFeature {
     public struct State: Equatable {
         /// dev 진입점 노출 여부 — AppFeature 가 dev 빌드에서만 켠다 (온보딩 본체 통합 전 임시 진입).
         public var showsOnboardingEntry: Bool
+        /// dev 디버그 로그아웃 버튼 노출 여부 — AppFeature 가 dev 빌드에서만 켠다.
+        public var showsDebugLogout: Bool
 
-        public init(showsOnboardingEntry: Bool = false) {
+        public init(showsOnboardingEntry: Bool = false, showsDebugLogout: Bool = false) {
             self.showsOnboardingEntry = showsOnboardingEntry
+            self.showsDebugLogout = showsDebugLogout
         }
     }
 
@@ -30,6 +33,8 @@ public struct HomeFeature {
             case onAppear
             /// dev 진입 버튼 탭 — 온보딩 시작 요청.
             case userTappedOnboarding
+            /// dev 디버그 로그아웃 탭 — 세션·토큰·draft 전체 삭제 요청.
+            case userTappedLogout
         }
 
         /// effect 결과·리듀서 내부 신호. 리듀서만 방출한다.
@@ -39,6 +44,8 @@ public struct HomeFeature {
         public enum Delegate: Sendable {
             /// dev 온보딩 진입 요청 — 조립은 AppFeature 가 한다 (Feature→Feature 금지).
             case onboardingRequested
+            /// dev 디버그 로그아웃 요청 — orchestration(logout API·draft clear·State 리셋)은 AppFeature.
+            case logoutRequested
         }
     }
 
@@ -51,6 +58,8 @@ public struct HomeFeature {
                 return .none
             case .view(.userTappedOnboarding):
                 return .send(.delegate(.onboardingRequested))
+            case .view(.userTappedLogout):
+                return .send(.delegate(.logoutRequested))
             case .inner, .delegate:
                 return .none
             }

@@ -55,6 +55,8 @@ public struct OnboardingJDLinkFeature {
         /// «직접 입력하기» 탭의 JD 본문 입력값.
         public var directText: String = ""
         public var linkValidation: LinkValidation = .idle
+        /// 스킵 툴팁 자동 소멸 여부 — onAppear 후 tooltipDuration(3초)이 지나면 true, 이후 유지.
+        public var isTooltipExpired: Bool = false
 
         /// 검증 성공 후에는 직접 입력 탭이 비활성화된다 (Figma 1716:5393 — 탭 텍스트 gray).
         public var isDirectTextDisabled: Bool { linkValidation == .success }
@@ -92,11 +94,12 @@ public struct OnboardingJDLinkFeature {
                 return directText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isDirectTextValid
             }
         }
-        /// 스킵 안내 툴팁 — 현재 탭의 입력이 비어 있는 동안만 노출 (1609:8597 · 1991:7433 에만 존재).
+        /// 스킵 안내 툴팁 — 현재 탭의 입력이 비어 있는 동안만, 진입 후 3초까지 노출 (1609:8597 · 1991:7433).
         public var showsSkipTooltip: Bool {
+            guard !isTooltipExpired else { return false }
             switch mode {
-            case .link: linkValidation == .idle && linkText.isEmpty
-            case .directText: directText.isEmpty
+            case .link: return linkValidation == .idle && linkText.isEmpty
+            case .directText: return directText.isEmpty
             }
         }
 
@@ -132,6 +135,7 @@ public struct OnboardingJDLinkFeature {
         @CasePathable
         public enum View: BindableAction, Equatable, Sendable {
             case binding(BindingAction<State>)
+            case onAppear
             case userSelectedMode(InputMode)
             /// 키보드 리턴 — 디바운스 없이 즉시 검증.
             case userSubmittedLink
@@ -149,6 +153,8 @@ public struct OnboardingJDLinkFeature {
             case validationStarted
             case linkValidated(JDValidation)
             case linkValidationFailed
+            /// 스킵 툴팁 노출 시간(3초) 경과 — 툴팁을 감춘다.
+            case tooltipExpired
         }
 
         /// 코디네이터(OnboardingFeature) 통보. 부모는 이것만 매칭한다 (D1).
@@ -169,8 +175,10 @@ public struct OnboardingJDLinkFeature {
     static let fallbackErrorMessage = "링크를 분석하지 못했어요. 링크를 확인해 주세요." // TODO: 확정 카피 반영
     /// 클라이언트 1차 형식 검사 실패 문구 — 서버 왕복 전에 걸러진 경우.
     static let invalidFormatMessage = "올바른 링크 형식이 아니에요. 링크를 확인해 주세요." // TODO: 확정 카피 반영
+    /// 스킵 툴팁 자동 소멸까지의 시간 — 진입 후 이만큼 지나면 툴팁을 감춘다.
+    static let tooltipDuration: Duration = .seconds(3)
 
-    private enum CancelID { case validate }
+    private enum CancelID { case validate, tooltip }
 
     @Dependency(\.jdClient) var jdClient
     @Dependency(\.continuousClock) var clock
@@ -194,6 +202,15 @@ public struct OnboardingJDLinkFeature {
 
     private func reduceView(_ state: inout State, _ action: Action.View) -> Effect<Action> {
         switch action {
+        case .onAppear:
+            // 진입 후 3초 뒤 스킵 툴팁 소멸 — 이미 소멸했으면(뒤로가기 재진입 등) 재예약하지 않는다.
+            guard !state.isTooltipExpired else { return .none }
+            return .run { send in
+                try await clock.sleep(for: Self.tooltipDuration)
+                await send(.inner(.tooltipExpired))
+            }
+            .cancellable(id: CancelID.tooltip, cancelInFlight: true)
+
         case .binding(\.linkText):
             // 링크가 바뀌면 이전 검증 결과는 무효 — 비어 있지 않으면 재검증을 디바운스 예약한다.
             state.linkValidation = .idle
@@ -291,6 +308,10 @@ public struct OnboardingJDLinkFeature {
 
         case .linkValidationFailed:
             state.linkValidation = .failure(message: Self.fallbackErrorMessage)
+            return .none
+
+        case .tooltipExpired:
+            state.isTooltipExpired = true
             return .none
         }
     }

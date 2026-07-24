@@ -40,6 +40,7 @@ public struct OnboardingJDLinkView: View {
         .background(Color.BlackWhite.white.ignoresSafeArea())
         .dismissesKeyboardOnTap()
         .navigationBarBackButtonHidden(true)
+        .onAppear { send(.onAppear) }
     }
 
     // MARK: - 공통 골격 (STEP 1 과 동일 — 내비바·프로그레스 바)

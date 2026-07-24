@@ -7,6 +7,7 @@
 
 import ComposableArchitecture
 import DomainInterviewInterface
+import DomainJDInterface
 import Foundation
 import Testing
 
@@ -170,6 +171,77 @@ struct OnboardingAnalysisFeatureTests {
         await store.receive(\.inner.completionHoldFinished)
         await store.receive(\.delegate.completed, 7)
         #expect(createCalls.value == 1)
+    }
+
+    @Test("JD 검증 만료(JD_NOT_VALIDATED)는 링크 재검증 후 세션 생성을 재시도한다")
+    func jdValidationExpiredRevalidatesAndRetries() async {
+        let clock = TestClock()
+        let createCalls = LockIsolated(0)
+        let validateCalls = LockIsolated(0)
+        var data = fullData()
+        data.jd = .link("https://job.com/1")
+        let store = TestStore(initialState: OnboardingAnalysisFeature.State(data: data)) {
+            OnboardingAnalysisFeature()
+        } withDependencies: {
+            $0.continuousClock = clock
+            $0.interviewClient.createSession = { _ in
+                createCalls.withValue { $0 += 1 }
+                if createCalls.value == 1 { throw InterviewError.jdNotValidated }   // 서버 JD 캐시 만료
+                return InterviewSessionCreated(sessionId: 7, status: "PROCESSING", statusUrl: nil)
+            }
+            $0.interviewClient.sessionStatus = { _ in
+                InterviewSessionStatus(status: .ready, startedAt: nil, summaryQuestion: nil)
+            }
+            $0.jdClient.validate = { _ in
+                validateCalls.withValue { $0 += 1 }
+                return JDValidation(valid: true, reason: nil, message: nil)
+            }
+        }
+
+        await store.send(.view(.onAppear)) { $0.hasStartedAnalysis = true }
+        // 1차 createSession → JD_NOT_VALIDATED → 재검증 트리거(1회 가드 셋)
+        await store.receive(\.inner.jdValidationExpired) { $0.didRetryJDValidation = true }
+        // 재검증 valid → 세션 생성 재시도 → 성공
+        await store.receive(\.inner.sessionRetryRequested)
+        await store.receive(\.inner.sessionCreated) { $0.sessionId = 7 }
+        await store.receive(\.inner.statusPolled) { $0.isSessionReady = true }
+        // 이후 완료 흐름은 정상 경로와 동일.
+        await clock.advance(by: OnboardingAnalysisFeature.stageDuration)
+        await store.receive(\.inner.stageAdvanced) { $0.completedStages = 1 }
+        await clock.advance(by: OnboardingAnalysisFeature.stageDuration)
+        await store.receive(\.inner.stageAdvanced) { $0.completedStages = 3 }
+        await clock.advance(by: OnboardingAnalysisFeature.finalCheckHold)
+        await store.receive(\.inner.finalCheckShown) { $0.phase = .completed }
+        await clock.advance(by: OnboardingAnalysisFeature.completionHoldDuration)
+        await store.receive(\.inner.completionHoldFinished)
+        await store.receive(\.delegate.completed, 7)
+        #expect(validateCalls.value == 1)
+        #expect(createCalls.value == 2)   // 최초 + 재검증 후 재시도
+    }
+
+    @Test("JD 재검증도 실패하면 재시도 없이 실패 화면으로 간다")
+    func jdRevalidationFailureStopsRetry() async {
+        let createCalls = LockIsolated(0)
+        var data = fullData()
+        data.jd = .link("https://job.com/1")
+        let store = TestStore(initialState: OnboardingAnalysisFeature.State(data: data)) {
+            OnboardingAnalysisFeature()
+        } withDependencies: {
+            $0.continuousClock = TestClock()   // 가짜 스테이지 타이머용 — 실패 시 취소된다.
+            $0.interviewClient.createSession = { _ in
+                createCalls.withValue { $0 += 1 }
+                throw InterviewError.jdNotValidated
+            }
+            $0.jdClient.validate = { _ in JDValidation(valid: false, reason: "CRAWLING_FAILED", message: nil) }
+        }
+
+        await store.send(.view(.onAppear)) { $0.hasStartedAnalysis = true }
+        await store.receive(\.inner.jdValidationExpired) { $0.didRetryJDValidation = true }
+        // 재검증 valid=false → 재시도하지 않고 실패.
+        await store.receive(\.inner.analysisFailed) {
+            $0.phase = .failed(message: OnboardingAnalysisFeature.failureMessage)
+        }
+        #expect(createCalls.value == 1)   // 재시도 안 함
     }
 
     @Test("분석 중 닫기 탭은 delegate 로 코디네이터에 위임한다")

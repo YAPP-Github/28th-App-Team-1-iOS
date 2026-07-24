@@ -31,6 +31,7 @@ STEP 3 (선택 — 스킵 가능). 탭 «JD 붙여넣기 / 직접 입력하기»
 형식 검사는 http/https 스킴+호스트(`isValidLinkFormat`) — 불일치는 서버 왕복 없이 즉시 에러 문구. 로딩/에러/성공은 LinkValidation 하위 상태로 표현하고 필드 하단 4px 스트립 색으로 구분한다. 키패드 밖 터치 시 내림(`dismissesKeyboardOnTap` — SharedDS 공통).
 
 - 성공 후엔 직접입력 탭 비활성, 검증 중 계속하기 무시. 스킵 시 입력이 있어도 검증·저장 없이 통과(jd=nil).
+- 스킵 안내 툴팁은 현재 탭 입력이 빈 동안 노출 + 진입 후 3초 뒤 자동 소멸(`showsSkipTooltip` = 빈 입력 && !isTooltipExpired, onAppear 타이머).
 - 직접입력 **200~3,000자** 검증 ✅ — 유효 길이만 계속하기 활성(무효 시 카운터·red 보더·안내 문구, 초과는 클램프 안 함). 빈 입력은 스킵.
 - PRD 잔여(TODO): 카피 3곳(헬퍼·에러 fallback) · 링크 본문 <200자 = `CONTENT_TOO_SHORT` 문구 · **링크 검증 1일 5회 제한** 초과 에러. S1 은 캐싱만 — 분석은 세션 생성 시.
 
@@ -44,16 +45,17 @@ STEP 4 (필수). PDF 1개(최대 20Mb)를 fileImporter 로 받아 PortfolioClien
 
 ## 집중 프로젝트
 
-STEP 5 (선택 — 마지막 수집 스텝, 프로그레스 5/5). 300자 자유 입력 + «나중에 등록해도 괜찮아요!» 툴팁. 빈 입력·공백만이면 nil(건너뜀)로 올린다. 필드는 InterviewConfig.freeText(10~300자)에 대응 — 하한 10자는 서버 위임.
+STEP 5 (선택 — 마지막 수집 스텝, 프로그레스 5/5). 300자 자유 입력 + «나중에 등록해도 괜찮아요!» 툴팁(진입 후 3초 뒤 자동 소멸, onAppear 타이머). 빈 입력·공백만이면 nil(건너뜀)로 올린다. 필드는 InterviewConfig.freeText(10~300자)에 대응. 상한 300자는 입력 클램프, 하한 10자는 continue 로컬 선검증(PRD §7 «클라 선검증=UX 차단, 최종 판정=서버») — 입력이 있고 <10자면 차단+경고, 최종 판정(연관성 등)은 서버.
 
-상단 안내는 PRD S3 확정 문구(«입력하면 그 부분을 집중 검증해요. 건너뛰면 포트폴리오 전체에서 질문해요.») — 스킵과 모순되던 구 카피 폐기 ✅. `relevanceWarning`(옵셔널)로 연관성 실패 시 경고를 노출하고 편집(입력/클리어) 시 해제한다 — 주입은 코디네이터 [[onboarding#분석]].
+상단 안내는 PRD S3 확정 문구(«입력하면 그 부분을 집중 검증해요. 건너뛰면 포트폴리오 전체에서 질문해요.») — 스킵과 모순되던 구 카피 폐기 ✅. `inputWarning`(옵셔널) 슬롯 1개로 하한 미달(로컬) 또는 연관성 실패(코디네이터 주입 [[onboarding#분석]]) 경고를 노출하고 편집(입력/클리어) 시 해제한다.
 
 ## 분석
 
 종결 화면 (프로그레스·뒤로가기 없음, 다크 풀스크린). 코디네이터가 누적 OnboardingData 를 init 으로 주입 — 서버 제출 지점(세션 생성+폴링). 체크리스트 3행은 순차 진행 — 1·2행은 가짜 타이머(1.2s), 3행만 가짜 완료 AND 세션 READY 로 체크. 잠깐 노출 후 완료 화면 → delegate(.completed). X 는 분석 중에도 이탈 가능, pop 시 effect 자동 취소.
 
 세션 생성 연결 = PRD S3.5+S4. → [[interview#Client 계약]]
-- ① OnboardingData.interviewConfig() → InterviewClient.createSession + sessionStatus 폴링(3초) ✅. `.domain(interface: .interview)` 의존 추가. PROCESSING→폴링, READY→completed(sessionId), 실패→failed 화면(재시도 없음), config 불완전→failed. onAppear 가드로 중복 시작 방지. CancelID.session 으로 pop 시 취소.
+- ① OnboardingData.interviewConfig() → InterviewClient.createSession + sessionStatus 폴링(3초) ✅. `.domain(interface: .interview)` 의존 추가. PROCESSING→폴링, READY→completed(sessionId), 실패→failed 화면(재시도 없음), config 불완전→failed. onAppear 가드로 중복 시작 방지. CancelID.session 으로 pop 시 취소. createSession effect 는 `startSession(config:)` 로 추출해 최초 시도와 JD 재검증 후 재시도가 공유.
+- ①-JD 검증 만료 자동 복구 ✅ — 서버 JD 검증 캐시는 단명이라 오래된 draft 로 재개하면 createSession 이 `JD_NOT_VALIDATED` 로 거부된다(draft 는 jd 를 영구 유효로 착각). 이때 죽지 않고 저장된 `.link` 를 `JDClient.validate` 로 **1회**(`didRetryJDValidation` 가드) 재검증→valid 면 세션 생성 재시도, invalid/링크 아님이면 failed. 원칙: draft=재개 힌트·서버=진실, 서버 부작용 값은 직전에 서버와 화해. `.domain(interface: .jd)` 의존 추가. → [[api#Interview]]
 - ④ READY → delegate(.completed(sessionId)) → 코디네이터 delegate(.finished(sessionId:)) ✅. AppFeature 미배선이라 요약 질문 등 payload 확장은 배선 시.
 - ② 연관성 실패 처리 ✅ — `FREETEXT_NOT_RELEVANT` 를 DomainInterview 가 `InterviewError.freeTextNotRelevant` 로 매핑, 분석이 delegate(.relevanceCheckFailed) → 코디네이터가 분석 popLast + relevanceFailureCount++.
 - ③ 재입력 유도 ✅ — 4회 미만은 집중 프로젝트에 경고 문구 주입(편집 시 해제), **4회째**는 코디네이터의 `ConfirmationDialogState` 2선택지([포폴 다시 올리기→STEP4 pop] / [집중 프로젝트 없이 진행→freeText=nil 재분석]).
@@ -68,7 +70,7 @@ OnboardingData — 위저드가 스텝을 거치며 채우는 공유 페이로�
 
 PRD §4.4 — S0~S3 입력을 로컬 draft 로 자동 저장해 **앱 진짜 종료(kill/크래시) 시 재입력 방지**(백그라운드 전환은 프로세스 생존이라 무관). **재개식**: 값 + 위저드 위치 복원.
 
-`OnboardingDraftStore` seam(UserDefaults JSON — PortfolioFileReader 와 같은 로컬 IO 선상, testValue unimplemented). OnboardingData 는 Codable + portfolioFileName. 코디네이터가 각 스텝 완료마다 `persist`(data·furthestStep=path.count+1·savedAt) 저장, **세션 생성 성공 시 clear**. onAppear 는 path 빈 경우만 TTL 14일 안 draft 를 복원 — 분석(6) 제외 집중 프로젝트(5)까지 되쌓고, 직군은 목록 로드 후 preselectedJobRole 매칭, JD 는 restoring init. 잔여: 복원 시 직무 목록 대조 재검증·포폴 삭제 시 clear.
+`OnboardingDraftStore` seam(UserDefaults JSON — PortfolioFileReader 와 같은 로컬 IO 선상, testValue unimplemented). OnboardingData 는 Codable + portfolioFileName. 코디네이터가 각 스텝 완료마다 `persist`(data·furthestStep=path.count+1·savedAt) 저장, **세션 생성 성공 시 clear**. onAppear 는 **위저드 수명당 1회**(`didAttemptRestore` 가드) TTL 14일 안 draft 를 복원 — 분석(6) 제외 집중 프로젝트(5)까지 되쌓고, 직군은 목록 로드 후 preselectedJobRole 매칭, JD 는 restoring init. 1회 가드가 필수인 이유: 루트 onAppear 는 뒤로가기로 루트 복귀 때마다 재발동하는데, 가드가 `path.isEmpty` 뿐이면 pop 으로 스택이 빈 순간 draft 를 다시 되쌓아 화면이 앞으로 튄다. 잔여: 복원 시 직무 목록 대조 재검증·포폴 삭제 시 clear.
 
 ## 재진입 분기
 
@@ -84,6 +86,6 @@ OnboardingPlaceholderStepFeature/View — 스텝 골격(내비바·프로그레�
 
 현재는 `OnboardingFeature.State()`(닉네임 없음)로 열고 `.finished`·`.dismiss` 는 cover 를 닫기만 한다. 정식 배선 시: 닉네임(userName) 주입, delegate(.dismiss) → 중도 이탈(draft 보존), **delegate(.finished(sessionId:)) → Part 2 면접 바로 시작**(사용자 결정 2026-07-20, InterviewSessionFeature 생기면 fullScreenCover).
 
-코디네이터 onAppear 가 draft 복원을 트리거하므로 OnboardingView 는 루트에 onAppear 를 발신한다. Example 앱은 전체 위저드를 스텁 의존성으로 구동하며 ONBOARDING_START_STEP 환경변수로 특정 스텝부터 시작할 수 있다(draft 는 no-op 스텁). → [[app]]
+코디네이터 onAppear 가 draft 복원을 트리거하므로 OnboardingView 는 루트에 onAppear 를 발신한다. 단 루트 onAppear 는 SwiftUI 특성상 뒤로가기로 루트에 되돌아올 때마다 재발동하므로, 복원은 `didAttemptRestore` 로 1회만 수행한다(재복원=화면 튐 방지). Example 앱은 전체 위저드를 스텁 의존성으로 구동하며 ONBOARDING_START_STEP 환경변수로 특정 스텝부터 시작할 수 있다(draft 는 no-op 스텁). → [[app]]
 
 PRD §3.8 부록대로 Part1↔2 경계는 세션 생성 API 계약 — .finished 는 현재 무페이로드라 세션 payload(sessionId·요약 질문) 확장 필요(서버 정합). 권한(카메라·마이크)은 iOS = 사용 시점 요청이라 온보딩이 아니라 Part 2 진입 직전.
