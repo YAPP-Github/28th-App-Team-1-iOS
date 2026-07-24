@@ -6,8 +6,8 @@
 //
 
 import ComposableArchitecture
-import DomainFeedbackInterface
-import DomainFeedbackTesting
+import DomainGuestFeedbackInterface
+import DomainGuestFeedbackTesting
 import Foundation
 import Testing
 @testable import FeatureGuestFeedbackImplementation

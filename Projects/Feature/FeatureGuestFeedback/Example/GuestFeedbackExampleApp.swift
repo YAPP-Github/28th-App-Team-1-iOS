@@ -7,9 +7,9 @@
 
 import ComposableArchitecture
 import Core   // NetworkClient.live — Example 은 composition root 라 Implementation link 허용 (D4)
-import Domain // DomainFeedback liveValue 활성화
-import DomainFeedbackInterface
-import DomainFeedbackTesting
+import Domain // DomainGuestFeedback liveValue 활성화
+import DomainGuestFeedbackInterface
+import DomainGuestFeedbackTesting
 import FeatureGuestFeedbackImplementation
 import SwiftUI
 

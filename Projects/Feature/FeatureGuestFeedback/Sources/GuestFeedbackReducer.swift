@@ -6,7 +6,7 @@
 //
 
 import ComposableArchitecture
-import DomainFeedbackInterface
+import DomainGuestFeedbackInterface
 import Foundation
 
 // @lat: [[feedback#G4 게스트 평가]]
@@ -180,7 +180,7 @@ extension GuestFeedbackFeature {
         case .videoReady:
             guard state.phase == .starting else { return .none }
             state.startedEvaluation = true
-            state.activeAxis = state.entry?.axes.first
+            state.activeAxis = state.entry?.axisList.first
             state.phase = .evaluating
             return saveDraftNow(state)
 
@@ -203,21 +203,19 @@ extension GuestFeedbackFeature {
         case .open:
             if state.startedEvaluation {
                 state.phase = .evaluating
-                state.activeAxis = entry.axes.first   // 이어하기 재개 — 첫 축을 활성 세그먼트로
+                state.activeAxis = entry.axisList.first   // 이어하기 재개 — 첫 축을 활성 세그먼트로
             } else {
                 state.phase = .onboarding
             }
         case .full:
             state.phase = .evaluating   // 시청 전용 — canEvaluate 가 submissionOpen 으로 막는다
-            state.activeAxis = entry.axes.first
+            state.activeAxis = entry.axisList.first
         case .private:
             state.phase = .gateClosed(.private)
         case .expired:
             state.phase = .gateClosed(.expired)
         case .alreadySubmitted:
             state.phase = .gateClosed(.alreadySubmitted)
-        case .unknown:
-            state.phase = .gateClosed(.unknown)
         }
         return .none
     }
@@ -225,7 +223,7 @@ extension GuestFeedbackFeature {
     /// 제출 결과 분기 — 성공은 완료+draft 삭제, 실패는 에러별 차단/강등/알럿.
     private func reduceSubmitFinished(
         _ state: inout State,
-        _ result: Result<GuestSubmissionReceipt, GuestFeedbackError>
+        _ result: Result<GuestFeedbackReceipt, GuestFeedbackError>
     ) -> Effect<Action> {
         state.isSubmitting = false
         switch result {
@@ -242,12 +240,12 @@ extension GuestFeedbackFeature {
     /// 제출 실패 분기 — 비공개/기제출은 차단, 정원 마감은 시청 전용 강등, 그 외는 알럿.
     private func reduceSubmitFailure(_ state: inout State, _ error: GuestFeedbackError) -> Effect<Action> {
         switch error {
-        case .closed:
+        case .shareClosed:
             state.phase = .gateClosed(.private)
             return .none
         case .capacityFull:
             // 제출 도중 정원 마감 — 시청 전용으로 강등 (PRD §2-5)
-            state.entry?.submissionOpen = false
+            state.entry = state.entry?.closingSubmission()
             state.alert = .plain(message: GuestFeedbackError.capacityFull.userMessage)
             return .none
         case .alreadySubmitted:
@@ -255,10 +253,10 @@ extension GuestFeedbackFeature {
             return .run { [token = state.token] _ in
                 localStore.clearDraft(token)
             }
-        case .invalidToken:
+        case .tokenNotFound:
             state.phase = .gateClosed(.invalidToken)
             return .none
-        case .invalidSubmission, .underlying:
+        case .invalid, .networkFailure, .serverUnavailable, .unexpected:
             state.alert = .plain(message: error.userMessage)
             return .none
         }
@@ -267,10 +265,10 @@ extension GuestFeedbackFeature {
     /// 진입 실패 분기 — 영구 상태 에러는 재시도 알럿이 아니라 차단 화면으로 보낸다 (재시도가 무의미).
     private func reduceEnterFailure(_ state: inout State, _ error: GuestFeedbackError) -> Effect<Action> {
         switch error {
-        case .invalidToken:
+        case .tokenNotFound:
             state.phase = .gateClosed(.invalidToken)
             return .none
-        case .closed:
+        case .shareClosed:
             state.phase = .gateClosed(.private)
             return .none
         case .alreadySubmitted:
@@ -282,7 +280,7 @@ extension GuestFeedbackFeature {
             // entry 데이터가 없어 시청 전용을 제공할 수 없다 — 일반 차단 문구가 안전.
             state.phase = .gateClosed(.unknown)
             return .none
-        case .invalidSubmission, .underlying:
+        case .invalid, .networkFailure, .serverUnavailable, .unexpected:
             state.alert = .enterFailed(message: error.userMessage)
             return .none
         }
@@ -294,7 +292,7 @@ extension GuestFeedbackFeature {
         state.phase = .loading
         return .run { [token = state.token] send in
             do {
-                let entry = try await client.enter(token)
+                let entry = try await client.entry(token, localStore.deviceID())
                 await send(.inner(.entryLoaded(.success(entry))))
             } catch is CancellationError {
                 // 구조적 취소는 실패가 아니다 — 아무 것도 보내지 않는다.
@@ -307,21 +305,21 @@ extension GuestFeedbackFeature {
     func submit(_ state: inout State) -> Effect<Action> {
         guard let entry = state.entry else { return .none }
         state.isSubmitting = true
-        let submission = GuestSubmission(
+        // 서버 제출 스키마는 {nickname, ratings} — overallFeedback 은 로컬 draft 전용이라 보내지 않는다.
+        let submission = GuestFeedbackSubmission(
             nickname: state.nickname.isEmpty ? nil : state.nickname,
-            ratings: entry.axes.compactMap { axis -> GuestRating? in
+            ratings: entry.axisList.compactMap { axis -> AttitudeRating? in
                 guard let draft = state.ratings[axis.code], let level = draft.level else { return nil }
-                return GuestRating(
-                    axisCode: axis.code,
+                return AttitudeRating(
+                    axis: axis.code,
                     level: level,
                     comment: draft.comment.isEmpty ? nil : draft.comment
                 )
-            },
-            overallFeedback: state.overallFeedback.isEmpty ? nil : state.overallFeedback
+            }
         )
         return .run { [token = state.token] send in
             do {
-                let receipt = try await client.submit(token, submission)
+                let receipt = try await client.submit(token, localStore.deviceID(), submission)
                 await send(.inner(.submitFinished(.success(receipt))))
             } catch is CancellationError {
             } catch {

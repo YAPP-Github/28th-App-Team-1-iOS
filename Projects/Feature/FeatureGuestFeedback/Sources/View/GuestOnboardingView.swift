@@ -6,7 +6,7 @@
 //
 
 import ComposableArchitecture
-import DomainFeedbackInterface
+import DomainGuestFeedbackInterface
 import SharedDesignSystemInterface
 import SwiftUI
 
@@ -137,7 +137,7 @@ struct GuestOnboardingView: View {
         gate: .open,
         requesterName: "재원",
         axes: [],
-        videoURL: nil,
+        videoUrl: nil,
         questionBoundaries: [],
         submissionOpen: true
     )

@@ -6,7 +6,7 @@
 //
 
 import AVKit
-import DomainFeedbackInterface
+import DomainGuestFeedbackInterface
 import SharedDesignSystemInterface
 import SwiftUI
 

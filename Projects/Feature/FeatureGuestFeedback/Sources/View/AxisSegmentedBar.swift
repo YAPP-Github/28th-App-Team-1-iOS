@@ -5,7 +5,7 @@
 //  Created by 서정원 on 26/07/22.
 //
 
-import DomainFeedbackInterface
+import DomainGuestFeedbackInterface
 import SharedDesignSystemInterface
 import SwiftUI
 
