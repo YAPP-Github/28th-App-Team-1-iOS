@@ -12,7 +12,7 @@ Projects/
 ├── Core/      Common · Network
 ├── Domain/    Common · Auth · Interview · InterviewReport · JD · Job · Portfolio · User · FeedbackShare · GuestFeedback    (모델 + Client)
 ├── Feature/   Common · Home · Auth · Onboarding                   (화면 — Interface 없음)
-└── Shared/    Common · DesignSystem (타이포+컬러+이미지 토큰 구현됨)
+└── Shared/    Common · DesignSystem (토큰 + 공용 컴포넌트 9종 구현됨)
 ```
 
 - 의존 방향: `App → Feature(Impl) → Domain(Interface) → Core(Interface)`. `Shared(Interface)` 는 전 레이어 가능.
@@ -65,7 +65,7 @@ Projects/
 
 ## 디자인 시스템
 
-UI 코드(View·컴포넌트·에셋)를 작성·수정하기 **전에 `.claude/design.md` 를 읽는다** — 토큰(색·타이포·spacing)·표준 컴포넌트·에셋 로드 규칙의 참조 문서. 모듈은 `Shared/SharedDesignSystem`(타이포·색상 구현, spacing·컴포넌트 이관 대기), 의존은 `.shared(interface: .designSystem)`.
+UI 코드(View·컴포넌트·에셋)를 작성·수정하기 **전에 `.claude/design.md` 를 읽는다** — 토큰(색·타이포·spacing)·표준 컴포넌트·에셋 로드 규칙의 참조 문서. 모듈은 `Shared/SharedDesignSystem`(토큰 전 영역 + 공용 컴포넌트 9종 구현 — 목록·승격 규칙은 `.claude/design/component.md`), 의존은 `.shared(interface: .designSystem)`.
 
 ## 참고
 
