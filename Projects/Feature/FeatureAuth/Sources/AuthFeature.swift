@@ -21,8 +21,8 @@ public struct AuthFeature {
 
     public enum Action {
         case userTappedSignIn(SocialProvider)
-        /// credential은 payload로만 흐른다 — State에 보관하지 않는다
-        /// (백엔드 연동 시 signIn 내부에서 소비될 값이라 State에 두면 소비자 없는 죽은 데이터).
+        /// signIn(자격증명 획득) → login(서버 세션 교환·토큰 저장)까지 마친 결과.
+        /// credential 은 같은 effect 안에서 login 에 즉시 소비되고, payload 로만 흐른다 — State 에 보관하지 않는다.
         case signInFinished(Result<SocialCredential, AuthError>)
         case alert(PresentationAction<Alert>)
         case delegate(Delegate)
@@ -31,7 +31,7 @@ public struct AuthFeature {
 
         @CasePathable
         public enum Delegate: Equatable {
-            /// 소셜 로그인 완료 — provider 자격증명 수신까지 성공.
+            /// 로그인 완료 — 서버 세션 교환(토큰 Keychain 저장)까지 성공. 이후 인증 필요 API 호출 가능.
             case signedIn
         }
     }
@@ -49,6 +49,9 @@ public struct AuthFeature {
                 return .run { send in
                     do {
                         let credential = try await authClient.signIn(provider)
+                        // 서버 세션 교환 — 성공 시 토큰 페어가 Keychain(TokenStore)에 저장된다.
+                        // 이게 없으면 인증 필요 API 가 전부 NotAuthenticatedError 로 끊긴다.
+                        try await authClient.login(credential)
                         await send(.signInFinished(.success(credential)))
                     } catch {
                         await send(.signInFinished(.failure(error as? AuthError ?? .unexpected)))
