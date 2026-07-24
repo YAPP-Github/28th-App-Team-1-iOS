@@ -28,3 +28,6 @@ identifier_name:
   excluded: [id, x, y]
 type_name:
   max_length: 50
+cyclomatic_complexity:
+  warning: 25             # TCA reducer 는 action 케이스가 많아 분기 수가 본질적으로 큼 — 상한 완화(단일 switch 가독성 우선)
+  error: 40

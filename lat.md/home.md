@@ -3,7 +3,7 @@
 홈 탭. **외부 IO 가 없는 Feature 예시** — Domain(Client) 의존 없이 `.composableArchitecture` 만 쓰는 단일 Feature 모듈(`FeatureHome`). 현재 골격에서 유일한 실 Feature 다.
 
 ## 흐름
-현재 standalone 화면으로 cross-feature 전환이 없다. `HomeFeature`(Reducer) + `HomeView` 뿐이고, State 는 비어 있고 Action 은 3분류(view/inner/delegate, [[architecture#핵심 결정 (Trade-off 기록)#D5. Reducer Action 3분류]]) 골격만 있는 씨앗 상태.
+`HomeFeature`(Reducer) + `HomeView`. Action 은 3분류(view/inner/delegate, [[architecture#핵심 결정 (Trade-off 기록)#D5. Reducer Action 3분류]]). 도메인 내부 화면은 없고, dev 계 임시 버튼 2개(`showsOnboardingEntry`·`showsDebugLogout` 플래그로 게이팅)가 cross-feature 신호를 올린다 — `delegate(.onboardingRequested)`(온보딩 진입)·`delegate(.logoutRequested)`(세션·토큰·draft 전체 삭제). 조립은 모두 AppFeature → [[app#Cross-feature Routing]].
 
 ## 주의사항
 확장할 때 따라야 할 규칙.

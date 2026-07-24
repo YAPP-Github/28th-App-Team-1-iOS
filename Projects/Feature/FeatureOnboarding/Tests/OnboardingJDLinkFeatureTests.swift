@@ -346,4 +346,23 @@ struct OnboardingJDLinkFeatureTests {
         await store.send(.view(.userTappedClose))
         await store.receive(\.delegate.closeRequested)
     }
+
+    @Test("스킵 툴팁은 onAppear 후 3초가 지나면 사라진다")
+    func tooltipExpiresAfterDelay() async {
+        let clock = TestClock()
+        // jdClient 스텁 없음 — onAppear 툴팁 타이머는 서버 호출과 무관하다.
+        let store = TestStore(initialState: OnboardingJDLinkFeature.State()) {
+            OnboardingJDLinkFeature()
+        } withDependencies: {
+            $0.continuousClock = clock
+        }
+
+        #expect(store.state.showsSkipTooltip)   // 진입 직후(빈 링크 탭)엔 노출.
+        await store.send(.view(.onAppear))
+        await clock.advance(by: OnboardingJDLinkFeature.tooltipDuration)
+        await store.receive(\.inner.tooltipExpired) {
+            $0.isTooltipExpired = true
+        }
+        #expect(!store.state.showsSkipTooltip)   // 3초 뒤 사라짐(입력이 비어 있어도).
+    }
 }

@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import DomainAuthInterface
 import Feature
 
 // @lat: [[app]]
@@ -35,8 +36,13 @@ struct AppFeature {
         case auth(AuthFeature.Action)
         case home(HomeFeature.Action)
         case onboarding(PresentationAction<OnboardingFeature.Action>)
+        /// 로그아웃 정리(서버·토큰·draft) 완료 — 초기 State 로 리셋해 로그인 화면으로 돌아간다.
+        case sessionCleared
         case binding(BindingAction<State>)
     }
+
+    @Dependency(\.authClient) var authClient
+    @Dependency(\.onboardingDraftStore) var draftStore
 
     var body: some ReducerOf<Self> {
         BindingReducer()
@@ -49,17 +55,29 @@ struct AppFeature {
         Reduce { state, action in
             switch action {
             case .onAppear:
-                // dev 계에서만 Home 온보딩 진입 버튼을 노출한다.
+                // dev 계에서만 Home 온보딩 진입·디버그 로그아웃 버튼을 노출한다.
                 state.home.showsOnboardingEntry = AppEnvironment.isDev
+                state.home.showsDebugLogout = AppEnvironment.isDev
                 return .none
             case .auth(.delegate(.signedIn)):
+                // 새 로그인 = 새 세션. 이전 사용자가 하던 화면·데이터를 전부 버리고 초기 State 에서 시작한다.
+                state = State()
                 state.isAuthenticated = true
+                state.home.showsOnboardingEntry = AppEnvironment.isDev
+                state.home.showsDebugLogout = AppEnvironment.isDev
                 return .none
             case .auth:
                 return .none
             case .home(.delegate(.onboardingRequested)):
                 state.onboarding = OnboardingFeature.State()
                 return .none
+            case .home(.delegate(.logoutRequested)):
+                // 서버 로그아웃(+토큰 Keychain 삭제)·온보딩 draft(UserDefaults) 삭제. 실패해도 로컬 정리는 진행.
+                return .run { send in
+                    try? await authClient.logout()
+                    draftStore.clear()
+                    await send(.sessionCleared)
+                }
             case .home:
                 return .none
             // 온보딩 완료(분석까지)/중도 이탈 모두 위저드를 닫는다. finished(sessionId:) 는
@@ -69,6 +87,12 @@ struct AppFeature {
                 state.onboarding = nil
                 return .none
             case .onboarding:
+                return .none
+            case .sessionCleared:
+                // 로그아웃 정리 완료 — 초기 State 로 리셋(isAuthenticated=false → 첫 소셜 로그인 화면).
+                state = State()
+                state.home.showsOnboardingEntry = AppEnvironment.isDev
+                state.home.showsDebugLogout = AppEnvironment.isDev
                 return .none
             case .binding:
                 return .none
