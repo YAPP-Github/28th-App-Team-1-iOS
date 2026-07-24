@@ -28,19 +28,19 @@ struct GuestGateView: View {
             VStack(spacing: .ds(.p8)) {
                 Text(title)
                     .dsTypography(.sub4)
-                    .foregroundStyle(Color.dsTextPrimary)
+                    .foregroundStyle(Color.Gray.g900)
                     .multilineTextAlignment(.center)
                 if let message {
                     Text(message)
                         .dsTypography(.body6)
-                        .foregroundStyle(Color.dsTextSecondary)
+                        .foregroundStyle(Color.Gray.g500)
                         .multilineTextAlignment(.center)
                 }
             }
         }
         .padding(.ds(.p24))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.dsBgLight)
+        .background(Color.Gray.g50)
     }
 
     private var icon: String {
@@ -55,8 +55,8 @@ struct GuestGateView: View {
     /// 완료·기제출(감사 톤)은 brand 그린, 실제 차단은 중립 회색.
     private var iconColor: Color {
         switch kind {
-        case .completed, .closed(.alreadySubmitted): .dsBrand
-        case .closed: .dsTextTertiary
+        case .completed, .closed(.alreadySubmitted): Color.HilitGreen.g800
+        case .closed: Color.Gray.g400
         }
     }
 

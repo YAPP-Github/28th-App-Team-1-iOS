@@ -22,7 +22,7 @@ struct GuestEvaluationView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Color.dsBgDark.ignoresSafeArea()
+            Color.HilitBlack.b800.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 GuestVideoPlayerView(
@@ -56,17 +56,25 @@ struct GuestEvaluationView: View {
                 if !store.isImmersiveWatching {
                     whiteCard
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                        .background(Color.ds(.white))
+                        .background(Color.BlackWhite.white)
                     bottomCTA
                 }
             }
             // 코멘트 시트가 뜰 때 키보드가 본문(영상·카드)을 밀어올리지 않도록 고정한다.
             .ignoresSafeArea(.keyboard, edges: .bottom)
 
+            if store.isCompletionToastVisible {
+                completionToast
+                    // Figma 시안(node 2555:7543): CTA(55pt) 위 10pt — 55 는 PrimaryButton 고정 높이(대응 토큰 없어 리터럴).
+                    .padding(.bottom, 55 + CGFloat.ds(.p10))
+                    .transition(.opacity)
+            }
+
             if store.commentEditing, store.activeAxis != nil {
                 commentOverlay
             }
         }
+        .animation(.easeInOut(duration: 0.25), value: store.isCompletionToastVisible)
         .animation(.easeInOut(duration: 0.25), value: store.isImmersiveWatching)
         // Flow 1 전환(세그먼트 바 슬라이드업) — GuestFeedbackView 의 오버레이 페이드와 같은 커브로 동시 진행.
         .animation(.easeOut(duration: 0.35), value: store.phase)
@@ -117,7 +125,7 @@ struct GuestEvaluationView: View {
         HStack(spacing: .ds(.p8)) {
             Text(AxisScaleCopy.headline(for: axis, requesterName: store.entry?.requesterName))
                 .dsTypography(.sub4)
-                .foregroundStyle(Color.ds(.black800))
+                .foregroundStyle(Color.HilitBlack.b800)
             Spacer(minLength: .ds(.p8))
             saveIndicator(axis)
         }
@@ -131,14 +139,14 @@ struct GuestEvaluationView: View {
             HStack(spacing: .ds(.p4)) {
                 ProgressView()
                     .controlSize(.small)
-                    .tint(Color.dsBrandSoft)
+                    .tint(Color.HilitGreen.g500)
                 indicatorLabel("저장 중 ...")
             }
         } else if store.ratings[axis.code]?.level != nil {
             HStack(spacing: .ds(.p4)) {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.ds(.body2))   // 16pt 아이콘 — commentRow 의 plus(.body6) 와 같은 토큰 사이징 방식
-                    .foregroundStyle(Color.dsBrandSoft)
+                    .foregroundStyle(Color.HilitGreen.g500)
                 indicatorLabel("저장됨")
             }
         }
@@ -147,16 +155,16 @@ struct GuestEvaluationView: View {
     private func indicatorLabel(_ text: String) -> some View {
         Text(text)
             .dsTypography(.body8)
-            .foregroundStyle(Color.ds(.gray500))
+            .foregroundStyle(Color.Gray.g500)
     }
 
     /// 극 라벨(좋았어요 ↔ 아쉬웠어요) + 4단계 칩 한 줄.
     private func scaleBlock(_ axis: AttitudeAxis) -> some View {
         VStack(alignment: .leading, spacing: .ds(.p8)) {
             HStack(spacing: 0) {
-                poleTag("좋았어요", background: Color.ds(.positive200), foreground: Color.ds(.positive800))
+                poleTag("좋았어요", background: Color.Positive.p200, foreground: Color.Positive.p800)
                 Spacer()
-                poleTag("아쉬웠어요", background: Color.ds(.error200), foreground: Color.dsError)
+                poleTag("아쉬웠어요", background: Color.Error.e200, foreground: Color.Error.e500)
             }
             HStack(spacing: .ds(.p8)) {
                 let labels = AxisScaleCopy.labels(for: axis.code)
@@ -190,10 +198,10 @@ struct GuestEvaluationView: View {
             HStack(spacing: .ds(.p8)) {
                 Image(systemName: "plus")
                     .font(.ds(.body6))
-                    .foregroundStyle(Color.dsTextPrimary)
+                    .foregroundStyle(Color.Gray.g900)
                 Text("왜 그렇게 느꼈나요?")
                     .dsTypography(.body6)
-                    .foregroundStyle(Color.dsTextPrimary)
+                    .foregroundStyle(Color.Gray.g900)
                 optionalTag
                 Spacer(minLength: 0)
             }
@@ -203,7 +211,7 @@ struct GuestEvaluationView: View {
                 // Figma button-optional(2227:4511) — 시안이 직사각형(radius 0) 점선 테두리.
                 Rectangle()
                     .strokeBorder(
-                        Color.dsSeparator,
+                        Color.Gray.g100,
                         style: StrokeStyle(lineWidth: .ds(.small), dash: [4])
                     )
             )
@@ -215,24 +223,40 @@ struct GuestEvaluationView: View {
     private var optionalTag: some View {
         Text("선택")
             .dsTypography(.body8)
-            .foregroundStyle(Color.ds(.gray600))
+            .foregroundStyle(Color.Gray.g600)
             .padding(.horizontal, .ds(.p4))
-            .background(Color.dsSeparator)
+            .background(Color.Gray.g100)
     }
 
     /// 시청 전용(FULL 정원 마감) 안내 — 흰 카드 위에 얹히는 라이트 톤 배너.
     private var viewingOnlyBanner: some View {
         HStack(spacing: .ds(.p8)) {
             Image(systemName: "person.3.fill")
-                .foregroundStyle(Color.ds(.gray600))
+                .foregroundStyle(Color.Gray.g600)
             Text("이미 다른 지인이 참여했어요 — 영상만 볼 수 있어요")
                 .dsTypography(.body6)
-                .foregroundStyle(Color.ds(.gray600))
+                .foregroundStyle(Color.Gray.g600)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.ds(.p12))
         // DS 에 radius 토큰이 없어 리터럴 유지(8pt).
-        .background(Color.dsSeparator, in: RoundedRectangle(cornerRadius: 8))
+        .background(Color.Gray.g100, in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    // MARK: - 완료 토스트
+
+    /// 객관식 전 축 평가 완료 토스트 — Figma BubbleField(status=none, node 2555:7543):
+    /// 폭 274 고정 · b800 배경 · 직각 모서리 · body5(sb 14) 흰 텍스트 중앙정렬 · px14/py12.
+    private var completionToast: some View {
+        Text("모든 평가가 끝났어요!")
+            .dsTypography(.body5)
+            .foregroundStyle(Color.BlackWhite.white)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, .ds(.p14))
+            .padding(.vertical, .ds(.p12))
+            .background(Color.HilitBlack.b800)
+            .frame(width: 274)
     }
 
     // MARK: - 하단 CTA
@@ -248,7 +272,7 @@ struct GuestEvaluationView: View {
 
     private var commentOverlay: some View {
         ZStack(alignment: .bottom) {
-            Color.ds(.black800).opacity(0.4)
+            Color.HilitBlack.b800.opacity(0.4)
                 .ignoresSafeArea()
                 .onTapGesture { send(.commentDismissed) }
             AxisCommentCard(

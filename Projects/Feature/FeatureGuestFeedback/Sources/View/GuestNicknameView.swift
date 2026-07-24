@@ -39,7 +39,7 @@ struct GuestNicknameView: View {
             .disabled(store.nickname.isEmpty)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(Color.ds(.white))   // 패널 표면은 흰색(#FFFFFF) — 온보딩 라이트 톤과 대비.
+        .background(Color.BlackWhite.white)   // 패널 표면은 흰색(#FFFFFF) — 온보딩 라이트 톤과 대비.
         // 자동 포커스 없음 — 사용자가 입력란을 탭해야 키보드가 올라온다.
     }
 
@@ -50,22 +50,22 @@ struct GuestNicknameView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text("레포트에 표시될 당신의")
                     .dsTypography(.head4)
-                    .foregroundStyle(Color.dsTextPrimary)
+                    .foregroundStyle(Color.Gray.g900)
                 HStack(spacing: 0) {
                     // 그린 형광펜 마커 — 온보딩 "피드백" 과 같은 사각형.
                     Text("이름")
                         .dsTypography(.head4)
-                        .foregroundStyle(Color.dsTextPrimary)
+                        .foregroundStyle(Color.Gray.g900)
                         .padding(.horizontal, .ds(.p8))
-                        .background(Color.dsBrandSoft)
+                        .background(Color.HilitGreen.g500, in: Parallelogram())
                     Text("을 알려주세요")
                         .dsTypography(.head4)
-                        .foregroundStyle(Color.dsTextPrimary)
+                        .foregroundStyle(Color.Gray.g900)
                 }
             }
             Text("이름은 피드백 레포트에만 반영이 됩니다")
                 .dsTypography(.body3)
-                .foregroundStyle(Color.dsTextSecondary)
+                .foregroundStyle(Color.Gray.g500)
         }
     }
 
@@ -79,11 +79,11 @@ struct GuestNicknameView: View {
                 // prompt 는 비어 있을 때만 — 남겨두면 입력 후에도 TextField 이상적 폭이 플레이스홀더
                 // 폭으로 잡혀, hug 되는 밑줄이 텍스트 길이를 따라가지 못한다(시안2 는 텍스트 폭 밑줄).
                 prompt: store.nickname.isEmpty
-                    ? Text("이름을 알려주세요").foregroundStyle(Color.dsTextSecondary)
+                    ? Text("이름을 알려주세요").foregroundStyle(Color.Gray.g500)
                     : nil
             )
             .dsTypography(.head4)
-            .foregroundStyle(Color.dsTextPrimary)
+            .foregroundStyle(Color.Gray.g900)
             .multilineTextAlignment(.center)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
@@ -95,7 +95,7 @@ struct GuestNicknameView: View {
             }
             // outline-large(4pt) 밑줄 — 입력 전 gray100(dsSeparator), 입력 시 green600(Figma 시안2 8636).
             Rectangle()
-                .fill(store.nickname.isEmpty ? Color.dsSeparator : Color.ds(.green600))
+                .fill(store.nickname.isEmpty ? Color.Gray.g100 : Color.HilitGreen.g600)
                 .frame(height: .ds(.large))
         }
         // Figma NameField(node 2192:5330)는 내용 폭만큼 hug — 밑줄이 텍스트를 따라가고 패널 중앙에 놓인다.

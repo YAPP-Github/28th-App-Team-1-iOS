@@ -15,7 +15,7 @@ import Foundation
 // 파일 분리는 다화면(7뷰) Feature 리듀서를 위한 의도적 구성 선택으로, 비차단 length 경고만 피한다.
 // body 가 호출하는 reduceView·reduceInner·enter·submit 만 internal, 나머지 헬퍼는 file-private.
 extension GuestFeedbackFeature {
-    private enum CancelID { case draftDebounce }
+    private enum CancelID { case draftDebounce, completionToast }
 
     // MARK: - View
 
@@ -128,10 +128,21 @@ extension GuestFeedbackFeature {
 
         case .levelSelected(let level):
             guard state.canEvaluate, let axis = state.activeAxis, (1...4).contains(level) else { return .none }
+            let wasAllRated = state.isAllRated
             let existing = state.ratings[axis.code]
             state.ratings[axis.code] = RatingDraft(level: level, comment: existing?.comment ?? "")
             state.savingAxisCode = axis.code
-            return debouncedDraftSave(state)
+            // 마지막 축을 채우는 전이 순간에만 완료 토스트 — 이미 전부 평가된 뒤 레벨만 바꾸면 안 띄운다.
+            guard !wasAllRated, state.isAllRated else { return debouncedDraftSave(state) }
+            state.isCompletionToastVisible = true
+            return .merge(
+                debouncedDraftSave(state),
+                .run { send in
+                    try await clock.sleep(for: .seconds(2))
+                    await send(.inner(.completionToastExpired))
+                }
+                .cancellable(id: CancelID.completionToast, cancelInFlight: true)
+            )
 
         case .commentEditTapped:
             guard let axis = state.activeAxis else { return .none }
@@ -175,6 +186,10 @@ extension GuestFeedbackFeature {
 
         case .draftSaved:
             state.savingAxisCode = nil
+            return .none
+
+        case .completionToastExpired:
+            state.isCompletionToastVisible = false
             return .none
 
         case .submitFinished(let result):
