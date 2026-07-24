@@ -202,33 +202,74 @@ struct GuestEvaluationView: View {
             .background(background)
     }
 
-    /// 접힌 코멘트 진입 행 — 점선 박스 + plus + "왜 그렇게 느꼈나요?" + "선택" 태그 (Figma button-optional).
+    /// 접힌 코멘트 행 — 코멘트가 없으면 점선 진입 버튼(Figma button-optional),
+    /// 있으면 저장된 코멘트를 그린 액센트 바 + 한 줄 말줄임(…) + «수정» 링크로 보여준다.
+    /// 어느 상태든 탭 = 코멘트 편집 진입.
     private func commentRow(_ axis: AttitudeAxis) -> some View {
-        Button {
+        let comment = store.ratings[axis.code]?.comment ?? ""
+        return Button {
             send(.commentEditTapped)
         } label: {
-            HStack(spacing: .ds(.p8)) {
-                Image(systemName: "plus")
-                    .font(.ds(.body6))
-                    .foregroundStyle(Color.Gray.g900)
-                Text("왜 그렇게 느꼈나요?")
-                    .dsTypography(.body6)
-                    .foregroundStyle(Color.Gray.g900)
-                optionalTag
-                Spacer(minLength: 0)
+            if comment.isEmpty {
+                emptyCommentLabel
+            } else {
+                filledCommentLabel(comment)
             }
-            .padding(.ds(.p8))
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .overlay(
-                // Figma button-optional(2227:4511) — 시안이 직사각형(radius 0) 점선 테두리.
-                Rectangle()
-                    .strokeBorder(
-                        Color.Gray.g100,
-                        style: StrokeStyle(lineWidth: .ds(.small), dash: [4])
-                    )
-            )
         }
         .buttonStyle(.plain)
+    }
+
+    private var emptyCommentLabel: some View {
+        HStack(spacing: .ds(.p8)) {
+            Image(systemName: "plus")
+                .font(.ds(.body6))
+                .foregroundStyle(Color.Gray.g900)
+            Text("왜 그렇게 느꼈나요?")
+                .dsTypography(.body6)
+                .foregroundStyle(Color.Gray.g900)
+            optionalTag
+            Spacer(minLength: 0)
+        }
+        .padding(.ds(.p8))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(
+            // Figma button-optional(2227:4511) — 시안이 직사각형(radius 0) 점선 테두리.
+            Rectangle()
+                .strokeBorder(
+                    Color.Gray.g100,
+                    style: StrokeStyle(lineWidth: .ds(.small), dash: [4])
+                )
+        )
+    }
+
+    /// 입력된 코멘트 표시 행 — 좌측 그린 액센트 바(4pt) · 한 줄 tail 말줄임 · 우측 «수정»(밑줄).
+    /// 액센트 바는 HStack 자식이 아니라 overlay 로 얹는다 — Rectangle 을 자식으로 두면
+    /// 세로 탐욕성 때문에 행이 카드의 남는 높이를 흡수해 빈 상태(점선 버튼)보다 커진다.
+    private func filledCommentLabel(_ comment: String) -> some View {
+        HStack(spacing: .ds(.p8)) {
+            Text(comment)
+                .dsTypography(.body6)
+                .foregroundStyle(Color.Gray.g900)
+                .lineLimit(1)
+                .truncationMode(.tail)
+            Spacer(minLength: .ds(.p8))
+            Text("수정")
+                .dsTypography(.body8)
+                .foregroundStyle(Color.Gray.g600)
+                .underline()
+        }
+        .padding(.ds(.p8))                  // 빈 상태와 같은 패딩 — 두 상태의 행 높이 일치.
+        .padding(.leading, .ds(.large))     // 액센트 바(4pt) 폭만큼 텍스트를 안쪽으로.
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(
+            Rectangle()
+                .strokeBorder(Color.Gray.g100, lineWidth: .ds(.medium))
+        )
+        .overlay(alignment: .leading) {
+            Rectangle()
+                .fill(Color.HilitGreen.g500)
+                .frame(width: .ds(.large))   // DSOutline.large = 4pt
+        }
     }
 
     /// "선택" 회색 태그 — gray100 배경 · gray600 텍스트(Figma tag).
