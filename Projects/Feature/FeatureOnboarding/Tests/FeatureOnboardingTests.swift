@@ -306,6 +306,7 @@ struct OnboardingCoordinatorTests {
         }
 
         await store.send(.onAppear) {
+            $0.didAttemptRestore = true
             $0.data = draft.data
             $0.jobSelection.preselectedJobRole = "BACKEND"
             $0.path.append(.careerInput(.init(step: 2, totalSteps: 5, selectedCareer: CareerOption(years: 2))))
@@ -330,7 +331,7 @@ struct OnboardingCoordinatorTests {
             $0.date = .constant(Self.draftSavedAt.addingTimeInterval(60 * 60 * 24 * 15))   // 15일 뒤 — TTL 초과
         }
 
-        await store.send(.onAppear)
+        await store.send(.onAppear) { $0.didAttemptRestore = true }
         await store.finish()
         #expect(cleared.value)
     }
@@ -349,7 +350,40 @@ struct OnboardingCoordinatorTests {
             $0.date = .constant(Self.draftSavedAt)
         }
 
-        await store.send(.onAppear)   // path 비어있지 않음 → 변화 없음
+        await store.send(.onAppear) { $0.didAttemptRestore = true }   // path 비어있지 않음 → 복원 안 함(플래그만 셋)
+    }
+
+    @Test("복원 후 뒤로가기로 루트까지 pop 해도 onAppear 재발동 시 재복원하지 않는다")
+    func onAppearDoesNotReRestoreAfterPopToRoot() async {
+        let draft = OnboardingDraft(
+            data: OnboardingData(userName: "재원", jobRole: "BACKEND", careerYears: 2),
+            furthestStep: 2,
+            savedAt: Self.draftSavedAt
+        )
+        let store = TestStore(initialState: OnboardingFeature.State(userName: "재원")) {
+            OnboardingFeature()
+        } withDependencies: {
+            $0.onboardingDraftStore = OnboardingDraftStore(load: { draft }, save: { _ in }, clear: {})
+            $0.date = .constant(Self.draftSavedAt.addingTimeInterval(60 * 60 * 24))   // TTL 안
+        }
+
+        // 1) 최초 onAppear — STEP2 까지 복원
+        await store.send(.onAppear) {
+            $0.didAttemptRestore = true
+            $0.data = draft.data
+            $0.jobSelection.preselectedJobRole = "BACKEND"
+            $0.path.append(.careerInput(.init(step: 2, totalSteps: 5, selectedCareer: CareerOption(years: 2))))
+        }
+
+        // 2) 뒤로가기로 루트까지 pop → path 다시 빔
+        let stepId = store.state.path.ids.first!
+        await store.send(.path(.element(id: stepId, action: .careerInput(.delegate(.backRequested))))) {
+            $0.path.removeLast()
+        }
+
+        // 3) 루트 재등장으로 onAppear 재발동 — 이미 복원했으므로 변화 없음.
+        //    (플래그 없던 버그에선 여기서 STEP2 가 다시 쌓여 화면이 앞으로 튀었다.)
+        await store.send(.onAppear)
     }
 
     @Test("스텝 완료는 draft(데이터·재개 지점)를 저장한다")
