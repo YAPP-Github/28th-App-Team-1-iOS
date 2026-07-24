@@ -98,6 +98,7 @@ make lint                            # 전 모듈 SwiftLint
 make lint-fix                        # 자동 수정 + 린트
 make lat q=home                      # home 도메인과 엮인 코드 검색 (lat.md)
 make lat-deps q=home                 # home 을 바꾸면 영향받는 곳
+make install-snippets                # Xcode 코드 스니펫 설치 (tcapreview / tcapreviews — TCA 프리뷰)
 ```
 
 ---
@@ -108,4 +109,5 @@ make lat-deps q=home                 # home 을 바꾸면 영향받는 곳
 - 새 모듈 추가 → [`docs/adding-module.md`](adding-module.md)
 - 팀 컨벤션(브랜치·커밋·PR·배포) → [`CONTRIBUTING.md`](../CONTRIBUTING.md)
 - 도메인 지식·흐름·의존 인덱스 → [`lat.md/`](../lat.md) (+ `make lat`)
+- Claude Code 스킬: `/tca-preview 화면이름` — 리듀서를 분석해 시나리오별 `#Preview` 탭 생성 (`.claude/skills/`)
 - 개념 아티클 문서 → Xcode 에서 `ArchitectureDocs` 스킴 → **Product → Build Documentation** (⌃⇧⌘D)

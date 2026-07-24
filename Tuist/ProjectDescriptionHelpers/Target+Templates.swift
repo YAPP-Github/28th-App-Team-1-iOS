@@ -93,6 +93,7 @@ public extension Target {
         f.infoPlist = f.infoPlist ?? .extendingDefault(with: [
             "UILaunchScreen": [:],
             // xcconfig → Info.plist 치환. NetworkClient.defaultBaseURL()(API_BASE_URL)·AppSecrets(카카오 키)가 여기서 읽는다.
+            "UIUserInterfaceStyle": "Light",
             "APP_ENV": "$(APP_ENV)",
             "API_BASE_URL": "$(API_BASE_URL)",
             "CFBundleDisplayName": "$(APP_DISPLAY_NAME)",
@@ -215,6 +216,9 @@ public extension Target {
         var f = factory
         f.name = "Feature\(name)Example"
         f.product = .app
+        // Example 앱 전용 번들 네임스페이스 `com.hilit.app.example.<feature>` — 본체(com.hilit.app.dev/qa/prod)와
+        // 분리해 기능별로 자동 부여한다. TestFlight 배포 시 이 번들과 일치하는 App Store Connect 앱 레코드가 필요하다.
+        f.bundleId = f.bundleId ?? "\(Project.Environment.bundlePrefix).example.\(name.lowercased())"
         f.infoPlist = f.infoPlist ?? .extendingDefault(with: [
             "UILaunchScreen": [:],
             // D14 개발 서버(HTTP + IP)로 직접 API 를 칠 수 있도록 앱 타겟과 동일한 ATS 예외 (위 .app() 주석 참조)

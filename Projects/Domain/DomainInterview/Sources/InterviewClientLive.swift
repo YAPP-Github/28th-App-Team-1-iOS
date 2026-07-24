@@ -24,10 +24,12 @@ extension InterviewClient: @retroactive DependencyKey {
                     body: SessionCreateBody(config),
                     encoder: .api
                 )
-                return try await network.api(request)
+                return try await mapInterviewError { try await network.api(request) }
             },
             sessionStatus: { sessionId in
-                try await network.api(NetworkRequest(path: "/api/v1/interview/sessions/\(sessionId)/status"))
+                try await mapInterviewError {
+                    try await network.api(NetworkRequest(path: "/api/v1/interview/sessions/\(sessionId)/status"))
+                }
             },
             submitAnswer: { sessionId, submission in
                 var parts: [MultipartFormData.Part] = []
@@ -39,7 +41,7 @@ extension InterviewClient: @retroactive DependencyKey {
                     queryItems: submission.queryItems,
                     form: MultipartFormData(parts: parts)
                 )
-                return try await network.api(request)
+                return try await mapInterviewError { try await network.api(request) }
             },
             questionAudioStream: { sessionId, questionId in
                 let path = "/api/v1/interview/sessions/\(sessionId)/questions/\(questionId)/audio/stream"
@@ -47,6 +49,22 @@ extension InterviewClient: @retroactive DependencyKey {
                 return InterviewAudioStream(url: resource.url, headers: resource.headers)
             }
         )
+    }
+}
+
+// MARK: - 에러 매핑
+
+/// Core `ServerError`(코드)를 Domain `InterviewError` 로 승격한다 — Feature 가 Core 를 모르게(레이어).
+/// ServerError 가 아닌 오류(NetworkError·CancellationError 등)는 그대로 흘린다.
+private func mapInterviewError<T>(_ body: () async throws -> T) async throws -> T {
+    do {
+        return try await body()
+    } catch let error as ServerError {
+        switch error.code {
+        case "FREETEXT_NOT_RELEVANT": throw InterviewError.freeTextNotRelevant
+        case "NO_REMAINING_TICKET": throw InterviewError.noRemainingTicket
+        default: throw InterviewError.server(code: error.code, message: error.message)
+        }
     }
 }
 
