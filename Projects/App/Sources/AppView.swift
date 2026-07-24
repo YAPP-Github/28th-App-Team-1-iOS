@@ -20,6 +20,12 @@ struct AppView: View {
                         .tabItem { Label("홈", systemImage: "house") }
                         .tag(AppFeature.Tab.home)
                 }
+                // dev 전용 온보딩 위저드 — Home 진입 버튼으로만 열린다 (로그인 이후이므로 토큰 보유).
+                .fullScreenCover(
+                    item: $store.scope(state: \.onboarding, action: \.onboarding)
+                ) { onboardingStore in
+                    OnboardingView(store: onboardingStore)
+                }
             } else {
                 AuthView(store: store.scope(state: \.auth, action: \.auth))
             }

@@ -6,6 +6,7 @@
 //
 
 /// Interview API 에러 — State 가 다르게 반응해야 하는 경우의 수만큼만 둔다 (AuthError 와 같은 원칙).
+/// Feature 는 Core 를 모르므로(레이어 규칙) 이 타입만 잡는다. (→ ai-interview.md §5 STEP6 Phase B)
 /// 서버 코드 ↔ 케이스 매핑 표는 [[api#Interview]].
 public enum InterviewError: Error, Equatable, Sendable {
     /// NO_REMAINING_TICKET (403) — 이용권 소진. 결제/안내 분기.
@@ -18,7 +19,7 @@ public enum InterviewError: Error, Equatable, Sendable {
     case portfolioUploadFailed
     /// JD_NOT_VALIDATED (400) — jdUrl 이 사전 검증(JDClient.validate)을 통과하지 않음.
     case jdNotValidated
-    /// FREETEXT_NOT_RELEVANT (400) — 집중 프로젝트 설명이 포트폴리오와 무관. 재작성 유도.
+    /// FREETEXT_NOT_RELEVANT (400) — 집중 프로젝트가 포트폴리오와 연관성 부족(코사인 < 0.6). 재작성 유도.
     case freeTextNotRelevant
     /// INTERVIEW_SESSION_NOT_FOUND (404)
     case sessionNotFound
@@ -32,6 +33,9 @@ public enum InterviewError: Error, Equatable, Sendable {
     /// INVALID_FREETEXT_LENGTH·INVALID_PLAYBACK_RANGE·INVALID_ANSWER_RANGE·
     /// INVALID_END_TYPE·INVALID_AUDIO_PRESENCE (400) — `message` 는 그대로 사용자 노출 가능.
     case invalid(message: String)
+    /// 위 케이스로 승격되지 않은 그 외 서버 정의 에러(4xx) — 코드·사용자 노출 문구 동봉.
+    /// 분기가 필요해지면 전용 케이스로 승격한다.
+    case server(code: String, message: String)
     /// 재로그인 필요 (LOGIN_EXPIRED — 자동 재발급까지 실패한 뒤 도달)
     case sessionExpired
     case networkFailure

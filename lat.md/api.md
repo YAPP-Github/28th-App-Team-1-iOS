@@ -57,7 +57,7 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 
 `endType` 계약(답변 제출): nil=정상 / SKIP(오디오 없음) / MANUAL_END(8:00 후 수동 종료) / HARD_CAP(12:00 강제) / EARLY_EXIT(8:00 전 이탈). `isWrapUp` 은 8:45 경과 여부 — 타이머 상태머신은 [ai-interview](../docs/work/ai-interview.md) §6.
 
-에러는 `InterviewError` 로 매핑된다 — NO_REMAINING_TICKET → noRemainingTicket(403), PORTFOLIO_NOT_FOUND / PORTFOLIO_PROCESSING / PORTFOLIO_UPLOAD_FAILED / JD_NOT_VALIDATED / FREETEXT_NOT_RELEVANT (세션 생성 400·404), INTERVIEW_SESSION_NOT_FOUND / QUESTION_NOT_FOUND (404), ANSWER_ALREADY_SUBMITTED / SESSION_ALREADY_ENDED (409), 입력 검증군(VALIDATION_ERROR·INVALID_*)은 서버 문구를 실은 invalid(message:).
+에러는 `InterviewError` 로 매핑된다 — NO_REMAINING_TICKET → noRemainingTicket(403), PORTFOLIO_NOT_FOUND / PORTFOLIO_PROCESSING / PORTFOLIO_UPLOAD_FAILED / JD_NOT_VALIDATED / FREETEXT_NOT_RELEVANT (세션 생성 400·404), INTERVIEW_SESSION_NOT_FOUND / QUESTION_NOT_FOUND (404), ANSWER_ALREADY_SUBMITTED / SESSION_ALREADY_ENDED (409), 입력 검증군(VALIDATION_ERROR·INVALID_*)은 서버 문구를 실은 invalid(message:), 미승격 코드(4xx)는 server(code·message) 로 동봉 — 분기가 필요해지면 전용 케이스로 승격.
 
 ## Interview Report
 

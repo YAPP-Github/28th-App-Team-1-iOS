@@ -58,38 +58,10 @@ extension InterviewClient: @retroactive DependencyKey {
     }
 }
 
-// MARK: - 서버 계약 매핑
+// MARK: - 에러 매핑
 
-/// jdUrl/jdText 상호 배타 규칙을 enum(JobDescriptionInput)에서 서버 필드로 펼친다.
-private struct SessionCreateBody: Encodable {
-    let portfolioId: UUID
-    let jobRole: String
-    let careerYears: Int
-    let jdUrl: String?
-    let jdText: String?
-    let freeText: String?
-
-    init(_ config: InterviewConfig) {
-        portfolioId = config.portfolioId
-        jobRole = config.jobRole
-        careerYears = config.careerYears
-        switch config.jobDescription {
-        case .url(let url):
-            jdUrl = url
-            jdText = nil
-        case .text(let text):
-            jdUrl = nil
-            jdText = text
-        case nil:
-            jdUrl = nil
-            jdText = nil
-        }
-        freeText = config.freeText
-    }
-}
-
-/// 인프라 에러(ServerError·NetworkError)를 State 가 반응할 도메인 에러(InterviewError)로 좁힌다.
-/// 취소는 실패가 아니므로 그대로 통과시킨다 (TCA `.run` 이 조용히 무시).
+/// 인프라 에러(ServerError·NetworkError)를 State 가 반응할 도메인 에러(InterviewError)로 좁힌다 —
+/// Feature 가 Core 를 모르고도(레이어) 코드별 분기한다. 취소는 실패가 아니므로 그대로 통과 (TCA `.run` 이 조용히 무시).
 private func mappingInterviewError<T>(_ operation: () async throws -> T) async throws -> T {
     do {
         return try await operation()
@@ -144,8 +116,11 @@ private extension InterviewError {
             self = fixed
         } else if Self.validationCodes.contains(error.code) {
             self = .invalid(message: error.message)
+        } else if error.statusCode >= 500 {
+            self = .serverUnavailable
         } else {
-            self = error.statusCode >= 500 ? .serverUnavailable : .unexpected
+            // 미승격 코드는 원문 그대로 동봉 — 분기가 필요해지면 전용 케이스로 승격
+            self = .server(code: error.code, message: error.message)
         }
     }
 
@@ -158,6 +133,36 @@ private extension InterviewError {
         default:
             self = .unexpected
         }
+    }
+}
+
+// MARK: - 서버 계약 매핑
+
+/// jdUrl/jdText 상호 배타 규칙을 enum(JobDescriptionInput)에서 서버 필드로 펼친다.
+private struct SessionCreateBody: Encodable {
+    let portfolioId: UUID
+    let jobRole: String
+    let careerYears: Int
+    let jdUrl: String?
+    let jdText: String?
+    let freeText: String?
+
+    init(_ config: InterviewConfig) {
+        portfolioId = config.portfolioId
+        jobRole = config.jobRole
+        careerYears = config.careerYears
+        switch config.jobDescription {
+        case .url(let url):
+            jdUrl = url
+            jdText = nil
+        case .text(let text):
+            jdUrl = nil
+            jdText = text
+        case nil:
+            jdUrl = nil
+            jdText = nil
+        }
+        freeText = config.freeText
     }
 }
 

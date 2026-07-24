@@ -8,6 +8,7 @@ public enum ModulePath {
         case common = "Common"
         case home = "Home"
         case auth = "Auth"
+        case onboarding = "Onboarding"
 
         public static let name = "Feature"
     }
