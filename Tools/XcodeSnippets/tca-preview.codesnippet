@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDECodeSnippetCompletionPrefix</key>
+	<string>tcapreview</string>
+	<key>IDECodeSnippetCompletionScopes</key>
+	<array>
+		<string>TopLevel</string>
+	</array>
+	<key>IDECodeSnippetContents</key>
+	<string>#Preview {
+    &lt;#Name#&gt;View(
+        store: Store(initialState: &lt;#Name#&gt;Feature.State()) {
+            &lt;#Name#&gt;Feature()
+        }
+    )
+}</string>
+	<key>IDECodeSnippetIdentifier</key>
+	<string>9D7E1487-04A1-4A0B-95AD-AEC291FFC6AC</string>
+	<key>IDECodeSnippetLanguage</key>
+	<string>Xcode.SourceCodeLanguage.Swift</string>
+	<key>IDECodeSnippetSummary</key>
+	<string>TCA View 기본 프리뷰 — @Dependency 는 .preview 컨텍스트에서 previewValue 로 자동 해석되므로 그대로 열면 된다</string>
+	<key>IDECodeSnippetTitle</key>
+	<string>TCA Preview (기본)</string>
+	<key>IDECodeSnippetUserSnippet</key>
+	<true/>
+	<key>IDECodeSnippetVersion</key>
+	<integer>2</integer>
+</dict>
+</plist>
