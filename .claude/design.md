@@ -11,12 +11,13 @@ UI 코드를 작성·수정하기 전에 읽는 진입점. 여기엔 **규칙과
 
 | 영역 | 상태 | 요약 | 상세 |
 |---|---|---|---|
-| 타이포그래피 | ✅ 구현 | `.dsTypography(.head1)` — Pretendard 23종 (head1~5·sub1~9·body1~9), 행간·자간 내장 | **`.claude/design/typography.md`** |
+| 타이포그래피 | ✅ 구현 | `.dsTypography(.head1)` — Pretendard 25종 (head1~6·sub1~9·body1~10), 행간·자간 내장 | **`.claude/design/typography.md`** |
 | 색상 | ✅ 구현 | 패밀리 enum 팔레트 23색 — `Color.HilitGreen.g500`·`Color.Gray.g600` 등 (에셋명 = HEX) | **`.claude/design/color.md`** |
 | 이미지 | ✅ 구현 | `Image.Ic.close`(아이콘)·`Image.Img.tooltipTail`(일러스트) 패밀리 — `Image.load` seam | **`.claude/design/image.md`** |
 | 인터랙션 | ✅ 구현 | `.dismissesKeyboardOnTap()` — 키패드 밖 터치 시 내림. 입력 필드 있는 화면 루트에 부착 | 인라인 (Interface/Interaction) |
-| Spacing | 이관 대기 | `CGFloat.dsXS`(4) ~ `dsXXL`(32), `.padding(.dsL)` 식 사용 예정 | 구현 시 분리 |
-| 컴포넌트 | 이관 대기 | `PrimaryButton` 등 — 커스텀 만들기 전에 표준 컴포넌트 먼저 검토 | 구현 시 분리 |
+| Spacing | ✅ 구현 | `.padding(.ds(.p20))` — Figma padding 4~24, 테두리 `.ds(.medium)`(outline small/medium/large/mega) | **`.claude/design/spacing.md`** |
+| 컴포넌트 | ✅ 구현 | 공용 9종 — `PrimaryButton`·`ModalButton`·`MiniButton`·`ChoiceChip`·`TagLabel`·`BubbleToast`·`SaveIndicator`·`HighlightedText`·`Parallelogram`. **커스텀 만들기 전에 먼저 검토** | **`.claude/design/component.md`** |
+
 
 상세 문서 분리 기준: **구현이 실체를 갖는 시점**에 `.claude/design/<영역>.md` 로 뺀다. 몇 줄짜리 예정 항목까지 미리 쪼개지 않는다 (파일 하나당 Read 비용).
 
