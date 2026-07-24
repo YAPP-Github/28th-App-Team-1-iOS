@@ -16,9 +16,14 @@
 3. 저장 완료 `editProfile(.presented(.delegate(.profileSaved(profile))))` → sheet 닫고 `users(.profileUpdated(profile))` 로 결과 통보
 
 대표 흐름 — **로그인 루트 게이트**:
-1. `AuthFeature`가 카카오 로그인 성공 시 `delegate(.signedIn)` 방출
-2. AppFeature가 수신해 `state.isAuthenticated = true`로 전환 → `AppView`가 `AuthView`에서 `TabView`로 교체
-3. 토큰 영속화가 없으므로 앱 재실행 시 다시 `AuthView`부터 시작(의도된 범위 제한) → [[auth]]
+1. `AuthFeature`가 카카오 로그인 성공 시 `delegate(.signedIn)` 방출 (자격증명 획득+서버 세션 교환까지 완료 → [[auth]])
+2. AppFeature가 수신해 `state = State()`로 초기화 후 `isAuthenticated = true` — 새 로그인은 새 세션이므로 이전 사용자의 in-memory State(화면·선택값)를 버린다
+3. 토큰은 Keychain(TokenStore)에 영속되지만 자동 로그인 배선 전이라 앱 재실행 시 다시 `AuthView`부터 시작(의도된 범위 제한) → [[auth]]
+
+대표 흐름 — **dev 디버그 로그아웃** (Home 임시 버튼):
+1. dev 계에서만 `AppFeature.onAppear` 가 `home.showsDebugLogout` 을 켜고, Home 로그아웃 버튼이 `delegate(.logoutRequested)` 방출
+2. AppFeature 수신 → effect 에서 `authClient.logout()`(서버 로그아웃+토큰 Keychain 삭제)·`onboardingDraftStore.clear()`(온보딩 draft/UserDefaults 삭제). 서버 실패해도 로컬 정리는 진행(`try?`)
+3. `sessionCleared`(inner)로 `state = State()` 리셋 → `isAuthenticated=false` → 첫 소셜 로그인 화면 복귀. cross-feature 조립이라 authClient 의존은 코디네이터인 여기서만 가진다 → [[home]]
 
 대표 흐름 — **온보딩 dev 진입** (본체 통합 전 임시):
 1. dev 계에서만 `AppFeature.onAppear` 가 `home.showsOnboardingEntry` 를 켜고, Home 진입 버튼이 `delegate(.onboardingRequested)` 방출
