@@ -48,12 +48,8 @@ struct GuestSummaryView: View {
                     .dsTypography(.head3)
                     .foregroundStyle(Color.Gray.g900)
                 HStack(spacing: 0) {
-                    // 그린 형광펜 마커 — 온보딩 "피드백" 과 동일한 사각형(dsBrandSoft).
-                    Text("이렇게 전달")
-                        .dsTypography(.head3)
-                        .foregroundStyle(Color.Gray.g900)
-                        .padding(.horizontal, .ds(.p8))
-                        .background(Color.HilitGreen.g500, in: Parallelogram())
+                    // 그린 형광펜 마커 — DS HighlightedText(Figma highlighted-text), 온보딩과 동일.
+                    HighlightedText("이렇게 전달")
                     Text("될 거예요")
                         .dsTypography(.head3)
                         .foregroundStyle(Color.Gray.g900)
@@ -77,23 +73,10 @@ struct GuestSummaryView: View {
                 .dsTypography(.body2)
                 .foregroundStyle(Color.Gray.g900)
             Spacer(minLength: .ds(.p8))
-            Button {
+            // Figma 아이콘은 영상 재생 픽토그램 — 동일 의미의 SF 심볼로 대체.
+            MiniButton("영상 다시보기", systemImage: "play.rectangle.fill") {
                 send(.rewatchTapped)
-            } label: {
-                HStack(spacing: .ds(.p4)) {
-                    // Figma 아이콘은 영상 재생 픽토그램 — 동일 의미의 SF 심볼로 대체.
-                    Image(systemName: "play.rectangle.fill")
-                        .font(.ds(.body8))
-                    Text("영상 다시보기")
-                        .dsTypography(.body5)
-                }
-                .foregroundStyle(Color.HilitBlack.b800)
-                .padding(.horizontal, .ds(.p10))
-                .padding(.vertical, .ds(.p8))
-                // DS 에 radius 토큰이 없어 리터럴 유지(6pt).
-                .background(Color.Gray.g100, in: RoundedRectangle(cornerRadius: 6))
             }
-            .buttonStyle(.plain)
         }
     }
 
@@ -161,13 +144,9 @@ struct GuestSummaryView: View {
         }
     }
 
-    /// 평행사변형 배경 칩 — 라벨 텍스트(body3_m_16). Figma highlighted-text: 양옆 8pt(경사 4 + 평면 4).
+    /// 평행사변형 배경 칩 — DS HighlightedText(body3_m_16) 소비.
     private func labelChip(_ text: String, foreground: Color, background: Color) -> some View {
-        Text(text)
-            .dsTypography(.body3)
-            .foregroundStyle(foreground)
-            .padding(.horizontal, .ds(.p8))
-            .background(background, in: Parallelogram())
+        HighlightedText(text, typography: .body3, foreground: foreground, background: background)
     }
 
     /// 코멘트 한 줄 — 세로 바 + 회색 텍스트(body9_m_12), 넘치면 말줄임.

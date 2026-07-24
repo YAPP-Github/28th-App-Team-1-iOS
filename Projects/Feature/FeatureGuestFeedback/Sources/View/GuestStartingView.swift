@@ -40,12 +40,8 @@ struct GuestStartingView: View {
                 Text("평가를 위해")
                     .dsTypography(.head3)
                     .foregroundStyle(Color.BlackWhite.white)
-                // 그린 형광펜 마커 — 온보딩과 동일한 dsBrandSoft 사각형 위 다크 텍스트.
-                Text("태도")
-                    .dsTypography(.head3)
-                    .foregroundStyle(Color.Gray.g900)
-                    .padding(.horizontal, .ds(.p8))
-                    .background(Color.HilitGreen.g500, in: Parallelogram())
+                // 그린 형광펜 마커 — DS HighlightedText(Figma highlighted-text), 온보딩과 동일.
+                HighlightedText("태도")
                 Text("에")
                     .dsTypography(.head3)
                     .foregroundStyle(Color.BlackWhite.white)

@@ -73,7 +73,7 @@ struct GuestEvaluationView: View {
                 }
 
                 if store.isCompletionToastVisible {
-                    completionToast
+                    BubbleToast("모든 평가가 끝났어요!")
                         // Figma 시안(node 2555:7543): CTA(55pt) 위 10pt — 55 는 PrimaryButton 고정 높이(대응 토큰 없어 리터럴).
                         .padding(.bottom, 55 + CGFloat.ds(.p10))
                         .transition(.opacity)
@@ -144,44 +144,28 @@ struct GuestEvaluationView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// 저장 상태 표시 — 스피너+«저장 중 ...» / 그린 체크+«저장됨». 텍스트는 gray500 SemiBold12(.body8).
+    /// 저장 상태 표시 — DS `SaveIndicator`(저장 중/저장됨) 소비. 미평가는 아예 그리지 않는다.
     @ViewBuilder
     private func saveIndicator(_ axis: AttitudeAxis) -> some View {
         if store.savingAxisCode == axis.code {
-            HStack(spacing: .ds(.p4)) {
-                ProgressView()
-                    .controlSize(.small)
-                    .tint(Color.HilitGreen.g500)
-                indicatorLabel("저장 중 ...")
-            }
+            SaveIndicator(.saving)
         } else if store.ratings[axis.code]?.level != nil {
-            HStack(spacing: .ds(.p4)) {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.ds(.body2))   // 16pt 아이콘 — commentRow 의 plus(.body6) 와 같은 토큰 사이징 방식
-                    .foregroundStyle(Color.HilitGreen.g500)
-                indicatorLabel("저장됨")
-            }
+            SaveIndicator(.saved)
         }
-    }
-
-    private func indicatorLabel(_ text: String) -> some View {
-        Text(text)
-            .dsTypography(.body8)
-            .foregroundStyle(Color.Gray.g500)
     }
 
     /// 극 라벨(좋았어요 ↔ 아쉬웠어요) + 4단계 칩 한 줄.
     private func scaleBlock(_ axis: AttitudeAxis) -> some View {
         VStack(alignment: .leading, spacing: .ds(.p8)) {
             HStack(spacing: 0) {
-                poleTag("좋았어요", background: Color.Positive.p200, foreground: Color.Positive.p800)
+                TagLabel("좋았어요", foreground: Color.Positive.p800, background: Color.Positive.p200)
                 Spacer()
-                poleTag("아쉬웠어요", background: Color.Error.e200, foreground: Color.Error.e500)
+                TagLabel("아쉬웠어요", foreground: Color.Error.e500, background: Color.Error.e200)
             }
             HStack(spacing: .ds(.p8)) {
                 let labels = AxisScaleCopy.labels(for: axis.code)
                 ForEach(Array(labels.enumerated()), id: \.offset) { idx, label in
-                    AxisLevelChip(
+                    ChoiceChip(
                         label,
                         isSelected: store.ratings[axis.code]?.level == idx + 1,
                         tone: idx < 2 ? .positive : .negative
@@ -191,15 +175,6 @@ struct GuestEvaluationView: View {
                 }
             }
         }
-    }
-
-    /// Figma tag — px4, SemiBold12(.body8), 배경/텍스트 토큰만 다르다.
-    private func poleTag(_ text: String, background: Color, foreground: Color) -> some View {
-        Text(text)
-            .dsTypography(.body8)
-            .foregroundStyle(foreground)
-            .padding(.horizontal, .ds(.p4))
-            .background(background)
     }
 
     /// 접힌 코멘트 행 — 코멘트가 없으면 점선 진입 버튼(Figma button-optional),
@@ -227,7 +202,7 @@ struct GuestEvaluationView: View {
             Text("왜 그렇게 느꼈나요?")
                 .dsTypography(.body6)
                 .foregroundStyle(Color.Gray.g900)
-            optionalTag
+            TagLabel("선택")
             Spacer(minLength: 0)
         }
         .padding(.ds(.p8))
@@ -272,15 +247,6 @@ struct GuestEvaluationView: View {
         }
     }
 
-    /// "선택" 회색 태그 — gray100 배경 · gray600 텍스트(Figma tag).
-    private var optionalTag: some View {
-        Text("선택")
-            .dsTypography(.body8)
-            .foregroundStyle(Color.Gray.g600)
-            .padding(.horizontal, .ds(.p4))
-            .background(Color.Gray.g100)
-    }
-
     /// 시청 전용(FULL 정원 마감) 안내 — 흰 카드 위에 얹히는 라이트 톤 배너.
     private var viewingOnlyBanner: some View {
         HStack(spacing: .ds(.p8)) {
@@ -294,22 +260,6 @@ struct GuestEvaluationView: View {
         .padding(.ds(.p12))
         // DS 에 radius 토큰이 없어 리터럴 유지(8pt).
         .background(Color.Gray.g100, in: RoundedRectangle(cornerRadius: 8))
-    }
-
-    // MARK: - 완료 토스트
-
-    /// 객관식 전 축 평가 완료 토스트 — Figma BubbleField(status=none, node 2555:7543):
-    /// 폭 274 고정 · b800 배경 · 직각 모서리 · body5(sb 14) 흰 텍스트 중앙정렬 · px14/py12.
-    private var completionToast: some View {
-        Text("모든 평가가 끝났어요!")
-            .dsTypography(.body5)
-            .foregroundStyle(Color.BlackWhite.white)
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, .ds(.p14))
-            .padding(.vertical, .ds(.p12))
-            .background(Color.HilitBlack.b800)
-            .frame(width: 274)
     }
 
     // MARK: - 하단 CTA

@@ -47,12 +47,8 @@ struct GuestOnboardingView: View {
                     .dsTypography(.head4)
                     .foregroundStyle(Color.Gray.g900)
                 HStack(spacing: 0) {
-                    // 그린 형광펜 마커 — dsBrandSoft 사각형 위 다크 텍스트.
-                    Text("피드백")
-                        .dsTypography(.head4)
-                        .foregroundStyle(Color.Gray.g900)
-                        .padding(.horizontal, .ds(.p8))
-                        .background(Color.HilitGreen.g500, in: Parallelogram())
+                    // 그린 형광펜 마커 — DS HighlightedText(Figma highlighted-text).
+                    HighlightedText("피드백", typography: .head4)
                     Text("을 요청했어요")
                         .dsTypography(.head4)
                         .foregroundStyle(Color.Gray.g900)
