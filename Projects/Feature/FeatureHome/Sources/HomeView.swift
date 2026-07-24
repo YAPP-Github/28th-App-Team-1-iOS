@@ -27,6 +27,14 @@ public struct HomeView: View {
                 }
                 .buttonStyle(.borderedProminent)
             }
+
+            // dev 디버그 — 서버 로그아웃 + 토큰·온보딩 draft 전체 삭제 후 첫 로그인 화면으로. 배포 계에선 숨겨진다.
+            if store.showsDebugLogout {
+                Button("로그아웃 (dev)", role: .destructive) {
+                    send(.userTappedLogout)
+                }
+                .buttonStyle(.bordered)
+            }
         }
         .onAppear { send(.onAppear) }
     }
