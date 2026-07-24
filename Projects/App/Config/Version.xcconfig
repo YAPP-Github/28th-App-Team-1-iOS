@@ -1,4 +1,4 @@
 // 앱 버전 단일 소스 — Dev/QA/Prod xcconfig 가 공통으로 include 한다.
 // 릴리스 시 MARKETING_VERSION 을 올리고, 스토어/TestFlight 업로드마다 CURRENT_PROJECT_VERSION 을 증가시킨다.
-MARKETING_VERSION = 1.0.0
-CURRENT_PROJECT_VERSION = 1
+MARKETING_VERSION = 0.0.1
+CURRENT_PROJECT_VERSION = 2
