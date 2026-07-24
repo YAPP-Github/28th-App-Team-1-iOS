@@ -8,17 +8,6 @@
 import ComposableArchitecture
 import Foundation
 
-/// 면접 세션 API 의 도메인 에러 — Implementation 이 Core `ServerError`(코드)를 이 타입으로 매핑한다.
-/// Feature 는 Core 를 모르므로(레이어 규칙) 이 타입만 잡는다. (→ ai-interview.md §5 STEP6 Phase B)
-public enum InterviewError: Error, Equatable, Sendable {
-    /// 집중 프로젝트가 포트폴리오와 연관성 부족 (코사인 < 0.6, 서버 `FREETEXT_NOT_RELEVANT`) — 세션 생성 거부.
-    case freeTextNotRelevant
-    /// 무료 이용권 소진 (서버 `NO_REMAINING_TICKET`).
-    case noRemainingTicket
-    /// 그 외 서버 에러 — 코드·사용자 노출 문구 동봉.
-    case server(code: String, message: String)
-}
-
 // @lat: [[interview#Client 계약]]
 // Feature 가 Interview 도메인에 접근하는 유일한 계약 — D14 면접 세션 API([[api#Interview]]) 미러링.
 // testValue/previewValue 는 여기(Interface), liveValue 는 Implementation — App/Example 만 link (D4).
