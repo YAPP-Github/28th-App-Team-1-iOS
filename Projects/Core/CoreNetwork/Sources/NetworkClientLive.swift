@@ -23,6 +23,9 @@ extension NetworkClient: DependencyKey {
         NetworkClient(
             request: { request in
                 let urlRequest = try request.urlRequest(baseURL: baseURL())
+                #if DEBUG
+                NetworkLogger.request(urlRequest)
+                #endif
                 let data: Data
                 let response: URLResponse
                 do {
@@ -31,11 +34,17 @@ extension NetworkClient: DependencyKey {
                     // 구조적 동시성 취소는 실패가 아니다 — TCA `.run` 이 조용히 무시하도록 취소로 전파
                     throw CancellationError()
                 } catch let error as URLError {
+                    #if DEBUG
+                    NetworkLogger.failure("transport \(error.code.rawValue)", url: urlRequest.url?.absoluteString ?? "")
+                    #endif
                     throw NetworkError.transport(error.code)
                 }
                 guard let http = response as? HTTPURLResponse else {
                     throw NetworkError.invalidResponse
                 }
+                #if DEBUG
+                NetworkLogger.response(http, data: data, url: urlRequest.url?.absoluteString ?? "")
+                #endif
                 guard (200..<300).contains(http.statusCode) else {
                     throw NetworkError.statusCode(http.statusCode, data)
                 }
@@ -78,3 +87,31 @@ extension NetworkRequest {
         return urlRequest
     }
 }
+
+#if DEBUG
+/// 개발용 네트워크 로깅. 모든 실 HTTP 가 `NetworkClient.live` 한 곳을 지나므로 요청/응답이 전부 찍힌다.
+/// release(QA/Prod)에는 컴파일되지 않는다 (#if DEBUG).
+enum NetworkLogger {
+    static func request(_ req: URLRequest) {
+        print("🌐 [REQ] \(req.httpMethod ?? "?") \(req.url?.absoluteString ?? "?")")
+        if let headers = req.allHTTPHeaderFields, !headers.isEmpty {
+            print("   headers: \(headers)")
+        }
+        if let body = req.httpBody, let json = String(data: body, encoding: .utf8), !json.isEmpty {
+            print("   body: \(json)")
+        }
+    }
+
+    static func response(_ http: HTTPURLResponse, data: Data, url: String) {
+        let icon = (200..<300).contains(http.statusCode) ? "✅" : "❌"
+        print("\(icon) [RES] \(http.statusCode) \(url)")
+        if let json = String(data: data, encoding: .utf8), !json.isEmpty {
+            print("   body: \(json)")
+        }
+    }
+
+    static func failure(_ message: String, url: String) {
+        print("❌ [REQ-FAIL] \(message) \(url)")
+    }
+}
+#endif

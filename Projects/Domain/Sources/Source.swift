@@ -4,7 +4,11 @@
 @_exported import DomainCommonImplementation
 @_exported import DomainAuthImplementation
 @_exported import DomainInterviewImplementation
+@_exported import DomainInterviewReportImplementation
 @_exported import DomainJDImplementation
 @_exported import DomainJobImplementation
 @_exported import DomainPortfolioImplementation
-@_exported import DomainFeedbackImplementation
+@_exported import DomainUserImplementation
+@_exported import DomainFeedbackShareImplementation
+@_exported import DomainGuestFeedbackImplementation
+

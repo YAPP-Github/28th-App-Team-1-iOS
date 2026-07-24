@@ -6,9 +6,6 @@
 //
 
 import SwiftUI
-#if canImport(UIKit)
-import UIKit
-#endif
 
 extension Color {
     /// 색상 에셋(Colors.xcassets) 로드 단일 seam — `.claude/design.md` 「에셋 로드 규칙」.

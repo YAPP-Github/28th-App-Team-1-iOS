@@ -9,6 +9,7 @@ public enum ModulePath {
         case home = "Home"
         case auth = "Auth"
         case guestFeedback = "GuestFeedback"
+        case onboarding = "Onboarding"
 
         public static let name = "Feature"
     }
@@ -21,7 +22,10 @@ public enum ModulePath {
         case jd = "JD"
         case job = "Job"
         case portfolio = "Portfolio"
-        case feedback = "Feedback"
+        case user = "User"
+        case interviewReport = "InterviewReport"
+        case feedbackShare = "FeedbackShare"
+        case guestFeedback = "GuestFeedback"
 
         public static let name = "Domain"
     }

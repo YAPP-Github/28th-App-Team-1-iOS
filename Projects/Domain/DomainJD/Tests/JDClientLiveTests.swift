@@ -44,4 +44,19 @@ final class JDClientLiveTests: XCTestCase {
         XCTAssertFalse(validation.valid)
         XCTAssertEqual(validation.reason, "CRAWLING_FAILED")
     }
+
+    func test_validate_일일한도429를_dailyLimitExceeded로_매핑한다() async throws {
+        let client = makeClient { _ in
+            throw NetworkError.statusCode(429, Data(
+                #"{"success": false, "code": "JD_VALIDATION_LIMIT_EXCEEDED", "message": "공고 링크는 하루에 5번까지만 입력할 수 있어요"}"#.utf8
+            ))
+        }
+
+        do {
+            _ = try await client.validate("https://example.com/careers/123")
+            XCTFail("에러가 던져져야 한다")
+        } catch {
+            XCTAssertEqual(error as? JDError, .dailyLimitExceeded)
+        }
+    }
 }

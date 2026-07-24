@@ -1,6 +1,6 @@
 # API — D14 서버 연동
 
-YAPP APP 1팀 백엔드(D14 API v1)와의 연동 지식. 서버 태그(Auth·Interview·JD·Job·Portfolio)를 Domain 모듈로 1:1 미러링하고, 공통 규약(envelope·토큰)은 CoreNetwork 가 흡수한다. 인프라 계약은 [[domain.map#네트워킹 인프라]], 레이어 규칙은 [[architecture]].
+YAPP APP 1팀 백엔드(D14 API v1)와의 연동 지식. 서버 태그(Auth·Interview·Interview Report·JD·Job·Portfolio·User·Feedback Share·Guest Feedback)를 Domain 모듈로 1:1 미러링하고, 공통 규약(envelope·토큰)은 CoreNetwork 가 흡수한다. 인프라 계약은 [[domain.map#네트워킹 인프라]], 레이어 규칙은 [[architecture]].
 
 - Swagger: `http://43.202.34.84:8080/swagger-ui/index.html`
 - 스펙 원문: `GET /v3/api-docs` (OpenAPI 3.1)
@@ -17,7 +17,7 @@ YAPP APP 1팀 백엔드(D14 API v1)와의 연동 지식. 서버 태그(Auth·Int
 
 - Swagger 스키마 일부는 envelope 없이 표기돼 있다(annotation 누락) → `ServerEnvelope.unwrap` 이 직접 디코드 폴백을 가진다.
 - 날짜는 ISO8601 과 LocalDateTime(타임존 표기 없음)이 혼재 → `JSONDecoder.api` 가 KST 가정으로 파싱. 백엔드와 타임존 계약 확정 필요.
-- Domain 은 `ServerError.code` 로 도메인 에러를 매핑한다(Auth 가 첫 사례 — AuthError). 아직 매핑 없는 도메인은 ServerError 를 그대로 던진다 — Feature 분기가 필요해지는 시점에 도메인 에러를 늘린다.
+- Domain 은 `ServerError.code` 로 도메인 에러를 매핑한다 — 서버 정의 에러 코드가 있는 모든 도메인이 자체 에러 enum 을 갖는다(AuthError·InterviewError·InterviewReportError·JDError·PortfolioError·UserError·FeedbackShareError·GuestFeedbackError). 케이스는 State 가 다르게 반응할 경우의 수만큼만, 매핑은 각 Implementation 의 `mappingXxxError` 가 수행한다. 에러 코드가 없는 도메인(Job)만 ServerError/NetworkError 를 그대로 던진다.
 - multipart(파일 업로드)는 `NetworkRequest.multipart(...)` 빌더 — 기존 NetworkRequest 계약(헤더+body) 위의 편의일 뿐이다.
 
 ## 토큰 수명주기
@@ -57,12 +57,28 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 
 `endType` 계약(답변 제출): nil=정상 / SKIP(오디오 없음) / MANUAL_END(8:00 후 수동 종료) / HARD_CAP(12:00 강제) / EARLY_EXIT(8:00 전 이탈). `isWrapUp` 은 8:45 경과 여부 — 타이머 상태머신은 [ai-interview](../docs/work/ai-interview.md) §6.
 
+에러는 `InterviewError` 로 매핑된다 — NO_REMAINING_TICKET → noRemainingTicket(403), PORTFOLIO_NOT_FOUND / PORTFOLIO_PROCESSING / PORTFOLIO_UPLOAD_FAILED / JD_NOT_VALIDATED / FREETEXT_NOT_RELEVANT (세션 생성 400·404), INTERVIEW_SESSION_NOT_FOUND / QUESTION_NOT_FOUND (404), ANSWER_ALREADY_SUBMITTED / SESSION_ALREADY_ENDED (409), 입력 검증군(VALIDATION_ERROR·INVALID_*)은 서버 문구를 실은 invalid(message:), 미승격 코드(4xx)는 server(code·message) 로 동봉 — 분기가 필요해지면 전용 케이스로 승격.
+
+## Interview Report
+
+`DomainInterviewReport` — `InterviewReportClient.report`. 채점 파이프라인 결과를 사용자용 리포트(한 줄 요약 + 턴별 카드 + 영상 메타 + 지인 피드백 섹션)로 조회한다. 점수·판정 원값은 내려오지 않는다. 지인 피드백 요청/제출은 [[api#Feedback Share]]·[[api#Guest Feedback]].
+
+- GET `/api/v1/interview/sessions/{id}/report`
+- `status` 는 채점 진행 상태만 — GENERATING(전 필드 nil, 폴링 지속) / READY / INSUFFICIENT_ANALYSIS(채점된 카드만) / FAILED.
+- 레드플래그 유무는 `status` 가 아니라 `redFlagNotices` 배열로 판단. 저장 5종 중 노출 3종(지어냄·모순·무결점 서사)만 중립 문구로 온다. READY + 레드플래그면 headline 이 중립 사실 요약으로 대체.
+- 카드는 질문/답변 턴당 1장 — 같은 축이면 `axisOrder` 동일, `depthLevel` 로 구분 (표시: "질문 {axisOrder}-{depthLevel}").
+- `resolutionNotice` 가 있으면 해상도 낮음 — 능력 판단 보류, `highlightSpans` 는 빈 배열.
+- 영상 만료 시 `video.url` 만 nil — 대본·하이라이트는 유지. `guestFeedback` 은 제출자 0명이면 통째로 nil.
+
+에러는 `InterviewReportError` 로 매핑된다 — INTERVIEW_SESSION_NOT_FOUND → sessionNotFound, INTERVIEW_REPORT_NOT_FOUND → reportNotFound (둘 다 404 — 보고서 미생성 상태는 에러 코드로 구분).
+
 ## JD
 
 `DomainJD` — `JDClient.validate`. JD URL 크롤링 + AI 정제 + 서버 캐싱. HTTP 200 이어도 `valid=false` 가 온다(CRAWLING_FAILED·CONTENT_TOO_SHORT·EXTRACTION_FAILED) — 이때 UX 는 본문 직접 입력(jdText) 폴백이 필수.
 
 - POST `/api/v1/jd/validate`
 - `createSession` 의 `.url` 입력은 **사전에 이 검증을 통과**해야 한다 (`JD_NOT_VALIDATED`).
+- 에러는 `JDError` 로 매핑된다 — INVALID_JD_URL → invalidURL(400), JD_VALIDATION_LIMIT_EXCEEDED → dailyLimitExceeded(429, 1일 5회 초과 → jdText 폴백 유도).
 
 ## Job
 
@@ -81,9 +97,40 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 | `status` | GET `/api/v1/portfolios/{id}/status` | 3~5초 폴링 |
 | `delete` | DELETE `/api/v1/portfolios/{id}` | 재등록 전 필수 (1개 제한) |
 
+에러는 `PortfolioError` 로 매핑된다 — 업로드 검증군 INVALID_FILE_TYPE / FILE_TOO_LARGE / PAGE_COUNT_EXCEEDED / INVALID_PDF_FILE (400), PORTFOLIO_ALREADY_EXISTS → alreadyExists(409), PORTFOLIO_NOT_FOUND → notFound(404).
+
+## User
+
+`DomainUser` — `UserClient`. 회원 프로필 조회/수정과 이름 등록/중복 확인. 수정값은 이후 새로 생성하는 면접 세션부터 반영된다(과거 세션 스냅샷 불변) — 클라이언트가 이 조회값으로 세션 설정을 프리필한다. 로그인 응답의 `userInfo` 와 같은 형태다([[api#Auth]]).
+
+| 메서드 | 엔드포인트 | 비고 |
+|---|---|---|
+| `profile` | GET `/api/v1/users/me/profile` | 이름·직무·연차·잔여 이용권 |
+| `updateProfile` | PATCH `/api/v1/users/me/profile` | 이름은 변경할 때만 body 에 포함 |
+| `registerName` | PATCH `/api/v1/users/me/name` | 1~20자, 등록 후 재변경 가능 |
+| `checkName` | GET `/api/v1/users/name/check` | 본인이 등록한 이름은 충돌 아님 |
+
+에러는 `UserError` 로 매핑된다 — USER_NOT_FOUND → userNotFound(404), NAME_ALREADY_TAKEN → nameAlreadyTaken(409), INVALID_JOB_ROLE → invalidJobRole(400), VALIDATION_ERROR·CONSTRAINT_VIOLATION 은 서버 문구를 실은 invalid(message:).
+
+## Feedback Share
+
+`DomainFeedbackShare` — `FeedbackShareClient`. R1 리포트에서 지인에게 면접 영상을 공유하는 링크(토큰)의 사용자측 수명주기: 생성(태도 항목 1~5개 지정, 생성 후 잠김) → 참여 현황 조회 → 비공개 전환(불가역). 면접당 활성 링크 1개. 게스트측 진입/제출은 [[api#Guest Feedback]].
+
+| 메서드 | 엔드포인트 | 비고 |
+|---|---|---|
+| `status` | GET `/api/v1/feedback/sessions/{id}/share` | ACTIVE/INVALIDATED/PRIVATE + 제출 수(최대 4) |
+| `create` | POST `/api/v1/feedback/sessions/{id}/share` | 최초 생성 = 피드백 요청 사건, 영상 삭제 +48h 연장 |
+| `makePrivate` | PATCH `/api/v1/feedback/sessions/{id}/share` | 기제출 피드백·영상 삭제 시각은 유지 |
+
+토큰으로 공유 딥링크를 조립하는 것은 클라이언트 책임이다. 에러는 `FeedbackShareError` 로 매핑된다 — FEEDBACK_SHARE_NOT_FOUND → shareNotFound(404), INTERVIEW_SESSION_NOT_FOUND → sessionNotFound(404), FEEDBACK_SHARE_ALREADY_EXISTS → alreadyExists(409, 재생성 미지원), 항목 검증군(EMPTY_ATTITUDE_AXES·TOO_MANY_ATTITUDE_AXES·INVALID_ATTITUDE_AXIS)은 invalidAxes(message:), INVALID_SHARE_STATUS → invalidStatusTransition(400).
+
 ## Guest Feedback
 
-지인 평가 게스트측 API — **무인증**. 공유 토큰 경로 + `Device-Id` 헤더(클라 생성 UUID, 중복 제출 방지 용도 하나뿐)로 식별한다. 진입 `GET /feedback/guest/{token}` 은 게이트 판정과 영상·지정 항목·질문 경계를, 제출 `POST /feedback/guest/{token}/submissions` 은 지정 항목 전부의 4단계 척도를 요구한다(201). 구현 → [[feedback#Client 계약]].
+`DomainGuestFeedback` — `GuestFeedbackClient`. 지인(게스트)이 공유 링크로 진입해 태도 항목을 4단계 척도로 평가·제출하는 **무인증** API. 식별은 공유 토큰 + `Device-Id` 헤더(클라이언트 생성·로컬 보관, 중복 제출 방지) — 그래서 `AuthorizedNetworkClient` 가 아니라 `NetworkClient` 를 직접 쓴다.
 
-- 409 는 비공개/정원/중복, 400 은 제출 값 오류.
-- 사용자측 Feedback Share API(공유 링크 생성·비공개 전환)는 후속 F4 작업에서 잇는다.
+| 메서드 | 엔드포인트 | 비고 |
+|---|---|---|
+| `entry` | GET `/api/v1/feedback/guest/{token}` | 게이트 판정 + 영상·지정 항목·질문 경계. 최초 조회 시 영상 삭제 +7일 연장 |
+| `submit` | POST `/api/v1/feedback/guest/{token}/submissions` | 지정 항목 전부 필수, 제출 확정(수정 불가). 첫 제출 시 +30일 연장 |
+
+게이트: OPEN / PRIVATE(비공개·무효) / EXPIRED(영상 만료) / FULL(정원 4명) / ALREADY_SUBMITTED(이 기기 제출 완료) — 진입 화면 분기의 전부다. 에러는 `GuestFeedbackError` 로 매핑된다 — FEEDBACK_SHARE_TOKEN_NOT_FOUND → tokenNotFound(404), FEEDBACK_SHARE_CLOSED / FEEDBACK_CAPACITY_FULL / FEEDBACK_ALREADY_SUBMITTED → shareClosed/capacityFull/alreadySubmitted(409, 진입 후 상태 변화 경합), 제출 검증군(INCOMPLETE_RATINGS·INVALID_RATING_LEVEL·MISSING_DEVICE_ID)은 invalid(message:).

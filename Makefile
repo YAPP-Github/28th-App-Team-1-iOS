@@ -11,7 +11,7 @@ else
   SEARCH = rg --type swift -n
 endif
 
-.PHONY: lat lat-all lat-deps lint lint-fix generate test scaffold-feature scaffold-domain scaffold-core scaffold-shared
+.PHONY: lat lat-all lat-deps lint lint-fix generate test scaffold-feature scaffold-domain scaffold-core scaffold-shared install-snippets
 
 # 특정 도메인과 엮인 코드 전부 (위키링크 [[도메인 으로 검색 → delegate 의존도 잡힘)
 lat:
@@ -66,6 +66,13 @@ scaffold-shared:
 	@[ -n "$(name)" ] || (echo "❌ name 필수. 예: make scaffold-shared name=DesignSystem"; exit 1)
 	@tuist scaffold Shared --name $(name) --author "$$(git config user.name)"
 	@echo "✅ Shared$(name) 생성 완료. Projects/Shared/Shared$(name)/Project.swift 의 ⚠️ 주석을 확인하세요."
+
+# Xcode 코드 스니펫 설치 — Tools/XcodeSnippets/ 의 팀 공용 스니펫을 Xcode 로 복사
+# (tcapreview: TCA 기본 프리뷰 / tcapreviews: 시나리오·의존성 주입 프리뷰. Xcode 재시작 후 적용)
+install-snippets:
+	@mkdir -p ~/Library/Developer/Xcode/UserData/CodeSnippets
+	@cp Tools/XcodeSnippets/*.codesnippet ~/Library/Developer/Xcode/UserData/CodeSnippets/
+	@echo "✅ 스니펫 설치 완료. Xcode 를 재시작하면 tcapreview / tcapreviews 자동완성이 뜹니다."
 
 # Feature 테스트 (예: make test scheme=FeatureHome [device='iPhone 15'])
 #
