@@ -75,6 +75,21 @@ final class PortfolioClientLiveTests: XCTestCase {
         XCTAssertEqual(processing.status, .processing)
     }
 
+    func test_register_기등록409를_alreadyExists로_매핑한다() async throws {
+        let client = makeClient { _ in
+            throw NetworkError.statusCode(409, Data(
+                #"{"success": false, "code": "PORTFOLIO_ALREADY_EXISTS", "message": "이미 등록된 포트폴리오가 있어요."}"#.utf8
+            ))
+        }
+
+        do {
+            _ = try await client.register(PortfolioUpload(fileName: "p.pdf", data: Data()))
+            XCTFail("에러가 던져져야 한다")
+        } catch {
+            XCTAssertEqual(error as? PortfolioError, .alreadyExists)
+        }
+    }
+
     func test_delete_경로에_UUID를_싣는다() async throws {
         let id = UUID(uuidString: "3E1A8E4B-6C1B-4E1F-9B5A-2F1C0D9E8A70")!
         let client = makeClient { request in

@@ -1,59 +1,52 @@
 //
-//  JDClientLive.swift
-//  DomainJDImplementation
+//  InterviewReportClientLive.swift
+//  DomainInterviewReportImplementation
 //
-//  Created by EunseoKim on 26/07/18.
+//  Created by EunseoKim on 26/07/23.
 //
 
 import ComposableArchitecture
 import CoreNetworkInterface
-import DomainJDInterface
+import DomainInterviewReportInterface
 import Foundation
 
-// @lat: [[api#JD]]
+// @lat: [[api#Interview Report]]
 // depends-on: [[domain.map#네트워킹 인프라]]
-extension JDClient: @retroactive DependencyKey {
-    public static var liveValue: JDClient {
+extension InterviewReportClient: @retroactive DependencyKey {
+    public static var liveValue: InterviewReportClient {
         @Dependency(\.authorizedNetworkClient) var network
 
-        return JDClient(
-            validate: { jdURL in
-                try await mappingJDError {
-                    let request = try NetworkRequest.json(
-                        method: .post,
-                        path: "/api/v1/jd/validate",
-                        body: ValidateBody(jdUrl: jdURL)
+        return InterviewReportClient(
+            report: { sessionId in
+                try await mappingInterviewReportError {
+                    try await network.api(
+                        NetworkRequest(path: "/api/v1/interview/sessions/\(sessionId)/report")
                     )
-                    return try await network.api(request)
                 }
             }
         )
     }
 }
 
-private struct ValidateBody: Encodable {
-    let jdUrl: String
-}
+// MARK: - 서버 계약 매핑
 
-// MARK: - 에러 매핑
-
-/// 인프라 에러(ServerError·NetworkError)를 State 가 반응할 도메인 에러(JDError)로 좁힌다.
+/// 인프라 에러(ServerError·NetworkError)를 State 가 반응할 도메인 에러(InterviewReportError)로 좁힌다.
 /// 취소는 실패가 아니므로 그대로 통과시킨다 (TCA `.run` 이 조용히 무시).
-private func mappingJDError<T>(_ operation: () async throws -> T) async throws -> T {
+private func mappingInterviewReportError<T>(_ operation: () async throws -> T) async throws -> T {
     do {
         return try await operation()
     } catch is CancellationError {
         throw CancellationError()
     } catch {
-        throw JDError(mapping: error)
+        throw InterviewReportError(mapping: error)
     }
 }
 
-private extension JDError {
-    /// 서버 에러 코드 → 고정 케이스 (JD 는 문구 노출형 검증군이 없다 — 전부 고정 매핑).
-    static let serverCodeMap: [String: JDError] = [
-        "INVALID_JD_URL": .invalidURL,
-        "JD_VALIDATION_LIMIT_EXCEEDED": .dailyLimitExceeded,
+private extension InterviewReportError {
+    /// 서버 에러 코드 → 고정 케이스 (Report 는 문구 노출형 검증군이 없다 — 전부 고정 매핑).
+    static let serverCodeMap: [String: InterviewReportError] = [
+        "INTERVIEW_SESSION_NOT_FOUND": .sessionNotFound,
+        "INTERVIEW_REPORT_NOT_FOUND": .reportNotFound,
         "LOGIN_EXPIRED": .sessionExpired,
         "TOKEN_EXPIRED": .sessionExpired,
         "INVALID_TOKEN": .sessionExpired
@@ -61,7 +54,7 @@ private extension JDError {
 
     init(mapping error: any Error) {
         switch error {
-        case let error as JDError:
+        case let error as InterviewReportError:
             self = error
         case let error as ServerError:
             self = Self.serverCodeMap[error.code]
