@@ -48,6 +48,10 @@ public struct OnboardingFeature {
         public var relevanceFailureCount = 0
         /// 4회째 연관성 실패 시 뜨는 선택지 다이얼로그.
         @Presents public var relevanceChoice: ConfirmationDialogState<Action.RelevanceChoice>?
+        /// draft 복원 1회성 가드. 루트 `onAppear` 는 뒤로가기로 루트에 되돌아올 때마다 재발동하는데,
+        /// 복원 조건이 `path.isEmpty` 뿐이면 pop 으로 스택을 비운 순간 draft 를 다시 되쌓아 화면이 앞으로 튄다.
+        /// 위저드 수명당 복원을 1회로 제한해 이 재복원을 막는다.
+        var didAttemptRestore = false
 
         public init(userName: String = "") {
             self.data = OnboardingData(userName: userName)
@@ -96,7 +100,10 @@ public struct OnboardingFeature {
         Reduce { state, action in
             switch action {
             // 진입 — 저장된 draft 가 있고 TTL 안이면 값·위저드 위치를 복원한다 (PRD §4.4).
+            // 복원은 위저드 수명당 1회뿐 — 루트 onAppear 가 뒤로가기 복귀마다 재발동해도 재복원하지 않는다.
             case .onAppear:
+                guard !state.didAttemptRestore else { return .none }
+                state.didAttemptRestore = true
                 guard state.path.isEmpty, let draft = draftStore.load() else { return .none }
                 guard date.now.timeIntervalSince(draft.savedAt) < Self.draftTTL else {
                     return .run { [draftStore] _ in draftStore.clear() }
