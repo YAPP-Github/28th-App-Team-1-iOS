@@ -230,7 +230,7 @@ struct OnboardingCoordinatorTests {
             $0.relevanceFailureCount = 1
             $0.path.removeLast()   // 분석 스텝만 pop — 집중 프로젝트는 남는다.
             $0.path[id: focusId] = .focusProject(
-                .init(step: 5, totalSteps: 5, relevanceWarning: OnboardingFeature.relevanceWarningMessage)
+                .init(step: 5, totalSteps: 5, inputWarning: OnboardingFeature.relevanceWarningMessage)
             )
         }
     }

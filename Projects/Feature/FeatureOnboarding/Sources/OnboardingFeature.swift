@@ -277,7 +277,7 @@ public struct OnboardingFeature {
     private func setFocusProjectWarning(_ state: inout State, _ message: String) {
         guard let lastId = state.path.ids.last,
               case var .focusProject(focusProject)? = state.path[id: lastId] else { return }
-        focusProject.relevanceWarning = message
+        focusProject.inputWarning = message
         state.path[id: lastId] = .focusProject(focusProject)
     }
 

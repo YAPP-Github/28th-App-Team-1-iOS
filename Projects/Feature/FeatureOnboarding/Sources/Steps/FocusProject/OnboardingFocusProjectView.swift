@@ -33,13 +33,16 @@ public struct OnboardingFocusProjectView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
             }
-            skipTooltip
-                .padding(.bottom, 20)
+            if store.showsSkipTooltip {
+                skipTooltip
+                    .padding(.bottom, 20)
+            }
             bottomBar
         }
         .background(Color.BlackWhite.white.ignoresSafeArea())
         .dismissesKeyboardOnTap()
         .navigationBarBackButtonHidden(true)
+        .onAppear { send(.onAppear) }
     }
 
     private var navigationBar: some View {
@@ -117,7 +120,7 @@ public struct OnboardingFocusProjectView: View {
                 .foregroundStyle(Color.Gray.g700)
                 .frame(maxWidth: .infinity, alignment: .trailing)
 
-            if let warning = store.relevanceWarning {
+            if let warning = store.inputWarning {
                 HStack(spacing: 6) {
                     Image.Ic.error
                         .resizable()
