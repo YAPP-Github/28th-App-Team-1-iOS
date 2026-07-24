@@ -54,7 +54,8 @@ STEP 5 (선택 — 마지막 수집 스텝, 프로그레스 5/5). 300자 자유 
 종결 화면 (프로그레스·뒤로가기 없음, 다크 풀스크린). 코디네이터가 누적 OnboardingData 를 init 으로 주입 — 서버 제출 지점(세션 생성+폴링). 체크리스트 3행은 순차 진행 — 1·2행은 가짜 타이머(1.2s), 3행만 가짜 완료 AND 세션 READY 로 체크. 잠깐 노출 후 완료 화면 → delegate(.completed). X 는 분석 중에도 이탈 가능, pop 시 effect 자동 취소.
 
 세션 생성 연결 = PRD S3.5+S4. → [[interview#Client 계약]]
-- ① OnboardingData.interviewConfig() → InterviewClient.createSession + sessionStatus 폴링(3초) ✅. `.domain(interface: .interview)` 의존 추가. PROCESSING→폴링, READY→completed(sessionId), 실패→failed 화면(재시도 없음), config 불완전→failed. onAppear 가드로 중복 시작 방지. CancelID.session 으로 pop 시 취소.
+- ① OnboardingData.interviewConfig() → InterviewClient.createSession + sessionStatus 폴링(3초) ✅. `.domain(interface: .interview)` 의존 추가. PROCESSING→폴링, READY→completed(sessionId), 실패→failed 화면(재시도 없음), config 불완전→failed. onAppear 가드로 중복 시작 방지. CancelID.session 으로 pop 시 취소. createSession effect 는 `startSession(config:)` 로 추출해 최초 시도와 JD 재검증 후 재시도가 공유.
+- ①-JD 검증 만료 자동 복구 ✅ — 서버 JD 검증 캐시는 단명이라 오래된 draft 로 재개하면 createSession 이 `JD_NOT_VALIDATED` 로 거부된다(draft 는 jd 를 영구 유효로 착각). 이때 죽지 않고 저장된 `.link` 를 `JDClient.validate` 로 **1회**(`didRetryJDValidation` 가드) 재검증→valid 면 세션 생성 재시도, invalid/링크 아님이면 failed. 원칙: draft=재개 힌트·서버=진실, 서버 부작용 값은 직전에 서버와 화해. `.domain(interface: .jd)` 의존 추가. → [[api#Interview]]
 - ④ READY → delegate(.completed(sessionId)) → 코디네이터 delegate(.finished(sessionId:)) ✅. AppFeature 미배선이라 요약 질문 등 payload 확장은 배선 시.
 - ② 연관성 실패 처리 ✅ — `FREETEXT_NOT_RELEVANT` 를 DomainInterview 가 `InterviewError.freeTextNotRelevant` 로 매핑, 분석이 delegate(.relevanceCheckFailed) → 코디네이터가 분석 popLast + relevanceFailureCount++.
 - ③ 재입력 유도 ✅ — 4회 미만은 집중 프로젝트에 경고 문구 주입(편집 시 해제), **4회째**는 코디네이터의 `ConfirmationDialogState` 2선택지([포폴 다시 올리기→STEP4 pop] / [집중 프로젝트 없이 진행→freeText=nil 재분석]).
