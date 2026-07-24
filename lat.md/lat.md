@@ -9,6 +9,7 @@
 - [[home]] — Home 도메인
 - [[auth]] — Auth 도메인 (카카오·애플 소셜 로그인 + 서버 세션 교환)
 - [[interview]] — Interview 도메인 (InterviewClient — 면접 세션 API)
+- [[feedback]] — Feedback 도메인 (G4 게스트 평가 — 무인증 토큰 진입·태도 척도 제출)
 - [[onboarding]] — 온보딩 도메인 (신규 사용자 셋업 위저드 — STEP 1 직군 선택)
 
 > 실 Feature 노드는 [[home]]·[[auth]]·[[onboarding]]. 새 Feature 가 추가되면 노드도 함께 추가한다.

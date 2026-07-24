@@ -10,9 +10,9 @@ Tuist/                                       ← Project.makeModule + 타겟 팩
 Projects/
 ├── App/       composition root — AppFeature(탭 코디네이터) · Config/{Dev,QA,Prod}.xcconfig · DocC
 ├── Core/      Common · Network
-├── Domain/    Common · Auth · Interview · JD · Job · Portfolio    (모델 + Client)
+├── Domain/    Common · Auth · Interview · InterviewReport · JD · Job · Portfolio · User · FeedbackShare · GuestFeedback    (모델 + Client)
 ├── Feature/   Common · Home · Auth · Onboarding                   (화면 — Interface 없음)
-└── Shared/    Common · DesignSystem (타이포+컬러+이미지 토큰 구현됨)
+└── Shared/    Common · DesignSystem (토큰 + 공용 컴포넌트 9종 구현됨)
 ```
 
 - 의존 방향: `App → Feature(Impl) → Domain(Interface) → Core(Interface)`. `Shared(Interface)` 는 전 레이어 가능.
@@ -63,10 +63,23 @@ Projects/
 
 ## 디자인 시스템
 
-UI 코드(View·컴포넌트·에셋) 작성·수정 **전에 `.claude/design.md` 읽는다** — 토큰·표준 컴포넌트·에셋 로드 규칙 참조. **Figma MCP(`get_design_context` 등)로 화면 옮길 때도 raw 수치(색·크기·폰트) 박지 말고 `design.md` 토큰·컴포넌트로 매핑.** 모듈 `Shared/SharedDesignSystem`(타이포·색상 구현, spacing·컴포넌트 이관 대기), 의존 `.shared(interface: .designSystem)`.
+UI 코드(View·컴포넌트·에셋) 작성·수정 **전에 `.claude/design.md` 읽는다** — 토큰·표준 컴포넌트·에셋 로드 규칙 참조. **Figma MCP(`get_design_context` 등)로 화면 옮길 때도 raw 수치(색·크기·폰트) 박지 말고 `design.md` 토큰·컴포넌트로 매핑.** 모듈 `Shared/SharedDesignSystem`(토큰 전 영역 + 공용 컴포넌트 9종 구현 — 목록·승격 규칙은 `.claude/design/component.md`), 의존 `.shared(interface: .designSystem)`.
 
 ## 참고
 
+- 자세한 패턴/개념은 `Projects/App/Documentation/Architecture.docc/` DocC 카탈로그 (전용 `ArchitectureDocs` 타겟이 호스팅. 현재 Tuist TMA 구조·코드 기준으로 현행화됨)
+- 첫 빌드/세팅 `docs/getting-started.md`, 모듈 추가 `docs/adding-module.md`, 기획→아키텍처 매핑 작업 문서 `docs/work/`, 팀 컨벤션 `CONTRIBUTING.md`, 도메인 지식·의존 그래프 `lat.md/`(진입점 `lat.md/lat.md`, `lat check` 로 검증), lat 방법론 `docs/lat-methodology.md`, 코드 라벨 규칙 `docs/lat-labeling.md`, TMA 학습 노트 `docs/notes/`
+- 개발계/운영계 환경 분리는 DocC `Environments` 아티클 (`Architecture.docc/Articles/HowTo/Environments.md`) — xcconfig → Info.plist → 소비 모듈 liveValue seam(`NetworkClient.defaultBaseURL()`·`AppSecrets`), Feature·Domain 은 환경 무관
+- modular architecture 스펙트럼에서 이 프로젝트는 Tuist 멀티프로젝트 TMA (Level 3+, 레이어 × Interface/Implementation)
+- **문서 배치 규칙**: 심볼·개념·Xcode 렌더링이면 **DocC**, 검증되는 도메인 지식이면 **`lat.md/`**, 코드 밖 독립 산문(세팅·과정·외부·방법론)이면 **`docs/`**. 커밋/PR 규칙 단일 소스는 `CONTRIBUTING.md`
+
+## superpowers 서브에이전트 모델 (오버라이드)
+
+`superpowers:subagent-driven-development`(및 이를 위임하는 `executing-plans`)로 구현을 진행할 때, **코드를 작성하는 implementer 서브에이전트는 항상 Opus 4.8 로 디스패치**한다 (Agent 호출 시 `model: opus`). 그 스킬 `SKILL.md` 의 «Model Selection» 섹션이 스펙 명확한 구현 태스크에 싼 티어(Sonnet/Haiku)를 고르라고 지시해도, **implementer 에 한해 이 지시가 우선**한다.
+
+- **대상**: 코드를 작성하는 implementer 서브에이전트만.
+- **그대로 둠**: `task-reviewer`·최종 whole-branch 리뷰 등 리뷰 서브에이전트는 스킬 기본값(diff 크기·복잡도·리스크에 맞춘 티어)을 유지 — 손대지 않는다.
+- **이미 Opus**: 계획(`brainstorming`·`writing-plans`)은 서브에이전트 없이 인라인이라 세션 모델(Opus 4.8)로 돈다 — 변경 없음.
 - 패턴/개념: DocC `Projects/App/Documentation/Architecture.docc/` · 환경분리: DocC `Environments` 아티클
 - 세팅 `docs/getting-started.md` · 모듈 추가 `docs/adding-module.md` · 커밋/PR `CONTRIBUTING.md` · lat 방법론 `docs/lat-methodology.md`
 - 문서 배치: 심볼·개념 = **DocC**, 검증되는 도메인 지식 = **`lat.md/`**, 코드 밖 독립 산문 = **`docs/`**.

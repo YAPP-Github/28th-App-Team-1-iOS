@@ -25,6 +25,7 @@ AppFeature  --.users(.profileUpdated)-->       Users   (list/detail 갱신)
 | Feature | 의존 Domain (Interface) | Client |
 |---|---|---|
 | Home | (없음 — 외부 IO 없는 화면) | — |
+| GuestFeedback (G4 게스트 평가) | DomainGuestFeedback | GuestFeedbackClient · GuestFeedbackLocalStore → [[feedback]] |
 | Auth (로그인 게이트) | DomainAuth | AuthClient → [[auth]] |
 | Common — NetworkExample (네트워킹 화면 템플릿) | DomainJob | JobClient → [[api#Job]] |
 | Onboarding (Part 1 위저드 — [[onboarding]] · [ai-interview](../docs/work/ai-interview.md) §5) | DomainJob · DomainJD · DomainPortfolio (분석 스텝 세션 연결 시 + DomainInterview) | JobClient · JDClient · PortfolioClient (+ InterviewClient) |

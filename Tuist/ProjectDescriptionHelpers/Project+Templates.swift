@@ -30,6 +30,8 @@ public extension Settings {
         .settings(
             base: [
                 "GENERATE_INFOPLIST_FILE": "YES",
+                // 임베드되는 동적 프레임워크 plist 에도 버전이 실려야 ASC 업로드 검증을 통과한다.
+                // 프로젝트 레벨 base 라 App/Example 타겟의 Version.xcconfig(타겟 xcconfig)가 우선한다.
                 // 모든 모듈 framework 의 Info.plist 에 버전 키를 채운다 — dynamic 임베드 시
                 // CFBundleShortVersionString 누락으로 인한 TestFlight 업로드 거부(90057)를 막는다.
                 // (앱/Example 타겟은 자체 settings 의 버전으로 override 된다)
