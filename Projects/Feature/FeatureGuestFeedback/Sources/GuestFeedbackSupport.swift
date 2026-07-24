@@ -6,8 +6,48 @@
 //
 
 import ComposableArchitecture
-import DomainFeedbackInterface
+import DomainGuestFeedbackInterface
 import Foundation
+
+// MARK: - Domain 모델 어댑터 — DomainGuestFeedback 계약(옵셔널 필드·String videoUrl)을 화면 코드 형태로.
+
+extension AttitudeAxis: @retroactive Identifiable {
+    public var id: String { code }
+}
+
+extension GuestFeedbackEntry {
+    /// 서버 계약은 axes 가 옵셔널 — 화면 로직은 빈 배열로 다룬다.
+    var axisList: [AttitudeAxis] { axes ?? [] }
+    /// videoUrl(String) → URL. 파싱 실패는 영상 없음과 동일.
+    var videoURL: URL? { videoUrl.flatMap(URL.init(string:)) }
+    /// 제출 도중 정원 마감 강등 — 모델 프로퍼티가 let 이라 복사본으로 갱신.
+    func closingSubmission() -> GuestFeedbackEntry {
+        GuestFeedbackEntry(
+            gate: gate, requesterName: requesterName, axes: axes,
+            videoUrl: videoUrl, questionBoundaries: questionBoundaries, submissionOpen: false
+        )
+    }
+}
+
+extension GuestFeedbackError {
+    /// PRD 확정 안내 문구 — 문구는 표현 관심사라 Feature 가 소유한다.
+    var userMessage: String {
+        switch self {
+        case .shareClosed: "지금은 참여할 수 없는 링크예요."
+        case .capacityFull: "이미 4분이 참여했어요."
+        case .alreadySubmitted: "이미 제출하셨어요."
+        case .tokenNotFound: "유효하지 않은 링크예요."
+        case .invalid(let message): message
+        case .networkFailure: "네트워크 연결을 확인해 주세요."
+        case .serverUnavailable, .unexpected: "잠시 후 다시 시도해 주세요."
+        }
+    }
+
+    /// effect catch 지점 — liveValue 가 이미 도메인 에러로 좁히므로 그 외는 unexpected.
+    static func wrap(_ error: any Error) -> GuestFeedbackError {
+        (error as? GuestFeedbackError) ?? .unexpected
+    }
+}
 
 /// 게스트 텍스트 입력 규칙 (PRD §2-3) — 국문·영문·공백·숫자·특수문자 ! - ~ ? . , / [ ] < > 만 허용.
 enum GuestTextRules {

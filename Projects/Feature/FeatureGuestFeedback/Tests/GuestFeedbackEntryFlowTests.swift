@@ -6,8 +6,8 @@
 //
 
 import ComposableArchitecture
-import DomainFeedbackInterface
-import DomainFeedbackTesting
+import DomainGuestFeedbackInterface
+import DomainGuestFeedbackTesting
 import Foundation
 import Testing
 @testable import FeatureGuestFeedbackImplementation
@@ -83,8 +83,7 @@ struct GuestFeedbackEntryFlowTests {
         arguments: [
             (GuestFeedbackGate.private, GuestFeedbackFeature.GateReason.private),
             (GuestFeedbackGate.expired, GuestFeedbackFeature.GateReason.expired),
-            (GuestFeedbackGate.alreadySubmitted, GuestFeedbackFeature.GateReason.alreadySubmitted),
-            (GuestFeedbackGate.unknown, GuestFeedbackFeature.GateReason.unknown)
+            (GuestFeedbackGate.alreadySubmitted, GuestFeedbackFeature.GateReason.alreadySubmitted)
         ]
     )
     func closedGatesLandOnGateScreen(gate: GuestFeedbackGate, reason: GuestFeedbackFeature.GateReason) async {
@@ -101,7 +100,7 @@ struct GuestFeedbackEntryFlowTests {
     @Test("유효하지 않은 토큰이면 차단 화면으로 간다")
     func invalidTokenLandsOnGateScreen() async {
         var client = GuestFeedbackClient.mock()
-        client.enter = { _ in throw GuestFeedbackError.invalidToken }
+        client.entry = { _, _ in throw GuestFeedbackError.tokenNotFound }
         let store = TestStore(initialState: GuestFeedbackFeature.State(token: "t1")) {
             GuestFeedbackFeature()
         } withDependencies: {
@@ -119,14 +118,14 @@ struct GuestFeedbackEntryFlowTests {
     @Test(
         "진입 실패의 영구 도메인 에러는 재시도 알럿이 아니라 차단 화면으로 간다",
         arguments: [
-            (GuestFeedbackError.closed, GuestFeedbackFeature.GateReason.private),
+            (GuestFeedbackError.shareClosed, GuestFeedbackFeature.GateReason.private),
             (GuestFeedbackError.alreadySubmitted, GuestFeedbackFeature.GateReason.alreadySubmitted),
             (GuestFeedbackError.capacityFull, GuestFeedbackFeature.GateReason.unknown)
         ]
     )
     func permanentEnterErrorsLandOnGateScreen(error: GuestFeedbackError, reason: GuestFeedbackFeature.GateReason) async {
         var client = GuestFeedbackClient.mock()
-        client.enter = { _ in throw error }
+        client.entry = { _, _ in throw error }
         let store = TestStore(initialState: GuestFeedbackFeature.State(token: "t1")) {
             GuestFeedbackFeature()
         } withDependencies: {
@@ -188,10 +187,10 @@ struct GuestFeedbackEntryFlowTests {
     func networkFailureAlertsAndRetries() async {
         let attempts = LockIsolated(0)
         var client = GuestFeedbackClient.mock()
-        client.enter = { _ in
+        client.entry = { _, _ in
             attempts.withValue { $0 += 1 }
             if attempts.value == 1 {
-                throw GuestFeedbackError.underlying(message: "네트워크 연결을 확인해 주세요.")
+                throw GuestFeedbackError.networkFailure
             }
             return .fixture()
         }

@@ -6,7 +6,7 @@
 //
 
 import ComposableArchitecture
-import DomainFeedbackInterface
+import DomainGuestFeedbackInterface
 import Foundation
 
 // @lat: [[feedback#G4 게스트 평가]]
@@ -53,13 +53,13 @@ public struct GuestFeedbackFeature {
 
         /// 객관식 전 축 level 선택 완료 — 완료 토스트 트리거(제출 가능 여부와 무관한 순수 입력 상태).
         public var isAllRated: Bool {
-            guard let entry, !entry.axes.isEmpty else { return false }
-            return entry.axes.allSatisfy { ratings[$0.code]?.level != nil }
+            guard let entry, !entry.axisList.isEmpty else { return false }
+            return entry.axisList.allSatisfy { ratings[$0.code]?.level != nil }
         }
 
         /// 제출 성립 조건 (PRD §2-3): 지정 항목 전부 level 선택.
         public var isSubmitEnabled: Bool {
-            guard let entry, entry.submissionOpen, !isSubmitting else { return false }
+            guard let entry, entry.submissionOpen == true, !isSubmitting else { return false }
             return isAllRated
         }
 
@@ -131,7 +131,7 @@ public struct GuestFeedbackFeature {
         @CasePathable
         public enum Inner: Sendable {
             case entryLoaded(Result<GuestFeedbackEntry, GuestFeedbackError>)
-            case submitFinished(Result<GuestSubmissionReceipt, GuestFeedbackError>)
+            case submitFinished(Result<GuestFeedbackReceipt, GuestFeedbackError>)
             case videoReady                    // starting 연출 종료 → evaluating
             case draftSaved                    // debounce draft 저장 완료 → 저장 인디케이터 해제
             case completionToastExpired        // 완료 토스트 2초 경과 → 자동 해제

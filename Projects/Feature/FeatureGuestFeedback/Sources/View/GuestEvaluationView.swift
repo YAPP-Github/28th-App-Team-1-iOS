@@ -6,7 +6,7 @@
 //
 
 import ComposableArchitecture
-import DomainFeedbackInterface
+import DomainGuestFeedbackInterface
 import SharedDesignSystemInterface
 import SwiftUI
 import UIKit
@@ -383,11 +383,11 @@ struct GuestEvaluationView: View {
             AttitudeAxis(code: "GESTURE", displayName: "손동작"),
             AttitudeAxis(code: "VOICE", displayName: "목소리")
         ],
-        videoURL: nil,
+        videoUrl: nil,
         questionBoundaries: [],
         submissionOpen: true
     )
-    state.activeAxis = state.entry?.axes.first
+    state.activeAxis = state.entry?.axisList.first
     // 시선=선택(미평가), 표정=완료(green 세그먼트) 시나리오.
     state.ratings = ["EXPRESSION": RatingDraft(level: 1, comment: "")]
     return GuestEvaluationView(

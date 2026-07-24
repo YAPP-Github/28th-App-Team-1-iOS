@@ -6,7 +6,7 @@
 //
 
 import ComposableArchitecture
-import DomainFeedbackInterface
+import DomainGuestFeedbackInterface
 import SharedDesignSystemInterface
 import SwiftUI
 
@@ -216,7 +216,7 @@ struct GuestSummaryView: View {
             AttitudeAxis(code: "GESTURE", displayName: "손동작"),
             AttitudeAxis(code: "VOICE", displayName: "목소리")
         ],
-        videoURL: nil,
+        videoUrl: nil,
         questionBoundaries: [],
         submissionOpen: true
     )

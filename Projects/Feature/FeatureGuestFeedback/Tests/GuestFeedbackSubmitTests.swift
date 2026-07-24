@@ -6,8 +6,8 @@
 //
 
 import ComposableArchitecture
-import DomainFeedbackInterface
-import DomainFeedbackTesting
+import DomainGuestFeedbackInterface
+import DomainGuestFeedbackTesting
 import Foundation
 import Testing
 @testable import FeatureGuestFeedbackImplementation
@@ -75,11 +75,11 @@ struct GuestFeedbackSubmitTests {
 
     @Test("제출 payload 는 지정 항목 순서로, 빈 별칭·빈 코멘트는 nil 로 담는다")
     func submitBuildsPayloadFromDesignatedAxes() async {
-        let captured = LockIsolated<GuestSubmission?>(nil)
+        let captured = LockIsolated<GuestFeedbackSubmission?>(nil)
         var client = GuestFeedbackClient.mock()
-        client.submit = { _, submission in
+        client.submit = { _, _, submission in
             captured.setValue(submission)
-            return GuestSubmissionReceipt(submissionID: 1, submittedAt: Date(timeIntervalSince1970: 1_784_500_000))
+            return GuestFeedbackReceipt(submissionId: 1, submittedAt: Date(timeIntervalSince1970: 1_784_500_000))
         }
         var ratings = allRated
         ratings["GAZE"] = RatingDraft(level: 3, comment: "가끔 피해요")
@@ -100,9 +100,8 @@ struct GuestFeedbackSubmitTests {
 
         let submission = captured.value
         #expect(submission?.nickname == nil)   // 빈 별칭 → nil (서버가 지인1~4 자동 부여)
-        #expect(submission?.overallFeedback == nil)
-        #expect(submission?.ratings.map(\.axisCode) == AttitudeAxis.allFive.map(\.code))
-        #expect(submission?.ratings.first == GuestRating(axisCode: "GAZE", level: 3, comment: "가끔 피해요"))
+        #expect(submission?.ratings.map(\.axis) == AttitudeAxis.allFive.map(\.code))
+        #expect(submission?.ratings.first == AttitudeRating(axis: "GAZE", level: 3, comment: "가끔 피해요"))
         #expect(submission?.ratings.last?.comment == nil)   // 빈 코멘트 → nil
     }
 
@@ -119,7 +118,7 @@ struct GuestFeedbackSubmitTests {
         }
         await store.receive(\.inner.submitFinished) {
             $0.isSubmitting = false
-            $0.entry?.submissionOpen = false
+            $0.entry = $0.entry?.closingSubmission()
             $0.alert = .plain(message: "이미 4분이 참여했어요.")
         }
     }
@@ -127,7 +126,7 @@ struct GuestFeedbackSubmitTests {
     @Test(
         "409 비공개·기제출이면 차단 화면으로 전환한다",
         arguments: [
-            (GuestFeedbackError.closed, GuestFeedbackFeature.GateReason.private),
+            (GuestFeedbackError.shareClosed, GuestFeedbackFeature.GateReason.private),
             (GuestFeedbackError.alreadySubmitted, GuestFeedbackFeature.GateReason.alreadySubmitted)
         ]
     )
@@ -150,7 +149,7 @@ struct GuestFeedbackSubmitTests {
 
     @Test("400 이면 알럿을 띄우고 입력을 유지한다")
     func validationErrorKeepsInput() async {
-        let store = makeReadyStore(client: .mock(submitError: .invalidSubmission))
+        let store = makeReadyStore(client: .mock(submitError: .invalid(message: "지정된 항목을 모두 평가해 주세요.")))
 
         await store.send(.view(.submitTapped)) {
             $0.confirmDialog = .submitConfirm
