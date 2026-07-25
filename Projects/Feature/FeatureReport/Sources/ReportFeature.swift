@@ -17,7 +17,7 @@ public struct ReportFeature {
     @Reducer
     public enum Path {
         case videoPlayer(ReportVideoPlayerFeature)   // 2. 영상 플레이어
-        case feedback(ReportFeedbackFeature)         // 3. 피드백
+        case peerFeedback(ReportPeerFeedbackFeature)         // 3. 피드백
         case final(ReportFinalFeature)               // 4. 최종
     }
 
@@ -72,11 +72,11 @@ public struct ReportFeature {
 
             // 영상 플레이어 완료 → 피드백 push.
             case .path(.element(id: _, action: .videoPlayer(.delegate(.continueRequested)))):
-                state.path.append(.feedback(.init()))
+                state.path.append(.peerFeedback(.init()))
                 return .none
 
             // 피드백 완료 → 최종 push.
-            case .path(.element(id: _, action: .feedback(.delegate(.continueRequested)))):
+            case .path(.element(id: _, action: .peerFeedback(.delegate(.continueRequested)))):
                 state.path.append(.final(.init()))
                 return .none
 
@@ -86,14 +86,14 @@ public struct ReportFeature {
 
             // 뒤로 — 스택 pop.
             case .path(.element(id: _, action: .videoPlayer(.delegate(.backRequested)))),
-                 .path(.element(id: _, action: .feedback(.delegate(.backRequested)))),
+                 .path(.element(id: _, action: .peerFeedback(.delegate(.backRequested)))),
                  .path(.element(id: _, action: .final(.delegate(.backRequested)))):
                 _ = state.path.popLast()
                 return .none
 
             // 이탈(X) — 어느 화면에서든 부모 통보.
             case .path(.element(id: _, action: .videoPlayer(.delegate(.closeRequested)))),
-                 .path(.element(id: _, action: .feedback(.delegate(.closeRequested)))),
+                 .path(.element(id: _, action: .peerFeedback(.delegate(.closeRequested)))),
                  .path(.element(id: _, action: .final(.delegate(.closeRequested)))):
                 return .send(.delegate(.closeRequested))
 

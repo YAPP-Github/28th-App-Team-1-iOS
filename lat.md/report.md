@@ -18,7 +18,7 @@ AI 면접 리포트 Feature(`FeatureReport`)의 도메인 노드. 화면 4종(�
 
 ## 피드백
 
-`ReportFeedbackFeature` — 3/4. 피드백 열람 화면 예정. 현재 자리표시.
+`ReportPeerFeedbackFeature` — 3/4. 피드백 열람 화면 예정. 현재 자리표시.
 
 ## 최종
 
