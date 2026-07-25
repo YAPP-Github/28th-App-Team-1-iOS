@@ -23,15 +23,14 @@ public struct ReportFinalView: View {
         VStack(spacing: 0) {
             navigationBar
             Spacer()
-            Text("리포트 최종")
+            Text("최종 보고서")
                 .dsTypography(.head3)
                 .foregroundStyle(Color.Gray.g800)
-            Text("4/4 — 디자인 연결 예정")
+            Text("Part 4.6 스펙 대기")
                 .dsTypography(.body3)
                 .foregroundStyle(Color.Gray.g500)
                 .padding(.top, 8)
             Spacer()
-            continueButton
         }
         .background(Color.BlackWhite.white.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
@@ -67,23 +66,9 @@ public struct ReportFinalView: View {
         .frame(height: 54)
     }
 
-    private var continueButton: some View {
-        Button {
-            send(.userTappedContinue)
-        } label: {
-            Text("완료")
-                .dsTypography(.sub7)
-                .foregroundStyle(Color.BlackWhite.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 22)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .background(Color.HilitBlack.b800.ignoresSafeArea(edges: .bottom))
-    }
 }
 
-#Preview("리포트 최종") {
+#Preview("최종 보고서") {
     ReportFinalView(
         store: Store(initialState: ReportFinalFeature.State()) {
             ReportFinalFeature()

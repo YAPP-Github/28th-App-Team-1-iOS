@@ -9,16 +9,22 @@ import ComposableArchitecture
 import Foundation
 
 // @lat: [[report#코디네이터]]
-/// AI 면접 리포트 코디네이터. 리포트 메인을 루트로 두고, 이후 화면은 `path`(StackState)로 push 한다.
-/// 각 화면의 delegate 만 매칭해 전환한다 — 화면 간 직접 의존 없음, 조립은 여기서만 (D5).
-/// ⚠️ 전환 순서(메인 → 영상 → 피드백 → 최종)는 디자인 확정 전 임시 선형 플로우 — Figma 연결 시 조정한다.
+/// AI 면접 리포트 코디네이터. 1차 리포트를 루트로 두고 나머지 화면을 `path`(StackState)로 push 한다.
+/// 각 화면의 delegate 만 매칭한다 — 화면 간 직접 의존 없음, 조립은 여기서만 (D5).
+///
+/// **메인이 허브다.** 화면들은 한 줄로 이어지지 않는다 — 영상 플레이어는 리포트의 종속 화면이지
+/// 지인 피드백의 앞 단계가 아니고, 영상을 보지 않고 바로 지인에게 보낼 수 있어야 한다.
+/// 그래서 각 화면 진입은 메인의 개별 delegate 가 트리거한다 (정의서 §1-1).
 @Reducer
 public struct ReportFeature {
     @Reducer
     public enum Path {
-        case videoPlayer(ReportVideoPlayerFeature)   // 2. 영상 플레이어
-        case peerFeedback(ReportPeerFeedbackFeature)         // 3. 피드백
-        case final(ReportFinalFeature)               // 4. 최종
+        /// 영상 다시보기 — 메인 CTA 또는 상세 시트의 «이 장면 영상으로 보기»
+        case videoPlayer(ReportVideoPlayerFeature)
+        /// 지인 피드백 요청 — 메인 CTA (Part 4.5 스펙 대기)
+        case peerFeedback(ReportPeerFeedbackFeature)
+        /// 최종 보고서 — 지인 피드백 도착 후 (Part 4.6 스펙 대기)
+        case final(ReportFinalFeature)
     }
 
     // @Reducer enum 이 생성하는 Path.State 는 Equatable 을 자동 채택하지 않는다 —
@@ -26,13 +32,13 @@ public struct ReportFeature {
 
     @ObservableState
     public struct State: Equatable {
-        /// 루트 화면(리포트 메인).
+        /// 루트 화면(1차 리포트).
         public var main: ReportMainFeature.State
         /// 이후 화면 네비게이션 스택.
         public var path = StackState<Path.State>()
 
-        public init(main: ReportMainFeature.State = .init()) {
-            self.main = main
+        public init(sessionId: Int) {
+            self.main = ReportMainFeature.State(sessionId: sessionId)
         }
     }
 
@@ -41,12 +47,13 @@ public struct ReportFeature {
         case path(StackActionOf<Path>)
         case delegate(Delegate)
 
+        /// 부모(AppFeature) 통보. 모듈 안에서 끝나는 전환은 여기 올리지 않는다.
         @CasePathable
         public enum Delegate: Equatable, Sendable {
-            /// 리포트 이탈(X) — dismiss 는 부모(AppFeature)가 처리한다.
+            /// 분석 부족 — 다시 연습하기. 면접 셋업 진입은 부모가 처리한다.
+            case retryRequested
+            /// 리포트 이탈(X) — dismiss 는 부모가 처리한다.
             case closeRequested
-            /// 리포트 플로우 완료 — 이후 전환은 부모가 처리한다.
-            case finished
         }
     }
 
@@ -59,52 +66,67 @@ public struct ReportFeature {
 
         Reduce { state, action in
             switch action {
-            // 메인 완료 → 영상 플레이어 push (임시 선형 플로우).
-            case .main(.delegate(.continueRequested)):
-                state.path.append(.videoPlayer(.init()))
-                return .none
-
-            case .main(.delegate(.closeRequested)):
-                return .send(.delegate(.closeRequested))
+            case let .main(.delegate(action)):
+                return reduceMainDelegate(&state, action)
 
             case .main:
                 return .none
 
-            // 영상 플레이어 완료 → 피드백 push.
-            case .path(.element(id: _, action: .videoPlayer(.delegate(.continueRequested)))):
-                state.path.append(.peerFeedback(.init()))
-                return .none
-
-            // 피드백 완료 → 최종 push.
-            case .path(.element(id: _, action: .peerFeedback(.delegate(.continueRequested)))):
-                state.path.append(.final(.init()))
-                return .none
-
-            // 최종 완료 → 플로우 종료 통보.
-            case .path(.element(id: _, action: .final(.delegate(.continueRequested)))):
-                return .send(.delegate(.finished))
-
-            // 뒤로 — 스택 pop.
-            case .path(.element(id: _, action: .videoPlayer(.delegate(.backRequested)))),
-                 .path(.element(id: _, action: .peerFeedback(.delegate(.backRequested)))),
-                 .path(.element(id: _, action: .final(.delegate(.backRequested)))):
-                _ = state.path.popLast()
-                return .none
-
-            // 이탈(X) — 어느 화면에서든 부모 통보.
-            case .path(.element(id: _, action: .videoPlayer(.delegate(.closeRequested)))),
-                 .path(.element(id: _, action: .peerFeedback(.delegate(.closeRequested)))),
-                 .path(.element(id: _, action: .final(.delegate(.closeRequested)))):
-                return .send(.delegate(.closeRequested))
-
-            case .path:
-                return .none
+            case let .path(action):
+                return reducePath(&state, action)
 
             case .delegate:
                 return .none
             }
         }
         .forEach(\.path, action: \.path)
+    }
+
+    /// 메인(허브)의 신호 → 화면 push 또는 부모 전파.
+    private func reduceMainDelegate(
+        _ state: inout State,
+        _ action: ReportMainFeature.Action.Delegate
+    ) -> Effect<Action> {
+        switch action {
+        case let .videoRequested(startAt):
+            guard let url = state.main.playableVideoURL else { return .none }
+            state.path.append(.videoPlayer(ReportVideoPlayerFeature.State(
+                videoURL: url,
+                startAt: startAt,
+                cards: state.main.cards
+            )))
+            return .none
+
+        case .peerFeedbackRequested:
+            state.path.append(.peerFeedback(ReportPeerFeedbackFeature.State()))
+            return .none
+
+        case .retryRequested:
+            return .send(.delegate(.retryRequested))
+
+        case .closeRequested:
+            return .send(.delegate(.closeRequested))
+        }
+    }
+
+    private func reducePath(_ state: inout State, _ action: StackActionOf<Path>) -> Effect<Action> {
+        switch action {
+        // 뒤로 — 어느 화면에서든 pop.
+        case .element(id: _, action: .videoPlayer(.delegate(.backRequested))),
+             .element(id: _, action: .peerFeedback(.delegate(.backRequested))),
+             .element(id: _, action: .final(.delegate(.backRequested))):
+            _ = state.path.popLast()
+            return .none
+
+        // 이탈(X) — 어느 화면에서든 부모 통보.
+        case .element(id: _, action: .videoPlayer(.delegate(.closeRequested))),
+             .element(id: _, action: .peerFeedback(.delegate(.closeRequested))),
+             .element(id: _, action: .final(.delegate(.closeRequested))):
+            return .send(.delegate(.closeRequested))
+
+        default:
+            return .none
+        }
     }
 }
 
