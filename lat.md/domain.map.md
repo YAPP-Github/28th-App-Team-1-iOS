@@ -32,7 +32,7 @@ AppFeature  --.users(.profileUpdated)-->       Users   (list/detail 갱신)
 | InterviewSession (예정) | DomainInterview | InterviewClient → [[interview]] |
 | Portfolio 관리 (예정) | DomainPortfolio | PortfolioClient → [[api#Portfolio]] |
 | Users (예정 — 데모 패턴) | DomainUser | UserClient → [[api#User]] |
-| InterviewReport (예정 — [ai-interview-report](../docs/work/ai-interview-report.md)) | DomainInterviewReport · DomainFeedbackShare | InterviewReportClient · FeedbackShareClient → [[api#Interview Report]] |
+| Report (골격 — 화면 4종 자리표시, [[report]] · [ai-interview-report](../docs/work/ai-interview-report.md)) | DomainInterviewReport (지인 피드백 연결 시 + DomainFeedbackShare) | InterviewReportClient → [[api#Interview Report]] |
 | GuestFeedback (예정 — 지인 웹/딥링크 진입) | DomainGuestFeedback | GuestFeedbackClient → [[api#Guest Feedback]] |
 | Profile (예정 — 데모 패턴) | DomainProfile | ProfileClient |
 
