@@ -34,11 +34,11 @@ struct ReportFeatureTests {
 
         await store.send(.path(.element(id: 0, action: .videoPlayer(.view(.userTappedContinue)))))
         await store.receive(\.path[id: 0].videoPlayer.delegate.continueRequested) {
-            $0.path[id: 1] = .feedback(ReportFeedbackFeature.State())
+            $0.path[id: 1] = .peerFeedback(ReportPeerFeedbackFeature.State())
         }
 
-        await store.send(.path(.element(id: 1, action: .feedback(.view(.userTappedContinue)))))
-        await store.receive(\.path[id: 1].feedback.delegate.continueRequested) {
+        await store.send(.path(.element(id: 1, action: .peerFeedback(.view(.userTappedContinue)))))
+        await store.receive(\.path[id: 1].peerFeedback.delegate.continueRequested) {
             $0.path[id: 2] = .final(ReportFinalFeature.State())
         }
     }

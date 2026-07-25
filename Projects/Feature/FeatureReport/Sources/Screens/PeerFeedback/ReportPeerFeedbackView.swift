@@ -1,5 +1,5 @@
 //
-//  ReportFeedbackView.swift
+//  ReportPeerFeedbackView.swift
 //  FeatureReport
 //
 //  Created by EunSeo on 26/07/25.
@@ -11,11 +11,11 @@ import SwiftUI
 
 // 리포트 피드백 자리표시 뷰 — 골격(내비바·본문·하단 CTA)만 두고 본문은 비워 뒀다.
 // Figma 가 오면 디자인 토큰·공용 컴포넌트로 채운다 (.claude/design.md).
-@ViewAction(for: ReportFeedbackFeature.self)
-public struct ReportFeedbackView: View {
-    @Bindable public var store: StoreOf<ReportFeedbackFeature>
+@ViewAction(for: ReportPeerFeedbackFeature.self)
+public struct ReportPeerFeedbackView: View {
+    @Bindable public var store: StoreOf<ReportPeerFeedbackFeature>
 
-    public init(store: StoreOf<ReportFeedbackFeature>) {
+    public init(store: StoreOf<ReportPeerFeedbackFeature>) {
         self.store = store
     }
 
@@ -84,9 +84,9 @@ public struct ReportFeedbackView: View {
 }
 
 #Preview("피드백") {
-    ReportFeedbackView(
-        store: Store(initialState: ReportFeedbackFeature.State()) {
-            ReportFeedbackFeature()
+    ReportPeerFeedbackView(
+        store: Store(initialState: ReportPeerFeedbackFeature.State()) {
+            ReportPeerFeedbackFeature()
         }
     )
 }

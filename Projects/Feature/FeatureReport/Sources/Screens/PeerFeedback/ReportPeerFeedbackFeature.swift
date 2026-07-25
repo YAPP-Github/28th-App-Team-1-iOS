@@ -1,5 +1,5 @@
 //
-//  ReportFeedbackFeature.swift
+//  ReportPeerFeedbackFeature.swift
 //  FeatureReport
 //
 //  Created by EunSeo on 26/07/25.
@@ -11,7 +11,7 @@ import ComposableArchitecture
 /// 리포트 피드백 (3/4) — 레이아웃 미정 자리표시. Figma 연결 시 실제 State·UI 로 채운다.
 /// 구조는 표준 3분류(view/inner/delegate — D5) 그대로 유지한다.
 @Reducer
-public struct ReportFeedbackFeature {
+public struct ReportPeerFeedbackFeature {
     @ObservableState
     public struct State: Equatable {
         public init() {}

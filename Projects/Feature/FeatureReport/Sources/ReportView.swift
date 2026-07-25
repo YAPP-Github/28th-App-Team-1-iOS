@@ -28,8 +28,8 @@ public struct ReportView: View {
             switch store.case {
             case let .videoPlayer(store):
                 ReportVideoPlayerView(store: store)
-            case let .feedback(store):
-                ReportFeedbackView(store: store)
+            case let .peerFeedback(store):
+                ReportPeerFeedbackView(store: store)
             case let .final(store):
                 ReportFinalView(store: store)
             }
