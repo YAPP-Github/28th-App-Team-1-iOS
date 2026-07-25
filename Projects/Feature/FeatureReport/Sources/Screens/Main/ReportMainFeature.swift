@@ -7,7 +7,7 @@
 
 import ComposableArchitecture
 
-// @lat: [[report#리포트 메인]]
+// @lat: [[report#1차 리포트]]
 /// 리포트 메인 (1/4, 루트) — 레이아웃 미정 자리표시. Figma 연결 시 실제 State·UI 로 채운다.
 /// 구조는 표준 3분류(view/inner/delegate — D5) 그대로 유지한다.
 @Reducer
