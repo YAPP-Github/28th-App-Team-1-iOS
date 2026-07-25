@@ -5,6 +5,8 @@
 //  Created by EunseoKim on 26/07/23.
 //
 
+import DomainCommonInterface
+
 /// Guest Feedback API 에러 — State 가 다르게 반응해야 하는 경우의 수만큼만 둔다.
 /// 무인증 API 라 sessionExpired 계열이 없다. 서버 코드 ↔ 케이스 매핑 표는 [[api#Guest Feedback]].
 public enum GuestFeedbackError: Error, Equatable, Sendable {
@@ -22,4 +24,23 @@ public enum GuestFeedbackError: Error, Equatable, Sendable {
     case networkFailure
     case serverUnavailable
     case unexpected
+}
+
+// MARK: - 서버 코드 매핑 (공통 규칙은 DomainAPIError 가 처리)
+
+extension GuestFeedbackError: DomainAPIError {
+    /// 무인증 API — 토큰 만료·NotAuthenticatedError 경로에 도달하지 않는다. 계약 충족용 별칭.
+    public static var sessionExpired: GuestFeedbackError { .unexpected }
+
+    public init?(serverCode code: String, message: String) {
+        switch code {
+        case "FEEDBACK_SHARE_TOKEN_NOT_FOUND": self = .tokenNotFound
+        case "FEEDBACK_SHARE_CLOSED": self = .shareClosed
+        case "FEEDBACK_CAPACITY_FULL": self = .capacityFull
+        case "FEEDBACK_ALREADY_SUBMITTED": self = .alreadySubmitted
+        case "INCOMPLETE_RATINGS", "INVALID_RATING_LEVEL", "MISSING_DEVICE_ID":
+            self = .invalid(message: message)
+        default: return nil
+        }
+    }
 }
