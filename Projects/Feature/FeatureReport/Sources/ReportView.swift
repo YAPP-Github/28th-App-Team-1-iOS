@@ -39,7 +39,7 @@ public struct ReportView: View {
 
 #Preview("리포트 플로우") {
     ReportView(
-        store: Store(initialState: ReportFeature.State()) {
+        store: Store(initialState: ReportFeature.State(sessionId: 1)) {
             ReportFeature()
         }
     )

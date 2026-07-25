@@ -6,78 +6,81 @@
 //
 
 import ComposableArchitecture
+import DomainInterviewReportInterface
+import DomainInterviewReportTesting
+import Foundation
 import Testing
 
 @testable import FeatureReportImplementation
 
+/// 코디네이터 라우팅 — 메인이 허브라 화면들이 한 줄로 이어지지 않는 것을 고정한다 (정의서 §1-1).
 @MainActor
 struct ReportFeatureTests {
-    @Test("메인 계속 → 영상 플레이어 push (임시 선형 플로우)")
-    func mainContinuePushesVideoPlayer() async {
-        let store = TestStore(initialState: ReportFeature.State()) {
-            ReportFeature()
-        }
+    private func loadedState() -> ReportFeature.State {
+        var state = ReportFeature.State(sessionId: 1)
+        state.main.report = InterviewReportFixtures.ready
+        state.main.loadState = .loaded
+        return state
+    }
 
-        await store.send(.main(.view(.userTappedContinue)))
-        await store.receive(\.main.delegate.continueRequested) {
-            $0.path[id: 0] = .videoPlayer(ReportVideoPlayerFeature.State())
+    @Test("영상 다시보기 → 플레이어 push (재생 가능한 영상이 있을 때만)")
+    func videoRequestPushesPlayer() async {
+        let store = TestStore(initialState: loadedState()) { ReportFeature() }
+
+        await store.send(.main(.view(.userTappedWatchVideo)))
+        await store.receive(\.main.delegate.videoRequested) {
+            $0.path[id: 0] = .videoPlayer(ReportVideoPlayerFeature.State(
+                videoURL: URL(string: "https://example.com/interview/1.mp4")!,
+                startAt: nil,
+                cards: InterviewReportFixtures.ready.cards ?? []
+            ))
         }
     }
 
-    @Test("영상 플레이어 계속 → 피드백 push, 피드백 계속 → 최종 push")
-    func linearFlowPushesFeedbackThenFinal() async {
-        var state = ReportFeature.State()
-        state.path.append(.videoPlayer(ReportVideoPlayerFeature.State()))
-        let store = TestStore(initialState: state) {
-            ReportFeature()
-        }
+    @Test("영상이 만료면 push 하지 않는다")
+    func expiredVideoDoesNotPush() async {
+        var state = ReportFeature.State(sessionId: 1)
+        state.main.report = InterviewReportFixtures.insufficientAnalysis
+        state.main.loadState = .loaded
+        let store = TestStore(initialState: state) { ReportFeature() }
 
-        await store.send(.path(.element(id: 0, action: .videoPlayer(.view(.userTappedContinue)))))
-        await store.receive(\.path[id: 0].videoPlayer.delegate.continueRequested) {
-            $0.path[id: 1] = .peerFeedback(ReportPeerFeedbackFeature.State())
-        }
-
-        await store.send(.path(.element(id: 1, action: .peerFeedback(.view(.userTappedContinue)))))
-        await store.receive(\.path[id: 1].peerFeedback.delegate.continueRequested) {
-            $0.path[id: 2] = .final(ReportFinalFeature.State())
-        }
+        await store.send(.main(.view(.userTappedWatchVideo)))
+        await store.receive(\.main.delegate.videoRequested)
+        #expect(store.state.path.isEmpty)
     }
 
-    @Test("최종 완료 → finished 위임 (전환은 부모 몫)")
-    func finalContinueDelegatesFinished() async {
-        var state = ReportFeature.State()
-        state.path.append(.final(ReportFinalFeature.State()))
-        let store = TestStore(initialState: state) {
-            ReportFeature()
-        }
+    @Test("지인 피드백은 영상을 거치지 않고 메인에서 바로 push 된다")
+    func peerFeedbackPushesDirectly() async {
+        let store = TestStore(initialState: loadedState()) { ReportFeature() }
 
-        await store.send(.path(.element(id: 0, action: .final(.view(.userTappedContinue)))))
-        await store.receive(\.path[id: 0].final.delegate.continueRequested)
-        await store.receive(\.delegate.finished)
+        await store.send(.main(.view(.userTappedPeerFeedback)))
+        await store.receive(\.main.delegate.peerFeedbackRequested) {
+            $0.path[id: 0] = .peerFeedback(ReportPeerFeedbackFeature.State())
+        }
     }
 
     @Test("뒤로 → 스택 pop")
     func backPopsStack() async {
-        var state = ReportFeature.State()
-        state.path.append(.videoPlayer(ReportVideoPlayerFeature.State()))
-        let store = TestStore(initialState: state) {
-            ReportFeature()
-        }
+        var state = loadedState()
+        state.path.append(.peerFeedback(ReportPeerFeedbackFeature.State()))
+        let store = TestStore(initialState: state) { ReportFeature() }
 
-        await store.send(.path(.element(id: 0, action: .videoPlayer(.view(.userTappedBack)))))
-        await store.receive(\.path[id: 0].videoPlayer.delegate.backRequested) {
+        await store.send(.path(.element(id: 0, action: .peerFeedback(.view(.userTappedBack)))))
+        await store.receive(\.path[id: 0].peerFeedback.delegate.backRequested) {
             $0.path = StackState()
         }
     }
 
-    @Test("메인 X → closeRequested 위임 (dismiss 는 부모 몫)")
-    func mainClosePropagates() async {
-        let store = TestStore(initialState: ReportFeature.State()) {
-            ReportFeature()
-        }
+    @Test("이탈(X)·다시 연습하기는 부모로 전파된다")
+    func closeAndRetryPropagate() async {
+        let store = TestStore(initialState: loadedState()) { ReportFeature() }
 
         await store.send(.main(.view(.userTappedClose)))
         await store.receive(\.main.delegate.closeRequested)
         await store.receive(\.delegate.closeRequested)
+
+        await store.send(.main(.view(.userTappedRetry)))
+        await store.receive(\.main.delegate.retryRequested)
+        await store.receive(\.delegate.retryRequested)
     }
 }

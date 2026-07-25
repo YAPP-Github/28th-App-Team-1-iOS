@@ -23,15 +23,14 @@ public struct ReportPeerFeedbackView: View {
         VStack(spacing: 0) {
             navigationBar
             Spacer()
-            Text("피드백")
+            Text("지인 피드백")
                 .dsTypography(.head3)
                 .foregroundStyle(Color.Gray.g800)
-            Text("3/4 — 디자인 연결 예정")
+            Text("Part 4.5 스펙 대기")
                 .dsTypography(.body3)
                 .foregroundStyle(Color.Gray.g500)
                 .padding(.top, 8)
             Spacer()
-            continueButton
         }
         .background(Color.BlackWhite.white.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
@@ -67,23 +66,9 @@ public struct ReportPeerFeedbackView: View {
         .frame(height: 54)
     }
 
-    private var continueButton: some View {
-        Button {
-            send(.userTappedContinue)
-        } label: {
-            Text("계속하기")
-                .dsTypography(.sub7)
-                .foregroundStyle(Color.BlackWhite.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 22)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .background(Color.HilitBlack.b800.ignoresSafeArea(edges: .bottom))
-    }
 }
 
-#Preview("피드백") {
+#Preview("지인 피드백") {
     ReportPeerFeedbackView(
         store: Store(initialState: ReportPeerFeedbackFeature.State()) {
             ReportPeerFeedbackFeature()
