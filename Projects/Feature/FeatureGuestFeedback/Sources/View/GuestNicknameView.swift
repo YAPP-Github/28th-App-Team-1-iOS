@@ -32,7 +32,7 @@ struct GuestNicknameView: View {
             nameField
             Spacer(minLength: .ds(.p12))
 
-            PrimaryButton("다음") {
+            ButtonLarge("다음", .bottom) {
                 send(.nicknameNextTapped)
             }
             // 시안2: 이름을 입력해야 다음으로 — 빈 입력은 회색 비활성(ButtonLarge color=disabled).

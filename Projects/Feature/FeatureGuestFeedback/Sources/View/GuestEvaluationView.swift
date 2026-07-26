@@ -74,7 +74,7 @@ struct GuestEvaluationView: View {
 
                 if store.isCompletionToastVisible {
                     BubbleToast("모든 평가가 끝났어요!")
-                        // Figma 시안(node 2555:7543): CTA(55pt) 위 10pt — 55 는 PrimaryButton 고정 높이(대응 토큰 없어 리터럴).
+                        // Figma 시안(node 2555:7543): CTA(55pt) 위 10pt — 55 는 ButtonLarge 고정 높이(대응 토큰 없어 리터럴).
                         .padding(.bottom, 55 + CGFloat.ds(.p10))
                         .transition(.opacity)
                 }
@@ -120,8 +120,10 @@ struct GuestEvaluationView: View {
             }
             if let axis = store.activeAxis {
                 questionRow(axis)
+                // 시청 전용에선 «비활성»이 아니라 «읽기 전용»이다 — 이미 고른 값이 그대로 보여야 한다.
+                // `.disabled` 를 쓰면 칩이 disabled 팔레트(g50/g300)로 수렴해 선택 표시가 사라진다.
                 scaleBlock(axis)
-                    .disabled(!store.canEvaluate)
+                    .allowsHitTesting(store.canEvaluate)
                 commentRow(axis)
                     .disabled(!store.canEvaluate)
             }
@@ -265,7 +267,7 @@ struct GuestEvaluationView: View {
     // MARK: - 하단 CTA
 
     private var bottomCTA: some View {
-        PrimaryButton("피드백 종료하기") {
+        ButtonLarge("피드백 종료하기", .bottom) {
             send(.reviewTapped)
         }
         .disabled(!store.isSubmitEnabled)

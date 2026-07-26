@@ -14,7 +14,7 @@ import SwiftUI
 /// 제출 전 요약 화면 — "재원님에게 이렇게 전달 될 거예요" 축별 평가 리스트 + 전송 CTA.
 /// Figma 최종 «[4] 온보딩 - 메인(요약)»(node 2101:8781) 1:1 — 라이트 톤(흰 배경),
 /// «평가 항목» 헤더 + «영상 다시보기» 버튼, 카드 탭 = 해당 축 수정(summaryCardTapped), 연필 아이콘.
-/// 하단 블랙 `PrimaryButton`. `submitTapped` 은 라우터의 confirmationDialog(제출 불가역 경고)를 경유한다.
+/// 하단 블랙 `ButtonLarge`(.bottom). `submitTapped` 은 라우터의 confirmationDialog(제출 불가역 경고)를 경유한다.
 @ViewAction(for: GuestFeedbackFeature.self)
 struct GuestSummaryView: View {
     let store: StoreOf<GuestFeedbackFeature>
@@ -68,10 +68,16 @@ struct GuestSummaryView: View {
                 .dsTypography(.body2)
                 .foregroundStyle(Color.GrayScale.g900)
             Spacer(minLength: .ds(.p8))
-            // Figma 아이콘은 영상 재생 픽토그램 — 동일 의미의 SF 심볼로 대체.
-            MiniButton("영상 다시보기", icon: Image.Video.default16) {
+            Button {
                 send(.rewatchTapped)
+            } label: {
+                // 아이콘은 16pt 로 그려진 에셋이라 리사이즈하지 않는다 (design/lessons.md 2번).
+                HStack(spacing: .ds(.p8)) {
+                    Image.Video.default16
+                    Text("영상 다시보기")
+                }
             }
+            .buttonStyle(.mini(.gray, layout: .withIcon))
         }
     }
 
@@ -171,9 +177,10 @@ struct GuestSummaryView: View {
     // MARK: - 하단 CTA
 
     private var submitButton: some View {
-        PrimaryButton("피드백 전송하기", isLoading: store.isSubmitting) {
+        ButtonLarge("피드백 전송하기", .bottom) {
             send(.submitTapped)
         }
+        .hilitButtonLoading(store.isSubmitting)
         .disabled(!store.isSubmitEnabled)
     }
 }

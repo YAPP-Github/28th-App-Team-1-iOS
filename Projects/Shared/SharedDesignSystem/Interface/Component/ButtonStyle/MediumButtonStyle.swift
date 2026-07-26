@@ -59,18 +59,33 @@ public struct MediumButtonStyle: ButtonStyle {
         }
     }
 
+    /// 폭을 어떻게 잡는가.
+    public enum Layout: Sendable {
+        /// 라벨 크기만큼 (기본) — px24.
+        case hug
+        /// 주어진 폭을 채운다 — HStack 에 나란히 놓아 N지선다 등폭 칩을 만들 때.
+        /// Figma «button-medium» 등폭 셀은 라벨을 한 줄 가운데 정렬하므로 가로 패딩을 두지 않는다
+        /// (두면 긴 카피에서 라벨 폭이 남지 않아 밀리거나 줄바꿈된다). 넘치면 축소해 한 줄을 지킨다.
+        case fill
+    }
+
     @Environment(\.isEnabled) private var isEnabled
 
     private let tone: Tone
+    private let layout: Layout
 
-    public init(tone: Tone = .default) {
+    public init(tone: Tone = .default, layout: Layout = .hug) {
         self.tone = tone
+        self.layout = layout
     }
 
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .dsTypography(tone.typography)
-            .padding(.horizontal, .ds(.p24))
+            .lineLimit(layout == .fill ? 1 : nil)
+            .minimumScaleFactor(layout == .fill ? 0.6 : 1)
+            .frame(maxWidth: layout == .fill ? .infinity : nil)
+            .padding(.horizontal, layout == .fill ? 0 : .ds(.p24))
             .padding(.vertical, .ds(.p12))
             .foregroundStyle(isEnabled ? tone.foreground : Color.GrayScale.g300)
             .background(isEnabled ? tone.background : Color.GrayScale.g50)
@@ -84,9 +99,12 @@ public struct MediumButtonStyle: ButtonStyle {
 }
 
 public extension ButtonStyle where Self == MediumButtonStyle {
-    /// 중형 버튼. `.medium()` 기본 · `.medium(.green)` 등 색 6종.
-    static func medium(_ tone: MediumButtonStyle.Tone = .default) -> Self {
-        MediumButtonStyle(tone: tone)
+    /// 중형 버튼. `.medium()` 기본 · `.medium(.green)` 색 6종 · `.medium(.blue, layout: .fill)` 등폭 칩.
+    static func medium(
+        _ tone: MediumButtonStyle.Tone = .default,
+        layout: MediumButtonStyle.Layout = .hug
+    ) -> Self {
+        MediumButtonStyle(tone: tone, layout: layout)
     }
 }
 
@@ -96,6 +114,14 @@ public extension ButtonStyle where Self == MediumButtonStyle {
             Button("버튼") {}.buttonStyle(.medium(tone))
         }
         Button("비활성") {}.buttonStyle(.medium(.green)).disabled(true)
+
+        // 등폭 척도 칩 — 미선택 gray / 선택 blue·red
+        HStack(spacing: .ds(.p8)) {
+            Button("잘 맞춤") {}.buttonStyle(.medium(.blue, layout: .fill))
+            Button("꽤 맞춤") {}.buttonStyle(.medium(.gray, layout: .fill))
+            Button("가끔 피함") {}.buttonStyle(.medium(.gray, layout: .fill))
+            Button("자주 피함") {}.buttonStyle(.medium(.red, layout: .fill))
+        }
     }
     .padding(.ds(.p20))
     .background(Color.BlackWhite.white)

@@ -18,8 +18,12 @@ public enum HilitSurface: Sendable {
 
 /// 버튼 로딩 상태 — 라벨을 숨기고 스피너를 얹는다.
 ///
-/// `ButtonStyle` 은 라벨 내용을 갈아끼울 수 없어서(장식만 가능) 상태를 Environment 로 흘리고,
+/// **Figma 에 없는 상태다.** 시안은 default·pressed·disabled 뿐이고 로딩은 앱 사정이라
+/// 디자인 파일에서 찾지 말 것. 그래도 DS 에 두는 이유는 화면에서 만들 수 없기 때문이다 —
+/// 라벨을 숨기고 그 위에 겹치는 건 `makeBody` 안에서만 되고, 밖에서 `.opacity` 를 걸면 배경까지 사라진다.
+///
 /// 스타일이 라벨을 `opacity(0)` 처리한 위에 스피너를 겹친다 — 라벨 크기가 유지돼 버튼 폭이 안 튄다.
+/// 스피너 색은 그 시점의 글자색을 따른다(로딩 중엔 보통 disabled 라 `g300`) — 배경과 대비를 맞추기 위해서.
 public extension View {
     func hilitSurface(_ surface: HilitSurface) -> some View {
         environment(\.hilitSurface, surface)
