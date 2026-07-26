@@ -141,7 +141,8 @@ struct GuestSummaryView: View {
 
     /// 평행사변형 배경 칩 — DS HighlightedText(body3_m_16) 소비.
     private func labelChip(_ text: String, foreground: Color, background: Color) -> some View {
-        HighlightedText(text, typography: .body3, foreground: foreground, background: background)
+        HighlightedText(text, typography: .body3)
+            .hilightColors(foreground: foreground, background: background)
     }
 
     /// 코멘트 한 줄 — 세로 바 + 회색 텍스트(body9_m_12), 넘치면 말줄임.

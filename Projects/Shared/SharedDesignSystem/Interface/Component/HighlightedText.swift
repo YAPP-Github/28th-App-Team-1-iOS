@@ -11,21 +11,28 @@ import SwiftUI
 
 /// 형광펜 마커 텍스트 — Figma «highlighted-text» 1:1.
 ///
-/// 문장 전체를 넘기고 `hilight(_:)` 로 **강조할 부분만** 지정한다. 지정하지 않으면 전체가 강조된다.
+/// 문장 전체를 넘기고 체인으로 마커를 얹는다. 강조 부분을 지정하지 않으면 문장 전체가 강조된다.
 ///
 /// ```swift
-/// HighlightedText("안녕하세요 나는 김은서입니다").hilight("안녕")   // [안녕]하세요 나는 김은서입니다
-/// HighlightedText("이름", typography: .head4)                    // 전체 강조
+/// HighlightedText("안녕하세요 나는 김은서입니다")
+///     .hilight("안녕")            // [안녕]하세요 나는 김은서입니다
+///     .hilightColor(.green)      // 글자색·배경색이 한 쌍으로 정해진다
+///     .hilightFill(.midlined)
+///
+/// HighlightedText("이름", typography: .head4)   // 체인 없으면 전체 강조
 /// ```
+///
+/// `Text` 에 붙이는 형태(`Text("…").hilight("안녕")`)는 만들 수 없다 — SwiftUI `Text` 는 담고 있는
+/// 문자열을 다시 꺼낼 수 없어서 어느 문장에서 부분을 찾을지 알 방법이 없다. 그래서 진입점만 타입이다.
 ///
 /// 마커 두께·여백은 `typography` 에서 파생된다 — 크기를 따로 넘기지 않는다.
 /// 부분 강조를 하면서 줄바꿈도 되게 하려고 문장을 토큰으로 쪼개 흘려 배치한다(`HighlightFlow`).
 /// **강조 구간만은 쪼개지 않는다** — 경사 배경이 조각나면 마커로 안 보이기 때문이다. 그래서 강조 구절이
 /// 한 줄을 넘길 만큼 길면 넘친다. 마커는 짧은 구절에 쓰는 게 전제다.
 public struct HighlightedText: View {
-    /// 색 조합 — Figma `color` 변형 6종. 배경·글자색이 한 쌍이라 따로 고르지 않는다.
+    /// 색 조합 — Figma `color` 변형 6종. **글자색과 배경색이 한 쌍**이라 따로 고르지 않는다.
     public enum Tone: Sendable, Hashable, CaseIterable {
-        case green, black, gray, blue, red, plain
+        case green, black, gray, blue, red, none
 
         var foreground: Color {
             switch self {
@@ -34,7 +41,7 @@ public struct HighlightedText: View {
             case .gray: Color.GrayScale.g500
             case .blue: Color.Positive.p800
             case .red: Color.Error.e500
-            case .plain: Color.GrayScale.g900
+            case .none: Color.GrayScale.g900
             }
         }
 
@@ -45,7 +52,7 @@ public struct HighlightedText: View {
             case .gray: Color.GrayScale.g50
             case .blue: Color.Positive.p200
             case .red: Color.Error.e200
-            case .plain: .clear
+            case .none: .clear
             }
         }
     }
@@ -69,59 +76,66 @@ public struct HighlightedText: View {
 
     private let text: String
     private let typography: DSTypography
-    private let tone: Tone
-    private let fill: Fill
-    private let icon: Image?
     private let plainForeground: Color
-    private let explicitForeground: Color?
-    private let explicitBackground: Color?
+    private var tone: Tone = .green
+    private var fill: Fill = .full
+    private var icon: Image?
+    private var explicitForeground: Color?
+    private var explicitBackground: Color?
     private var highlights: [String] = []
 
-    /// - Parameter plainForeground: 강조되지 않은 부분의 글자색. 마커 색은 `tone` 이 정하므로
-    ///   이건 화면 배경에 맞춰 따로 준다 (다크 배경이면 흰색 등).
+    /// 마커 스타일은 전부 `hilight…` 체인으로 얹는다 — 여기엔 텍스트 자체의 속성만 둔다.
+    ///
+    /// - Parameter plainForeground: 강조되지 않은 부분의 글자색. 마커 색은 `hilightColor(_:)` 가
+    ///   정하므로 이건 화면 배경에 맞춰 따로 준다 (다크 배경이면 흰색 등).
     public init(
         _ text: String,
         typography: DSTypography = .head3,
-        tone: Tone = .green,
-        fill: Fill = .full,
-        icon: Image? = nil,
         plainForeground: Color = Color.GrayScale.g900
     ) {
         self.text = text
         self.typography = typography
-        self.tone = tone
-        self.fill = fill
-        self.icon = icon
         self.plainForeground = plainForeground
-        self.explicitForeground = nil
-        self.explicitBackground = nil
     }
 
-    /// 팔레트 밖 색 조합을 직접 지정한다 — Figma 변형에 없는 조합일 때만 쓴다.
-    public init(
-        _ text: String,
-        typography: DSTypography = .head3,
-        foreground: Color,
-        background: Color,
-        fill: Fill = .full,
-        icon: Image? = nil,
-        plainForeground: Color = Color.GrayScale.g900
-    ) {
-        self.text = text
-        self.typography = typography
-        self.tone = .green
-        self.fill = fill
-        self.icon = icon
-        self.plainForeground = plainForeground
-        self.explicitForeground = foreground
-        self.explicitBackground = background
-    }
+    // MARK: - 체인
 
-    /// 강조할 부분 문자열을 지정한다. 이어 붙일 수 있고, 나타나는 곳마다 전부 강조된다.
+    /// 강조할 부분 문자열. 이어 붙일 수 있고, 나타나는 곳마다 전부 강조된다.
     /// 한 번도 지정하지 않으면 문장 전체가 강조된다.
-    public func hilight(_ substring: String) -> HighlightedText {
+    public func hilight(_ substring: String) -> Self {
         var copy = self
         copy.highlights.append(substring)
+        return copy
+    }
+
+    /// 마커 색 — 글자색과 배경색이 한 쌍으로 정해진다 (Figma `color` 변형 6종).
+    public func hilightColor(_ tone: Tone) -> Self {
+        var copy = self
+        copy.tone = tone
+        copy.explicitForeground = nil
+        copy.explicitBackground = nil
+        return copy
+    }
+
+    /// 팔레트 밖 색 조합 — Figma 변형에 없는 조합일 때만 쓴다.
+    public func hilightColors(foreground: Color, background: Color) -> Self {
+        var copy = self
+        copy.explicitForeground = foreground
+        copy.explicitBackground = background
+        return copy
+    }
+
+    /// 마커가 글자를 덮는 방식 (Figma `status` 변형 3종).
+    public func hilightFill(_ fill: Fill) -> Self {
+        var copy = self
+        copy.fill = fill
+        return copy
+    }
+
+    /// 마커 안 글자 앞에 붙는 아이콘.
+    public func hilightIcon(_ image: Image?) -> Self {
+        var copy = self
+        copy.icon = image
         return copy
     }
 
@@ -283,7 +297,7 @@ private struct HighlightFlow: Layout {
 #Preview("색 6종") {
     VStack(alignment: .leading, spacing: .ds(.p12)) {
         ForEach(HighlightedText.Tone.allCases, id: \.self) { tone in
-            HighlightedText("텍스트", typography: .body2, tone: tone)
+            HighlightedText("텍스트", typography: .body2).hilightColor(tone)
         }
     }
     .padding(.ds(.p20))
@@ -292,11 +306,13 @@ private struct HighlightFlow: Layout {
 
 #Preview("마커 방식 3종 · 아이콘") {
     VStack(alignment: .leading, spacing: .ds(.p16)) {
-        HighlightedText("텍스트", typography: .body2, fill: .full)
-        HighlightedText("텍스트", typography: .body2, fill: .midlined)
-        HighlightedText("텍스트", typography: .body2, fill: .underlined)
-        HighlightedText("텍스트", typography: .body2, icon: Image.Info.default)
-        HighlightedText("텍스트", typography: .head3, tone: .black, fill: .midlined)
+        HighlightedText("텍스트", typography: .body2).hilightFill(.full)
+        HighlightedText("텍스트", typography: .body2).hilightFill(.midlined)
+        HighlightedText("텍스트", typography: .body2).hilightFill(.underlined)
+        HighlightedText("텍스트", typography: .body2).hilightIcon(Image.Info.default)
+        HighlightedText("텍스트", typography: .head3)
+            .hilightColor(.black)
+            .hilightFill(.midlined)
     }
     .padding(.ds(.p20))
     .background(Color.BlackWhite.white)
