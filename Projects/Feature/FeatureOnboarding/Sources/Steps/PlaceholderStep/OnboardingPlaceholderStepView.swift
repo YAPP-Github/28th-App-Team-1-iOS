@@ -43,23 +43,20 @@ public struct OnboardingPlaceholderStepView: View {
             Button {
                 send(.userTappedBack)
             } label: {
-                Image.Ic.close
+                Image.Left.default
                     .resizable()
                     .scaledToFit()
                     .frame(width: 24, height: 24)
-                    .foregroundStyle(Color.HilitBlack.b800)
-                    .rotationEffect(.degrees(45)) // TODO: 뒤로(chevron) 아이콘 에셋 추가 시 교체
             }
             .buttonStyle(.plain)
             Spacer(minLength: 0)
             Button {
                 send(.userTappedClose)
             } label: {
-                Image.Ic.close
+                Image.Cancel.default24
                     .resizable()
                     .scaledToFit()
                     .frame(width: 24, height: 24)
-                    .foregroundStyle(Color.HilitBlack.b800)
             }
             .buttonStyle(.plain)
         }

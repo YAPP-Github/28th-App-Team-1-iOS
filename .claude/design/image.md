@@ -27,9 +27,9 @@ Image.Img.micError           // 일러스트 — 크기·변형 없이 이름만
 
 Figma 원본에 동명 심볼 2개·variant 문자열 노출 1개가 있어 그림 내용으로 판정해 명명했다: `Loading.successGreen24`(초록 원+흰 체크) · `Loading.ingGreen24`(초록 진행 링) · `Loading.successDark24`(검정 원+초록 체크). 디자이너에게 Figma 측 정리 요청 상태.
 
-### Ic — 구세대 토큰 (마이그레이션 대기)
+### 구세대 `Ic` — 제거됨
 
-초기 8종(`Ic.close`·`Ic.cancelMini`·`Ic.cancelSmall`·`Ic.info`·`Ic.error`·`Ic.success`·`Ic.upload`·`Img.tooltipTail`)은 호출처 21곳이 물려 있어 유지 중. 신규 체계와 겹치므로(`Ic.close`≈`Cancel.default24`) **새 코드에서 쓰지 않는다.** 전량 교체 후 삭제 예정.
+초기 template 아이콘 7종은 신규 체계로 전량 마이그레이션 후 삭제됐다 (`Ic.close`→`Cancel.default24`/`dark24`, 뒤로가기 45° 회전 해킹→`Left.default`, `Ic.info`→`Info.default`, `Ic.error`→`Issue.error16`, `Ic.success`→`Success.green16`, `Ic.cancelMini`→`CancelMini.grey16/24`, `Ic.upload`→`Upload.default`(검은 원 포함 44px — 코드로 그리던 원 제거)). `Img.tooltipTail` 만 새 시트에 대응이 없어 유지 — 에셋은 `img/imgTooltipTail` 로 편입. 구 `cancelSmall`(20pt 맨 X)도 대응이 없어 `CancelMini.grey16` 으로 대체했다(Figma 화면 확정 시 재검토, PortfolioUpload 주석 참조).
 
 ## 구현 노트
 

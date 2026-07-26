@@ -50,11 +50,10 @@ public struct OnboardingFocusProjectView: View {
             Button {
                 send(.userTappedClose)
             } label: {
-                Image.Ic.close
+                Image.Cancel.default24
                     .resizable()
                     .scaledToFit()
                     .frame(width: 24, height: 24)
-                    .foregroundStyle(Color.HilitBlack.b800)
             }
             .buttonStyle(.plain)
             Spacer(minLength: 0)
@@ -122,7 +121,7 @@ public struct OnboardingFocusProjectView: View {
 
             if let warning = store.inputWarning {
                 HStack(spacing: 6) {
-                    Image.Ic.error
+                    Image.Issue.error16
                         .resizable()
                         .scaledToFit()
                         .frame(width: 16, height: 16)
@@ -155,8 +154,8 @@ public struct OnboardingFocusProjectView: View {
         Button {
             send(.userTappedClearText)
         } label: {
-            // 원본 컬러 에셋(회색 원 + 블랙 X) — template 틴트 없이 그대로 렌더.
-            Image.Ic.cancelMini
+            // 원본 컬러 에셋(회색 원 + 블랙 X) — 틴트 없이 그대로 렌더.
+            Image.CancelMini.grey24
                 .resizable()
                 .scaledToFit()
                 .frame(width: 24, height: 24)

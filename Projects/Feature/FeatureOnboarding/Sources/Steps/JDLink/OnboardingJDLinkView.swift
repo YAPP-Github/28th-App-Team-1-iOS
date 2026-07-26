@@ -51,11 +51,10 @@ public struct OnboardingJDLinkView: View {
             Button {
                 send(.userTappedClose)
             } label: {
-                Image.Ic.close
+                Image.Cancel.default24
                     .resizable()
                     .scaledToFit()
                     .frame(width: 24, height: 24)
-                    .foregroundStyle(Color.HilitBlack.b800)
             }
             .buttonStyle(.plain)
             Spacer(minLength: 0)
@@ -219,13 +218,13 @@ public struct OnboardingJDLinkView: View {
     private var linkHelperRow: some View {
         switch store.linkValidation {
         case .idle:
-            helperRow(icon: Image.Ic.info, text: Copy.idleHelper, color: Color.GrayScale.g300)
+            helperRow(icon: Image.Info.default, text: Copy.idleHelper, color: Color.GrayScale.g300)
         case .loading:
             EmptyView()
         case let .failure(message):
-            helperRow(icon: Image.Ic.error, text: message, color: Color.Error.e500)
+            helperRow(icon: Image.Issue.error16, text: message, color: Color.Error.e500)
         case .success:
-            helperRow(icon: Image.Ic.success, text: Copy.successHelper, color: Color.HilitGreen.g800)
+            helperRow(icon: Image.Success.green16, text: Copy.successHelper, color: Color.HilitGreen.g800)
         }
     }
 
@@ -291,7 +290,7 @@ public struct OnboardingJDLinkView: View {
     private var directTextFooter: some View {
         HStack(alignment: .top, spacing: 6) {
             if let message = store.directTextValidationMessage {
-                Image.Ic.error
+                Image.Issue.error16
                     .resizable()
                     .scaledToFit()
                     .frame(width: 16, height: 16)
@@ -308,7 +307,8 @@ public struct OnboardingJDLinkView: View {
 
     private func clearButton(size: CGFloat, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image.Ic.cancelMini
+            // 크기별 별도 에셋(optical sizing) — 20 미만이면 16px 판, 이상이면 24px 판.
+            (size < 20 ? Image.CancelMini.grey16 : Image.CancelMini.grey24)
                 .resizable()
                 .scaledToFit()
                 .frame(width: size, height: size)
