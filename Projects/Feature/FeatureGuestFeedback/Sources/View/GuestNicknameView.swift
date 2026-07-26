@@ -51,13 +51,8 @@ struct GuestNicknameView: View {
                 Text("레포트에 표시될 당신의")
                     .dsTypography(.head4)
                     .foregroundStyle(Color.GrayScale.g900)
-                HStack(spacing: 0) {
-                    // 그린 형광펜 마커 — DS HighlightedText(Figma highlighted-text), 온보딩과 동일.
-                    HighlightedText("이름", typography: .head4)
-                    Text("을 알려주세요")
-                        .dsTypography(.head4)
-                        .foregroundStyle(Color.GrayScale.g900)
-                }
+                // 그린 형광펜 마커 — DS HighlightedText(Figma highlighted-text), 온보딩과 동일.
+                HighlightedText("이름을 알려주세요", typography: .head4).hilight("이름")
             }
             Text("이름은 피드백 레포트에만 반영이 됩니다")
                 .dsTypography(.body3)
