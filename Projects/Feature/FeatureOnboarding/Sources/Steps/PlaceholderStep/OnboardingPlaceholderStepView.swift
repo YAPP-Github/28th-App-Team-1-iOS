@@ -26,10 +26,10 @@ public struct OnboardingPlaceholderStepView: View {
             Spacer()
             Text(store.title)
                 .dsTypography(.head3)
-                .foregroundStyle(Color.Gray.g800)
+                .foregroundStyle(Color.GrayScale.g800)
             Text("STEP \(store.step) — 디자인 연결 예정")
                 .dsTypography(.body3)
-                .foregroundStyle(Color.Gray.g500)
+                .foregroundStyle(Color.GrayScale.g500)
                 .padding(.top, 8)
             Spacer()
             continueButton
@@ -71,7 +71,7 @@ public struct OnboardingPlaceholderStepView: View {
         HStack(spacing: 2) {
             ForEach(1...store.totalSteps, id: \.self) { step in
                 Rectangle()
-                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.Gray.g50)
+                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.GrayScale.g50)
                     .frame(height: 4)
             }
         }

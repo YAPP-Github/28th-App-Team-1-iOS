@@ -55,12 +55,12 @@ public struct ChoiceChip: View {
     }
 
     private var border: Color {
-        guard isSelected else { return Color.Gray.g100 }
+        guard isSelected else { return Color.GrayScale.g100 }
         return tone == .positive ? Color.Positive.p500 : Color.Error.e500
     }
 
     private var text: Color {
-        guard isSelected else { return Color.Gray.g700 }
+        guard isSelected else { return Color.GrayScale.g700 }
         return tone == .positive ? Color.Positive.p800 : Color.Error.e500
     }
 }

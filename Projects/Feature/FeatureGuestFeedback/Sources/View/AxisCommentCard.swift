@@ -64,7 +64,7 @@ struct AxisCommentCard: View {
             Button(action: onDismiss) {
                 Image(systemName: "xmark")
                     .font(.ds(.body5))
-                    .foregroundStyle(Color.Gray.g600)
+                    .foregroundStyle(Color.GrayScale.g600)
             }
             .buttonStyle(.plain)
         }

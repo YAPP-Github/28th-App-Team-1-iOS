@@ -68,7 +68,7 @@ public struct OnboardingJDLinkView: View {
         HStack(spacing: 2) {
             ForEach(1...store.totalSteps, id: \.self) { step in
                 Rectangle()
-                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.Gray.g50)
+                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.GrayScale.g50)
                     .frame(height: 4)
             }
         }
@@ -83,18 +83,18 @@ public struct OnboardingJDLinkView: View {
             // 선택 스텝 뱃지 — STEP 1 «필수»(black/green)와 달리 회색 톤.
             Text("선택")
                 .dsTypography(.body7)
-                .foregroundStyle(Color.Gray.g800) // Figma 값 #31333B(grayscale/gray-800) — 토큰 충돌로 근사 (보고 참조)
+                .foregroundStyle(Color.GrayScale.g800) // Figma 값 #31333B(grayscale/gray-800) — 토큰 충돌로 근사 (보고 참조)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 4)
-                .background(Color.Gray.g50, in: RoundedRectangle(cornerRadius: 2))
+                .background(Color.GrayScale.g50, in: RoundedRectangle(cornerRadius: 2))
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("채용공고 링크를\n업로드해 주세요.")
                     .dsTypography(.head3)
-                    .foregroundStyle(Color.Gray.g800)
+                    .foregroundStyle(Color.GrayScale.g800)
                 Text("채용 페이지에 직접 올라온 공고 링크를 넣어주세요.")
                     .dsTypography(.body3)
-                    .foregroundStyle(Color.Gray.g500)
+                    .foregroundStyle(Color.GrayScale.g500)
             }
         }
     }
@@ -128,7 +128,7 @@ public struct OnboardingJDLinkView: View {
         } label: {
             Text(title)
                 .font(.ds(.body1))
-                .foregroundStyle(isDisabled ? Color.Gray.g200 : Color.HilitBlack.b800)
+                .foregroundStyle(isDisabled ? Color.GrayScale.g200 : Color.HilitBlack.b800)
                 .frame(maxWidth: .infinity)
                 .padding(10)
                 .contentShape(Rectangle())
@@ -159,10 +159,10 @@ public struct OnboardingJDLinkView: View {
                 TextField(
                     "",
                     text: $store.linkText,
-                    prompt: Text(Copy.fieldPlaceholder).foregroundStyle(Color.Gray.g600)
+                    prompt: Text(Copy.fieldPlaceholder).foregroundStyle(Color.GrayScale.g600)
                 )
                 .font(.ds(.body3))
-                .foregroundStyle(store.linkValidation == .loading ? Color.Gray.g600 : Color.HilitBlack.b800)
+                .foregroundStyle(store.linkValidation == .loading ? Color.GrayScale.g600 : Color.HilitBlack.b800)
                 .keyboardType(.URL)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -174,7 +174,7 @@ public struct OnboardingJDLinkView: View {
                 case .loading:
                     Text("분석 중")
                         .dsTypography(.body8)
-                        .foregroundStyle(Color.Gray.g900)
+                        .foregroundStyle(Color.GrayScale.g900)
                 case .idle, .failure, .success:
                     if !store.linkText.isEmpty {
                         clearButton(size: 16) { send(.userTappedClearLink) }
@@ -183,7 +183,7 @@ public struct OnboardingJDLinkView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(store.linkValidation == .loading ? Color.Gray.g50 : Color.BlackWhite.white)
+            .background(store.linkValidation == .loading ? Color.GrayScale.g50 : Color.BlackWhite.white)
 
             linkFieldBottomStrip
         }
@@ -209,9 +209,9 @@ public struct OnboardingJDLinkView: View {
     @ViewBuilder
     private var linkFieldBorder: some View {
         if store.linkValidation == .idle {
-            Rectangle().strokeBorder(Color.Gray.g100, lineWidth: 1.2)
+            Rectangle().strokeBorder(Color.GrayScale.g100, lineWidth: 1.2)
         } else {
-            OpenBottomBorder().stroke(Color.Gray.g100, lineWidth: 1.2)
+            OpenBottomBorder().stroke(Color.GrayScale.g100, lineWidth: 1.2)
         }
     }
 
@@ -219,7 +219,7 @@ public struct OnboardingJDLinkView: View {
     private var linkHelperRow: some View {
         switch store.linkValidation {
         case .idle:
-            helperRow(icon: Image.Ic.info, text: Copy.idleHelper, color: Color.Gray.g300)
+            helperRow(icon: Image.Ic.info, text: Copy.idleHelper, color: Color.GrayScale.g300)
         case .loading:
             EmptyView()
         case let .failure(message):
@@ -264,7 +264,7 @@ public struct OnboardingJDLinkView: View {
             if store.directText.isEmpty {
                 Text(Copy.fieldPlaceholder)
                     .font(.ds(.body3))
-                    .foregroundStyle(Color.Gray.g600)
+                    .foregroundStyle(Color.GrayScale.g600)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 14)
                     .allowsHitTesting(false)
@@ -281,7 +281,7 @@ public struct OnboardingJDLinkView: View {
         .overlay {
             // 무효(짧음/초과) 입력이면 링크 에러와 같은 red 보더로 강조한다.
             Rectangle().strokeBorder(
-                store.directTextValidationMessage == nil ? Color.Gray.g100 : Color.Error.e500,
+                store.directTextValidationMessage == nil ? Color.GrayScale.g100 : Color.Error.e500,
                 lineWidth: 1.2
             )
         }
@@ -302,7 +302,7 @@ public struct OnboardingJDLinkView: View {
             Spacer(minLength: 0)
             Text(store.directTextCountLabel)
                 .dsTypography(.body5)
-                .foregroundStyle(store.isDirectTextOverLimit ? Color.Error.e500 : Color.Gray.g300)
+                .foregroundStyle(store.isDirectTextOverLimit ? Color.Error.e500 : Color.GrayScale.g300)
         }
     }
 
@@ -353,7 +353,7 @@ public struct OnboardingJDLinkView: View {
             .buttonStyle(.plain)
 
             Rectangle()
-                .fill(Color.Gray.g700) // 구분선 — Figma 벡터 색 미확인, gray-700 추정 (보고 참조)
+                .fill(Color.GrayScale.g700) // 구분선 — Figma 벡터 색 미확인, gray-700 추정 (보고 참조)
                 .frame(width: 1, height: 25)
 
             Button {
@@ -361,7 +361,7 @@ public struct OnboardingJDLinkView: View {
             } label: {
                 Text("계속하기")
                     .dsTypography(.sub7)
-                    .foregroundStyle(store.isContinueEnabled ? Color.BlackWhite.white : Color.Gray.g500)
+                    .foregroundStyle(store.isContinueEnabled ? Color.BlackWhite.white : Color.GrayScale.g500)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 22)
                     .contentShape(Rectangle())
@@ -382,7 +382,7 @@ private struct AnalyzingProgressStrip: View {
     var body: some View {
         GeometryReader { geometry in
             let chunkWidth = geometry.size.width * 0.26
-            Color.Gray.g100
+            Color.GrayScale.g100
             Rectangle()
                 .fill(Color.HilitGreen.g500)
                 .frame(width: chunkWidth)

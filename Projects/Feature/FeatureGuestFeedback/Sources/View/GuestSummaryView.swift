@@ -46,18 +46,18 @@ struct GuestSummaryView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text("\(requesterName)님에게")
                     .dsTypography(.head3)
-                    .foregroundStyle(Color.Gray.g900)
+                    .foregroundStyle(Color.GrayScale.g900)
                 HStack(spacing: 0) {
                     // 그린 형광펜 마커 — DS HighlightedText(Figma highlighted-text), 온보딩과 동일.
                     HighlightedText("이렇게 전달")
                     Text("될 거예요")
                         .dsTypography(.head3)
-                        .foregroundStyle(Color.Gray.g900)
+                        .foregroundStyle(Color.GrayScale.g900)
                 }
             }
             Text("항목을 누르면 바로 수정할 수 있어요")
                 .dsTypography(.body3)
-                .foregroundStyle(Color.Gray.g500)
+                .foregroundStyle(Color.GrayScale.g500)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -71,7 +71,7 @@ struct GuestSummaryView: View {
         HStack(spacing: 0) {
             Text("평가 항목")
                 .dsTypography(.body2)
-                .foregroundStyle(Color.Gray.g900)
+                .foregroundStyle(Color.GrayScale.g900)
             Spacer(minLength: .ds(.p8))
             // Figma 아이콘은 영상 재생 픽토그램 — 동일 의미의 SF 심볼로 대체.
             MiniButton("영상 다시보기", systemImage: "play.rectangle.fill") {
@@ -100,13 +100,13 @@ struct GuestSummaryView: View {
             VStack(alignment: .leading, spacing: .ds(.p4)) {
                 Text(axis.displayName)
                     .dsTypography(.body9)
-                    .foregroundStyle(Color.Gray.g400)
+                    .foregroundStyle(Color.GrayScale.g400)
 
                 HStack(spacing: .ds(.p4)) {
                     selectedLabel(for: axis, level: rating?.level)
                     Text("(이)라고 평가했어요")
                         .dsTypography(.body2)
-                        .foregroundStyle(Color.Gray.g900)
+                        .foregroundStyle(Color.GrayScale.g900)
                 }
 
                 if let comment = rating?.comment, !comment.isEmpty {
@@ -121,7 +121,7 @@ struct GuestSummaryView: View {
             .overlay(alignment: .topTrailing) {
                 Image(systemName: "square.and.pencil")
                     .font(.ds(.body5))
-                    .foregroundStyle(Color.Gray.g400)
+                    .foregroundStyle(Color.GrayScale.g400)
                     .padding(.ds(.p12))
             }
             .contentShape(RoundedRectangle(cornerRadius: 6))
@@ -140,7 +140,7 @@ struct GuestSummaryView: View {
                 background: isPositive ? Color.Positive.p200 : Color.Error.e200
             )
         } else {
-            labelChip("-", foreground: Color.Gray.g600, background: Color.Gray.g100)
+            labelChip("-", foreground: Color.GrayScale.g600, background: Color.GrayScale.g100)
         }
     }
 
@@ -153,12 +153,12 @@ struct GuestSummaryView: View {
     private func commentRow(_ comment: String) -> some View {
         HStack(spacing: .ds(.p4)) {
             Rectangle()
-                .fill(Color.Gray.g100)
+                .fill(Color.GrayScale.g100)
                 // Figma 2px 세로 바 — 대응 두께 토큰 없어 리터럴 유지.
                 .frame(width: 2)
             Text(comment)
                 .dsTypography(.body9)
-                .foregroundStyle(Color.Gray.g400)
+                .foregroundStyle(Color.GrayScale.g400)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -169,7 +169,7 @@ struct GuestSummaryView: View {
     /// 카드 테두리 — gray100 스트로크(outline-m), 모서리 6pt(대응 radius 토큰 없어 리터럴).
     private var cardBorder: some View {
         RoundedRectangle(cornerRadius: 6)
-            .strokeBorder(Color.Gray.g100, lineWidth: .ds(.medium))
+            .strokeBorder(Color.GrayScale.g100, lineWidth: .ds(.medium))
     }
 
     // MARK: - 하단 CTA

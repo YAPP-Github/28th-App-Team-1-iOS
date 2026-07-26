@@ -62,7 +62,7 @@ public struct OnboardingJobSelectionView: View {
         HStack(spacing: 2) {
             ForEach(1...store.totalSteps, id: \.self) { step in
                 Rectangle()
-                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.Gray.g50)
+                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.GrayScale.g50)
                     .frame(height: 4)
             }
         }
@@ -82,10 +82,10 @@ public struct OnboardingJobSelectionView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("\(store.userName)님의 직군을\n선택해 주세요.")
                     .dsTypography(.head3)
-                    .foregroundStyle(Color.Gray.g800)
+                    .foregroundStyle(Color.GrayScale.g800)
                 Text("\(store.userName)님의 현재 직군을 선택해 주세요.")
                     .dsTypography(.body3)
-                    .foregroundStyle(Color.Gray.g500)
+                    .foregroundStyle(Color.GrayScale.g500)
             }
         }
     }
@@ -131,7 +131,7 @@ public struct OnboardingJobSelectionView: View {
             Text("계속하기")
                 // TODO: 활성 상태 Figma 미확인 — 우선 텍스트 white. 디자인 확정 시 조정.
                 .dsTypography(.sub7)
-                .foregroundStyle(store.isContinueEnabled ? Color.BlackWhite.white : Color.Gray.g400)
+                .foregroundStyle(store.isContinueEnabled ? Color.BlackWhite.white : Color.GrayScale.g400)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 22)
                 .contentShape(Rectangle())

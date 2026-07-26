@@ -41,11 +41,11 @@ public struct PrimaryButton: View {
             .padding(.top, .ds(.p22))
             .padding(.bottom, .ds(.p10))
             .padding(.horizontal, .ds(.p24))
-            .foregroundStyle(isEnabled ? Color.BlackWhite.white : Color.Gray.g300)
+            .foregroundStyle(isEnabled ? Color.BlackWhite.white : Color.GrayScale.g300)
             // Figma 실측: #1A1B1F(hilit black/800) 풀블리드 바 · 모서리 0 (브리프의 green/p12 기본값과 상이).
             // 배경만 하단 안전영역까지 확장 — 콘텐츠/탭 타깃(minHeight 52 프레임)은 안전영역 위에 그대로 남는다.
             .background(
-                (isEnabled ? Color.HilitBlack.b800 : Color.Gray.g50)
+                (isEnabled ? Color.HilitBlack.b800 : Color.GrayScale.g50)
                     .ignoresSafeArea(edges: .bottom)
             )
         }
