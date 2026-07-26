@@ -155,7 +155,7 @@ public struct ProfileView: View {
 }
 ```
 
-**주의** — `@Bindable var store` + `@ViewAction(for:)` 표준 (매크로가 주는 `send(_:)` 는 `Action.View` 만 받는다 — View 가 `inner`/`delegate` 를 못 쏘게 컴파일 수준에서 막힌다), `WithViewStore` 금지. `SharedDesignSystem` 토큰/컴포넌트(`Color.dsPrimary`, `PrimaryButton`) 우선. View 에서 `Task { await }` 직접 만들지 말고 `store.send` 로 위임.
+**주의** — `@Bindable var store` + `@ViewAction(for:)` 표준 (매크로가 주는 `send(_:)` 는 `Action.View` 만 받는다 — View 가 `inner`/`delegate` 를 못 쏘게 컴파일 수준에서 막힌다), `WithViewStore` 금지. `SharedDesignSystem` 토큰/컴포넌트(`Color.GrayScale.g900`, `ButtonLarge`) 우선. View 에서 `Task { await }` 직접 만들지 말고 `store.send` 로 위임.
 
 ## Step 5 — Project.swift + umbrella + 생성
 

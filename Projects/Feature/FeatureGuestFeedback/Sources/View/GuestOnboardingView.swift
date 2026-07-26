@@ -114,7 +114,7 @@ struct GuestOnboardingView: View {
 
     private var footer: some View {
         // CTA 위 여백 — Figma 실측 마지막 가이드(y650)~버튼(y723) ≈ 73pt. 대응 spacing 토큰 부재로 리터럴.
-        PrimaryButton("피드백 시작하기") {
+        ButtonLarge("피드백 시작하기", .bottom) {
             send(.startTapped)
         }
         .padding(.top, 72)

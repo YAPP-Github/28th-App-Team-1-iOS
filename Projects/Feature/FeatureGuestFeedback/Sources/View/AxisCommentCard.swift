@@ -9,7 +9,7 @@ import SharedDesignSystemInterface
 import SwiftUI
 
 /// "왜 그렇게 느꼈나요?" 펼침 코멘트 입력 카드 — 키보드 위에 뜨는 플로팅 아일랜드.
-/// Figma «text-field/large-with-cta»(node 1984:6994) + 모달 CTA «다음»(DS `ModalButton`) —
+/// Figma «text-field/large-with-cta»(node 1984:6994) + 모달 CTA «다음»(DS `ButtonLarge(.modal)`) —
 /// 헤더(질문 + "선택" 태그 + 닫기) · 여러 줄 입력(최대 5줄, «[4] 서술형 - 5줄») · 풀폭 검정 버튼.
 /// 등장 즉시 포커스해 키보드 위 도킹으로 시작한다.
 struct AxisCommentCard: View {
@@ -49,7 +49,7 @@ struct AxisCommentCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.BlackWhite.white)
 
-            ModalButton("다음", action: onDone)
+            ButtonLarge("다음", .modal, action: onDone)
         }
         .onAppear { isFocused = true }
     }
