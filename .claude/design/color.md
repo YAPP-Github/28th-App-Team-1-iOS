@@ -1,6 +1,6 @@
 # 색상 — 상세
 
-`Color` 팔레트 토큰 레퍼런스. 단일 소스는 [Color+Palette.swift](../../Projects/Shared/SharedDesignSystem/Interface/Color/Color+Palette.swift) — 어긋나면 코드가 우선이고 이 문서를 갱신한다. 원본 스펙: Figma «Hilit_Color_Guide» (node 366-173).
+`Color` 팔레트 토큰 레퍼런스. 단일 소스는 [Color+Extension.swift](../../Projects/Shared/SharedDesignSystem/Interface/Color/Color+Extension.swift) — 어긋나면 코드가 우선이고 이 문서를 갱신한다. 원본 스펙: Figma «Hilit_Color_Guide» (node 366-173).
 
 ## 사용법
 
@@ -41,7 +41,7 @@ Rectangle().fill(Color.GrayScale.g50)
 
 ## 구현 노트
 
-- **에셋 로드**: 값은 `Interface/Resources/Colors.xcassets`(에셋명 = `Color<HEX>`), 로드는 Tuist 생성 접근자 `SharedDesignSystemInterfaceAsset.Colors.<name>.swiftUIColor` ([Color+Palette.swift](../../Projects/Shared/SharedDesignSystem/Interface/Color/Color+Palette.swift) 가 `Asset` 으로 축약해 감싼다). 에셋명이 HEX 라 생성 이름도 `color636777` — 의미를 입히는 게 팔레트 enum 의 일이다. 에셋을 지우거나 이름을 바꾸면 팔레트에서 컴파일 에러가 난다.
+- **에셋 로드**: 값은 `Interface/Resources/Colors.xcassets`(에셋명 = `Color<HEX>`), 로드는 Tuist 생성 접근자 `SharedDesignSystemInterfaceAsset.Colors.<name>.swiftUIColor` ([Color+Extension.swift](../../Projects/Shared/SharedDesignSystem/Interface/Color/Color+Extension.swift) 가 `Asset` 으로 축약해 감싼다). 에셋명이 HEX 라 생성 이름도 `color636777` — 의미를 입히는 게 팔레트 enum 의 일이다. 에셋을 지우거나 이름을 바꾸면 팔레트에서 컴파일 에러가 난다.
 - **스펙 검증**: `ColorPaletteTests` 가 토큰 → 에셋 RGB 를 Figma 확정 HEX 와 1:1 대조. static-library 모드의 번들(`Bundle.module`) 파손도 여기서 잡힌다.
 - **알려진 Figma 불일치**: Color Guide 스크린샷의 positive 계열 HEX **텍스트 라벨**(#FEF4E7·#F29411·#FEEFF4, 주황)은 낡았다 — 실제 스와치·바인딩 변수·"블루" 설명과 어긋난다. 바인딩 변수값(#DDFAFF·#00CFEF·#008A9F, 청록)을 확정으로 채택 (2026-07-23). 디자이너에게 라벨 정정 요청 상태.
 - **다크모드 미반영**: 각 토큰은 현재 단일 appearance(universal). 도입 결정 시 colorset 에 dark variant 추가.

@@ -25,7 +25,7 @@ Figma 의 raw 수치를 그대로 박지 않는다. 각 값마다 대응 토큰�
 | 폰트(`head1_sb_32` 등) | `design/typography.md` 25종 | `.dsTypography(.head3)` |
 | padding·gap | `design/spacing.md` (4~24) | `.padding(.ds(.p20))` |
 | 버튼·칩·태그·토스트 | `design/component.md` 9종 | `PrimaryButton("계속하기") { … }` |
-| 아이콘·일러스트 | `design/image.md` | `Image.Ic.close` · `Image.Img.…` |
+| 아이콘·일러스트 | `design/image.md` | `Image.Cancel.dark24` · `Image.Img.…` (틴트 금지 — 색변형별 에셋) |
 
 **근사 판단**: 시안 값이 토큰과 미세하게 다르면(#FF5858 vs #FF5757) 토큰을 쓴다 — 팔레트가 진실이다. 다만 눈에 띄게 다르면 토큰을 쓰되 원본을 태그로 남긴다(§2 화살표 형태). "눈에 띄는가"의 기준은 나란히 놓고 구별되는가다.
 
