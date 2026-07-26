@@ -89,16 +89,6 @@ public extension Image {
         public static var disabled24: Image { Asset.Assets.fileDisabled24.swiftUIImage }
     }
 
-    enum Ic {
-        public static var cancelMini: Image { Asset.Assets.icCancelMini.swiftUIImage }
-        public static var cancelSmall: Image { Asset.Assets.icCancelSmall.swiftUIImage }
-        public static var close: Image { Asset.Assets.icClose.swiftUIImage }
-        public static var error: Image { Asset.Assets.icError.swiftUIImage }
-        public static var info: Image { Asset.Assets.icInfo.swiftUIImage }
-        public static var success: Image { Asset.Assets.icSuccess.swiftUIImage }
-        public static var upload: Image { Asset.Assets.icUpload.swiftUIImage }
-    }
-
     enum Img {
         public static var book: Image { Asset.Assets.imgBook.swiftUIImage }
         public static var link: Image { Asset.Assets.imgLink.swiftUIImage }

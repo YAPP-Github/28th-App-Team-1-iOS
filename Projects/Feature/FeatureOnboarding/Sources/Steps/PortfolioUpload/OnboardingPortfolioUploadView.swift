@@ -92,11 +92,10 @@ public struct OnboardingPortfolioUploadView: View {
             Button {
                 send(.userTappedClose)
             } label: {
-                Image.Ic.close
+                Image.Cancel.default24
                     .resizable()
                     .scaledToFit()
                     .frame(width: 24, height: 24)
-                    .foregroundStyle(Color.HilitBlack.b800)
             }
             .buttonStyle(.plain)
             Spacer(minLength: 0)
@@ -161,16 +160,11 @@ public struct OnboardingPortfolioUploadView: View {
             send(.userTappedUploadCard)
         } label: {
             VStack(spacing: 11) {
-                Circle()
-                    .fill(Color.HilitBlack.b800)
+                // 검은 원 배경까지 에셋에 포함된 44px 판 (구판은 화살표만이라 원을 코드로 그렸다).
+                Image.Upload.default
+                    .resizable()
+                    .scaledToFit()
                     .frame(width: 44, height: 44)
-                    .overlay {
-                        Image.Ic.upload
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 20, height: 22)
-                            .foregroundStyle(Color.BlackWhite.white)
-                    }
 
                 VStack(spacing: 4) {
                     Text("파일을 업로드해주세요")
@@ -195,7 +189,7 @@ public struct OnboardingPortfolioUploadView: View {
     /// 업로드 실패 배너 (Figma 1716:5517) — failed 하위 상태에서만 노출.
     private func errorBanner(_ message: String) -> some View {
         HStack(spacing: 10) {
-            Image.Ic.error
+            Image.Issue.error16
                 .resizable()
                 .scaledToFit()
                 .frame(width: 16, height: 16)
@@ -269,11 +263,12 @@ public struct OnboardingPortfolioUploadView: View {
                 Button {
                     send(.userTappedRemoveFile)
                 } label: {
-                    Image.Ic.cancelSmall
+                    // 구 cancelSmall(20pt 맨 X, g200 틴트)의 새 시트 대응이 없다 —
+                    // 입력 클리어 계열(cancel mini)로 대체. Figma 화면 확정 시 재검토.
+                    Image.CancelMini.grey16
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 20, height: 20)
-                        .foregroundStyle(Color.GrayScale.g200)
+                        .frame(width: 16, height: 16)
                 }
                 .buttonStyle(.plain)
             }

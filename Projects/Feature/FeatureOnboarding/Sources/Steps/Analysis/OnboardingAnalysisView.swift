@@ -36,11 +36,10 @@ public struct OnboardingAnalysisView: View {
             Button {
                 send(.userTappedClose)
             } label: {
-                Image.Ic.close
+                Image.Cancel.dark24
                     .resizable()
                     .scaledToFit()
                     .frame(width: 24, height: 24)
-                    .foregroundStyle(Color.BlackWhite.white)
             }
             .buttonStyle(.plain)
             Spacer(minLength: 0)
@@ -113,11 +112,10 @@ public struct OnboardingAnalysisView: View {
     @ViewBuilder
     private func stageIndicator(index: Int) -> some View {
         if index < store.completedStages {
-            Image.Ic.success
+            Image.Success.green16
                 .resizable()
                 .scaledToFit()
                 .frame(width: SpinnerMetrics.box, height: SpinnerMetrics.box)
-                .foregroundStyle(Color.HilitGreen.g500)
                 .transition(.scale.combined(with: .opacity))
         } else if index == store.completedStages {
             AnalysisSpinner()
