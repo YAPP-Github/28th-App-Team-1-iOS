@@ -11,7 +11,7 @@
 | `TagLabel` | tag | `(_ text:, foreground:, background:)` (기본 회색) | 소형 사각 태그 — «선택» 안내, 척도 극 라벨 |
 | `BubbleToast` | BubbleField 2555:7543 | `(_ message:)` | 폭 274 고정 블랙 토스트 — 위치·해제 타이밍은 호출부 |
 | `SaveIndicator` | tag-with-icon 2555:7558 | `(.saving / .saved)` | 자동 저장 상태 — 스피너 «저장 중 ...» / 체크 «저장됨» |
-| `HighlightedText` | highlighted-text | `(_ text:, typography:, foreground:, background:)` (기본 head3·그린) | 형광펜 마커 텍스트 — Parallelogram+px8 규약 고정 |
+| `HighlightedText` | highlighted-text | `(_ text:, typography:, tone:, fill:, icon:, plainForeground:)` + `.hilight(_:)` | 형광펜 마커. **문장 전체를 넘기고 `.hilight("부분")`** — 미지정 시 전체 강조. 띠 두께는 `typography` 파생(≥20pt 12, 아니면 8). `tone` 6종·`fill` 3종(full/midlined/underlined). 색 직접 지정 init 별도 |
 | `Parallelogram` | highlighted-text 배경 | `Shape` — `(slant:)` | 하이라이트 배경 Shape. 직접 쓰기보다 `HighlightedText` 우선 |
 
 ## 승격 규칙 (Feature → Shared)

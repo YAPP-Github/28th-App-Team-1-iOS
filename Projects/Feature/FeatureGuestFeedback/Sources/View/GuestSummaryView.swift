@@ -47,13 +47,8 @@ struct GuestSummaryView: View {
                 Text("\(requesterName)님에게")
                     .dsTypography(.head3)
                     .foregroundStyle(Color.GrayScale.g900)
-                HStack(spacing: 0) {
-                    // 그린 형광펜 마커 — DS HighlightedText(Figma highlighted-text), 온보딩과 동일.
-                    HighlightedText("이렇게 전달")
-                    Text("될 거예요")
-                        .dsTypography(.head3)
-                        .foregroundStyle(Color.GrayScale.g900)
-                }
+                // 그린 형광펜 마커 — DS HighlightedText(Figma highlighted-text), 온보딩과 동일.
+                HighlightedText("이렇게 전달될 거예요").hilight("이렇게 전달")
             }
             Text("항목을 누르면 바로 수정할 수 있어요")
                 .dsTypography(.body3)

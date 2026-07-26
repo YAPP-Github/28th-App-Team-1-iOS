@@ -46,13 +46,8 @@ struct GuestOnboardingView: View {
                 Text("\(requesterName)님이 당신께")
                     .dsTypography(.head4)
                     .foregroundStyle(Color.GrayScale.g900)
-                HStack(spacing: 0) {
-                    // 그린 형광펜 마커 — DS HighlightedText(Figma highlighted-text).
-                    HighlightedText("피드백", typography: .head4)
-                    Text("을 요청했어요")
-                        .dsTypography(.head4)
-                        .foregroundStyle(Color.GrayScale.g900)
-                }
+                // 그린 형광펜 마커 — DS HighlightedText(Figma highlighted-text).
+                HighlightedText("피드백을 요청했어요", typography: .head4).hilight("피드백")
             }
             Text("이동 시간 중 딱 10분만 빌려줄 수 있나요?")
                 .dsTypography(.body3)
