@@ -32,7 +32,7 @@ Font.ds(.body2)                     // 폰트만 필요한 특수한 경우 (행
 ## 구현 노트
 
 - **행간**: SwiftUI 에 line-height 개념이 없어 `lineSpacing + 상하 패딩` 보정으로 Figma px 를 재현 ([View+DSTypography.swift](../../Projects/Shared/SharedDesignSystem/Interface/Typography/View+DSTypography.swift)).
-- **Dynamic Type 미반영** (고정 사이즈) — 접근성 대응 결정 시 `Font+DS.swift` 에서 `relativeTo:` 전환.
-- **폰트 파일**: `Interface/Resources/Fonts/Pretendard-{Regular,Medium,SemiBold,Bold}.otf` — 첫 토큰 접근 시 자동 CoreText 등록(App 세팅 불필요). 새 웨이트는 otf 추가 + `Pretendard.Weight` case 추가.
+- **Dynamic Type 미반영** (고정 사이즈) — 접근성 대응 결정 시 `Font+DSTypography.swift` 에서 `relativeTo:` 전환.
+- **폰트 파일**: `Interface/Resources/Fonts/Pretendard-{Regular,Medium,SemiBold,Bold}.otf` — 등록은 Tuist 생성 접근자(`SharedDesignSystemInterfaceFontFamily`)가 첫 사용 시 웨이트별로 알아서 한다(App 세팅 불필요). 미사용 웨이트까지 등록돼야 하면 `Pretendard.registerAll()`. 새 웨이트는 otf 추가 + `Pretendard.Weight` case + `asset` 분기 추가.
 - **스펙 검증**: 토큰 ↔ Figma 스타일명 1:1 은 `DSTypographyTests` 가 고정. 스케일 개정 시 테스트의 스펙 표부터 Figma 와 대조해 갱신.
 - **알려진 Figma 불일치**: `sub1_sb_22` 텍스트 스타일 변수의 행간은 135%인데 스타일가이드 표는 130%/29px. 표 기준(29px)으로 구현 — 디자이너 확인 필요 (2026-07-22). (07/18 에 기록했던 head3 행간 불일치는 0722 개정에서 135% 쪽으로 확정되어 해소.)
