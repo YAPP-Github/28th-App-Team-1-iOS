@@ -71,7 +71,7 @@ public struct OnboardingAnalysisView: View {
             header(
                 title: "최적의 면접 환경을\n준비하고 있어요",
                 subtitle: "잠시만 기다려주세요",
-                subtitleColor: Color.Gray.g100
+                subtitleColor: Color.GrayScale.g100
             )
             .background { gradientBand }
             checklist
@@ -132,7 +132,7 @@ public struct OnboardingAnalysisView: View {
         header(
             title: "면접 환경을\n준비했어요",
             subtitle: "이제부터 시작해볼까요?",
-            subtitleColor: Color.Gray.g200
+            subtitleColor: Color.GrayScale.g200
         )
         // Figma: 완료 블록 중심 y ≈ 369.5/812 — 중앙 정렬에 위쪽 보정.
         .padding(.bottom, 136)
@@ -145,7 +145,7 @@ public struct OnboardingAnalysisView: View {
         header(
             title: "면접 준비에 실패했어요",
             subtitle: message,
-            subtitleColor: Color.Gray.g100
+            subtitleColor: Color.GrayScale.g100
         )
         .padding(.bottom, 96)
     }
@@ -184,7 +184,7 @@ private struct AnalysisSpinner: View {
     var body: some View {
         ZStack {
             Circle()
-                .stroke(Color.Gray.g700, lineWidth: SpinnerMetrics.line)
+                .stroke(Color.GrayScale.g700, lineWidth: SpinnerMetrics.line)
             Circle()
                 .trim(from: 0, to: 0.3)
                 .stroke(Color.HilitGreen.g500, lineWidth: SpinnerMetrics.line)
@@ -201,7 +201,7 @@ private struct AnalysisSpinner: View {
 private struct AnalysisTrackRing: View {
     var body: some View {
         Circle()
-            .stroke(Color.Gray.g700, lineWidth: SpinnerMetrics.line)
+            .stroke(Color.GrayScale.g700, lineWidth: SpinnerMetrics.line)
             .frame(width: SpinnerMetrics.ring, height: SpinnerMetrics.ring)
             .frame(width: SpinnerMetrics.box, height: SpinnerMetrics.box)
     }

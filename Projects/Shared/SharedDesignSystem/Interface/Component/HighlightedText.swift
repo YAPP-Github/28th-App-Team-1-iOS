@@ -19,7 +19,7 @@ public struct HighlightedText: View {
     public init(
         _ text: String,
         typography: DSTypography = .head3,
-        foreground: Color = Color.Gray.g900,
+        foreground: Color = Color.GrayScale.g900,
         background: Color = Color.HilitGreen.g500
     ) {
         self.text = text
@@ -49,8 +49,8 @@ public struct HighlightedText: View {
         HighlightedText(
             "-",
             typography: .body3,
-            foreground: Color.Gray.g600,
-            background: Color.Gray.g100
+            foreground: Color.GrayScale.g600,
+            background: Color.GrayScale.g100
         )                                                               // 미선택 중립
     }
     .padding(.ds(.p20))

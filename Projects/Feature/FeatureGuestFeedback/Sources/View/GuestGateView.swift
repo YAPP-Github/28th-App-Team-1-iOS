@@ -28,19 +28,19 @@ struct GuestGateView: View {
             VStack(spacing: .ds(.p8)) {
                 Text(title)
                     .dsTypography(.sub4)
-                    .foregroundStyle(Color.Gray.g900)
+                    .foregroundStyle(Color.GrayScale.g900)
                     .multilineTextAlignment(.center)
                 if let message {
                     Text(message)
                         .dsTypography(.body6)
-                        .foregroundStyle(Color.Gray.g500)
+                        .foregroundStyle(Color.GrayScale.g500)
                         .multilineTextAlignment(.center)
                 }
             }
         }
         .padding(.ds(.p24))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.Gray.g50)
+        .background(Color.GrayScale.g50)
     }
 
     private var icon: String {
@@ -56,7 +56,7 @@ struct GuestGateView: View {
     private var iconColor: Color {
         switch kind {
         case .completed, .closed(.alreadySubmitted): Color.HilitGreen.g800
-        case .closed: Color.Gray.g400
+        case .closed: Color.GrayScale.g400
         }
     }
 

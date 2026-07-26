@@ -109,7 +109,7 @@ public struct OnboardingPortfolioUploadView: View {
         HStack(spacing: 2) {
             ForEach(1...store.totalSteps, id: \.self) { step in
                 Rectangle()
-                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.Gray.g50)
+                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.GrayScale.g50)
                     .frame(height: 4)
             }
         }
@@ -129,10 +129,10 @@ public struct OnboardingPortfolioUploadView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("포트폴리오를\n업로드해 주세요.")
                     .dsTypography(.head3)
-                    .foregroundStyle(Color.Gray.g800)
+                    .foregroundStyle(Color.GrayScale.g800)
                 Text("포트폴리오를 분석해 면접 질문이 나와요.")
                     .dsTypography(.body3)
-                    .foregroundStyle(Color.Gray.g500)
+                    .foregroundStyle(Color.GrayScale.g500)
             }
         }
     }
@@ -175,17 +175,17 @@ public struct OnboardingPortfolioUploadView: View {
                 VStack(spacing: 4) {
                     Text("파일을 업로드해주세요")
                         .dsTypography(.body1)
-                        .foregroundStyle(Color.Gray.g800)
+                        .foregroundStyle(Color.GrayScale.g800)
                     Text("1개 파일, 최대 20Mb까지 가능합니다")
                         .dsTypography(.body8)
-                        .foregroundStyle(Color.Gray.g500)
+                        .foregroundStyle(Color.GrayScale.g500)
                 }
             }
             .frame(maxWidth: .infinity)
             .frame(height: 150)
-            .background(Color.Gray.g50)
+            .background(Color.GrayScale.g50)
             .overlay {
-                Rectangle().strokeBorder(Color.Gray.g100, lineWidth: 1)
+                Rectangle().strokeBorder(Color.GrayScale.g100, lineWidth: 1)
             }
             .contentShape(Rectangle())
         }
@@ -252,7 +252,7 @@ public struct OnboardingPortfolioUploadView: View {
                     .dsTypography(.body7)
                     .foregroundStyle(Color.HilitGreen.g500)
                     .frame(width: 40, height: 40)
-                    .background(Color.Gray.g800)
+                    .background(Color.GrayScale.g800)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(fileName)
@@ -273,7 +273,7 @@ public struct OnboardingPortfolioUploadView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 20, height: 20)
-                        .foregroundStyle(Color.Gray.g200)
+                        .foregroundStyle(Color.GrayScale.g200)
                 }
                 .buttonStyle(.plain)
             }
@@ -288,7 +288,7 @@ public struct OnboardingPortfolioUploadView: View {
         .frame(height: 72)
         .background(Color.BlackWhite.white)
         .overlay {
-            Rectangle().strokeBorder(Color.Gray.g100, lineWidth: 1)
+            Rectangle().strokeBorder(Color.GrayScale.g100, lineWidth: 1)
         }
     }
 
@@ -297,7 +297,7 @@ public struct OnboardingPortfolioUploadView: View {
     private var uploadingProgressStrip: some View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
-                Rectangle().fill(Color.Gray.g50)
+                Rectangle().fill(Color.GrayScale.g50)
                 Rectangle()
                     .fill(Color.HilitGreen.g500)
                     .frame(width: proxy.size.width * uploadProgress)
@@ -323,7 +323,7 @@ public struct OnboardingPortfolioUploadView: View {
             .buttonStyle(.plain)
 
             Rectangle()
-                .fill(Color.Gray.g700)
+                .fill(Color.GrayScale.g700)
                 .frame(width: 1, height: 25)
 
             Button {
@@ -331,7 +331,7 @@ public struct OnboardingPortfolioUploadView: View {
             } label: {
                 Text("계속하기")
                     .dsTypography(.sub7)
-                    .foregroundStyle(store.isContinueEnabled ? Color.BlackWhite.white : Color.Gray.g400)
+                    .foregroundStyle(store.isContinueEnabled ? Color.BlackWhite.white : Color.GrayScale.g400)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 22)
                     .contentShape(Rectangle())

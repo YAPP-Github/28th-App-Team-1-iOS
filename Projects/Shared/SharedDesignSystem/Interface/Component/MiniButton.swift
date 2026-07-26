@@ -33,7 +33,7 @@ public struct MiniButton: View {
             .foregroundStyle(Color.HilitBlack.b800)
             .padding(.horizontal, .ds(.p10))
             .padding(.vertical, .ds(.p8))
-            .background(Color.Gray.g100, in: RoundedRectangle(cornerRadius: 6))
+            .background(Color.GrayScale.g100, in: RoundedRectangle(cornerRadius: 6))
         }
         .buttonStyle(.plain)
     }

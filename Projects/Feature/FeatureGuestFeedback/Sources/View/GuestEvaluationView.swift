@@ -198,10 +198,10 @@ struct GuestEvaluationView: View {
         HStack(spacing: .ds(.p8)) {
             Image(systemName: "plus")
                 .font(.ds(.body6))
-                .foregroundStyle(Color.Gray.g900)
+                .foregroundStyle(Color.GrayScale.g900)
             Text("왜 그렇게 느꼈나요?")
                 .dsTypography(.body6)
-                .foregroundStyle(Color.Gray.g900)
+                .foregroundStyle(Color.GrayScale.g900)
             TagLabel("선택")
             Spacer(minLength: 0)
         }
@@ -211,7 +211,7 @@ struct GuestEvaluationView: View {
             // Figma button-optional(2227:4511) — 시안이 직사각형(radius 0) 점선 테두리.
             Rectangle()
                 .strokeBorder(
-                    Color.Gray.g100,
+                    Color.GrayScale.g100,
                     style: StrokeStyle(lineWidth: .ds(.small), dash: [4])
                 )
         )
@@ -224,13 +224,13 @@ struct GuestEvaluationView: View {
         HStack(spacing: .ds(.p8)) {
             Text(comment)
                 .dsTypography(.body6)
-                .foregroundStyle(Color.Gray.g900)
+                .foregroundStyle(Color.GrayScale.g900)
                 .lineLimit(1)
                 .truncationMode(.tail)
             Spacer(minLength: .ds(.p8))
             Text("수정")
                 .dsTypography(.body8)
-                .foregroundStyle(Color.Gray.g600)
+                .foregroundStyle(Color.GrayScale.g600)
                 .underline()
         }
         .padding(.ds(.p8))                  // 빈 상태와 같은 패딩 — 두 상태의 행 높이 일치.
@@ -238,7 +238,7 @@ struct GuestEvaluationView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(
             Rectangle()
-                .strokeBorder(Color.Gray.g100, lineWidth: .ds(.medium))
+                .strokeBorder(Color.GrayScale.g100, lineWidth: .ds(.medium))
         )
         .overlay(alignment: .leading) {
             Rectangle()
@@ -251,15 +251,15 @@ struct GuestEvaluationView: View {
     private var viewingOnlyBanner: some View {
         HStack(spacing: .ds(.p8)) {
             Image(systemName: "person.3.fill")
-                .foregroundStyle(Color.Gray.g600)
+                .foregroundStyle(Color.GrayScale.g600)
             Text("이미 다른 지인이 참여했어요 — 영상만 볼 수 있어요")
                 .dsTypography(.body6)
-                .foregroundStyle(Color.Gray.g600)
+                .foregroundStyle(Color.GrayScale.g600)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.ds(.p12))
         // DS 에 radius 토큰이 없어 리터럴 유지(8pt).
-        .background(Color.Gray.g100, in: RoundedRectangle(cornerRadius: 8))
+        .background(Color.GrayScale.g100, in: RoundedRectangle(cornerRadius: 8))
     }
 
     // MARK: - 하단 CTA

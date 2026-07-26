@@ -12,9 +12,10 @@ import SwiftUI
 private typealias Asset = SharedDesignSystemInterfaceAsset
 
 // @lat: [[architecture#디자인 시스템]]
-// HILIT 색상 팔레트 — Figma «Hilit_Color_Guide»(node 366-173) 확정본과 1:1.
+// HILIT 색상 팔레트 23색 — Figma «Hilit_Color_Guide»(node 366-173) 확정본과 1:1.
 // 에셋명은 HEX(Color636777) 라 그대로 쓰면 의미가 사라진다 — 이 패밀리 enum 이 의미를 입히는 층이다.
-// 값은 Colors.xcassets, 로드는 Tuist 생성 접근자.
+// 카탈로그도 같은 6개 그룹으로 묶여 있다(HilitBlack·HilitGreen·Error·Positive·GrayScale·BlackWhite).
+// 폴더는 정리용이라 namespace 를 잡지 않는다 — 그래서 생성 접근자 이름은 평평한 `colorXXXXXX` 그대로다.
 public extension Color {
 
     enum HilitBlack {
@@ -28,6 +29,7 @@ public extension Color {
         public static var g800: Color { Asset.Colors.color106100.swiftUIColor }   // 그린 텍스트
     }
 
+    /// Figma 의 «negative» 그룹 — 코드·카탈로그는 Error 로 통일한다.
     enum Error {
         public static var e200: Color { Asset.Colors.colorFFEBEB.swiftUIColor }   // 레드 배경
         public static var e300: Color { Asset.Colors.colorFFA6A6.swiftUIColor }
@@ -41,7 +43,7 @@ public extension Color {
         public static var p800: Color { Asset.Colors.color008A9F.swiftUIColor }   // 블루 텍스트
     }
 
-    enum Gray {
+    enum GrayScale {
         public static var g50: Color { Asset.Colors.colorF6F7F9.swiftUIColor }    // 그레이 배경
         public static var g100: Color { Asset.Colors.colorEBECF1.swiftUIColor }
         public static var g200: Color { Asset.Colors.colorBCBEC6.swiftUIColor }

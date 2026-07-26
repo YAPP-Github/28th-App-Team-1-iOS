@@ -6,12 +6,12 @@
 
 ```swift
 Text("제목").foregroundStyle(Color.HilitGreen.g500)   // 패밀리 enum . 토큰
-Rectangle().fill(Color.Gray.g50)
+Rectangle().fill(Color.GrayScale.g50)
 ```
 
 ## 팔레트 (23색)
 
-에셋명은 HEX(`Color636777`), 접근은 패밀리 enum. 토큰명은 색 약어 + Figma 스케일 번호(`g600` = gray 600).
+에셋명은 HEX(`Color636777`), 접근은 패밀리 enum. 토큰명은 색 약어 + Figma 스케일 번호(`g600` = gray 600). 카탈로그도 아래 enum 과 같은 6개 그룹 폴더로 묶여 있다 — Figma 의 «negative» 는 `Error`, «Grayscale» 은 `GrayScale` 로 통일했다.
 
 | enum | 토큰 | HEX | 용도 |
 |---|---|---|---|
@@ -27,7 +27,7 @@ Rectangle().fill(Color.Gray.g50)
 | `Positive` | `p200` | #DDFAFF | 블루 배경 |
 | | `p500` | #00CFEF | 메인 블루 |
 | | `p800` | #008A9F | 블루 텍스트 |
-| `Gray` | `g50` | #F6F7F9 | 그레이 배경 |
+| `GrayScale` | `g50` | #F6F7F9 | 그레이 배경 |
 | | `g100` | #EBECF1 | — |
 | | `g200` | #BCBEC6 | — |
 | | `g300` | #9DA0AC | disabled 상태 텍스트 |

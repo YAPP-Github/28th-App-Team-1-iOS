@@ -60,7 +60,7 @@ public struct OnboardingCareerInputView: View {
         HStack(spacing: 2) {
             ForEach(1...store.totalSteps, id: \.self) { step in
                 Rectangle()
-                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.Gray.g50)
+                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.GrayScale.g50)
                     .frame(height: 4)
             }
         }
@@ -80,10 +80,10 @@ public struct OnboardingCareerInputView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("연차를 입력해 주세요.")
                     .dsTypography(.head3)
-                    .foregroundStyle(Color.Gray.g800)
+                    .foregroundStyle(Color.GrayScale.g800)
                 Text("지금까지 근무한 모든 기간의 합\n(정규직·계약직·프리랜서 포함, 인턴)입니다.")
                     .dsTypography(.body3)
-                    .foregroundStyle(Color.Gray.g500)
+                    .foregroundStyle(Color.GrayScale.g500)
             }
         }
     }
@@ -171,7 +171,7 @@ public struct OnboardingCareerInputView: View {
 
             // 세로 구분선 — Figma grayscale/gray-700(#494C58). dsGray700 토큰은 부모 세션이 일괄 추가.
             Rectangle()
-                .fill(Color.Gray.g700)
+                .fill(Color.GrayScale.g700)
                 .frame(width: 1, height: 25)
 
             Button {

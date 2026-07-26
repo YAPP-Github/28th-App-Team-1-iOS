@@ -67,7 +67,7 @@ public struct OnboardingFocusProjectView: View {
         HStack(spacing: 2) {
             ForEach(1...store.totalSteps, id: \.self) { step in
                 Rectangle()
-                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.Gray.g50)
+                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.GrayScale.g50)
                     .frame(height: 4)
             }
         }
@@ -79,19 +79,19 @@ public struct OnboardingFocusProjectView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("선택")
                 .dsTypography(.body7)
-                .foregroundStyle(Color.Gray.g800)
+                .foregroundStyle(Color.GrayScale.g800)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 4)
-                .background(Color.Gray.g50, in: RoundedRectangle(cornerRadius: 2))
+                .background(Color.GrayScale.g50, in: RoundedRectangle(cornerRadius: 2))
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("집중적으로 보고싶은\n프로젝트 내용을 알려주세요.")
                     .dsTypography(.head3)
-                    .foregroundStyle(Color.Gray.g800)
+                    .foregroundStyle(Color.GrayScale.g800)
                 // PRD S3 확정 문구 — 입력/건너뛰기 결과를 함께 안내(기존 스킵과 모순되던 카피 폐기).
                 Text("입력하면 그 부분을 집중 검증해요.\n건너뛰면 포트폴리오 전체에서 질문해요.")
                     .dsTypography(.body3)
-                    .foregroundStyle(Color.Gray.g500)
+                    .foregroundStyle(Color.GrayScale.g500)
             }
         }
     }
@@ -112,12 +112,12 @@ public struct OnboardingFocusProjectView: View {
             .padding(.vertical, 18)
             .overlay {
                 Rectangle()
-                    .strokeBorder(Color.Gray.g100, lineWidth: 1.5)
+                    .strokeBorder(Color.GrayScale.g100, lineWidth: 1.5)
             }
 
             Text(store.characterCountLabel)
                 .dsTypography(.body6)
-                .foregroundStyle(Color.Gray.g700)
+                .foregroundStyle(Color.GrayScale.g700)
                 .frame(maxWidth: .infinity, alignment: .trailing)
 
             if let warning = store.inputWarning {
@@ -141,11 +141,11 @@ public struct OnboardingFocusProjectView: View {
             text: $store.projectDescription,
             prompt: Text("결제 시스템 리팩토링, Redis 캐시 도입")
                 .font(.ds(.body2))
-                .foregroundStyle(Color.Gray.g100)
+                .foregroundStyle(Color.GrayScale.g100)
         )
         // TODO: 입력(filled) 상태 텍스트 색 Figma 미확인 — placeholder 상태만 제공돼 우선 gray800.
         .font(.ds(.body2))
-        .foregroundStyle(Color.Gray.g800)
+        .foregroundStyle(Color.GrayScale.g800)
         .tint(Color.HilitBlack.b800)
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(minHeight: 24) // 클리어 버튼(24pt) 유무와 무관하게 입력창 높이 고정.
@@ -199,7 +199,7 @@ public struct OnboardingFocusProjectView: View {
             .buttonStyle(.plain)
 
             Rectangle()
-                .fill(Color.Gray.g700)
+                .fill(Color.GrayScale.g700)
                 .frame(width: 1, height: 25)
 
             Button {
