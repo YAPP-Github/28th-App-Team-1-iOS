@@ -51,7 +51,7 @@ struct DSTypographyTests {
     /// static-library 모드에서 Tuist 합성 번들(`Bundle.module`)이 깨지면 여기서 잡힌다.
     @Test("폰트가 번들에서 등록되어 UIFont 로 로드된다")
     func fontsRegisterFromBundleAndLoadAsUIFont() {
-        _ = Font.ds(.head1)   // 첫 토큰 접근 → registerOnce 트리거
+        Pretendard.registerAll()   // 토큰을 안 쓴 웨이트까지 등록해 네 개 모두 검사한다
         for weight in Pretendard.Weight.allCases {
             #expect(UIFont(name: weight.postScriptName, size: 16) != nil, "\(weight.postScriptName) 로드 실패")
         }
