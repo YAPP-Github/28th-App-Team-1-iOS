@@ -1,5 +1,5 @@
 //
-//  Color+Palette.swift
+//  Color+Extension.swift
 //  SharedDesignSystemInterface
 //
 //  Created by EunseoKim on 26/07/23.

@@ -25,6 +25,7 @@ Projects/
 - **Feature 는 Interface 없음 (D3)** — Reducer/View 는 `Sources/` 한 타겟.
 - **Repository(외부 IO) = Domain 모듈** — Interface 에 Client struct + DependencyValues 키 + preview/testValue, Implementation 에 liveValue.
 - **코드 변경 시 문서 동기화 (필수)** — 바뀐 코드와 같은 작업 안에서 관련 문서 갱신(어긋난 채 끝내지 않음). 대상: 구조(모듈·의존·레이어) → «구조» 섹션 + `docs/adding-module.md`(절차 바뀌면) · 디자인(토큰·컴포넌트) → `.claude/design.md`(+`design/*.md`) · 도메인 의도·숨은 의존 → `lat.md/` 노드 + `@lat` 라벨(`lat check`). 문서 내부는 «문서 작성법» 따른다.
+  - **경로·심볼 추적**: 파일 이름·경로·공개 심볼이 바뀌면 그걸 언급하는 문서를 **전부** 찾아 고친다 — 직접 다룬 문서만이 아니라, 옛 이름으로 `grep -r --include="*.md"` 해서 걸리는 모든 문서(lat.md·docs·스킬 포함).
 
 ## TCA 패턴
 
