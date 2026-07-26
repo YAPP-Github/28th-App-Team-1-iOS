@@ -7,42 +7,42 @@
 
 import SwiftUI
 
-/// 섹션 우측 보조 액션용 소형 버튼 — Figma «button-mini/with-icon»(node 2227:4448) 1:1.
-/// gray/100 배경 · b800 아이콘+텍스트(body5) · px10/py8 · 모서리 6pt(대응 radius 토큰 없어 리터럴).
+/// 섹션 우측 보조 액션용 소형 버튼 설탕 — 본체는 `.buttonStyle(.mini(_:))` 다.
+/// Figma «button-mini/with-icon»(node 2227:4441): gray/100 배경 · b800 body5 · px8/py8 · gap8 · 모서리 0.
+/// 다른 색·다크 판·복잡한 라벨이 필요하면 `Button { … }.buttonStyle(.mini(...))` 를 직접 쓴다.
 public struct MiniButton: View {
     private let title: String
-    private let systemImage: String?
+    private let icon: Image?
     private let action: () -> Void
 
-    public init(_ title: String, systemImage: String? = nil, action: @escaping () -> Void) {
+    /// - Parameter icon: DS 아이콘 토큰(예: `Image.Video.default16`). 색은 에셋에 구워져 있어 틴트하지 않는다.
+    public init(_ title: String, icon: Image? = nil, action: @escaping () -> Void) {
         self.title = title
-        self.systemImage = systemImage
+        self.icon = icon
         self.action = action
     }
 
     public var body: some View {
         Button(action: action) {
-            HStack(spacing: .ds(.p4)) {
-                if let systemImage {
-                    Image(systemName: systemImage)
-                        .font(.ds(.body8))
+            HStack(spacing: .ds(.p8)) {
+                if let icon {
+                    icon
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 16, height: 16)
                 }
                 Text(title)
-                    .dsTypography(.body5)
             }
-            .foregroundStyle(Color.HilitBlack.b800)
-            .padding(.horizontal, .ds(.p10))
-            .padding(.vertical, .ds(.p8))
-            .background(Color.GrayScale.g100, in: RoundedRectangle(cornerRadius: 6))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.mini(.gray, layout: icon == nil ? .textOnly : .withIcon))
     }
 }
 
 #Preview {
     VStack(spacing: .ds(.p12)) {
-        MiniButton("영상 다시보기", systemImage: "play.rectangle.fill") {}
+        MiniButton("영상 다시보기", icon: Image.Video.default16) {}
         MiniButton("전체 보기") {}
+        MiniButton("비활성") {}.disabled(true)
     }
     .padding(.ds(.p20))
     .background(Color.BlackWhite.white)

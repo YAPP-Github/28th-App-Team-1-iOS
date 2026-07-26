@@ -69,7 +69,7 @@ struct GuestSummaryView: View {
                 .foregroundStyle(Color.GrayScale.g900)
             Spacer(minLength: .ds(.p8))
             // Figma 아이콘은 영상 재생 픽토그램 — 동일 의미의 SF 심볼로 대체.
-            MiniButton("영상 다시보기", systemImage: "play.rectangle.fill") {
+            MiniButton("영상 다시보기", icon: Image.Video.default16) {
                 send(.rewatchTapped)
             }
         }

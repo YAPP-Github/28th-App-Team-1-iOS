@@ -16,7 +16,7 @@ UI 코드를 작성·수정하기 전에 읽는 진입점. 여기엔 **규칙과
 | 이미지 | ✅ 구현 | 아이콘 패밀리 enum 30종·토큰 134개 — `Image.Cancel.dark24`·`Image.Feedback.body20`, 일러스트 `Image.Img.*`. 틴트 금지(색은 에셋에 구움) | **`.claude/design/image.md`** |
 | 인터랙션 | ✅ 구현 | `.dismissesKeyboardOnTap()` — 키패드 밖 터치 시 내림. 입력 필드 있는 화면 루트에 부착 | 인라인 (Interface/Interaction) |
 | Spacing | ✅ 구현 | `.padding(.ds(.p20))` — Figma padding 4~24, 테두리 `.ds(.medium)`(outline small/medium/large/mega) | **`.claude/design/spacing.md`** |
-| 컴포넌트 | ✅ 구현 | 공용 9종 — `PrimaryButton`·`ModalButton`·`MiniButton`·`ChoiceChip`·`TagLabel`·`BubbleToast`·`SaveIndicator`·`HighlightedText`·`Parallelogram`. **커스텀 만들기 전에 먼저 검토** | **`.claude/design/component.md`** |
+| 컴포넌트 | ✅ 구현 | 버튼은 `ButtonLarge`(View) + `.medium`·`.mini`·`.miniSub`·`.tag` ButtonStyle 체계 — **상태(pressed·disabled)는 넘기지 않는다**. 그 밖 `ChoiceChip`·`TagLabel`·`BubbleToast`·`SaveIndicator`·`HighlightedText`·`Parallelogram`. **커스텀 만들기 전에 먼저 검토** | **`.claude/design/component.md`** |
 
 
 상세 문서 분리 기준: **구현이 실체를 갖는 시점**에 `.claude/design/<영역>.md` 로 뺀다. 몇 줄짜리 예정 항목까지 미리 쪼개지 않는다 (파일 하나당 Read 비용).
