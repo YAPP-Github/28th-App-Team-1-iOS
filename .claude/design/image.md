@@ -19,17 +19,41 @@ Image.Img.micError           // 일러스트 — 크기·변형 없이 이름만
 - **색은 에셋에 구워진 그대로 쓴다 — `foregroundStyle` 틴트 금지.** 색변형이 전부 별도 에셋이라 template 렌더링을 쓰지 않는다.
 - 일러스트(크기 변형 없는 큰 그림 — book·link·micError·networkError)는 `Img` 패밀리로.
 
-## 토큰 목록
+## 패밀리 — 생김새로 찾기
 
-패밀리 30개 · 토큰 134개 — 전수 목록은 코드가 단일 소스라 여기 반복하지 않는다. [Image+Extension.swift](../../Projects/Shared/SharedDesignSystem/Interface/Image/Image+Extension.swift) 를 직접 본다. 패밀리: Ai · Cancel · CancelMini · Coupon · Down · Edit · Expand · Feedback · File · Info · Issue · Left · Loading · Logo · Play · Plus · Profile · Q · Right · Script · SkipL · SkipR · Stop · Success · Timer · Undo · Up · Upload · Video · Img (+ 아래 Ic).
+**「이렇게 생긴 아이콘 있나?」 로 찾는 역매핑 표.** 변형·크기 전수는 코드가 단일 소스라 반복하지 않는다 — 패밀리를 찾았으면 [Image+Extension.swift](../../Projects/Shared/SharedDesignSystem/Interface/Image/Image+Extension.swift) 의 해당 enum 에서 고른다. 새 변형이 늘어도 이 표는 안 바뀐다(새 **패밀리**가 생길 때만 알파벳순 제자리에 행 추가).
 
-### Loading — Figma 이름이 엉켜 있던 3종
+| 패밀리 | 생김새 | 주 용도 |
+|---|---|---|
+| `Ai` | 반짝이(4점 별), 초록 | AI 기능 표시 |
+| `Cancel` | 맨 X (배경 없음) | 닫기·취소 |
+| `CancelMini` | 원 배경 + X (회색 원/검정 원) | 입력 클리어·행 제거 |
+| `Coupon` | 티켓 모양 | 이용권 |
+| `Down` / `Up` | 쉐브론 ∨ / ∧ | 펼침·접힘 |
+| `Edit` | 연필 + 사각 모서리 | 수정 |
+| `Expand` | 네 모서리 바깥 화살표 | 전체화면·확대 |
+| `Feedback` | 태도 픽토그램 5종 — body(자세)·eyes(시선)·face(표정)·hand(손동작)·voice(목소리) | 태도 평가 축 |
+| `File` | 문서 낱장 (모서리 접힘) | 첨부·포트폴리오 |
+| `Info` | 원 안 i | 안내 |
+| `Issue` | 원 안 느낌표 (빨강 = error 변형) | 오류·경고 |
+| `Left` / `Right` | 쉐브론 ‹ / › | 뒤로·앞으로 |
+| `Loading` | 진행 링(ing)·대기 링(wait)·체크 원(success) | 단계 진행 표시 |
+| `Logo` | kakao 말풍선(노랑)·apple 사과 — with-bg/no-bg | 소셜 로그인 |
+| `Play` | 재생 삼각형 ▷ | 영상 재생 |
+| `Plus` | + | 추가 |
+| `Profile` | 사람 실루엣 | 프로필 |
+| `Q` | 사각 안 Q | 질문 표시 |
+| `Script` | 가로줄 3개 (대본) | 대본·스크립트 토글 |
+| `SkipL` / `SkipR` | ◁+막대 / 막대+▷ | 되감기·빨리감기 |
+| `Stop` | 세로 막대 2개 ‖ | 일시정지·정지 |
+| `Success` | 원 안 체크 (초록 = green 변형) | 완료·성공 |
+| `Timer` | 스톱워치 | 시간 제한 |
+| `Undo` | 반시계 화살표 ↺ | 되돌리기 |
+| `Upload` | 검은 원(44pt) 안 위 화살표 | 업로드 CTA |
+| `Video` | 사각 화면 + 재생 표시 | 영상 |
+| `Img` | 일러스트 — book(책)·link(사슬)·micError(다크 타일+마이크+빨간 배지)·networkError(다크 타일+네트워크)·tooltipTail(말풍선 꼬리 97×11) | 빈 상태·에러 화면·말풍선 |
 
-Figma 원본에 동명 심볼 2개·variant 문자열 노출 1개가 있어 그림 내용으로 판정해 명명했다: `Loading.successGreen24`(초록 원+흰 체크) · `Loading.ingGreen24`(초록 진행 링) · `Loading.successDark24`(검정 원+초록 체크). 디자이너에게 Figma 측 정리 요청 상태.
-
-### 구세대 `Ic` — 제거됨
-
-초기 template 아이콘 7종은 신규 체계로 전량 마이그레이션 후 삭제됐다 (`Ic.close`→`Cancel.default24`/`dark24`, 뒤로가기 45° 회전 해킹→`Left.default`, `Ic.info`→`Info.default`, `Ic.error`→`Issue.error16`, `Ic.success`→`Success.green16`, `Ic.cancelMini`→`CancelMini.grey16/24`, `Ic.upload`→`Upload.default`(검은 원 포함 44px — 코드로 그리던 원 제거)). `Img.tooltipTail` 만 새 시트에 대응이 없어 유지 — 에셋은 `img/imgTooltipTail` 로 편입. 구 `cancelSmall`(20pt 맨 X)도 대응이 없어 `CancelMini.grey16` 으로 대체했다(Figma 화면 확정 시 재검토, PortfolioUpload 주석 참조).
+**주의 — Figma 와 이름이 다른 곳**: `Loading` 3종(`successGreen24`·`ingGreen24`·`successDark24`)은 Figma 원본 이름이 엉켜 있어(동명 2개·variant 문자열 노출) 그림 내용으로 명명했다 — Figma 에서 같은 이름을 찾지 말 것(디자이너 정리 요청 중). `Img.tooltipTail` 은 Figma «icon» 시트에 없는 별도 에셋이다.
 
 ## 구현 노트
 
