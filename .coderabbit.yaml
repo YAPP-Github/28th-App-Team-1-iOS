@@ -1,0 +1,21 @@
+# CodeRabbit 리뷰 설정
+# 여기 없는 항목은 Organization UI 설정을 그대로 따른다 (리뷰 프로필 등).
+#
+# 왜 필요한가: 디자인 시스템 작업은 에셋 카탈로그 파일이 수백 개씩 딸려온다.
+# 아이콘 134개를 넣으면 `Contents.json` 이 201개 생기는데, 전부 Tuist·Xcode 가 다루는
+# 기계 생성 메타데이터라 사람이 리뷰할 게 없다. 그런데 파일 수 상한(100)을 이걸로 다 채워
+# **정작 봐야 할 Swift 코드가 리뷰 대상에서 통째로 밀려난다.**
+version: 2
+
+reviews:
+  path_filters:
+    # 에셋 카탈로그 — imageset/colorset 의 Contents.json 은 파일명·스케일 메타데이터뿐이다.
+    # 값이 틀리면 컴파일(Tuist 생성 접근자) 또는 ColorPaletteTests 가 잡는다.
+    - "!**/*.xcassets/**"
+    # Tuist 생성물 — 커밋 대상이 아니지만 실수로 들어와도 리뷰하지 않는다.
+    - "!**/Derived/**"
+    - "!**/*.xcodeproj/**"
+    - "!**/*.xcworkspace/**"
+    # 폰트 바이너리
+    - "!**/*.otf"
+    - "!**/*.ttf"
