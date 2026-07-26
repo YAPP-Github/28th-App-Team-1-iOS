@@ -5,6 +5,8 @@
 //  Created by EunseoKim on 26/07/23.
 //
 
+import DomainCommonInterface
+
 /// User API 에러 — State 가 다르게 반응해야 하는 경우의 수만큼만 둔다 (AuthError 와 같은 원칙).
 /// 서버 코드 ↔ 케이스 매핑 표는 [[api#User]].
 public enum UserError: Error, Equatable, Sendable {
@@ -21,4 +23,18 @@ public enum UserError: Error, Equatable, Sendable {
     case networkFailure
     case serverUnavailable
     case unexpected
+}
+
+// MARK: - 서버 코드 매핑 (공통 규칙·토큰 만료는 DomainAPIError 가 처리)
+
+extension UserError: DomainAPIError {
+    public init?(serverCode code: String, message: String) {
+        switch code {
+        case "USER_NOT_FOUND": self = .userNotFound
+        case "NAME_ALREADY_TAKEN": self = .nameAlreadyTaken
+        case "INVALID_JOB_ROLE": self = .invalidJobRole
+        case "VALIDATION_ERROR", "CONSTRAINT_VIOLATION": self = .invalid(message: message)
+        default: return nil
+        }
+    }
 }

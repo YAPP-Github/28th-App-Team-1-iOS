@@ -5,6 +5,8 @@
 //  Created by EunseoKim on 26/07/23.
 //
 
+import DomainCommonInterface
+
 /// Interview API 에러 — State 가 다르게 반응해야 하는 경우의 수만큼만 둔다 (AuthError 와 같은 원칙).
 /// Feature 는 Core 를 모르므로(레이어 규칙) 이 타입만 잡는다. (→ ai-interview.md §5 STEP6 Phase B)
 /// 서버 코드 ↔ 케이스 매핑 표는 [[api#Interview]].
@@ -41,4 +43,34 @@ public enum InterviewError: Error, Equatable, Sendable {
     case networkFailure
     case serverUnavailable
     case unexpected
+}
+
+// MARK: - 서버 코드 매핑 (공통 규칙·토큰 만료는 DomainAPIError 가 처리)
+
+extension InterviewError: DomainAPIError {
+    public init?(serverCode code: String, message: String) {
+        switch code {
+        case "NO_REMAINING_TICKET": self = .noRemainingTicket
+        case "PORTFOLIO_NOT_FOUND": self = .portfolioNotFound
+        case "PORTFOLIO_PROCESSING": self = .portfolioProcessing
+        case "PORTFOLIO_UPLOAD_FAILED": self = .portfolioUploadFailed
+        case "JD_NOT_VALIDATED": self = .jdNotValidated
+        case "FREETEXT_NOT_RELEVANT": self = .freeTextNotRelevant
+        case "INTERVIEW_SESSION_NOT_FOUND": self = .sessionNotFound
+        case "QUESTION_NOT_FOUND": self = .questionNotFound
+        case "ANSWER_ALREADY_SUBMITTED": self = .answerAlreadySubmitted
+        case "SESSION_ALREADY_ENDED": self = .sessionAlreadyEnded
+        case "VALIDATION_ERROR", "INVALID_JOB_ROLE", "INVALID_CAREER_YEARS",
+             "INVALID_JD_LENGTH", "INVALID_FREETEXT_LENGTH", "INVALID_PLAYBACK_RANGE",
+             "INVALID_ANSWER_RANGE", "INVALID_END_TYPE", "INVALID_AUDIO_PRESENCE":
+            self = .invalid(message: message)
+        default:
+            return nil
+        }
+    }
+
+    /// 미승격 코드는 원문 그대로 동봉 — 분기가 필요해지면 전용 케이스로 승격.
+    public static func fallback(unrecognizedCode code: String, message: String) -> InterviewError {
+        .server(code: code, message: message)
+    }
 }

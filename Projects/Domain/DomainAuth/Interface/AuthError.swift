@@ -5,6 +5,8 @@
 //  Created by 서정원 on 26/07/13.
 //
 
+import DomainCommonInterface
+
 /// State가 다르게 반응해야 하는 경우의 수만큼만 둔 에러. 원인 상세는 매핑 함수에서 로깅한다.
 public enum AuthError: Error, Equatable, Sendable {
     case cancelled
@@ -13,4 +15,15 @@ public enum AuthError: Error, Equatable, Sendable {
     case serverUnavailable
     case sessionExpired
     case unexpected
+}
+
+// MARK: - 서버 코드 매핑 (공통 규칙·토큰 만료는 DomainAPIError 가 처리)
+
+extension AuthError: DomainAPIError {
+    public init?(serverCode code: String, message: String) {
+        switch code {
+        case "INVALID_CREDENTIAL", "SOCIAL_LOGIN_FAILED": self = .invalidCredential
+        default: return nil
+        }
+    }
 }
