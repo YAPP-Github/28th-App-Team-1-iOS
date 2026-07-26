@@ -7,49 +7,54 @@
 
 import SwiftUI
 
+/// Tuist 가 Colors.xcassets 를 스캔해 만드는 접근자(`Derived/Sources/TuistAssets+…`)의 축약.
+/// 에셋을 지우거나 이름을 바꾸면 여기서 **컴파일이 깨진다** — 문자열 로드였을 땐 런타임에야 드러났다.
+private typealias Asset = SharedDesignSystemInterfaceAsset
+
 // @lat: [[architecture#디자인 시스템]]
 // HILIT 색상 팔레트 — Figma «Hilit_Color_Guide»(node 366-173) 확정본과 1:1.
-// 에셋명은 HEX(Color636777), 접근은 패밀리 enum 으로. 값은 Colors.xcassets, 로드는 Color.load 단일 seam.
+// 에셋명은 HEX(Color636777) 라 그대로 쓰면 의미가 사라진다 — 이 패밀리 enum 이 의미를 입히는 층이다.
+// 값은 Colors.xcassets, 로드는 Tuist 생성 접근자.
 public extension Color {
 
     enum HilitBlack {
-        public static var b800: Color { .load("Color1A1B1F") }   // 메인 블랙·텍스트
-        public static var b900: Color { .load("Color121316") }   // 다크모드 배경
+        public static var b800: Color { Asset.Colors.color1A1B1F.swiftUIColor }   // 메인 블랙·텍스트
+        public static var b900: Color { Asset.Colors.color121316.swiftUIColor }   // 다크모드 배경
     }
 
     enum HilitGreen {
-        public static var g500: Color { .load("ColorACEBA0") }   // 메인 그린
-        public static var g600: Color { .load("Color88C97C") }
-        public static var g800: Color { .load("Color106100") }   // 그린 텍스트
+        public static var g500: Color { Asset.Colors.colorACEBA0.swiftUIColor }   // 메인 그린
+        public static var g600: Color { Asset.Colors.color88C97C.swiftUIColor }
+        public static var g800: Color { Asset.Colors.color106100.swiftUIColor }   // 그린 텍스트
     }
 
     enum Error {
-        public static var e200: Color { .load("ColorFFEBEB") }   // 레드 배경
-        public static var e300: Color { .load("ColorFFA6A6") }
-        public static var e400: Color { .load("ColorFF8383") }
-        public static var e500: Color { .load("ColorFF5757") }   // 메인 레드·레드 텍스트
+        public static var e200: Color { Asset.Colors.colorFFEBEB.swiftUIColor }   // 레드 배경
+        public static var e300: Color { Asset.Colors.colorFFA6A6.swiftUIColor }
+        public static var e400: Color { Asset.Colors.colorFF8383.swiftUIColor }
+        public static var e500: Color { Asset.Colors.colorFF5757.swiftUIColor }   // 메인 레드·레드 텍스트
     }
 
     enum Positive {
-        public static var p200: Color { .load("ColorDDFAFF") }   // 블루 배경
-        public static var p500: Color { .load("Color00CFEF") }   // 메인 블루
-        public static var p800: Color { .load("Color008A9F") }   // 블루 텍스트
+        public static var p200: Color { Asset.Colors.colorDDFAFF.swiftUIColor }   // 블루 배경
+        public static var p500: Color { Asset.Colors.color00CFEF.swiftUIColor }   // 메인 블루
+        public static var p800: Color { Asset.Colors.color008A9F.swiftUIColor }   // 블루 텍스트
     }
 
     enum Gray {
-        public static var g50: Color { .load("ColorF6F7F9") }    // 그레이 배경
-        public static var g100: Color { .load("ColorEBECF1") }
-        public static var g200: Color { .load("ColorBCBEC6") }
-        public static var g300: Color { .load("Color9DA0AC") }   // disabled 상태 텍스트
-        public static var g400: Color { .load("Color8A8D9C") }
-        public static var g500: Color { .load("Color6D7183") }   // 그레이 텍스트
-        public static var g600: Color { .load("Color636777") }
-        public static var g700: Color { .load("Color494C58") }
-        public static var g800: Color { .load("Color31333B") }
-        public static var g900: Color { .load("Color27282F") }
+        public static var g50: Color { Asset.Colors.colorF6F7F9.swiftUIColor }    // 그레이 배경
+        public static var g100: Color { Asset.Colors.colorEBECF1.swiftUIColor }
+        public static var g200: Color { Asset.Colors.colorBCBEC6.swiftUIColor }
+        public static var g300: Color { Asset.Colors.color9DA0AC.swiftUIColor }   // disabled 상태 텍스트
+        public static var g400: Color { Asset.Colors.color8A8D9C.swiftUIColor }
+        public static var g500: Color { Asset.Colors.color6D7183.swiftUIColor }   // 그레이 텍스트
+        public static var g600: Color { Asset.Colors.color636777.swiftUIColor }
+        public static var g700: Color { Asset.Colors.color494C58.swiftUIColor }
+        public static var g800: Color { Asset.Colors.color31333B.swiftUIColor }
+        public static var g900: Color { Asset.Colors.color27282F.swiftUIColor }
     }
 
     enum BlackWhite {
-        public static var white: Color { .load("ColorFFFFFF") }
+        public static var white: Color { Asset.Colors.colorFFFFFF.swiftUIColor }
     }
 }

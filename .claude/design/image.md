@@ -25,6 +25,6 @@ Image.Img.tooltipTail                // 일러스트 — 원본색 그대로
 
 ## 구현 노트
 
-- **에셋 로드**: 값은 `Interface/Resources/Assets.xcassets`(에셋명 = `Ic*`/`Img*` 프리픽스), 로드는 `Image.load(_:)` 단일 seam ([Image+Load.swift](../../Projects/Shared/SharedDesignSystem/Interface/Images/Image+Load.swift)) — 개발 빌드 `assert` 로 오타 조기 검출.
+- **에셋 로드**: 값은 `Interface/Resources/Assets.xcassets`(에셋명 = `Ic*`/`Img*` 프리픽스), 로드는 Tuist 생성 접근자 `SharedDesignSystemInterfaceAsset.Assets.<name>.swiftUIImage` ([Image+Tokens.swift](../../Projects/Shared/SharedDesignSystem/Interface/Images/Image+Tokens.swift) 가 `Asset` 으로 축약해 감싼다). 생성 이름은 크기·틴트 여부를 담지 못하므로 그 정보는 토큰 주석이 진다. 에셋을 지우거나 이름을 바꾸면 토큰에서 컴파일 에러가 난다.
 - **Ic vs Img**: 아이콘(UI 조작 요소)은 `Ic`, 일러스트·장식 이미지는 `Img`. 새 에셋 추가 시 프리픽스와 패밀리를 맞춘다.
 - **template vs 원본색**: 단색 아이콘은 template 렌더링(틴트는 사용처 `foregroundStyle`), 다색 에셋은 원본색 — 각 토큰 doc 주석에 명시.

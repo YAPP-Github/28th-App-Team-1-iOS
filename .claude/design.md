@@ -13,7 +13,7 @@ UI 코드를 작성·수정하기 전에 읽는 진입점. 여기엔 **규칙과
 |---|---|---|---|
 | 타이포그래피 | ✅ 구현 | `.dsTypography(.head1)` — Pretendard 25종 (head1~6·sub1~9·body1~10), 행간·자간 내장 | **`.claude/design/typography.md`** |
 | 색상 | ✅ 구현 | 패밀리 enum 팔레트 23색 — `Color.HilitGreen.g500`·`Color.Gray.g600` 등 (에셋명 = HEX) | **`.claude/design/color.md`** |
-| 이미지 | ✅ 구현 | `Image.Ic.close`(아이콘)·`Image.Img.tooltipTail`(일러스트) 패밀리 — `Image.load` seam | **`.claude/design/image.md`** |
+| 이미지 | ✅ 구현 | `Image.Ic.close`(아이콘)·`Image.Img.tooltipTail`(일러스트) 패밀리 | **`.claude/design/image.md`** |
 | 인터랙션 | ✅ 구현 | `.dismissesKeyboardOnTap()` — 키패드 밖 터치 시 내림. 입력 필드 있는 화면 루트에 부착 | 인라인 (Interface/Interaction) |
 | Spacing | ✅ 구현 | `.padding(.ds(.p20))` — Figma padding 4~24, 테두리 `.ds(.medium)`(outline small/medium/large/mega) | **`.claude/design/spacing.md`** |
 | 컴포넌트 | ✅ 구현 | 공용 9종 — `PrimaryButton`·`ModalButton`·`MiniButton`·`ChoiceChip`·`TagLabel`·`BubbleToast`·`SaveIndicator`·`HighlightedText`·`Parallelogram`. **커스텀 만들기 전에 먼저 검토** | **`.claude/design/component.md`** |
@@ -24,5 +24,5 @@ UI 코드를 작성·수정하기 전에 읽는 진입점. 여기엔 **규칙과
 ## 에셋 로드 규칙 (새 색·이미지 추가 시)
 
 1. `SharedDesignSystem/Interface/Resources/Colors.xcassets`(색상, colorset 명 = HEX 예 `Color636777`) · `App/Resources/Assets.xcassets`(앱 에셋) 에 에셋 추가
-2. `Color.load(_:)` · `Image.load(_:)` **단일 seam** 으로만 로드해 토큰으로 노출 — 번들 해석 일원화 + 개발 빌드 `assert` 로 오타 검출
+2. `tuist generate` → Tuist 가 카탈로그를 스캔해 `Derived/Sources/TuistAssets+…` 접근자를 만든다. 화면에서 이걸 직접 쓰지 않고 **패밀리 enum 으로 감싸 노출**한다 — 생성 이름은 파일명 기계 변환(`color636777`·`icCancelMini`)이라 의미가 없다. 에셋을 지우거나 이름을 바꾸면 감싸는 층에서 **컴파일이 깨진다**(런타임 검출이 아님)
 3. 이미지 토큰은 `Image.Ic`(아이콘) / `Image.Img`(일러스트·이미지) 패밀리 enum — Color 팔레트와 같은 접근 방식
