@@ -51,7 +51,8 @@ Action enum 을 `view(View)` / `inner(Inner)` / `delegate(Delegate)` 로 나눈�
 ## 디자인 시스템
 `Shared/SharedDesignSystem` 토큰 우선, 하드코딩 지양. 타이포그래피는 `DSTypography`(25종, Pretendard 4웨이트) + `.dsTypography(_:)` — Figma «[0722 H/O] HILIT_Text_Guide» 1:1. 색·spacing·outline 토큰 구현 완료, 컴포넌트는 `PrimaryButton`·`Parallelogram` 2종.
 
-- **토큰 위치**: 전부 Interface — 상수 계약이라 live/test 분리가 없다. 폰트 otf 도 Interface 리소스로 싣고, 첫 토큰 접근 시 `Pretendard.registerOnce`(static let)가 CoreText 등록 — App 배선 불필요.
+- **토큰 위치**: 전부 Interface — 상수 계약이라 live/test 분리가 없다. 폰트 otf 도 Interface 리소스로 싣고, 등록은 Tuist 생성 폰트 접근자가 첫 사용 시 알아서 한다 — App 배선·수동 부트스트랩 불필요(`Pretendard.registerAll()` 은 미사용 웨이트까지 필요한 검증용).
 - **행간 구현**: SwiftUI 에 line-height 가 없어 `lineSpacing + 상하 패딩` 보정으로 Figma px 값을 재현. Dynamic Type 은 미반영(고정 사이즈) — 도입 결정 시 `relativeTo:` 전환.
 - **스펙 대조**: 토큰 ↔ Figma 스타일명 1:1 은 `DSTypographyTests` 가 고정한다. 상세 토큰 표 → `.claude/design/typography.md` (인덱스: `.claude/design.md`). spacing 상세 → `.claude/design/spacing.md`.
-- **색상**: Figma «Hilit_Color_Guide»(node 366-173) 확정 팔레트 23색 — 패밀리 enum(`Color.HilitGreen.g500`·`Color.Gray.g600`…). 에셋명은 HEX(`Color636777`), 로드는 `Color.load` 단일 seam, 토큰↔HEX 대조는 `ColorPaletteTests`. 상세 표 → `.claude/design/color.md`.
+- **색상**: Figma «Hilit_Color_Guide»(node 366-173) 확정 팔레트 23색 — 패밀리 enum(`Color.HilitGreen.g500`·`Color.GrayScale.g600`…). 에셋명은 HEX(`Color636777`)라 의미가 없어 enum 이 의미를 입힌다. 카탈로그도 같은 6그룹 폴더(namespace 미사용), 로드는 Tuist 생성 접근자, 토큰↔HEX 대조는 `ColorPaletteTests`. 상세 표 → `.claude/design/color.md`.
+- **이미지**: Figma «icon» 시트(node 1941-7000) 아이콘 패밀리 30종·토큰 134개 — 패밀리 enum(`Image.Cancel.dark24`), 일러스트는 `Image.Img`. 색변형이 전부 별도 에셋이라 **틴트하지 않는다**. 크기별 별도 에셋 유지(Figma 가 크기마다 다시 그림 — optical sizing). 명명·마이그레이션 규칙 → `.claude/design/image.md`.

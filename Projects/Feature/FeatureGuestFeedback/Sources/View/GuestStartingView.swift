@@ -36,16 +36,10 @@ struct GuestStartingView: View {
 
     private var guidanceCopy: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 0) {
-                Text("평가를 위해")
-                    .dsTypography(.head3)
-                    .foregroundStyle(Color.BlackWhite.white)
-                // 그린 형광펜 마커 — DS HighlightedText(Figma highlighted-text), 온보딩과 동일.
-                HighlightedText("태도")
-                Text("에")
-                    .dsTypography(.head3)
-                    .foregroundStyle(Color.BlackWhite.white)
-            }
+            // 그린 형광펜 마커 — DS HighlightedText(Figma highlighted-text), 온보딩과 동일.
+            // 다크 배경이라 강조 밖 글자만 흰색으로 올린다.
+            HighlightedText("평가를 위해 태도에", plainForeground: Color.BlackWhite.white)
+                .hilight("태도")
             Text("집중해서 시청해 주세요")
                 .dsTypography(.head3)
                 .foregroundStyle(Color.BlackWhite.white)

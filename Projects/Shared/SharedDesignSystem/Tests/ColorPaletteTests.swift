@@ -22,9 +22,10 @@ struct ColorPaletteTests {
             (Color.HilitGreen.g500, "ACEBA0"), (Color.HilitGreen.g600, "88C97C"), (Color.HilitGreen.g800, "106100"),
             (Color.Error.e200, "FFEBEB"), (Color.Error.e300, "FFA6A6"), (Color.Error.e400, "FF8383"), (Color.Error.e500, "FF5757"),
             (Color.Positive.p200, "DDFAFF"), (Color.Positive.p500, "00CFEF"), (Color.Positive.p800, "008A9F"),
-            (Color.Gray.g50, "F6F7F9"), (Color.Gray.g100, "EBECF1"), (Color.Gray.g200, "BCBEC6"), (Color.Gray.g300, "9DA0AC"),
-            (Color.Gray.g400, "8A8D9C"), (Color.Gray.g500, "6D7183"), (Color.Gray.g600, "636777"), (Color.Gray.g700, "494C58"),
-            (Color.Gray.g800, "31333B"), (Color.Gray.g900, "27282F"),
+            (Color.GrayScale.g50, "F6F7F9"), (Color.GrayScale.g100, "EBECF1"), (Color.GrayScale.g200, "BCBEC6"),
+            (Color.GrayScale.g300, "9DA0AC"), (Color.GrayScale.g400, "8A8D9C"), (Color.GrayScale.g500, "6D7183"),
+            (Color.GrayScale.g600, "636777"), (Color.GrayScale.g700, "494C58"), (Color.GrayScale.g800, "31333B"),
+            (Color.GrayScale.g900, "27282F"),
             (Color.BlackWhite.white, "FFFFFF")
         ]
 
