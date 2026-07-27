@@ -4,6 +4,7 @@
 @_exported import DomainCommonImplementation
 @_exported import DomainAuthImplementation
 @_exported import DomainInterviewImplementation
+@_exported import DomainPermissionImplementation
 @_exported import DomainInterviewReportImplementation
 @_exported import DomainJDImplementation
 @_exported import DomainJobImplementation
