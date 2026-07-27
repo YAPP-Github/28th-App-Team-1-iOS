@@ -30,11 +30,24 @@ Part 2 «10분 음성 면접» 화면군 (`FeatureInterview`, Figma «[2] Interv
 
 - AppFeature 배선(세션 payload — 온보딩 산출 sessionId 수신 포함)은 미착수 → [ai-interview](../docs/work/ai-interview.md) §2.
 
+## 권한
+
+`DomainPermission` — 카메라·마이크 권한의 유일한 통로 `PermissionClient`(`status(MediaPermission)`·`request`·`openSettings`). iOS 는 사용 시점 요청(PRD §8) 원칙이라 소비처는 면접 준비 화면([[interview#준비]])뿐.
+
+서버 API 가 아닌 디바이스 IO. Interface 에 계약+testValue(unimplemented)+previewValue(전부 granted), Implementation 에 AVFoundation liveValue — App/Example 만 link (D4).
+
+- restricted 는 denied 로 접는다 — 사용자가 못 푸는 상태여도 앱 대응은 "설정 안내"로 동일.
+- 마이크도 `AVCaptureDevice(.audio)` 축 — 영상+음성 캡처 세션 기준.
+- `openSettings` 를 Client 에 둔 이유: View 의 `openURL` 로 하면 리듀서 테스트로 검증 불가.
+
 ## 준비
 
-`InterviewReadinessFeature` — 카메라 확인+안내를 한 화면 4단계 phase(aligning → ready → guide1 → guide2)로 전환. guide2 에서만 «면접 시작하기» 활성 → delegate(.startRequested). Figma 2479:7569 · 2514:12754 · 2514:12799 · 2529:458.
+`InterviewReadinessFeature` — 카메라 확인+안내를 한 화면 4단계 phase(aligning → ready → guide1 → guide2)로 전환. 진입 시 카메라·마이크 권한을 요청만 하고([[interview#권한]]) 거부여도 가이드는 조용히 진행 — 게이트는 «면접 시작하기» 탭. 허용 확인 후에만 delegate(.startRequested).
 
-- phase 자동 진행은 시간 연출(tentative) — PermissionClient(사용 시점 권한)·RecordingClient(프리뷰) 도입 시 aligning→ready 를 실제 카메라 준비 신호로 교체.
+Figma 2479:7569 · 2514:12754 · 2514:12799 · 2529:458.
+
+- 시작하기 탭에 권한 미허용 → 설정 유도 alert: [설정으로 이동]=`openSettings` / [닫기]=alert 만 닫고 화면 유지 — 시작 버튼 재탭이 재시도 지점(막다른 길 없음). 설정에서 권한을 바꾸면 iOS 가 앱을 종료시켜 onAppear 부터 재진입하므로 별도 복귀 재확인은 두지 않는다. 탭 시점엔 권한이 전부 결정된 상태(진입 다이얼로그가 모달)라 status 동기 확인으로 판정한다.
+- phase 자동 진행은 시간 연출(tentative) — RecordingClient(프리뷰) 도입 시 aligning→ready 를 실제 카메라 준비 신호로 교체.
 - 브래킷 프레임(`CameraGuideFrame`)·하단 티커는 에셋 없이 코드 드로잉 — Figma color-burn 블렌드는 카메라 배선 시 재검토.
 
 ## 세션
