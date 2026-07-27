@@ -7,3 +7,4 @@
 @_exported import FeatureAuthImplementation
 @_exported import FeatureGuestFeedbackImplementation
 @_exported import FeatureOnboardingImplementation
+@_exported import FeatureInterviewImplementation
