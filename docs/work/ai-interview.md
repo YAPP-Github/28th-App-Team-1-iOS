@@ -12,7 +12,7 @@
 | 기획 | Feature 모듈 | 도메인 내 navigation |
 |---|---|---|
 | Part 1 면접 전 입력 & 포폴 등록(위저드) | `OnboardingFeature` (FeatureOnboarding — **구현 중**) | 자체 `StackState` 6스텝 (S0~S3.5) → §5 · [[onboarding]] |
-| Part 2 10분 음성 면접 | `InterviewSessionFeature` ★ | 단일 화면 + 턴 **상태머신** |
+| Part 2 10분 음성 면접 | `InterviewSessionFeature` ★ (FeatureInterview — **화면 상태머신 구현**, 음성 배선 전) | 단일 화면 + 턴 **상태머신** · 준비/실패 화면 전환은 모듈 내 `InterviewFeature` 코디네이터 |
 | 포트폴리오 관리(설정) | `PortfolioFeature` | — |
 | Part 3 보고서/영상 복기 | `InterviewReportFeature` (R0·R1 + V0·V1·V2) | 자체 `Path` (R0→V0→V1→V2→R1) → [ai-interview-report](ai-interview-report.md) |
 | Part 4 사람 평가(유료) | (후속, 별도) | — |
@@ -153,6 +153,7 @@ S0~S3 입력을 로컬 draft 로 자동 저장 — **앱 진짜 종료(kill/크�
 ### 권한·문구·측정
 
 - 카메라·마이크 권한: **iOS = 사용 시점 요청**(온보딩 강제 시 심사 리젝 — AOS 만 온보딩 획득). Part 2 진입 직전 P0(§6 `preparing`)과 정합. Info.plist 목적 문구·거부 시 "영상 필수라 이용 불가" 안내 필요.
+  - Example 앱: 목적 문구(Project.swift infoPlist 오버라이드) + 실행 직후 `AVCaptureDevice.requestAccess` 임시 배선 완료(2026-07-26) — PermissionClient 도입 시 임시 배선 제거.
 - 문구는 PM 확정본(PRD §6 표) — 서버 응답 `message` 우선, 클라 fallback 하드코딩. 노출 컴포넌트(toast/modal/dialog) 공통 규칙은 디자인 후속.
 - 측정(PRD §7: 글자 수 분포·연관성 실패/오판율·처리 시간·FAILED_FILE/SYSTEM 비율)은 애널리틱스 도입 시 이벤트 설계로 이월.
 
@@ -224,7 +225,8 @@ v3 로 **닫힌** 논의(초안 미결 → 해소): 재시도/멱등성(전면 �
 1. ~~**Domain 모델 + SharedDesignSystem**~~ ✅ Job·JD·Portfolio·Interview Interface + DS 토큰 구현
 2. ~~**Domain Clients = Interface 먼저**~~ ✅ Job·JD·Portfolio·Interview (Speech·Permission·Recording·Scoring 은 Part2/3 착수 시). liveValue 는 Implementation stub
 3. **OnboardingFeature (Part 1)** — 6스텝 골격·직군·연차·JD·포폴·집중프로젝트 ✅ / **분석 스텝 세션 API 연결 🔴** (§5 개발 포인트) + 입력 draft
-4. **InterviewSessionFeature** ★ — mock SpeechClient(스크립트 AsyncStream) + `TestClock`로 상태머신 결정론 검증. 디바이스 의존 전에 Example 앱 + 단위테스트로 격리
+4. **InterviewSessionFeature** ★ — mock SpeechClient(스크립트 AsyncStream) + `TestClock`로 상태머신 결정론 검증. 디바이스 의존 전에 Example 앱 + 단위테스트로 격리.
+   **화면 골격 ✅ (2026-07-25, FeatureInterview 모듈)** — 준비(카메라 확인·가이드)→세션(시계·8분 해금·최종 카운트다운·종료 확인)→실패(STT/네트워크) 화면 상태머신 + 코디네이터, 세션 시계는 TestClock 테스트 고정. 잔여 🔴: Speech/Permission/Recording Client 배선(TTS·STT·카메라 프리뷰·침묵 판정·실패 감지), AppFeature 배선(sessionId payload). 상세 [[interview#면접 흐름]](lat.md/interview.md)
 5. **PortfolioFeature**(설정 관리) — `list`/`delete` 재사용
 6. **AppFeature 배선** — Onboarding delegate(.finished/.dismiss) 수신 + Session/Report fullScreenCover 체인
 7. **InterviewReportFeature** stub → Part 3 본격화
