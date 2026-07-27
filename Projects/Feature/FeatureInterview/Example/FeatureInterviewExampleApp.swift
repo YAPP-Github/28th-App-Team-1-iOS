@@ -5,13 +5,14 @@
 //  Created by 서정원 on 26/07/25.
 //
 
-import AVFoundation
 import ComposableArchitecture
 import FeatureInterviewImplementation
 import SwiftUI
 
 // Feature 단독 실행 앱 — FeatureInterview 스킴의 실행 타겟.
 // 이 Feature 만 격리해 띄워보는 용도 — 외부 IO 는 가짜(preview/test) 의존성으로 주입해 네트워크 없이 돌린다.
+// 카메라·마이크 권한만 예외로 liveValue(DomainPermissionImplementation link) — 준비 화면의
+// 사용 시점 요청 → 거부 alert → 설정 이동 흐름을 실기기/시뮬레이터에서 그대로 검증하기 위해서다.
 @main
 struct FeatureInterviewExampleApp: App {
     var body: some Scene {
@@ -21,12 +22,6 @@ struct FeatureInterviewExampleApp: App {
                     InterviewFeature()
                 }
             )
-            .task {
-                // Example 전용 임시 배선 — PermissionClient(ai-interview.md §6 P0) 도입 전까지
-                // 실행 직후 카메라·마이크 권한을 요청해 프리뷰·녹음 확인이 가능하게 한다.
-                _ = await AVCaptureDevice.requestAccess(for: .video)
-                _ = await AVCaptureDevice.requestAccess(for: .audio)
-            }
         }
     }
 }
