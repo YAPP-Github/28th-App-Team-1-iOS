@@ -36,6 +36,7 @@ public struct InterviewFeature {
         case delegate(Delegate)
 
         /// 부모(AppFeature) 통보. 부모는 이것만 매칭한다 (D1).
+        @CasePathable
         public enum Delegate: Equatable, Sendable {
             /// 면접 정상 종료 — 분석(Part 3 보고서) 전환은 AppFeature 몫.
             case finished

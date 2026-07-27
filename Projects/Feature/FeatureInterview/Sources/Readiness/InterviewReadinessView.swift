@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import DomainPermissionInterface
 import SharedDesignSystemInterface
 import SwiftUI
 
@@ -38,6 +39,8 @@ public struct InterviewReadinessView: View {
         }
         .animation(.easeInOut(duration: 0.3), value: store.phase)
         .onAppear { send(.onAppear) }
+        // 시작하기 탭 시 권한 미허용이면 뜨는 설정 유도 alert.
+        .alert($store.scope(state: \.alert, action: \.alert))
     }
 
     // MARK: - 타이틀 (component/title-box — 상단 고정 밴드)
@@ -186,6 +189,25 @@ private struct InterviewTicker: View {
     return InterviewReadinessView(
         store: Store(initialState: state) {
             InterviewReadinessFeature()
+        }
+    )
+}
+
+#Preview("권한 미허용 — 시작하기 탭 후 설정 유도 alert") {
+    // guide2 에서 시작하기를 탭한 직후 상황 — 권한 미허용이라 alert 가 떠 있다.
+    var state = InterviewReadinessFeature.State()
+    state.phase = .guide2
+    state.hasStarted = true
+    state.alert = InterviewReadinessFeature.permissionDeniedAlert()
+    return InterviewReadinessView(
+        store: Store(initialState: state) {
+            InterviewReadinessFeature()
+        } withDependencies: {
+            $0.permissionClient = PermissionClient(
+                status: { _ in .denied },
+                request: { _ in false },
+                openSettings: {}
+            )
         }
     )
 }
