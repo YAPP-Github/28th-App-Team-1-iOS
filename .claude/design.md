@@ -11,18 +11,22 @@ UI 코드를 작성·수정하기 전에 읽는 진입점. 여기엔 **규칙과
 
 | 영역 | 상태 | 요약 | 상세 |
 |---|---|---|---|
-| 타이포그래피 | ✅ 구현 | `.dsTypography(.head1)` — Pretendard 25종 (head1~6·sub1~9·body1~10), 행간·자간 내장 | **`.claude/design/typography.md`** |
-| 색상 | ✅ 구현 | 패밀리 enum 팔레트 23색 — `Color.HilitGreen.g500`·`Color.Gray.g600` 등 (에셋명 = HEX) | **`.claude/design/color.md`** |
-| 이미지 | ✅ 구현 | `Image.Ic.close`(아이콘)·`Image.Img.tooltipTail`(일러스트) 패밀리 — `Image.load` seam | **`.claude/design/image.md`** |
-| 인터랙션 | ✅ 구현 | `.dismissesKeyboardOnTap()` — 키패드 밖 터치 시 내림. 입력 필드 있는 화면 루트에 부착 | 인라인 (Interface/Interaction) |
-| Spacing | ✅ 구현 | `.padding(.ds(.p20))` — Figma padding 4~24, 테두리 `.ds(.medium)`(outline small/medium/large/mega) | **`.claude/design/spacing.md`** |
-| 컴포넌트 | ✅ 구현 | 공용 9종 — `PrimaryButton`·`ModalButton`·`MiniButton`·`ChoiceChip`·`TagLabel`·`BubbleToast`·`SaveIndicator`·`HighlightedText`·`Parallelogram`. **커스텀 만들기 전에 먼저 검토** | **`.claude/design/component.md`** |
+| 영역 | 진입 API | 상세 |
+|---|---|---|
+| 타이포그래피 | `.dsTypography(.head1)` — Pretendard, 행간·자간 내장 | **`.claude/design/typography.md`** |
+| 색상 | `Color.<패밀리>.<단계>` — 패밀리 enum 팔레트 (에셋명 = HEX). 생김새→토큰 역매핑 표 있음 | **`.claude/design/color.md`** |
+| 이미지 | `Image.<패밀리>.<변형>` — 아이콘, 일러스트는 `Image.Img.*`. 틴트 금지(색은 에셋에 구움). 생김새→패밀리 역매핑 표 있음 | **`.claude/design/image.md`** |
+| Spacing | `.padding(.ds(.p20))` · 테두리 `.ds(.medium)` | **`.claude/design/spacing.md`** |
+| 컴포넌트 | 버튼은 `ButtonLarge`(View) + ButtonStyle 체계 — **상태(pressed·disabled)는 넘기지 않는다**. **커스텀 만들기 전에 먼저 검토** | **`.claude/design/component.md`** |
+| 인터랙션 | `.dismissesKeyboardOnTap()` — 입력 필드 있는 화면 루트에 부착 | 인라인 (Interface/Interaction) |
+| 사고 사례 | 같은 실수 반복 방지 — 새 규칙이 생기면 여기 먼저 | **`.claude/design/lessons.md`** |
 
+> **이 표는 «어디로 가면 되는지»만 말한다.** 토큰 개수·컴포넌트 이름 같은 목록을 여기 적지 않는다 — 뭔가 추가될 때마다 같은 줄이 바뀌어 협업 시 충돌하기 때문. 열거는 상세 문서 몫이다.
 
 상세 문서 분리 기준: **구현이 실체를 갖는 시점**에 `.claude/design/<영역>.md` 로 뺀다. 몇 줄짜리 예정 항목까지 미리 쪼개지 않는다 (파일 하나당 Read 비용).
 
 ## 에셋 로드 규칙 (새 색·이미지 추가 시)
 
 1. `SharedDesignSystem/Interface/Resources/Colors.xcassets`(색상, colorset 명 = HEX 예 `Color636777`) · `App/Resources/Assets.xcassets`(앱 에셋) 에 에셋 추가
-2. `Color.load(_:)` · `Image.load(_:)` **단일 seam** 으로만 로드해 토큰으로 노출 — 번들 해석 일원화 + 개발 빌드 `assert` 로 오타 검출
-3. 이미지 토큰은 `Image.Ic`(아이콘) / `Image.Img`(일러스트·이미지) 패밀리 enum — Color 팔레트와 같은 접근 방식
+2. `tuist generate` → Tuist 가 카탈로그를 스캔해 `Derived/Sources/TuistAssets+…` 접근자를 만든다. 화면에서 이걸 직접 쓰지 않고 **패밀리 enum 으로 감싸 노출**한다 — 생성 이름은 파일명 기계 변환(`color636777`·`icCancelMini`)이라 의미가 없다. 에셋을 지우거나 이름을 바꾸면 감싸는 층에서 **컴파일이 깨진다**(런타임 검출이 아님)
+3. 이미지 토큰은 Figma 아이콘 패밀리별 enum(`Image.Cancel`·`Image.Plus`…) / 일러스트는 `Image.Img` — 멤버는 «색변형+크기»(`dark24`), 크기는 패밀리에 복수일 때만. 상세 규칙 `design/image.md`

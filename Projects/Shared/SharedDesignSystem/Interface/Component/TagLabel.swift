@@ -17,8 +17,8 @@ public struct TagLabel: View {
 
     public init(
         _ text: String,
-        foreground: Color = Color.Gray.g600,
-        background: Color = Color.Gray.g100
+        foreground: Color = Color.GrayScale.g600,
+        background: Color = Color.GrayScale.g100
     ) {
         self.text = text
         self.foreground = foreground
