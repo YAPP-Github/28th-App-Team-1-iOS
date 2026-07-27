@@ -35,7 +35,7 @@ App  (composition root — 레이어 umbrella link → liveValue 활성화)
     ├── InterviewSessionFeature ┬ DomainInterviewInterface
     │   (턴 상태머신)            ├ DomainSpeechInterface     (TTS + STT)
     │                           ├ DomainRecordingInterface  (A/V 캡처·보존)
-    │                           ├ DomainPermissionInterface
+    │                           ├ DomainPermissionInterface ✅ (준비 화면 권한 게이트)
     │                           └ SharedDesignSystem
     ├── PortfolioFeature ─────── DomainPortfolioInterface · SharedDesignSystem
     └── InterviewReportFeature ─ DomainScoringInterface · SharedDesignSystem
@@ -65,7 +65,7 @@ Session --delegate(.aborted)-----------------▶ AppFeature --dismiss (기록 �
 | **PortfolioClient** (DomainPortfolio) | PDF 등록(202)·상태 폴링·목록(재설치 복구)·삭제 | `register(PortfolioUpload)→PortfolioProcessing` · `status(id)` · `list()→[Portfolio]` · `delete(id)` | S2·설정 | ✅ |
 | **InterviewClient** (DomainInterview) | 세션 생성(= S0~S3 **일괄 수집** + 연관성 검사, PRD §3.8)·준비 폴링·답변 제출·질문 오디오 | `createSession(InterviewConfig)→202` · `sessionStatus(id)` · `submitAnswer` · `questionAudioStream` | S3.5/S4·Part2 | ✅ |
 | **SpeechClient** | 음성 입출력 | `speak(text)→AsyncStream<TTSEvent>` · `transcribe()→AsyncStream<Transcript>` (partial/final + **confidence**) · `stop()` | Part2 | 예정 |
-| **PermissionClient** | 카메라·마이크 권한 — **iOS 는 사용 시점 요청**(PRD §8, 심사 리젝 방지) | `status()` · `request()→Bool` | P0 | 예정 |
+| **PermissionClient** (DomainPermission) | 카메라·마이크 권한 — **iOS 는 사용 시점 요청**(PRD §8, 심사 리젝 방지) + 설정 유도 | `status(MediaPermission)` · `request(MediaPermission)→Bool` · `openSettings()` | 준비 화면(P0) | ✅ |
 | **RecordingClient** | A/V 캡처 + 30일 보존 | `start(sessionId)` · `stop()→RecordingRef` | P1·P4 | 예정 |
 | **ScoringClient** | 세션 제출·보고서 → [ai-interview-report](ai-interview-report.md) | `submit(session)` · `report(id)→Report` | P4·Part3 | 예정 |
 
@@ -152,8 +152,8 @@ S0~S3 입력을 로컬 draft 로 자동 저장 — **앱 진짜 종료(kill/크�
 
 ### 권한·문구·측정
 
-- 카메라·마이크 권한: **iOS = 사용 시점 요청**(온보딩 강제 시 심사 리젝 — AOS 만 온보딩 획득). Part 2 진입 직전 P0(§6 `preparing`)과 정합. Info.plist 목적 문구·거부 시 "영상 필수라 이용 불가" 안내 필요.
-  - Example 앱: 목적 문구(Project.swift infoPlist 오버라이드) + 실행 직후 `AVCaptureDevice.requestAccess` 임시 배선 완료(2026-07-26) — PermissionClient 도입 시 임시 배선 제거.
+- 카메라·마이크 권한: **iOS = 사용 시점 요청**(온보딩 강제 시 심사 리젝 — AOS 만 온보딩 획득). ✅ 준비 화면(Readiness)이 진입 시 요청만 하고(거부여도 가이드 조용히 진행), 게이트는 «시작하기» 탭 — 미허용이면 설정 유도 alert([설정으로 이동]/[닫기=화면 유지, 재시도는 재탭]) — [[interview#준비]]. alert 문구는 임시(PM 확정본 대기, `permissionDeniedAlert()` 한 곳만 교체).
+  - 앱 타겟·Example 둘 다 Info.plist 목적 문구 보유(`Target+Templates.swift` .app 팩토리 / FeatureInterview Project.swift). Example 의 실행 직후 `AVCaptureDevice.requestAccess` 임시 배선은 제거(2026-07-27) — DomainPermissionImplementation link 로 대체.
 - 문구는 PM 확정본(PRD §6 표) — 서버 응답 `message` 우선, 클라 fallback 하드코딩. 노출 컴포넌트(toast/modal/dialog) 공통 규칙은 디자인 후속.
 - 측정(PRD §7: 글자 수 분포·연관성 실패/오판율·처리 시간·FAILED_FILE/SYSTEM 비율)은 애널리틱스 도입 시 이벤트 설계로 이월.
 
@@ -164,7 +164,7 @@ S0~S3 입력을 로컬 draft 로 자동 저장 — **앱 진짜 종료(kill/크�
 ### (a) 턴 phase = 명시적 enum 상태머신
 ```swift
 enum Phase {
-    case preparing                        // P0 권한
+    case preparing                        // P0 권한 — 준비 화면(Readiness) 게이트로 실현([[interview#준비]]), 세션은 준비 대기만
     case asking(InterviewQuestion)        // 질문 TTS 재생 (마이크 일시정지)
     case thinking(remaining: Int)         // 5초 카운트다운
     case answering(lastSpeechAt: Double?) // 녹음 + 실시간 STT
@@ -226,7 +226,7 @@ v3 로 **닫힌** 논의(초안 미결 → 해소): 재시도/멱등성(전면 �
 2. ~~**Domain Clients = Interface 먼저**~~ ✅ Job·JD·Portfolio·Interview (Speech·Permission·Recording·Scoring 은 Part2/3 착수 시). liveValue 는 Implementation stub
 3. **OnboardingFeature (Part 1)** — 6스텝 골격·직군·연차·JD·포폴·집중프로젝트 ✅ / **분석 스텝 세션 API 연결 🔴** (§5 개발 포인트) + 입력 draft
 4. **InterviewSessionFeature** ★ — mock SpeechClient(스크립트 AsyncStream) + `TestClock`로 상태머신 결정론 검증. 디바이스 의존 전에 Example 앱 + 단위테스트로 격리.
-   **화면 골격 ✅ (2026-07-25, FeatureInterview 모듈)** — 준비(카메라 확인·가이드)→세션(시계·8분 해금·최종 카운트다운·종료 확인)→실패(STT/네트워크) 화면 상태머신 + 코디네이터, 세션 시계는 TestClock 테스트 고정. 잔여 🔴: Speech/Permission/Recording Client 배선(TTS·STT·카메라 프리뷰·침묵 판정·실패 감지), AppFeature 배선(sessionId payload). 상세 [[interview#면접 흐름]](lat.md/interview.md)
+   **화면 골격 ✅ (2026-07-25, FeatureInterview 모듈)** — 준비(카메라 확인·가이드)→세션(시계·8분 해금·최종 카운트다운·종료 확인)→실패(STT/네트워크) 화면 상태머신 + 코디네이터, 세션 시계는 TestClock 테스트 고정. 잔여 🔴: Speech/Recording Client 배선(TTS·STT·카메라 프리뷰·침묵 판정·실패 감지), AppFeature 배선(sessionId payload). 권한(Permission)은 준비 화면 게이트로 완료 ✅(2026-07-27). 상세 [[interview#면접 흐름]](lat.md/interview.md)
 5. **PortfolioFeature**(설정 관리) — `list`/`delete` 재사용
 6. **AppFeature 배선** — Onboarding delegate(.finished/.dismiss) 수신 + Session/Report fullScreenCover 체인
 7. **InterviewReportFeature** stub → Part 3 본격화
