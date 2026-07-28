@@ -11,7 +11,7 @@ description: 피그마 시안을 이 레포의 SwiftUI 화면으로 옮긴다. �
 
 ## 0. 준비
 
-1. **`.claude/design.md` 를 먼저 읽는다.** 토큰 목록·컴포넌트 9종·에셋 로드 규칙이 거기 있다. 필요하면 `.claude/design/{color,typography,spacing,component,image}.md` 로 들어간다. 이걸 건너뛰면 이미 있는 토큰을 raw 로 박게 된다 — 이 스킬이 막으려는 바로 그 일이다.
+1. **`.claude/design.md` 를 먼저 읽는다.** 토큰·공용 컴포넌트·에셋 로드 규칙의 영역 인덱스가 거기 있다. 필요하면 `.claude/design/{color,typography,spacing,component,image}.md` 로 들어간다. 이걸 건너뛰면 이미 있는 토큰을 raw 로 박게 된다 — 이 스킬이 막으려는 바로 그 일이다.
 2. **시안을 읽는다.** Figma MCP(`get_design_context`·`get_screenshot`·`get_variable_defs`)를 쓴다. 플러그인 스킬 `figma:figma-design-to-code`·`figma:figma-swiftui` 가 추출 절차를 담당하니 그쪽을 따르되, **매핑·주석 규칙은 이 스킬이 우선한다** (그 스킬들은 raw 수치를 그대로 쓰라고 할 수 있다).
 3. **MCP 가 인증 안 돼 있으면** 거기서 멈추지 말고 사용자에게 스크린샷이나 값 목록(색·크기·폰트·간격)을 달라고 한 뒤 같은 규칙으로 진행한다.
 
