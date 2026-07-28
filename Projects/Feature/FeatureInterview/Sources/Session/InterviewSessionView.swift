@@ -35,18 +35,32 @@ public struct InterviewSessionView: View {
                 bottomBand
             }
         }
+        .overlay(alignment: .topLeading) {
+            // 이탈 동선 표기는 «협의 가능»(PRD §3.7) — 임시 X. 시안 확정 시 교체.
+            Button {
+                send(.userTappedClose)
+            } label: {
+                Image.Cancel.default24
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, .ds(.p20))
+            .frame(height: 54)
+        }
         // 카메라 위 다크 판 — 하위 `.mini` 버튼 팔레트가 이 선언을 따라 전환된다 (design/component.md).
         .hilitSurface(.dark)
         // Figma ExitConfirm 딤: black 60% + backdrop blur — 배경 콘텐츠를 블러해 근사한다.
-        .blur(radius: store.isExitConfirmPresented ? 20 : 0)
+        .blur(radius: (store.isExitConfirmPresented || store.isEarlyExitWarningPresented) ? 20 : 0)
         .overlay {
             if store.isExitConfirmPresented {
                 exitConfirmOverlay
+            } else if store.isEarlyExitWarningPresented {
+                earlyExitWarningOverlay
             }
         }
         .animation(.easeInOut(duration: 0.3), value: store.phase)
         .animation(.easeInOut(duration: 0.3), value: store.toast)
         .animation(.easeInOut(duration: 0.2), value: store.isExitConfirmPresented)
+        .animation(.easeInOut(duration: 0.2), value: store.isEarlyExitWarningPresented)
         .onAppear { send(.onAppear) }
     }
 
@@ -91,6 +105,10 @@ public struct InterviewSessionView: View {
             }
         case .answering:
             HighlightedText("답변 녹음 중", typography: .body2)
+                .hilightColor(.black)
+        case .processingAnswer:
+            // 임시 — answering 칩과 동일 스타일. 상태 칩 시안 확정 시 교체 (PRD §3.5 «답변을 정리하고 있어요» 는 확정 문구).
+            HighlightedText("답변을 정리하고 있어요", typography: .body2)
                 .hilightColor(.black)
         case .finalCountdown:
             // 카운트다운 중 상태 칩 없음 — 상단 빨간 칩 + 상시 토스트만 (Figma 2537:9525).
@@ -142,6 +160,21 @@ public struct InterviewSessionView: View {
             )
         }
     }
+
+    /// 8분 전 중도 이탈 경고 (Interview_EarlyExitWarning) — 차감 사실만, 리포트 언급 금지 (PRD §3.7).
+    private var earlyExitWarningOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.6)
+                .ignoresSafeArea()
+            InterviewExitConfirmModal(
+                title: "지금 나가면 이용권 1회가 차감돼요",
+                message: nil,
+                finishLabel: "나가기",
+                onContinue: { send(.userTappedContinueInterview) },
+                onFinish: { send(.userTappedLeaveInterview) }
+            )
+        }
+    }
 }
 
 // MARK: - Previews
@@ -166,11 +199,10 @@ private func previewStore(
     })
 }
 
-#Preview("답변 기록 토스트") {
+#Preview("답변 정리 중") {
     InterviewSessionView(store: previewStore {
-        $0.phase = .answering
-        $0.elapsedSeconds = 80
-        $0.toast = .answerRecorded
+        $0.phase = .processingAnswer
+        $0.elapsedSeconds = 82
     })
 }
 
@@ -186,7 +218,7 @@ private func previewStore(
 #Preview("최종 카운트다운") {
     InterviewSessionView(store: previewStore {
         $0.phase = .finalCountdown
-        $0.elapsedSeconds = 590
+        $0.elapsedSeconds = 710
         $0.isExitAvailable = true
         $0.toast = .timeExpired
     })
@@ -198,5 +230,13 @@ private func previewStore(
         $0.elapsedSeconds = 480
         $0.isExitAvailable = true
         $0.isExitConfirmPresented = true
+    })
+}
+
+#Preview("중도 이탈 경고 — 8분 전") {
+    InterviewSessionView(store: previewStore {
+        $0.phase = .answering
+        $0.elapsedSeconds = 200
+        $0.isEarlyExitWarningPresented = true
     })
 }

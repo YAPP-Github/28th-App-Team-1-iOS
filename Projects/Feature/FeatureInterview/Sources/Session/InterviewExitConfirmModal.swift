@@ -12,7 +12,13 @@ import SwiftUI
 /// 폭 327 흰 카드(py40/px24 · 직각 모서리): 책 배지(74) + 타이틀/본문, 하단은 DS `ButtonLarge`
 /// modal 2버튼(`.twoColor` — 계속하기 회색 · 마치기 검정).
 /// 딤·표출 타이밍은 호출부 책임.
+/// 문구는 부록 C 확정 — 종료 확인(기본값)과 중도 이탈 경고가 같은 카드를 쓴다.
 struct InterviewExitConfirmModal: View {
+    // 기본값 = 종료 확인 문구. 중도 이탈 경고가 memberwise init 으로 덮어쓰므로 var 유지.
+    var title = "면접을 마칠까요?"
+    var message: String? = "마치기를 클릭하는 즉시 면접이 종료됩니다.\n지금까지 답변으로 분석을 시작해요."
+    var continueLabel = "계속하기"
+    var finishLabel = "마치기"
     var onContinue: () -> Void
     var onFinish: () -> Void
 
@@ -21,9 +27,9 @@ struct InterviewExitConfirmModal: View {
             content
             // modal 2버튼 — 왼쪽 회색·오른쪽 검정 반반(`.twoColor`), 가로 px8 여백은 DS 가 준다.
             ButtonLarge(.modal, tone: .twoColor) {
-                Button("계속하기", action: onContinue)
+                Button(continueLabel, action: onContinue)
             } trailing: {
-                Button("마치기", action: onFinish)
+                Button(finishLabel, action: onFinish)
             }
         }
         .frame(width: 327)
@@ -34,12 +40,14 @@ struct InterviewExitConfirmModal: View {
         VStack(spacing: .ds(.p20)) {
             bookBadge
             VStack(spacing: .ds(.p4)) {
-                Text("면접을 마칠까요?")
+                Text(title)
                     .dsTypography(.sub4)
                     .foregroundStyle(Color.modalTitle)
-                Text("마치기를 클릭하는 즉시 면접이 종료됩니다.\n지금까지 답변으로 분석을 시작해요.")
-                    .dsTypography(.body6)
-                    .foregroundStyle(Color.GrayScale.g500)
+                if let message {
+                    Text(message)
+                        .dsTypography(.body6)
+                        .foregroundStyle(Color.GrayScale.g500)
+                }
             }
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
