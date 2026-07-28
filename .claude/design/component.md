@@ -31,12 +31,18 @@ Figma 버튼 6종을 옮긴 체계. **경계 규칙: 레이아웃·슬롯을 소
 
 | 컴포넌트 | Figma | API | 용도 |
 |---|---|---|---|
-| `BubbleToast` | BubbleField 2555:7543 | `(_ message:)` | 폭 274 고정 블랙 토스트 — 위치·해제 타이밍은 호출부 |
+| `BubbleField` | bubble-field 2000:7532 | `(_ message:, _ kind: .wide(tail: .none/.top/.bottom) / .mini(mood: .light/.dark))` | 말풍선 — `.wide` 폭 274·py12(꼬리 top 은 좌상단, bottom 은 우하단) / `.mini` 내용폭·py8·꼬리 좌하단. 꼬리 17×11, 붙는 변 모서리에서 40 안쪽. 꼬리 없는 `.wide(tail: .none)`(기본)이 토스트 — 위치·해제 타이밍은 호출부 |
 | `ChoiceChip` | button-medium 2150:7297 | `(_ label:, isSelected:, tone: .positive/.negative, action:)` | N지선다 등폭 척도 칩 — HStack 에 나란히. 외형은 `.medium(layout: .fill)` 이 그리고, 이 타입은 **«선택 상태 → 톤»** 규칙만 갖는다 |
+| `DashIndicator` | dash 2044:4712 | `(count:current:)` | 진행 단계 대시 — 20×4 조각(on b800 / off g50) 나열. 조각 단독 공개 없음, «몇 번째까지 켜는가» 규칙만 갖는다 |
 | `HighlightedText` | highlighted-text | `(_ text:, typography:, plainForeground:)` + 체인 `.hilight(_:)`·`.hilightColor(_:)`·`.hilightFill(_:)`·`.hilightIcon(_:)`·`.hilightColors(foreground:background:)` | 형광펜 마커. **문장 전체를 넘기고 `.hilight("부분")`** — 미지정 시 전체 강조. `hilightColor` 6종(green/black/gray/blue/red/none)은 글자색+배경색 한 쌍. `hilightFill` 3종(full/midlined/underlined), 띠 두께는 `typography` 파생(≥20pt 12, 아니면 8). `Text` 확장은 불가 — 내부 문자열을 못 꺼낸다 |
+| `HilitToggleStyle` | Toggle 2044:4999 | `Toggle(isOn:) { EmptyView() }.toggleStyle(.hilit)` | 스위치 토글 — 50×28 직각 트랙(g900) + 20×20 노브(on g500 / off g50). **커스텀 View 아님** — 배선·접근성은 `Toggle` 몫, 그림만 스타일. 라벨 넘기면 왼쪽 p8 (`labelsHidden()` 은 커스텀 스타일에 안 듣는다) |
 | `Parallelogram` | highlighted-text 배경 | `Shape` — `(slant:)` | 하이라이트 배경 Shape. 직접 쓰기보다 `HighlightedText` 우선 |
+| `QuoteField` | quote-field 1984:7003 | `(_ text:, style: .gray/.greenOnDark/.block, onEdit:)` | 작성된 코멘트 인용 줄 — 세로 바 + 한 줄(말줄임). **입력 위젯 아님**(커서·placeholder 상태 없음), 편집은 `.block` 의 «수정» 링크가 밖으로 넘긴다. `onEdit` 은 `.block` 전용(DEBUG assert) |
 | `SaveIndicator` | tag-with-icon 2555:7558 | `(.saving / .saved)` | 자동 저장 상태 — 스피너 «저장 중 ...» / 체크 «저장됨» |
+| `TabSelector` | tab 2044:4765 | `(_ items: [Item], selection: Binding<Tag>, layout: .hug/.fill)` · `Item(tag:title:isEnabled:)` | 밑줄 텍스트 탭 줄 — h38·px14/py8, 선택 시 아래 1.5 밑줄(b800). 상태는 **selection 바인딩에서 파생**(선택된 하나만 밑줄), 비활성은 `isEnabled: false`(글자 g500). 탭 조각 단독 공개 없음. 시안에 줄 배치가 없어 항목 간 간격 0 |
 | `TagLabel` | tag | `(_ text:, foreground:, background:)` (기본 회색) | 소형 사각 태그 — «선택» 안내, 척도 극 라벨 |
+
+> **Figma 원본 불일치 — 디자이너 확인 대기.** `bubble-field` 의 dark 변형 이름이 `status=status5`(mini 여야 함)이고, `mood` 축은 mini 에만 실재한다(wide 는 light 뿐) — 시안대로 구현했다.
 
 ## 승격 규칙 (Feature → Shared)
 
