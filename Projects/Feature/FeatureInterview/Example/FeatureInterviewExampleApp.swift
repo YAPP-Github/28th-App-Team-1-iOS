@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import DomainInterviewInterface
 import FeatureInterviewImplementation
 import SwiftUI
 
@@ -18,8 +19,11 @@ struct FeatureInterviewExampleApp: App {
     var body: some Scene {
         WindowGroup {
             InterviewView(
-                store: Store(initialState: InterviewFeature.State()) {
+                store: Store(initialState: InterviewFeature.State(sessionId: 1)) {
                     InterviewFeature()
+                } withDependencies: {
+                    // 질문 준비 폴링을 네트워크 없이 즉시 READY 로 — 준비 게이트 UI 는 테스트가 고정.
+                    $0.interviewClient = .previewValue
                 }
             )
         }
@@ -32,7 +36,7 @@ struct FeatureInterviewExampleApp: App {
 //     Store(initialState: InterviewFeature.State(items: [.mock])) { InterviewFeature() }
 //
 // ▸ 가짜 의존성 주입 (외부 IO 가 있는 Feature):
-//     Store(initialState: InterviewFeature.State()) {
+//     Store(initialState: InterviewFeature.State(sessionId: 1)) {
 //         InterviewFeature()
 //     } withDependencies: {
 //         $0.someClient = .preview          // .testValue(unimplemented) 대신 preview 스텁으로 화면 확인
