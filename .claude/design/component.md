@@ -40,7 +40,7 @@ Figma 버튼 6종을 옮긴 체계. **경계 규칙: 레이아웃·슬롯을 소
 | `QuoteField` | quote-field 1984:7003 | `(_ text:, style: .gray/.greenOnDark/.block, onEdit:)` | 작성된 코멘트 인용 줄 — 세로 바 + 한 줄(말줄임). **입력 위젯 아님**(커서·placeholder 상태 없음), 편집은 `.block` 의 «수정» 링크가 밖으로 넘긴다. `onEdit` 은 `.block` 전용(DEBUG assert) |
 | `SaveIndicator` | tag-with-icon 2555:7558 | `(.saving / .saved)` | 자동 저장 상태 — 스피너 «저장 중 ...» / 체크 «저장됨» |
 | `TabSelector` | tab 2044:4765 | `(_ items: [Item], selection: Binding<Tag>, layout: .hug/.fill)` · `Item(tag:title:isEnabled:)` | 밑줄 텍스트 탭 줄 — h38·px14/py8, 선택 시 아래 1.5 밑줄(b800). 상태는 **selection 바인딩에서 파생**(선택된 하나만 밑줄), 비활성은 `isEnabled: false`(글자 g500). 탭 조각 단독 공개 없음. 시안에 줄 배치가 없어 항목 간 간격 0 |
-| `TagLabel` | tag | `(_ text:, foreground:, background:)` (기본 회색) | 소형 사각 태그 — «선택» 안내, 척도 극 라벨 |
+| `TagLabel` | tag 1941:7132 | `(_ text:, foreground:, background:)` (기본 회색) | 소형 사각 태그 — «선택» 안내, 척도 극 라벨. 시안은 12변형 2 family — `padding=0px`(px4·`body6` m14) / `4px`(px12+py4·`body5` sb14, outlined·배경없음 포함). **구현은 0px family 만이고 타이포가 `.body8`(sb12)로 어긋난다.** 색이 열린 파라미터라 시안에 없는 조합도 만들어진다 — `Style` enum 으로 닫는 게 맞다 |
 
 > **Figma 원본 불일치 — 디자이너 확인 대기.** `bubble-field` 의 dark 변형 이름이 `status=status5`(mini 여야 함)이고, `mood` 축은 mini 에만 실재한다(wide 는 light 뿐) — 시안대로 구현했다.
 
