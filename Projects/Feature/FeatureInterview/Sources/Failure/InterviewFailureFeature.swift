@@ -13,6 +13,8 @@ public enum InterviewFailureKind: Equatable, Sendable {
     case speechRecognition
     /// 네트워크 단절
     case network
+    /// 질문 준비(preload) 최종 실패 — 서버 FAILED (PRD §3.2). 재시도 없음·이용권 미차감(서버 자동 환불).
+    case questionPrep
 }
 
 // @lat: [[interview#실패]]
