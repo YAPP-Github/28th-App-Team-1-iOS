@@ -24,6 +24,8 @@ public struct InterviewView: View {
                 InterviewSessionView(store: store)
             } else if let store = store.scope(state: \.screen.failure, action: \.screen.failure) {
                 InterviewFailureView(store: store)
+            } else if let store = store.scope(state: \.screen.reportPending, action: \.screen.reportPending) {
+                InterviewReportPendingView(store: store)
             }
         }
         .animation(.easeInOut(duration: 0.3), value: screenCaseID)
@@ -35,13 +37,14 @@ public struct InterviewView: View {
         case .readiness: 0
         case .session: 1
         case .failure: 2
+        case .reportPending: 3
         }
     }
 }
 
 #Preview {
     InterviewView(
-        store: Store(initialState: InterviewFeature.State()) {
+        store: Store(initialState: InterviewFeature.State(sessionId: 1)) {
             InterviewFeature()
         }
     )

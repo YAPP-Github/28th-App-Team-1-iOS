@@ -113,7 +113,8 @@ public struct InterviewReadinessView: View {
             ButtonLarge("면접 시작하기", .bottom) {
                 send(.userTappedStart)
             }
-            .disabled(store.phase == .guide1)
+            // 질문 준비 전 로딩 연출은 «협의 가능»(PRD §3.2) — 임시로 비활성만.
+            .disabled(store.phase == .guide1 || store.questionPrep != .ready)
         }
     }
 }
@@ -151,8 +152,8 @@ private struct InterviewTicker: View {
 // MARK: - Previews
 
 #Preview("얼굴 맞춤 (aligning)") {
-    var state = InterviewReadinessFeature.State()
-    state.hasStarted = true   // onAppear 의 phase 타이머를 막고 이 상태만 본다.
+    var state = InterviewReadinessFeature.State(sessionId: 1)
+    state.hasStarted = true   // onAppear 의 phase 타이머·질문 준비 폴링을 막고 이 상태만 본다.
     return InterviewReadinessView(
         store: Store(initialState: state) {
             InterviewReadinessFeature()
@@ -161,7 +162,7 @@ private struct InterviewTicker: View {
 }
 
 #Preview("준비 완료 (ready)") {
-    var state = InterviewReadinessFeature.State()
+    var state = InterviewReadinessFeature.State(sessionId: 1)
     state.phase = .ready
     state.hasStarted = true
     return InterviewReadinessView(
@@ -172,7 +173,7 @@ private struct InterviewTicker: View {
 }
 
 #Preview("가이드 1 — 버튼 비활성") {
-    var state = InterviewReadinessFeature.State()
+    var state = InterviewReadinessFeature.State(sessionId: 1)
     state.phase = .guide1
     state.hasStarted = true
     return InterviewReadinessView(
@@ -183,9 +184,10 @@ private struct InterviewTicker: View {
 }
 
 #Preview("가이드 2 — 버튼 활성") {
-    var state = InterviewReadinessFeature.State()
+    var state = InterviewReadinessFeature.State(sessionId: 1)
     state.phase = .guide2
     state.hasStarted = true
+    state.questionPrep = .ready   // 질문 준비 완료라야 시작 버튼이 활성이다.
     return InterviewReadinessView(
         store: Store(initialState: state) {
             InterviewReadinessFeature()
@@ -195,9 +197,10 @@ private struct InterviewTicker: View {
 
 #Preview("권한 미허용 — 시작하기 탭 후 설정 유도 alert") {
     // guide2 에서 시작하기를 탭한 직후 상황 — 권한 미허용이라 alert 가 떠 있다.
-    var state = InterviewReadinessFeature.State()
+    var state = InterviewReadinessFeature.State(sessionId: 1)
     state.phase = .guide2
     state.hasStarted = true
+    state.questionPrep = .ready
     state.alert = InterviewReadinessFeature.permissionDeniedAlert()
     return InterviewReadinessView(
         store: Store(initialState: state) {

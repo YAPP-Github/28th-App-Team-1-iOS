@@ -20,14 +20,18 @@ public struct InterviewFeature {
         case readiness(InterviewReadinessFeature)
         case session(InterviewSessionFeature)
         case failure(InterviewFailureFeature)
+        case reportPending(InterviewReportPendingFeature)
     }
 
     @ObservableState
     public struct State: Equatable {
         public var screen: Screen.State
+        /// 온보딩 분석이 만든 세션 id — 실패 화면의 «다시 시작하기» 재진입에도 같은 세션을 쓴다.
+        public let sessionId: Int
 
-        public init() {
-            self.screen = .readiness(InterviewReadinessFeature.State())
+        public init(sessionId: Int) {
+            self.sessionId = sessionId
+            self.screen = .readiness(InterviewReadinessFeature.State(sessionId: sessionId))
         }
     }
 
@@ -38,7 +42,7 @@ public struct InterviewFeature {
         /// 부모(AppFeature) 통보. 부모는 이것만 매칭한다 (D1).
         @CasePathable
         public enum Delegate: Equatable, Sendable {
-            /// 면접 정상 종료 — 분석(Part 3 보고서) 전환은 AppFeature 몫.
+            /// 면접 정상 종료(리포트 대기 화면에서 홈으로) — 보고서 전환·dismiss 는 AppFeature 몫.
             case finished
             /// 면접 흐름 이탈(중단 폐기·실패 화면 X) — dismiss 는 AppFeature 몫.
             case closed
@@ -57,7 +61,15 @@ public struct InterviewFeature {
                 state.screen = .session(InterviewSessionFeature.State())
                 return .none
 
+            case .screen(.readiness(.delegate(.prepFailed))):
+                state.screen = .failure(InterviewFailureFeature.State(kind: .questionPrep))
+                return .none
+
             case .screen(.session(.delegate(.finished))):
+                state.screen = .reportPending(InterviewReportPendingFeature.State())
+                return .none
+
+            case .screen(.reportPending(.delegate(.goHomeRequested))):
                 return .send(.delegate(.finished))
 
             case .screen(.session(.delegate(.aborted))):
@@ -68,7 +80,7 @@ public struct InterviewFeature {
                 return .none
 
             case .screen(.failure(.delegate(.restartRequested))):
-                state.screen = .readiness(InterviewReadinessFeature.State())
+                state.screen = .readiness(InterviewReadinessFeature.State(sessionId: state.sessionId))
                 return .none
 
             case .screen(.failure(.delegate(.closeRequested))):
