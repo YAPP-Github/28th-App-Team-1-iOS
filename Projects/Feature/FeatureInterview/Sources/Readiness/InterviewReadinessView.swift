@@ -25,10 +25,9 @@ public struct InterviewReadinessView: View {
         store.phase == .guide1 || store.phase == .guide2
     }
 
+    // 카메라 backdrop 은 InterviewView(코디네이터 뷰) 상주 — 화면 교체 시 프리뷰 레이어 재생성 방지.
     public var body: some View {
         ZStack {
-            InterviewCameraBackdrop(previewHandle: store.previewHandle)
-
             CameraGuideFrame(showsCenterText: !isGuidePhase)
 
             VStack(spacing: 0) {
@@ -151,36 +150,44 @@ private struct InterviewTicker: View {
 
 // MARK: - Previews
 
+/// backdrop 은 실앱에선 InterviewView 상주 — 단독 프리뷰는 여기서 대신 깔아 화면 구도를 유지한다.
+private func withBackdrop(_ content: some View) -> some View {
+    ZStack {
+        InterviewCameraBackdrop()
+        content
+    }
+}
+
 #Preview("얼굴 맞춤 (aligning)") {
     var state = InterviewReadinessFeature.State(sessionId: 1)
     state.hasStarted = true   // onAppear 의 phase 타이머·질문 준비 폴링을 막고 이 상태만 본다.
-    return InterviewReadinessView(
+    return withBackdrop(InterviewReadinessView(
         store: Store(initialState: state) {
             InterviewReadinessFeature()
         }
-    )
+    ))
 }
 
 #Preview("준비 완료 (ready)") {
     var state = InterviewReadinessFeature.State(sessionId: 1)
     state.phase = .ready
     state.hasStarted = true
-    return InterviewReadinessView(
+    return withBackdrop(InterviewReadinessView(
         store: Store(initialState: state) {
             InterviewReadinessFeature()
         }
-    )
+    ))
 }
 
 #Preview("가이드 1 — 버튼 비활성") {
     var state = InterviewReadinessFeature.State(sessionId: 1)
     state.phase = .guide1
     state.hasStarted = true
-    return InterviewReadinessView(
+    return withBackdrop(InterviewReadinessView(
         store: Store(initialState: state) {
             InterviewReadinessFeature()
         }
-    )
+    ))
 }
 
 #Preview("가이드 2 — 버튼 활성") {
@@ -188,11 +195,11 @@ private struct InterviewTicker: View {
     state.phase = .guide2
     state.hasStarted = true
     state.questionPrep = .ready   // 질문 준비 완료라야 시작 버튼이 활성이다.
-    return InterviewReadinessView(
+    return withBackdrop(InterviewReadinessView(
         store: Store(initialState: state) {
             InterviewReadinessFeature()
         }
-    )
+    ))
 }
 
 #Preview("권한 미허용 — 시작하기 탭 후 설정 유도 alert") {
@@ -202,7 +209,7 @@ private struct InterviewTicker: View {
     state.hasStarted = true
     state.questionPrep = .ready
     state.alert = InterviewReadinessFeature.permissionDeniedAlert()
-    return InterviewReadinessView(
+    return withBackdrop(InterviewReadinessView(
         store: Store(initialState: state) {
             InterviewReadinessFeature()
         } withDependencies: {
@@ -212,5 +219,5 @@ private struct InterviewTicker: View {
                 openSettings: {}
             )
         }
-    )
+    ))
 }

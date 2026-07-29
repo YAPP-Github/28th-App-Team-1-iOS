@@ -58,9 +58,10 @@ Figma 2479:7569 · 2514:12754 · 2514:12799 · 2529:458.
 
 ## 프리뷰
 
-`DomainRecording`(RecordingClient) 이 단일 AVCaptureSession 을 actor 로 소유한다. startPreview 는 멱등 — 준비 화면이 켜고, 시작 전환 시 코디네이터가 핸들을 세션 State 에 시드해 첫 프레임부터 끊김이 없다(onAppear 재요청은 백스톱). 정지는 코디네이터가 카메라 화면 이탈 전환에서만 수행한다.
+`DomainRecording`(RecordingClient) 이 단일 AVCaptureSession 을 actor 로 소유한다. startPreview 는 멱등 — 준비 화면이 켜고, 정지는 코디네이터가 카메라 화면 이탈 전환에서만 수행한다. 프리뷰 뷰(backdrop)는 화면이 아닌 `InterviewView` 에 상주해 화면 교체에도 레이어가 유지된다.
 
 - 핸들(`CameraPreviewHandle`)은 identity-Equatable 래퍼 — TCA State 에 저장, 뷰(`InterviewCameraBackdrop`)는 핸들 유무로 실카메라/placeholder 분기.
+- backdrop 을 각 화면에 두고 State 시드로 핸들만 이어줘도 전환 시 카메라가 끊겨 보인다(실기기 확인) — `AVCaptureVideoPreviewLayer` 가 화면 교체와 함께 파괴·재생성되기 때문. 그래서 backdrop 은 코디네이터 뷰 상주, 핸들·스크림·모달 배경 블러는 화면 State 에서 파생만 한다(시작 전환 핸들 시드·onAppear 재요청은 백스톱으로 유지).
 - 녹화(`startRecording`/`stopRecording`)는 시그니처만 확정된 골격 — 실구현·호출처는 작업 B. liveValue 는 `RecordingError.notImplemented` 를 던진다.
 - 정지 지점: 준비→실패, 세션→리포트 대기, 세션→실패, 세션 중도 이탈. 재진입은 Readiness onAppear 가 다시 켠다.
 - Scope-on-enum 코디네이터는 화면 교체 시 자식 effect 를 취소하지 않는다 — readiness 의 프리뷰 시작 effect 가 화면 교체를 넘겨 살아남을 수 있어, 흐름 이탈(aborted·closeRequested)은 정지 완료 후 상위 통보로 순서를 보장한다(`stopPreviewThenNotifyClosed`).

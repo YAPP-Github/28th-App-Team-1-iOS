@@ -22,10 +22,10 @@ public struct InterviewSessionView: View {
         self.store = store
     }
 
+    // 카메라 backdrop 은 InterviewView(코디네이터 뷰) 상주 — 화면 교체 시 프리뷰 레이어 재생성 방지.
+    // 모달 딤의 배경(카메라) 블러도 InterviewView 가 세션 상태를 읽어 함께 건다.
     public var body: some View {
         ZStack {
-            InterviewCameraBackdrop(showsTopScrim: false, previewHandle: store.previewHandle)
-
             CameraGuideFrame()
 
             VStack(spacing: 0) {
@@ -179,64 +179,68 @@ public struct InterviewSessionView: View {
 
 // MARK: - Previews
 
-private func previewStore(
+/// backdrop 은 실앱에선 InterviewView 상주 — 단독 프리뷰는 여기서 대신 깔아 화면 구도를 유지한다.
+private func sessionPreview(
     _ mutate: (inout InterviewSessionFeature.State) -> Void = { _ in }
-) -> StoreOf<InterviewSessionFeature> {
+) -> some View {
     var state = InterviewSessionFeature.State()
     state.hasStarted = true   // onAppear 의 세션 시계를 막고 상태만 본다.
     mutate(&state)
-    return Store(initialState: state) { InterviewSessionFeature() }
+    return ZStack {
+        InterviewCameraBackdrop(showsTopScrim: false)
+        InterviewSessionView(store: Store(initialState: state) { InterviewSessionFeature() })
+    }
 }
 
 #Preview("질문 듣는 중") {
-    InterviewSessionView(store: previewStore { $0.elapsedSeconds = 1 })
+    sessionPreview { $0.elapsedSeconds = 1 }
 }
 
 #Preview("답변 녹음 중") {
-    InterviewSessionView(store: previewStore {
+    sessionPreview {
         $0.phase = .answering
         $0.elapsedSeconds = 80
-    })
+    }
 }
 
 #Preview("답변 정리 중") {
-    InterviewSessionView(store: previewStore {
+    sessionPreview {
         $0.phase = .processingAnswer
         $0.elapsedSeconds = 82
-    })
+    }
 }
 
 #Preview("8분 — 종료 해금") {
-    InterviewSessionView(store: previewStore {
+    sessionPreview {
         $0.phase = .answering
         $0.elapsedSeconds = 480
         $0.isExitAvailable = true
         $0.toast = .exitUnlocked
-    })
+    }
 }
 
 #Preview("최종 카운트다운") {
-    InterviewSessionView(store: previewStore {
+    sessionPreview {
         $0.phase = .finalCountdown
         $0.elapsedSeconds = 710
         $0.isExitAvailable = true
         $0.toast = .timeExpired
-    })
+    }
 }
 
 #Preview("종료 확인 모달") {
-    InterviewSessionView(store: previewStore {
+    sessionPreview {
         $0.phase = .answering
         $0.elapsedSeconds = 480
         $0.isExitAvailable = true
         $0.isExitConfirmPresented = true
-    })
+    }
 }
 
 #Preview("중도 이탈 경고 — 8분 전") {
-    InterviewSessionView(store: previewStore {
+    sessionPreview {
         $0.phase = .answering
         $0.elapsedSeconds = 200
         $0.isEarlyExitWarningPresented = true
-    })
+    }
 }
