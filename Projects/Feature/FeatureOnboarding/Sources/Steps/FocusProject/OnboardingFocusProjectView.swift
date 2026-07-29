@@ -22,7 +22,6 @@ public struct OnboardingFocusProjectView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            navigationBar
             progressBar
             ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
@@ -41,12 +40,11 @@ public struct OnboardingFocusProjectView: View {
         }
         .background(Color.BlackWhite.white.ignoresSafeArea())
         .dismissesKeyboardOnTap()
-        .navigationBarBackButtonHidden(true)
+        .hilitNavigationBar(
+            leading: .icon(Image.Cancel.default24) { send(.userTappedClose) },
+            allowsSwipeBack: false
+        )
         .onAppear { send(.onAppear) }
-    }
-
-    private var navigationBar: some View {
-        HilitNavigationBar(leading: .icon(Image.Cancel.default24) { send(.userTappedClose) })
     }
 
     private var progressBar: some View {

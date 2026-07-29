@@ -22,17 +22,16 @@ public struct OnboardingAnalysisView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            navigationBar
             content
         }
         .background(Color.HilitBlack.b800.ignoresSafeArea())
-        .navigationBarBackButtonHidden(true)
+        .hilitNavigationBar(
+            leading: .icon(Image.Cancel.white24) { send(.userTappedClose) },
+            background: Color.HilitBlack.b800,
+            allowsSwipeBack: false
+        )
         .animation(.easeInOut(duration: 0.3), value: store.phase)
         .onAppear { send(.onAppear) }
-    }
-
-    private var navigationBar: some View {
-        HilitNavigationBar(leading: .icon(Image.Cancel.white24) { send(.userTappedClose) })
     }
 
     @ViewBuilder

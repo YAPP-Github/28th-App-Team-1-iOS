@@ -22,7 +22,6 @@ public struct OnboardingCareerInputView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            navigationBar
             progressBar
             header
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -34,25 +33,10 @@ public struct OnboardingCareerInputView: View {
             bottomBar
         }
         .background(Color.BlackWhite.white.ignoresSafeArea())
-        .navigationBarBackButtonHidden(true)
-    }
-
-    /// 내비바 — 디자인상 닫기(X)만 있다. 뒤로는 하단 바의 «이전으로»가 담당.
-    private var navigationBar: some View {
-        HStack(spacing: 0) {
-            Button {
-                send(.userTappedClose)
-            } label: {
-                Image.Cancel.default24
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
-            }
-            .buttonStyle(.plain)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 24)
-        .frame(height: 54)
+        .hilitNavigationBar(
+            leading: .icon(Image.Cancel.default24) { send(.userTappedClose) },
+            allowsSwipeBack: false
+        )
     }
 
     private var progressBar: some View {
