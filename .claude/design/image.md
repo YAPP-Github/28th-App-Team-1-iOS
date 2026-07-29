@@ -51,7 +51,7 @@ Image.Img.micError           // 일러스트 — 크기·변형 없이 이름만
 | `Undo` | 반시계 화살표 ↺ | 되돌리기 |
 | `Upload` | 검은 원(44pt) 안 위 화살표 | 업로드 CTA |
 | `Video` | 사각 화면 + 재생 표시 | 영상 |
-| `Img` | 일러스트 — book(책)·link(사슬)·micError(다크 타일+마이크+빨간 배지)·networkError(다크 타일+네트워크)·tooltipTail(말풍선 꼬리 97×11) | 빈 상태·에러 화면·말풍선 |
+| `Img` | 일러스트 — book(책)·link(사슬)·micError(다크 타일+마이크+빨간 배지)·networkError(다크 타일+네트워크)·tooltipTail(말풍선 꼬리 97×11)·tooltipTailDark(다크 꼬리 gray900) | 빈 상태·에러 화면·말풍선 |
 
 **주의 — Figma 와 이름이 다른 곳**: `Loading` 3종(`successGreen24`·`ingGreen24`·`successDark24`)은 Figma 원본 이름이 엉켜 있어(동명 2개·variant 문자열 노출) 그림 내용으로 명명했다 — Figma 에서 같은 이름을 찾지 말 것(디자이너 정리 요청 중). `Img.tooltipTail` 은 Figma «icon» 시트에 없는 별도 에셋이다.
 
