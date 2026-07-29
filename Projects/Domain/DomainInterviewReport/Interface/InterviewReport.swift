@@ -57,12 +57,28 @@ public struct HighlightSpan: Decodable, Equatable, Sendable {
     public let tone: String?
     /// 구간에 대한 분석 문구
     public let analysis: String?
+    /// 이 구간이 영상에서 시작·끝나는 시각(초). 문자 인덱스만으로는 시간축을 알 수 없어
+    /// 서버가 따로 내려준다 — 없으면 카드의 `segments` 에서 문장을 찾아 대신 쓴다
+    /// (`InterviewReportCard.evidenceTime(for:)`).
+    ///
+    /// 이름은 정의서 §9-1 확장 요청서에 백엔드로 전달한 것을 따른다 (docs/work/ai-interview-report.md).
+    public let evidenceStartAt: TimeInterval?
+    public let evidenceEndAt: TimeInterval?
 
-    public init(startIndex: Int, endIndex: Int, tone: String?, analysis: String?) {
+    public init(
+        startIndex: Int,
+        endIndex: Int,
+        tone: String?,
+        analysis: String?,
+        evidenceStartAt: TimeInterval? = nil,
+        evidenceEndAt: TimeInterval? = nil
+    ) {
         self.startIndex = startIndex
         self.endIndex = endIndex
         self.tone = tone
         self.analysis = analysis
+        self.evidenceStartAt = evidenceStartAt
+        self.evidenceEndAt = evidenceEndAt
     }
 }
 
@@ -80,6 +96,10 @@ public struct InterviewReportCard: Decodable, Equatable, Sendable {
     public let cardRedFlagNotices: [RedFlagNotice]?
     /// 질문 의도 설명
     public let questionIntent: String?
+    /// 대본의 구간 단위 타임스탬프 — 플레이어 진행바의 칸·구간 이동 단위.
+    public let segments: [TranscriptSegment]?
+    /// 단어 단위 타임스탬프 — 계약만 보존(현재 화면 미사용).
+    public let words: [TranscriptWord]?
 
     public init(
         axisOrder: Int,
@@ -89,7 +109,9 @@ public struct InterviewReportCard: Decodable, Equatable, Sendable {
         highlightSpans: [HighlightSpan]?,
         resolutionNotice: String?,
         cardRedFlagNotices: [RedFlagNotice]?,
-        questionIntent: String?
+        questionIntent: String?,
+        segments: [TranscriptSegment]? = nil,
+        words: [TranscriptWord]? = nil
     ) {
         self.axisOrder = axisOrder
         self.depthLevel = depthLevel
@@ -99,6 +121,8 @@ public struct InterviewReportCard: Decodable, Equatable, Sendable {
         self.resolutionNotice = resolutionNotice
         self.cardRedFlagNotices = cardRedFlagNotices
         self.questionIntent = questionIntent
+        self.segments = segments
+        self.words = words
     }
 }
 

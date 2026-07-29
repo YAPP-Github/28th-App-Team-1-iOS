@@ -39,7 +39,7 @@ struct TranscriptOverlay: View {
                             // 지금 재생 중인 답변만 흰색 — 나머지는 물러난다.
                             baseColor: line.id == currentLineID
                                 ? Color.BlackWhite.white
-                                : Color.Gray.g400,
+                                : Color.GrayScale.g400,
                             onTapSpan: { spanIndex in onHighlightTap(line.id, spanIndex) }
                         )
                         .id(line.id)

@@ -7,7 +7,7 @@
 
 ## 0-1. 착수 전 차단 이슈 (🔴 먼저 읽는다)
 
-**현 서버 계약으로는 PRD 화면의 절반을 만들 수 없다.** `HighlightSpan` 이 시간축을 갖지 않고(`startIndex`/`endIndex` = transcript 문자열 인덱스), 상세 시트의 재료(행동형 키워드·다음 대비 질문)에 대응하는 필드가 없다.
+**개정 2026-07-29 — 시간축 차단은 풀렸다.** 서버가 대본 타임스탬프를 두 해상도로 내려주기로 확정했다: 구간 `segments[{text,start,end}]` · 단어 `words[{word,start,end}]`. 이걸로 §9-1 의 1·5번(seek·턴 경계)이 해결돼 플레이어 2단계(§8)를 구현했다. **남은 차단은 상세 시트 재료(행동형 키워드·다음 대비 질문)와 `tone` 허용값**뿐이다.
 
 | PRD 요구 | 현 계약으로 | 막는 것 |
 |---|---|---|
@@ -15,7 +15,9 @@
 | 대본 하이라이트 색 구분(잘함/개선) | ⚠️ 부분 | `HighlightSpan.tone: String?` 이 untyped, `"GOOD"` 만 알려짐 — 개선 톤 값 미정 |
 | 상세 시트 depth 1 진단 (행동형 키워드 태그) | ❌ | 키워드 필드 없음. `analysis: String?` 설명문만 |
 | 상세 시트 depth 2 다음 대비 (후속 질문) | ❌ | 질문 필드 없음 |
-| `[이 장면 영상으로 보기]` · STT 오버레이 시간 동기 · 턴 경계 seek | ❌ | 어떤 timestamp 도 없음 (모델의 유일한 `Date` 는 `video.expiresAt`) |
+| `[영상 보러가기]` · STT 오버레이 시간 동기 · 구간 seek | ✅ 만들 수 있다 | 해결 — `card.segments` (구간 타임스탬프) |
+| 진행바의 **질문(턴) 경계 표시** | ❌ | 구간 경계는 알지만 «이 구간이 몇 번 질문인지» 는 카드 소속으로만 안다 — 시각적 턴 구분은 미구현 |
+| 레드플래그 타임라인 표시 | ❌ | 레드플래그에 시각이 없다 (§9-1 미요청) |
 
 → **§9-1 확장 요청을 백엔드와 먼저 잠근다.** 확장 전에도 §11 의 1~5단계(리포트 본문 + 통짜 영상 재생)는 착수 가능하고, 6단계부터가 확장 의존이다.
 
@@ -78,6 +80,8 @@ ReportMain ─[영상 다시보기]─────────────→ Re
 | `card.questionIntent: String?` | 카드의 "질문 분석" | 내부 `probe_text` 를 서버가 사용자 표현으로 번역한 값 |
 | `card.transcript: String?` | 답변 대본 | 하이라이트 렌더의 베이스 문자열 |
 | `card.highlightSpans: [HighlightSpan]?` | 대본 하이라이트 + 시트 진입점 | `startIndex/endIndex` 는 `transcript` 문자열 인덱스 — §9-2 안전 슬라이싱 필수 |
+| `card.segments: [TranscriptSegment]?` | 플레이어 진행바 칸 · 구간 이동 · 오버레이 «현재 줄» | 칸 하나 = 구간 하나. 서버 정렬을 믿지 않고 `start` 로 다시 세운다(`orderedSegments`) |
+| `card.words: [TranscriptWord]?` | (없음 — 계약만 보존) | 단어 강조가 필요해질 때 쓴다. **말속도·군말·침묵 산출에 쓰지 않는다** (§0-2 MVP 제외) |
 | `card.resolutionNotice: String?` | 카드 상단 안내 문구 | **서버 소유 문구.** 있으면 해상도 낮음 카드 → 하이라이트가 없어 시트로 진입하지 않는다 |
 | `card.cardRedFlagNotices: [RedFlagNotice]?` | 카드 안 레드플래그 표기 | 해상도와 **독립** — 해상도 낮음 카드에도 표기한다 |
 | `guestFeedback: GuestFeedbackSection?` | 지인 피드백 섹션 | 4.6 소관 — 이 문서 범위에서는 렌더하지 않는다(§13) |
@@ -232,12 +236,14 @@ public enum Action: ViewAction {
 
 ## 5. 화면 2 — 하이라이트 상세 시트 (`ReportHighlightDetailFeature`) 신규
 
-두 진입점(리포트 카드 / 플레이어 STT 오버레이)이 **같은 리듀서를 재사용**한다. 내용 동일, 차이는 `[이 장면 영상으로 보기]` 버튼 노출 여부 하나.
+두 진입점(리포트 카드 / 플레이어 대본 오버레이)이 **같은 리듀서를 재사용**한다. 내용 동일, 차이는 `[영상 보러가기]` 버튼 노출 여부 하나.
+
+**플레이어 안에서도 이 버튼을 숨기지 않는다**(초판 결정 폐기). 오버레이 대본은 재생 위치와 무관하게 스크롤해 다른 장면의 하이라이트도 누를 수 있어서, «이미 그 장면에 멈춰 있다» 는 전제가 성립하지 않는다 — Figma(3165:14925)도 노출한다. 플레이어에서 누르면 시트를 닫고 그 장면으로 이동해 재생을 재개한다.
 
 ```swift
 @ObservableState public struct State: Equatable {
     public let context: HighlightContext
-    public let showsVideoJump: Bool   // 플레이어 안에서 열면 false (이미 그 장면에 멈춰 있음)
+    public let showsVideoJump: Bool   // 재생할 영상이 있으면 true — 플레이어 안에서도 노출한다
 }
 
 public enum Action: ViewAction {
@@ -250,7 +256,7 @@ public enum Action: ViewAction {
         case userTappedDismiss
     }
     @CasePathable public enum Delegate: Equatable, Sendable {
-        case videoJumpRequested(at: TimeInterval)
+        case videoJumpRequested(at: TimeInterval?)   // nil = 근거 시각 모름 → 처음부터
     }
 }
 ```
@@ -262,7 +268,7 @@ public enum Action: ViewAction {
 | 하이라이트 문장 | `transcript[start..<end]` | (항상 있음) |
 | depth 1 태그 | `span.keyword` 🔴확장 | 태그 숨김, 설명만 |
 | depth 1 설명 | `span.analysis` | 블록 숨김 |
-| `[이 장면 영상으로 보기]` | `span.evidenceAt` 🔴확장 + 영상 유효 + `showsVideoJump` | 버튼 숨김 |
+| `[영상 보러가기]` | 영상 유효(`showsVideoJump`) — 시각은 `span.evidenceStartAt` 또는 `segments` 에서 파생 | 영상 없으면 버튼 숨김. **시각을 몰라도 버튼은 남긴다**(처음부터 재생) |
 | depth 2 다음 대비 | `span.followUpQuestions` 🔴확장 | depth 2 생략 + PRD 마무리 문구(§6) |
 
 ## 6. 사용자 문구 — 소유 주체 (카피 단일 소스)
@@ -298,25 +304,41 @@ public enum Action: ViewAction {
 ```swift
 @ObservableState public struct State: Equatable {
     public let videoURL: URL
-    public let startAt: TimeInterval?
-    public let cards: [InterviewReportCard]      // STT 오버레이 재료 (2단계)
-    public var isTranscriptVisible: Bool = false
+    public let startAt: TimeInterval?            // 진입 시각 (nil = 처음부터)
+    public let cards: [InterviewReportCard]      // 대본 오버레이·진행바 재료
+    let transcript: VideoTranscript              // 카드 → 시간축 하나로 펼친 파생값
+    public var isPlaying = true
+    public var currentTime: TimeInterval = 0
+    public var duration: TimeInterval = 0
+    public var areControlsVisible = true         // 무입력 3초 뒤 숨김
+    public var isTranscriptVisible = false
+    public var playbackFailureMessage: String?
+    public var seekTarget: TimeInterval = 0      // 뷰로 내리는 이동 명령
+    public var seekToken = 0                     // 단조 증가 — 같은 시각 재이동도 놓치지 않는다
+    public var isSeeking = false                 // 목표에 닿기 전 보고되는 옛 위치를 버린다
+    public var currentLineID: Int?               // 재생 중인 대본 줄(카드 인덱스)
     @Presents public var highlightDetail: ReportHighlightDetailFeature.State?
 }
 ```
 
-**AVPlayer 는 State 에 두지 않는다** — `GuestVideoPlayerView`([FeatureGuestFeedback](../../Projects/Feature/FeatureGuestFeedback/Sources/View/GuestVideoPlayerView.swift)) 선례대로 View-local `@State` 로 소유하고, 재생 위치도 리듀서에 올리지 않는다. 리듀서는 대본 토글·시트 present/dismiss·seek 요청만 다룬다. 하이라이트 탭 시 일시정지는 View 책임.
+**AVPlayer 는 뷰가, 재생 상태는 리듀서가 갖는다.** 인스턴스는 `GuestVideoPlayerView`([FeatureGuestFeedback](../../Projects/Feature/FeatureGuestFeedback/Sources/View/GuestVideoPlayerView.swift)) 선례대로 View-local `@State` 지만, 재생 여부·현재 시각은 State 에 올린다 — 컨트롤 자동 숨김·진행바 칸 채움·«현재 줄» 이 전부 시각에 딸린 화면 상태다(초판의 "재생 위치를 리듀서에 올리지 않는다"는 커스텀 컨트롤이 없다는 전제였고, Figma 컨트롤이 커스텀이라 성립하지 않는다).
 
-**2단계로 나눈다.**
+**2단계로 나눴고, 둘 다 구현됐다** (2단계는 `segments` 도착으로 해금).
 
-| 단계 | 내용 | 의존 |
+| 단계 | 내용 | 상태 |
 |---|---|---|
-| 1단계 | 진입 즉시 재생 · 전체화면 · 재생 실패 표시 · 뒤로/닫기 | 현 계약으로 가능 |
-| 2단계 | 하단 아이콘으로 STT 오버레이 토글 · 재생과 대본 동기 · 하이라이트 탭 → 일시정지 + 시트 · `startAt` seek | §9-1 timestamp 확장 필수 |
+| 1단계 | 진입 즉시 재생 · 전체화면 · 재생 실패 표시 · 좌상단 X | ✅ |
+| 2단계 | 대본 오버레이 토글 · 재생-대본 동기 · 하이라이트 탭 → 정지 + 시트 · 구간 seek · `startAt` 진입 | ✅ |
+
+컨트롤 규약: 무입력 3초 뒤 딤·재생 버튼·하단 바가 사라져 영상만 남는다. **일시정지 중에는 숨기지 않고**(재생 버튼이 사라진다), 대본을 켜 둔 동안은 하단 바를 유지한다(대본의 일부). 건너뛰기는 ±10초, 끝까지 본 뒤 재생을 누르면 처음으로 되감는다.
+
+진행바는 **칸 하나 = 구간 하나**(폭 ∝ 길이, 탭 = 그 구간 시작으로 이동)다. 카드 경계를 넘겨 이어 붙인다 — 진행바는 질문 턴이 아니라 영상 시간축을 보여준다. 서버 구간이 없으면 영상 전체 한 칸으로 대체하고, 이때 탭은 무반응이다(이동할 지점을 모른다).
+
+시스템 컨트롤을 쓰지 않으므로 SwiftUI `VideoPlayer` 대신 `AVPlayerLayer`(`VideoSurface`)를 직접 얹는다.
 
 **만료 판정은 플레이어 책임이 아니다** — `videoURL` 이 필수값이라 만료·nil·형식 오류는 리포트 화면의 `playableVideoURL`(§4-2)에서 이미 걸러지고, 만료 시 진입 자체가 없다. 플레이어는 재생 실패(네트워크·코덱)만 표시한다.
 
-1단계에서는 질문 경계 표시도 만들지 않는다 — 턴 경계 timestamp 가 계약에 없다(§9-1 항목 5). 레드플래그 타임라인 표시(PRD)도 2단계로 미룬다.
+**아직 없는 것 2개**: 진행바의 질문(턴) 경계 시각 구분 — 구간이 어느 카드 소속인지는 알지만 Figma 에 턴 구분 표현이 없어 만들지 않았다. 레드플래그 타임라인 표시 — 레드플래그에 시각이 없다(§9-1 미요청).
 
 ## 9. Domain 확장
 
@@ -324,11 +346,12 @@ public enum Action: ViewAction {
 
 | # | 요청 | 우선 | 없으면 못 만드는 것 |
 |---|---|---|---|
-| 1 | `HighlightSpan.evidenceStartAt: Double`, `evidenceEndAt: Double` (초) | 🔴 | `[이 장면 영상으로 보기]`, STT 동기, 모든 seek |
-| 2 | `HighlightSpan.tone` 허용값 확정 (예: `GOOD` / `IMPROVE`) | 🔴 | 잘함(파랑)·개선(빨강) 색 구분 |
-| 3 | `HighlightSpan.keyword: String` (행동형 키워드 1개) | 🔴 | 상세 시트 depth 1 태그 |
-| 4 | `HighlightSpan.followUpQuestions: [String]` (최대 2) | 🔴 | 상세 시트 depth 2 |
-| 5 | `card.answerStartAt` / `answerEndAt` (턴 경계, 초) | 🟠 | 카드→영상 장면 진입, 질문 경계 표시 |
+| 1 | `HighlightSpan.evidenceStartAt` / `evidenceEndAt` (초) | 🟠 **부분 해결** | 없어도 `segments` 에서 문장을 찾아 구간 시작으로 대체한다(`evidenceTime(for:)`) — 다만 하이라이트가 구간 경계와 어긋나면 오차가 생긴다. 필드명은 이 요청서 이름을 코드에 그대로 뒀다 |
+| 2 | `HighlightSpan.tone` 허용값 확정 (예: `GOOD` / `IMPROVE`) | 🔴 | 잘함(시안)·개선(빨강) 색 구분. 미지 값은 본문 색 그대로(강조 없음) |
+| 3 | `HighlightSpan.keyword: String` (행동형 키워드 1개) | 🔴 | 상세 시트 분석 카드의 볼드 한 줄 |
+| 4 | `HighlightSpan.followUpQuestions: [String]` (최대 2) | 🔴 | 상세 시트 «실전에서는 이런 질문이…» 블록 |
+| 5 | ~~`card.answerStartAt` / `answerEndAt`~~ | ✅ **해결** | `card.segments` 로 대체됐다 — 답변 시간대는 첫/마지막 구간에서 파생한다 |
+| 5-1 | **`segments`/`words` 위치·기준점 확인** | 🔴 | 카드 안에 오는지(현재 가정), 시각이 영상 0초 기준인지(질문 낭독 포함 여부). 기준점이 다르면 진행바·seek 전체가 어긋난다 |
 | 6 | `card.resolutionCause` (예: `SHALLOW` / `OFF_TOPIC`) | 🟡 | 문구는 서버가 주므로 표시엔 불필요 — 로깅·분석용 |
 | 7 | 카드 제목 표시 규칙 확정 (`axisOrder`-`depthLevel` 유지 여부) | 🟡 | 현 규칙으로 진행 가능 |
 | 8 | `GuestAttitudeRating.axis` 표시명 (또는 코드 목록 고정) | 🟡 | 4.6 소관 |
@@ -359,14 +382,20 @@ public extension InterviewReportCard {
 
 ```swift
 struct HighlightContext: Equatable, Sendable {             // 상세 시트 입력 (§5)
-    let sentence: String
-    let tone: HighlightTone
-    let analysis: String?
+    let transcript: String                                 // 문장이 아니라 대본 전체 — 앞뒤 문맥을 흐리게 함께 보여준다
+    let span: HighlightSpan                                // 문장·톤·진단은 여기서 파생
     let keyword: String?                                   // 🔴확장 전 nil
     let followUpQuestions: [String]                        // 🔴확장 전 []
-    let evidenceAt: TimeInterval?                          // 🔴확장 전 nil
+    let evidenceAt: TimeInterval?                          // span 시각 또는 segments 파생
+}
+
+struct VideoTranscript: Equatable {                        // 플레이어 타임라인 (§8)
+    let lines: [Line]                                      // 카드 1장 = 줄 1개 (오버레이)
+    let chunks: [Chunk]                                    // 서버 구간 1개 = 진행바 칸 1개 (카드 경계를 넘겨 이어 붙임)
 }
 ```
+
+Domain 추가분에 `TranscriptSegment`·`TranscriptWord`(서버 타임스탬프)와 `card.evidenceTime(for:)`·`card.orderedSegments` 가 함께 들어간다 — 서버 값 정규화라 Domain 이 맞다.
 
 `InterviewReportCard`·`HighlightSpan` 에 `id` 가 없다 → `ForEach` 는 `Array.enumerated()` 의 offset 을 `id:` 로 쓴다. 배열 순서가 계약(클라 재정렬 금지, §2)이므로 인덱스가 정당한 식별자다. `(axisOrder, depthLevel)` 조합키는 서버가 중복을 내리면 깨진다. `Identifiable` 을 서버 DTO 에 억지로 붙이지 않는다.
 
@@ -378,14 +407,17 @@ struct HighlightContext: Equatable, Sendable {             // 상세 시트 입�
 
 | 필요 | 현황 | 처리 |
 |---|---|---|
-| 대본 sub-range 하이라이트 | ❌ `HighlightedText` 는 문자열 **전체**만 강조, 레포에 `AttributedString` 사용처 0 | Feature-local `ReportTranscriptText` 신규. 승격 규칙(design/component.md) 미충족이라 Shared 로 올리지 않는다 |
+| 대본 sub-range 하이라이트 | ✅ Feature-local `TranscriptText` — `AttributedString.link` + `openURL` 로 부분 범위 탭 | 메인 카드·시트·플레이어 오버레이 3곳 공용. `baseColor` 만 갈아끼운다(미지 톤은 본문 색을 물려받아 강조 없음) |
 | 카드 컨테이너 | ❌ 공용 없음 | Feature-local. 선례 `AxisCommentCard`(FeatureGuestFeedback) |
 | 바텀시트 | ❌ 레포 전체에 `.sheet` 사용 0 | SwiftUI `.sheet` + `presentationDetents` 직접. **레포 최초 도입** — 패턴을 이 화면에서 정하고 `[[report]]` 에 기록 |
-| 잘함/개선 색 | ⚠️ 이름 주의 | 잘함 = `Color.Positive.p200` 배경 / `p800` 텍스트, 개선 = `Color.Error.e200` / `e500`. `Positive` 는 **시안** 계열이라 Figma "파랑"과 대조 필요(color.md 라벨 불일치 이력) |
+| 잘함/개선 색 | ✅ Figma 확정(다크) | 잘함 = `Positive.p500`(#00CFEF) — 플레이어 오버레이만 `p800`(#008A9F), 개선 = `Error.e400`(#FF8383). 밴드 배경은 `Gray.g800`(시트·카드) / `g900`(오버레이). 초판이 적었던 라이트 조합(p200/e200)은 다크 개편으로 폐기 |
 | radius 토큰 | ❌ 없음(전부 리터럴) | `DSRadius` 신설 제안 🟡 — 도입하면 design.md·design/spacing.md 동시 갱신 |
-| 뒤로 아이콘 | ❌ `Image.Ic` 에 chevron 없음 | 에셋 추가. 기존 TODO 3건(`ReportVideoPlayerView:51` 등)이 `Ic.close` 45° 회전으로 버티고 있다 |
-| 로딩·스켈레톤 | ❌ 스켈레톤 없음 | `ProgressView` + 문구. `PrimaryButton(isLoading:)`·`SaveIndicator` 는 용도 다름 |
-| CTA 버튼 | ✅ `PrimaryButton` | 현재 골격이 손으로 만든 버튼을 쓰고 있다 — 교체 |
+| 뒤로 아이콘 | ✅ 불필요 | Figma 플레이어는 좌상단 X 하나뿐이고 그게 «뒤로» 다 — 회전 꼼수 TODO 제거 |
+| 플레이어 컨트롤 아이콘 | ✅ DS 에 있다 | `Image.SkipL.dark34`·`SkipR.dark34`·`Script.dark20`·`Pause.green34`·`Play.green34`·`Cancel.dark24/20`. 잠시 손으로 그렸던 `play` 는 DS 정식 에셋으로 폐기했다 |
+| 질문 배지 «Q» | ✅ `Image.Q.default` | 글자로 그리지 않는다 — 에셋에 사각 배경까지 구워져 있다 |
+| 아이콘만 있는 정사각 버튼(44) | ❌ 버튼 카탈로그에 없는 티어 | 플레이어 컨트롤 전용이라 Feature-local. 두 번째 사용처가 생기면 승격 검토 |
+| 로딩·스켈레톤 | ❌ 스켈레톤 없음 | `ProgressView` + 문구. 버튼 로딩은 `.hilitButtonLoading(_:)`, `SaveIndicator` 는 용도 다름 |
+| CTA 버튼 | ✅ `ButtonLarge` | 하단 도킹 `.bottom` / 카드 안 `.modal`. 보조 액션은 `.buttonStyle(.mini(...))`, 다크 화면은 루트에 `.hilitSurface(.dark)` 한 번 |
 
 토큰만 쓴다: 타이포 `.dsTypography(.head3/.sub7/.body3…)`, 색 `Color.Gray.*`·`HilitBlack.*`, 여백 `.padding(.ds(.p20))`. **Figma raw 수치 하드코딩 금지.**
 
@@ -395,10 +427,10 @@ struct HighlightContext: Equatable, Sendable {             // 상세 시트 입�
 1. **Domain 확장** — `HighlightTone`·카드 extension·안전 슬라이싱 + `DomainInterviewReportTesting` fixture 5종(§9-2).
    함께: `FeatureReport/Project.swift` 의 **Tests·Testing·Example 3타깃에 `.domain(interface: .interviewReport)` 명시**(Tests 는 `DomainInterviewReportTesting` 도). 전이 의존에 기대면 따뜻한 DerivedData 에서만 통하는 거짓 성공이 난다 — 선례 `FeatureGuestFeedback/Project.swift`. Example 은 `ReportFeature.State(sessionId:)` 시그니처 변경으로 어차피 깨지므로 같은 단계에서 고친다.
 2. **리포트 로드·폴링** — `ReportMainFeature` State/Action + `TestClock` 결정론 테스트. UI 는 문구만.
-3. **카드 UI** — 카드 컨테이너·`ReportTranscriptText`·해상도/레드플래그 표기. `PrimaryButton` 교체.
+3. **카드 UI** — 카드 컨테이너·`TranscriptText`·해상도/레드플래그 표기. CTA 는 `ButtonLarge`.
 4. **상세 시트** — `ReportHighlightDetailFeature` + `.sheet` 패턴 확립. 확장 전이므로 depth 1 설명까지.
 5. **영상 플레이어 1단계** — 통짜 재생 + 재생 실패 표시. 코디네이터 라우팅 허브화(§1-1)와 함께.
-6. **[확장 후] 2단계** — timestamp → seek·STT 오버레이·`[이 장면 영상으로 보기]`·depth 2·키워드 태그.
+6. **[확장 후] 2단계** — ✅ timestamp(`segments`) → 구간 seek·대본 오버레이·`[영상 보러가기]`. depth 2(후속 질문)·키워드 태그는 서버 필드 대기라 «비면 렌더 안 함» 상태로 남아 있다.
 7. **[Part 2 이후] AppFeature 배선** — `retryRequested` → 면접 셋업 · `closeRequested` → dismiss. `// depends-on:` 라벨 필수(import 에 안 보임).
    **선행 조건**: 현재 AppFeature 는 home·auth·onboarding 뿐이고 면접 진행(Part 2) Feature 가 없어 리포트에 `sessionId` 를 넘길 상위가 없다(온보딩 `finished(sessionId:)` 도 지금은 dismiss 만 한다). 그때까지 1~5단계 검증은 **Example 앱**(sessionId 하드코딩 + `interviewReportClient` fixture 주입)으로 한다.
 8. **문서 동기화** — `[[report]]` 노드를 실제 구조로 갱신(현재 "4화면 골격·임시 선형" 서술은 이 정의서 적용 시 거짓이 된다), `@lat` 라벨 재부착, `lat check` 통과.
@@ -415,7 +447,11 @@ struct HighlightContext: Equatable, Sendable {             // 상세 시트 입�
 - 하이라이트 탭 → 시트 present, `tone` 매핑(`"GOOD"`→`.good`, 미지값→`.unknown`)
 - 범위 밖 `startIndex/endIndex` → 시트 미present (크래시 없음)
 - 해상도 낮음 카드 → 탭 대상 없음
-- 플레이어 안에서 연 시트 → `showsVideoJump == false`
+- 플레이어 안에서 연 시트 → `showsVideoJump == true` (영상이 있으므로) + 시트가 열리면 재생 정지
+- 플레이어: 무입력 3초 → 컨트롤 숨김 / 일시정지 중에는 유지 / 대본 켜면 하단 바 유지
+- 플레이어: 건너뛰기 ±10초 범위 클램프, 끝에서 재생 → 0 으로 되감기
+- 플레이어: 진행바 칸 탭 → 그 구간 시작으로 이동, 구간 없으면 한 칸 폴백
+- 플레이어: 이동 직후 옛 위치 보고 무시(`isSeeking`), 시트 «영상 보러가기» → 닫기 + 이동 + 재생 재개
 - 코디네이터: `videoRequested`/`peerFeedbackRequested` → 각 화면 push (체인 아님), `backRequested` → pop, `retryRequested`/`closeRequested` → 부모 전파
 
 `InterviewReportClient.testValue` 는 `unimplemented` 유지 — 테스트마다 `withDependencies` 로 명시 주입한다.
@@ -425,10 +461,11 @@ struct HighlightContext: Equatable, Sendable {             // 상세 시트 입�
 - **폴링 간격·상한** 수치 (PM) — 상한 존재는 확정, 값은 미정
 - **`status == .failed` UX** — PRD 에 분기 없음. 채점 실패 시 화면·재시도 정책 필요
 - **STT 부분 실패(30% 미만) 경고** — 별도 「STT 실패 처리 기획서」 대기. PRD §3 상태표의 '경고' 상태
-- **Figma 연결** — 레이아웃·radius·잘함/개선 색 대조·뒤로 아이콘. `[[report]]` 가 "디자인 연결 시 확정"으로 잡아둔 항목
+- **`words` 활용 범위** — 단어 강조(노래방식)를 쓸지 미정. 쓰더라도 말속도·군말 지표 산출은 MVP 제외(§0-2) 라 금지
+- **radius 토큰** — 여전히 없음(다크 화면은 Figma 가 모서리 0 이라 필요가 없었다). 라이트 화면에서 필요해지면 `DSRadius` 신설
 - **`guestFeedback` 섹션 표시** — 4.6 최종 보고서 소관
 - **`ReportPeerFeedbackFeature`·`ReportFinalFeature`** — 화면 자리·진입 경로만 확정, 내용은 Part 4.5/4.6 스펙 대기(현재 자리표시 골격)
 - **`ReportFinal` 진입 조건** — "지인 피드백 도착 후"를 무엇으로 판정할지 미정(`guestFeedback.participantCount` ≥ N? 푸시? 재조회?)
-- **24시간 보관 안내 문구 위치** — 플레이어 디자인 시
+- ~~**24시간 보관 안내 문구 위치**~~ — 해결: 플레이어가 아니라 메인의 영상 카드가 남은 시청 시간을 카운트다운으로 보여준다
 - **회차 비교("지난 회차 대비")·반복 키워드 습관 안내** — MVP 이후
 - **말하기 습관 지표** — MVP 제외(측정·저장 포함). 도입 시 지표 정의·스키마 동시 설계

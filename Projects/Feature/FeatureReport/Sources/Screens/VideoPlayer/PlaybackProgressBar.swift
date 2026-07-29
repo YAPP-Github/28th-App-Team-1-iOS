@@ -36,7 +36,7 @@ struct PlaybackProgressBar: View {
             store.send(.view(.userTappedChunk(index: chunk.id)))
         } label: {
             Rectangle()
-                .fill(Color.Gray.g600)
+                .fill(Color.GrayScale.g600)
                 .overlay(alignment: .leading) {
                     Rectangle()
                         .fill(Color.HilitGreen.g500)

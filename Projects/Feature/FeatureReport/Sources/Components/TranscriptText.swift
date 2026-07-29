@@ -28,7 +28,7 @@ struct TranscriptText: View {
     init(
         transcript: String,
         spans: [HighlightSpan],
-        baseColor: Color = Color.Gray.g50,
+        baseColor: Color = Color.GrayScale.g50,
         onTapSpan: ((Int) -> Void)? = nil
     ) {
         self.transcript = transcript
@@ -63,7 +63,7 @@ struct TranscriptText: View {
             else { continue }
 
             result[range].foregroundColor = color(for: span.highlightTone)
-            result[range].backgroundColor = Color.Gray.g800
+            result[range].backgroundColor = Color.GrayScale.g800
             if onTapSpan != nil {
                 result[range].link = URL(string: "\(Self.scheme):\(index)")
             }
@@ -107,7 +107,7 @@ struct TranscriptText: View {
         TranscriptText(
             transcript: "대학교에서는 시각디자인을 전공하며, 음 디자인 동아리 활동과 여러 공모전에 도전했습니다.",
             spans: [HighlightSpan(startIndex: 20, endIndex: 44, tone: "IMPROVE", analysis: nil)],
-            baseColor: Color.Gray.g600,
+            baseColor: Color.GrayScale.g600,
             onTapSpan: { _ in }
         )
     }

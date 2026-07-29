@@ -52,4 +52,23 @@ public extension InterviewReportCard {
         else { return nil }
         return String(characters[span.startIndex..<span.endIndex])
     }
+
+    /// 하이라이트가 영상에서 시작하는 시각(초) — «이 장면 영상으로 보기»의 목적지.
+    ///
+    /// 서버가 `evidenceStartAt` 을 주면 그대로 쓰고, 없으면 구간 대본에서 문장을 찾아 그 구간 시작으로 대체한다.
+    /// 둘 다 없으면 nil — 호출부는 장면 이동 버튼을 숨긴다.
+    func evidenceTime(for span: HighlightSpan) -> TimeInterval? {
+        if let evidenceStartAt = span.evidenceStartAt { return evidenceStartAt }
+        guard let segments, let sentence = sentence(for: span) else { return nil }
+        let trimmed = sentence.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        // 하이라이트가 구간 경계와 딱 맞지 않을 수 있어 포함 관계를 양방향으로 본다.
+        return segments.first { $0.text.contains(trimmed) || trimmed.contains($0.text) }?.start
+    }
+
+    /// 재생 순서대로 정렬된 구간. 서버 정렬을 신뢰하지 않고 시작 시각으로 다시 세운다 —
+    /// 진행바 칸 순서가 뒤집히면 이동 지점이 어긋난다.
+    var orderedSegments: [TranscriptSegment] {
+        (segments ?? []).sorted { $0.start < $1.start }
+    }
 }

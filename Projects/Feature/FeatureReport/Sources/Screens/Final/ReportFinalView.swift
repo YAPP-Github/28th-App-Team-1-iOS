@@ -25,10 +25,10 @@ public struct ReportFinalView: View {
             Spacer()
             Text("최종 보고서")
                 .dsTypography(.head3)
-                .foregroundStyle(Color.Gray.g800)
+                .foregroundStyle(Color.GrayScale.g800)
             Text("Part 4.6 스펙 대기")
                 .dsTypography(.body3)
-                .foregroundStyle(Color.Gray.g500)
+                .foregroundStyle(Color.GrayScale.g500)
                 .padding(.top, 8)
             Spacer()
         }
@@ -42,11 +42,10 @@ public struct ReportFinalView: View {
             Button {
                 send(.userTappedBack)
             } label: {
-                Image.Ic.close
+                Image.Cancel.default24
                     .resizable()
                     .scaledToFit()
                     .frame(width: 24, height: 24)
-                    .foregroundStyle(Color.HilitBlack.b800)
                     .rotationEffect(.degrees(45)) // TODO: 뒤로(chevron) 아이콘 에셋 추가 시 교체
             }
             .buttonStyle(.plain)
@@ -54,11 +53,10 @@ public struct ReportFinalView: View {
             Button {
                 send(.userTappedClose)
             } label: {
-                Image.Ic.close
+                Image.Cancel.default24
                     .resizable()
                     .scaledToFit()
                     .frame(width: 24, height: 24)
-                    .foregroundStyle(Color.HilitBlack.b800)
             }
             .buttonStyle(.plain)
         }

@@ -40,29 +40,20 @@ struct ReportPeerFeedbackFeatureTests {
         }
         await store.receive(\.inner.shareLinkCreated) {
             $0.isCreating = false
-            $0.createdLink = "https://hilit.app/feedback/tok"
+            $0.createdLink = "https://hilit.my/feedback/tok"
+            $0.isCompletionModalVisible = true
         }
 
         #expect(sent.value == ["GAZE", "VOICE"])
     }
 
-    @Test("항목을 하나도 안 고르면 요청하지 않고 안내만 띄운다")
+    @Test("항목을 하나도 안 고르면 요청하지 않는다")
     func emptySelectionDoesNotCallServer() async {
-        let clock = TestClock()
         let store = TestStore(initialState: ReportPeerFeedbackFeature.State(sessionId: 7)) {
             ReportPeerFeedbackFeature()
-        } withDependencies: {
-            // create 는 testValue(unimplemented) 그대로 — 호출되면 테스트가 실패한다.
-            $0.continuousClock = clock
         }
-
-        await store.send(.view(.userTappedCreateLink)) {
-            $0.toast = "평가받을 항목을 하나 이상 골라주세요."
-        }
-        await clock.advance(by: .seconds(2))
-        await store.receive(\.inner.toastDismissed) {
-            $0.toast = nil
-        }
+        // create 는 testValue(unimplemented) 그대로 — 호출되면 테스트가 실패한다.
+        await store.send(.view(.userTappedCreateLink))
     }
 
     @Test("생성 실패는 사용자 문구로 바뀌고 CTA 가 다시 눌린다")
@@ -91,12 +82,13 @@ struct ReportPeerFeedbackFeatureTests {
         }
     }
 
-    @Test("복사하면 클립보드에 링크가 담기고 모달이 닫힌다")
-    func copyPutsLinkOnPasteboardAndClosesModal() async {
+    @Test("복사하면 클립보드에 담기고 모달이 닫히며 공유 시트가 이어진다")
+    func copyPutsLinkOnPasteboardThenPresentsShareSheet() async {
         let clock = TestClock()
         let copied = LockIsolated<String?>(nil)
         var initialState = ReportPeerFeedbackFeature.State(sessionId: 7)
-        initialState.createdLink = "https://hilit.app/feedback/tok"
+        initialState.createdLink = "https://hilit.my/feedback/tok"
+        initialState.isCompletionModalVisible = true
         let store = TestStore(initialState: initialState) {
             ReportPeerFeedbackFeature()
         } withDependencies: {
@@ -105,7 +97,8 @@ struct ReportPeerFeedbackFeatureTests {
         }
 
         await store.send(.view(.userTappedCopyLink)) {
-            $0.createdLink = nil
+            $0.isCompletionModalVisible = false
+            $0.isShareSheetPresented = true
             $0.toast = "링크를 복사했어요."
         }
         await clock.advance(by: .seconds(2))
@@ -113,6 +106,6 @@ struct ReportPeerFeedbackFeatureTests {
             $0.toast = nil
         }
 
-        #expect(copied.value == "https://hilit.app/feedback/tok")
+        #expect(copied.value == "https://hilit.my/feedback/tok")
     }
 }
