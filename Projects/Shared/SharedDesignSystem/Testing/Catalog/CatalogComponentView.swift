@@ -14,21 +14,35 @@ struct CatalogComponentView: View {
     private enum SampleTab: Hashable { case first, second, third }
 
     @State private var chipSelection: Bool = true
+    @State private var editorText: String = ""
+    @State private var fieldText: String = ""
+    @State private var isChecked: Bool = true
     @State private var isToggleOn: Bool = true
+    @State private var name: String = "김은서"
     @State private var tab: SampleTab = .first
 
     var body: some View {
         CatalogPage("컴포넌트") {
             bubbleField
             choiceChip
+            countdownCard
             dashIndicator
+            fieldSubText
             highlightedText
+            hilitCheckbox
+            hilitNavigationBar
+            hilitTextEditor
+            hilitTextField
             hilitToggle
+            infoField
+            modal
+            nameField
             parallelogram
             quoteField
             saveIndicator
             tabSelector
             tagLabel
+            titleBox
         }
     }
 
@@ -49,6 +63,15 @@ struct CatalogComponentView: View {
             HStack(spacing: .ds(.p8)) {
                 ChoiceChip("아쉬웠어요", isSelected: !chipSelection, tone: .negative) { chipSelection = false }
                 ChoiceChip("좋았어요", isSelected: chipSelection, tone: .positive) { chipSelection = true }
+            }
+        }
+    }
+
+    private var countdownCard: some View {
+        CatalogGroup("CountdownCard — .active / .ended") {
+            VStack(alignment: .leading, spacing: .ds(.p12)) {
+                CountdownCard(title: "title", subtitle: "sub-title", time: "00:00:00")
+                CountdownCard(title: "title", subtitle: "sub-title", time: "00:00:00", status: .ended)
             }
         }
     }
@@ -84,6 +107,35 @@ struct CatalogComponentView: View {
         }
     }
 
+    private var hilitCheckbox: some View {
+        CatalogGroup("HilitCheckboxStyle — Toggle(isOn:).toggleStyle(.hilitCheckbox)") {
+            VStack(alignment: .leading, spacing: .ds(.p8)) {
+                Toggle(isOn: $isChecked) { EmptyView() }
+                Toggle(isOn: .constant(false)) { EmptyView() }
+                Toggle(isOn: .constant(true)) { Text("라벨 동반").dsTypography(.body6) }
+            }
+            .toggleStyle(.hilitCheckbox)
+        }
+    }
+
+    private var hilitNavigationBar: some View {
+        CatalogGroup("HilitNavigationBar — icon / text / logo") {
+            VStack(spacing: 0) {
+                HilitNavigationBar(
+                    "타이틀",
+                    leading: .icon(Image.Cancel.default24) {},
+                    trailing: .icon(Image.Plus.default24) {}
+                )
+                HilitNavigationBar(
+                    "타이틀",
+                    leading: .icon(Image.Cancel.default24) {},
+                    trailing: .text("버튼") {}
+                )
+                HilitNavigationBar.logo(trailing: .icon(Image.Profile.default) {})
+            }
+        }
+    }
+
     private var hilitToggle: some View {
         CatalogGroup("HilitToggleStyle — Toggle(isOn:).toggleStyle(.hilit)") {
             VStack(alignment: .leading, spacing: .ds(.p8)) {
@@ -92,6 +144,47 @@ struct CatalogComponentView: View {
                 Toggle(isOn: .constant(true)) { Text("라벨 동반").dsTypography(.body6) }
             }
             .toggleStyle(.hilit)
+        }
+    }
+
+    private var infoField: some View {
+        CatalogGroup("InfoField — .gray / .error") {
+            VStack(alignment: .leading, spacing: .ds(.p12)) {
+                InfoField("텍스트를 입력해주세요")
+                InfoField("텍스트를 입력해주세요", style: .error)
+            }
+        }
+    }
+
+    private var modal: some View {
+        CatalogGroup("Modal — icon·subText·info 는 nil 로 숨김, 버튼은 슬롯") {
+            VStack(spacing: .ds(.p20)) {
+                Modal(
+                    "텍스트를 입력해주세요",
+                    subText: "서브텍스트를 입력해주세요",
+                    icon: Image.Img.book,
+                    info: "텍스트를 입력해주세요"
+                ) {
+                    ButtonLarge("버튼1", .modal) {}
+                }
+                Modal("정말 나가시겠어요?") {
+                    ButtonLarge(.modal, tone: .twoColor) {
+                        Button("취소") {}
+                    } trailing: {
+                        Button("나가기") {}
+                    }
+                }
+            }
+        }
+    }
+
+    private var nameField: some View {
+        CatalogGroup("NameField — status 는 입력값에서 파생(빈 값 / 입력됨)") {
+            VStack(spacing: .ds(.p16)) {
+                NameField("이름을 알려주세요", text: .constant(""))
+                NameField("이름을 알려주세요", text: $name)
+            }
+            .frame(maxWidth: .infinity)
         }
     }
 
@@ -159,6 +252,56 @@ struct CatalogComponentView: View {
                 TagLabel("선택")
                 TagLabel("좋았어요", foreground: Color.Positive.p800, background: Color.Positive.p200)
                 TagLabel("아쉬웠어요", foreground: Color.Error.e500, background: Color.Error.e200)
+            }
+        }
+    }
+}
+
+// 본체가 type_body_length(250줄) 를 넘어 입력 필드 3종 데모는 extension 으로 뺐다.
+// 표시 순서는 body 목록이 정하므로 여기 위치는 무관 — 새 데모도 본체가 차면 여기로.
+private extension CatalogComponentView {
+    var fieldSubText: some View {
+        CatalogGroup("FieldSubText — .info / .success / .error") {
+            VStack(alignment: .leading, spacing: .ds(.p8)) {
+                FieldSubText("서브 텍스트를 입력해주세요")
+                FieldSubText("서브 텍스트를 입력해주세요", status: .success)
+                FieldSubText("서브 텍스트를 입력해주세요", status: .error)
+            }
+        }
+    }
+
+    var hilitTextEditor: some View {
+        CatalogGroup("HilitTextEditor — 높이 158 고정 · maxLength 카운터") {
+            HilitTextEditor("텍스트를 입력해주세요", text: $editorText, maxLength: 300)
+        }
+    }
+
+    var hilitTextField: some View {
+        CatalogGroup("HilitTextField — 포커스 파생 · status 4종 · subText · maxLength") {
+            VStack(alignment: .leading, spacing: .ds(.p16)) {
+                HilitTextField("텍스트를 입력해주세요", text: $fieldText, subText: "서브 텍스트를 입력해주세요")
+                HilitTextField("텍스트를 입력해주세요", text: .constant(""), status: .loading("분석 중"))
+                HilitTextField("텍스트를 입력해주세요", text: .constant("입력한 텍스트"), status: .success, subText: "서브 텍스트를 입력해주세요")
+                HilitTextField("텍스트를 입력해주세요", text: .constant("입력한 텍스트"), status: .error, subText: "서브 텍스트를 입력해주세요")
+                HilitTextField("텍스트를 입력해주세요", text: $fieldText, maxLength: 300)
+            }
+        }
+    }
+
+    private static let titleLines: [TitleBox.Line] = [
+        .init("타이틀을 이렇게 적어주세요", highlight: "이렇게"),
+        .init("두 번째 줄은 이렇게 입력해주세요", highlight: "이렇게")
+    ]
+
+    var titleBox: some View {
+        CatalogGroup("TitleBox — alignment(.leading/.center) · 판은 .hilitSurface(_:)") {
+            VStack(spacing: .ds(.p20)) {
+                TitleBox(Self.titleLines, tag: "필수", sub: "서브 타이틀을 입력해주세요")
+                TitleBox(Self.titleLines, sub: "서브 타이틀을 입력해주세요", alignment: .center)
+                TitleBox(Self.titleLines, tag: "필수", sub: "서브 타이틀을 입력해주세요")
+                    .padding(.ds(.p16))
+                    .background(Color.HilitBlack.b900)   // 흰 글자라 어두운 판에서만 보인다
+                    .hilitSurface(.dark)
             }
         }
     }
