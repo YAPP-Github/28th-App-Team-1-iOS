@@ -8,6 +8,7 @@
 import AVFoundation
 import ComposableArchitecture
 import DomainRecordingInterface
+import DomainSpeechInterface
 import Testing
 
 @testable import FeatureInterviewImplementation
@@ -23,6 +24,7 @@ struct InterviewFeatureTests {
             InterviewFeature()
         } withDependencies: {
             $0.recordingClient.stopPreview = {}
+            $0.speechClient.stopCapture = {}
         }
 
         await store.send(.screen(.session(.delegate(.finished)))) {
@@ -55,6 +57,7 @@ struct InterviewFeatureTests {
             InterviewFeature()
         } withDependencies: {
             $0.recordingClient.stopPreview = {}
+            $0.speechClient.stopCapture = {}
         }
 
         await store.send(.screen(.readiness(.delegate(.prepFailed)))) {
@@ -62,38 +65,44 @@ struct InterviewFeatureTests {
         }
     }
 
-    @Test("카메라 화면을 떠나는 전환은 프리뷰를 정지한다")
-    func leavingCameraScreensStopsPreview() async {
-        let stopped = LockIsolated(0)
+    @Test("캡처 화면을 떠나는 전환은 카메라 프리뷰와 마이크 캡처를 정지한다")
+    func leavingCaptureScreensStopsDevices() async {
+        let previewStopped = LockIsolated(0)
+        let captureStopped = LockIsolated(0)
         var initialState = InterviewFeature.State(sessionId: 1)
         initialState.screen = .session(InterviewSessionFeature.State())
         let store = TestStore(initialState: initialState) {
             InterviewFeature()
         } withDependencies: {
-            $0.recordingClient.stopPreview = { stopped.withValue { $0 += 1 } }
+            $0.recordingClient.stopPreview = { previewStopped.withValue { $0 += 1 } }
+            $0.speechClient.stopCapture = { captureStopped.withValue { $0 += 1 } }
         }
 
         await store.send(.screen(.session(.delegate(.finished)))) {
             $0.screen = .reportPending(InterviewReportPendingFeature.State())
         }
         await store.finish()
-        #expect(stopped.value == 1)
+        #expect(previewStopped.value == 1)
+        #expect(captureStopped.value == 1)
     }
 
-    @Test("실패 화면 X(닫기)로 흐름을 떠날 때도 프리뷰를 정지하고 종료를 통보한다")
-    func closingFromFailureStopsPreview() async {
-        let stopped = LockIsolated(0)
+    @Test("실패 화면 X(닫기)로 흐름을 떠날 때도 캡처 장치를 정지하고 종료를 통보한다")
+    func closingFromFailureStopsDevices() async {
+        let previewStopped = LockIsolated(0)
+        let captureStopped = LockIsolated(0)
         var initialState = InterviewFeature.State(sessionId: 1)
         initialState.screen = .failure(InterviewFailureFeature.State(kind: .questionPrep))
         let store = TestStore(initialState: initialState) {
             InterviewFeature()
         } withDependencies: {
-            $0.recordingClient.stopPreview = { stopped.withValue { $0 += 1 } }
+            $0.recordingClient.stopPreview = { previewStopped.withValue { $0 += 1 } }
+            $0.speechClient.stopCapture = { captureStopped.withValue { $0 += 1 } }
         }
 
         await store.send(.screen(.failure(.delegate(.closeRequested))))
         await store.receive(\.delegate.closed)
         await store.finish()
-        #expect(stopped.value == 1)
+        #expect(previewStopped.value == 1)
+        #expect(captureStopped.value == 1)
     }
 }
