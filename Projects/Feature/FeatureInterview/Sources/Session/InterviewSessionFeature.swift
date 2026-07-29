@@ -9,23 +9,11 @@ import ComposableArchitecture
 import DomainRecordingInterface
 
 // @lat: [[interview#세션]]
-/// Part 2 «10분 음성 면접» 진행 화면 — 단일 화면 + 턴 상태머신 (docs/work/ai-interview.md §6).
-/// Figma «[2] Interview_InProgress_Question»(2529:6309) · «…_Answering»(2537:9397 · 2638:1750) ·
-/// «…_ExitButtonShown»(2537:9442) · «…_FinalCountdown»(2537:9525) · «…_ExitConfirm»(2555:7696).
-///
-/// 이 단계는 화면 상태머신까지 — 세션 시계(1초 틱)·8분 종료 해금·최종 카운트다운·토스트·종료 확인을
-/// 구현한다. TTS/STT 는 SpeechClient(예정) 도입 시 effect 로 배선한다:
-/// asking→answering 전환(questionPlaybackFinished)·침묵 판정·STT 실패 집계(failureDetected)가 그 대상.
 @Reducer
 public struct InterviewSessionFeature {
-    /// 세션 시계 틱 — 화면 표기는 초 단위(m:ss)라 1초. 침묵 판정 등 세밀 임계는 SpeechClient 배선 시 재검토.
     static let clockTick: Duration = .seconds(1)
-    /// 수동 종료 해금 시점 — 8:00 (기획 «8분 경과 시 종료 가능»).
     static let exitUnlockSeconds = 8 * 60
-    /// 세션 상한 — hard cap 12:00 에 무조건 종료 (PRD §3.6). «12분» 숫자는 어떤 화면에도 노출하지 않는다(§3.10).
-    /// 사용자 노출 시간은 «약 10분», 랩업 8:45(새 질문 금지)는 서버 신호 — 작업 C 배선.
     static let hardCapSeconds = 12 * 60
-    /// 종료 전 최종 카운트다운 길이 — 상한 10초 전부터 빨간 칩으로 초읽기.
     static let finalCountdownSeconds = 10
     /// 8분 해금 안내 토스트 유지 시간.
     static let exitNoticeHold: Duration = .seconds(3)
@@ -37,9 +25,7 @@ public struct InterviewSessionFeature {
     public struct State: Equatable {
         /// 턴 표시 상태 — View 는 이 값(+토스트)만 그린다. 질문 텍스트는 노출하지 않는다(TTS-only).
         public enum Phase: Equatable, Sendable {
-            /// 질문 TTS 재생 중 — «질문 듣는 중»
             case asking
-            /// 답변 녹음 중 — «답변 녹음 중» + 답변 완료하기
             case answering
             /// 답변 확정 직후 — «답변을 정리하고 있어요» (PRD §3.5 칩 3종). 되돌리지 않는다.
             case processingAnswer
@@ -47,11 +33,8 @@ public struct InterviewSessionFeature {
             case finalCountdown
         }
 
-        /// 하단 밴드에 뜨는 안내 토스트 — 떠 있는 동안 상태 칩을 가린다 (Figma 프레임 구성 준수).
         public enum Toast: Equatable, Sendable {
-            /// 8분 경과 — 종료 버튼 해금 안내. 꼬리가 종료 버튼을 가리킨다.
             case exitUnlocked
-            /// 상한 도달 — 최종 카운트다운과 함께 상시 유지.
             case timeExpired
 
             public var message: String {
@@ -61,7 +44,6 @@ public struct InterviewSessionFeature {
                 }
             }
 
-            /// 말풍선 꼬리 노출 여부 — 종료 버튼 안내만 꼬리로 버튼을 가리킨다.
             public var hasTail: Bool { self == .exitUnlocked }
         }
 
@@ -99,15 +81,12 @@ public struct InterviewSessionFeature {
         /// 사용자 입력·생명주기. View 의 send(...) 로만 방출된다.
         public enum View: Equatable, Sendable {
             case onAppear
-            /// «답변 완료하기» — 답변 제출 후 다음 질문으로.
             case userTappedAnswerComplete
             /// 좌상단 X — 8분 전엔 중도 이탈 경고, 8분 후엔 종료 확인 모달. (이탈 동선 표기는 «협의 가능» — 임시 X)
             case userTappedClose
             /// 중도 이탈 경고 «나가기» — 차감 감수하고 이탈. 서버가 그때까지의 턴을 보존한다.
             case userTappedLeaveInterview
-            /// «면접 종료하기» — 종료 확인 모달 표출.
             case userTappedExit
-            /// 종료 확인 모달 «계속하기».
             case userTappedContinueInterview
             /// 종료 확인 모달 «마치기» — 즉시 종료, 지금까지 답변으로 분석.
             case userTappedFinishInterview
@@ -131,10 +110,8 @@ public struct InterviewSessionFeature {
             case failureDetected(InterviewFailureKind)
         }
 
-        /// 부모(코디네이터) 통보. 부모는 이것만 매칭한다 (D1).
         @CasePathable
         public enum Delegate: Equatable, Sendable {
-            /// 정상 종료(시간 만료·수동 마치기) — 지금까지 답변으로 분석 시작. Part 3 전환은 상위 몫.
             case finished
             /// 중도 이탈·세션 무결성 훼손 — 그때까지의 턴은 서버가 보존한다(차감 D1, PRD §3.7). 클라는 이탈 신호만.
             case aborted
