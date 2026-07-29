@@ -79,7 +79,7 @@ struct CatalogComponentView: View {
                     .hilightFill(.underlined)
                 HighlightedText("아이콘을 앞에 붙여요", typography: .sub4)
                     .hilight("아이콘")
-                    .hilightIcon(Image.Ai.green)
+                    .hilightIcon(Image.Ai.green24)
             }
         }
     }
