@@ -7,6 +7,8 @@
 
 import ComposableArchitecture
 import DomainRecordingInterface
+import DomainSpeechInterface
+import OSLog
 
 // @lat: [[interview#세션]]
 @Reducer
@@ -120,10 +122,14 @@ public struct InterviewSessionFeature {
         }
     }
 
-    private enum CancelID { case clock, toast, processing }
+    private enum CancelID { case clock, toast, processing, micCapture }
+
+    /// 마이크 검증 로그 — 실기기에서 레벨·발화 감지를 눈으로 확인하는 용도 (docs/superpowers/specs/2026-07-29-mic-capture-design.md).
+    static let micLogger = Logger(subsystem: "FeatureInterview", category: "MicCapture")
 
     @Dependency(\.continuousClock) var clock
     @Dependency(\.recordingClient) var recordingClient
+    @Dependency(\.speechClient) var speechClient
 
     public init() {}
 
@@ -156,7 +162,24 @@ public struct InterviewSessionFeature {
                         await send(.inner(.clockTicked))
                     }
                 }
-                .cancellable(id: CancelID.clock)
+                .cancellable(id: CancelID.clock),
+                // 마이크 캡처 — 세션 전구간 로그 검증(State 무변화). STT 도입 시 이 자리에서
+                // 이벤트를 inner 액션으로 승격한다. 정지는 코디네이터 stopCaptureDevices + 취소 양쪽.
+                .run { _ in
+                    for await event in await speechClient.startCapture() {
+                        switch event {
+                        case let .level(decibels):
+                            Self.micLogger.info("입력 레벨 \(decibels, format: .fixed(precision: 1), align: .right(columns: 6)) dBFS")
+                        case .speechStarted:
+                            Self.micLogger.notice("음성 감지 시작")
+                        case .speechEnded:
+                            Self.micLogger.notice("음성 감지 종료")
+                        case let .captureFailed(reason):
+                            Self.micLogger.error("마이크 캡처 시작 실패: \(reason)")
+                        }
+                    }
+                }
+                .cancellable(id: CancelID.micCapture)
             )
 
         case .userTappedAnswerComplete:
@@ -183,6 +206,7 @@ public struct InterviewSessionFeature {
                 .cancel(id: CancelID.clock),
                 .cancel(id: CancelID.toast),
                 .cancel(id: CancelID.processing),
+                .cancel(id: CancelID.micCapture),
                 .send(.delegate(.aborted))
             )
 
@@ -232,6 +256,7 @@ public struct InterviewSessionFeature {
                 .cancel(id: CancelID.clock),
                 .cancel(id: CancelID.toast),
                 .cancel(id: CancelID.processing),
+                .cancel(id: CancelID.micCapture),
                 .send(.delegate(.failed(kind)))
             )
         }
@@ -276,6 +301,7 @@ public struct InterviewSessionFeature {
             .cancel(id: CancelID.clock),
             .cancel(id: CancelID.toast),
             .cancel(id: CancelID.processing),
+            .cancel(id: CancelID.micCapture),
             .send(.delegate(.finished))
         )
     }

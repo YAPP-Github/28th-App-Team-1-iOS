@@ -11,6 +11,7 @@ let project = Project.makeModule(
             .domain(interface: .interview),
             .domain(interface: .permission),
             .domain(interface: .recording),
+            .domain(interface: .speech),
             .shared(interface: .designSystem)
         ])),
         .feature(testing: "Interview"),
@@ -20,7 +21,8 @@ let project = Project.makeModule(
             .composableArchitecture,
             .domain(interface: .interview),
             .domain(interface: .permission),
-            .domain(interface: .recording)
+            .domain(interface: .recording),
+            .domain(interface: .speech)
         ])),
         .feature(example: "Interview", factory: .init(
             // 기본 example plist(feature(example:) 팩토리)를 오버라이드하므로 기본 키를 함께 유지한다.
@@ -40,7 +42,9 @@ let project = Project.makeModule(
                 // 권한만 실물 IO — 준비 화면의 요청→거부 alert→설정 이동 흐름 검증용 (liveValue 활성화).
                 .project(target: "DomainPermissionImplementation", path: .domain(.permission)),
                 // 카메라 프리뷰 실물 IO — 실기기에서 전면 카메라 프리뷰 검증용 (liveValue 활성화).
-                .project(target: "DomainRecordingImplementation", path: .domain(.recording))
+                .project(target: "DomainRecordingImplementation", path: .domain(.recording)),
+                // 마이크 캡처 실물 IO — 세션 화면 레벨·발화 로그 검증용 (liveValue 활성화).
+                .project(target: "DomainSpeechImplementation", path: .domain(.speech))
             ]
         )),
     ]

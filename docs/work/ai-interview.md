@@ -65,7 +65,7 @@ Session --delegate(.aborted)-----------------▶ AppFeature --dismiss (턴은 �
 | **JDClient** (DomainJD) | JD 링크 크롤링·정제·**서버 캐싱** (S1은 캐싱만 — 분석은 세션 생성 시, PRD §3.1) | `validate(url)→JDValidation` — reason: `CRAWLING_FAILED`·`CONTENT_TOO_SHORT`·`EXTRACTION_FAILED` | S1 | ✅ |
 | **PortfolioClient** (DomainPortfolio) | PDF 등록(202)·상태 폴링·목록(재설치 복구)·삭제 | `register(PortfolioUpload)→PortfolioProcessing` · `status(id)` · `list()→[Portfolio]` · `delete(id)` | S2·설정 | ✅ |
 | **InterviewClient** (DomainInterview) | 세션 생성(= S0~S3 **일괄 수집** + 연관성 검사, PRD §3.8)·준비 폴링·답변 제출·질문 오디오 | `createSession(InterviewConfig)→202` · `sessionStatus(id)` · `submitAnswer` · `questionAudioStream` | S3.5/S4·Part2 | ✅ |
-| **SpeechClient** | 음성 입출력 | `speak(text)→AsyncStream<TTSEvent>` · `transcribe()→AsyncStream<Transcript>` (partial/final + **confidence**) · `stop()` | Part2 | 예정 |
+| **SpeechClient** (DomainSpeech) | 음성 입출력 | 현재 `startCapture()→AsyncStream<SpeechCaptureEvent>` · `stopCapture()` — 예정: `speak(text)→AsyncStream<TTSEvent>` · `transcribe()→AsyncStream<Transcript>` (partial/final + **confidence**) | Part2 | 마이크 캡처(레벨·발화 로그) ✅ · TTS/STT 예정(작업 B) |
 | **PermissionClient** (DomainPermission) | 카메라·마이크 권한 — **iOS 는 사용 시점 요청**(PRD §8, 심사 리젝 방지) + 설정 유도 | `status(MediaPermission)` · `request(MediaPermission)→Bool` · `openSettings()` | 준비 화면(P0) | ✅ |
 | **RecordingClient** (DomainRecording) | 전면 카메라 프리뷰 + A/V 캡처·30일 보존(골격) | `startPreview()→CameraPreviewHandle?` · `stopPreview()` · `startRecording(sessionId)` · `stopRecording()→RecordingRef` | P0·P1·P4 | 프리뷰 ✅ · 녹화는 골격만(작업 B) |
 | **ScoringClient** | 세션 제출·보고서 → [ai-interview-report](ai-interview-report.md) | `submit(session)` · `report(id)→Report` | P4·Part3 | 예정 |
@@ -247,7 +247,8 @@ v3 로 **닫힌** 논의(초안 미결 → 해소): 재시도/멱등성(전면 �
    **화면 골격 ✅ (2026-07-25, FeatureInterview 모듈)** — 준비(카메라 확인·가이드)→세션(시계·8분 해금·최종 카운트다운·종료 확인)→실패 화면 상태머신 + 코디네이터, 세션 시계는 TestClock 테스트 고정.
    권한(Permission) 준비 화면 게이트 ✅(2026-07-27) · **PRD v3 화면 정합 ✅(2026-07-27)** — 타이밍 12:00·상태 칩 3종·질문 준비 폴링 게이트·실패 3종·중도 이탈 경고·리포트 대기(§6 «PRD v3 정합 현황»).
    카메라 프리뷰 ✅ (2026-07-28, DomainRecording) — 준비·세션 화면 실동작, aligning→ready 는 «최소 유지+프리뷰 해소» 이중 게이트, 이탈 시 코디네이터가 정지. backdrop 은 InterviewView 상주(2026-07-29 — 화면 교체 시 프리뷰 레이어 재생성으로 끊겨 보이던 문제 해소). 상세 [[interview#프리뷰]](lat.md/interview.md).
-   잔여 🔴: Speech Client 배선(TTS·STT·발화 감지·침묵 10초·사고 5초·마무리 멘트)·실녹화(`RecordingClient.startRecording` = 작업 B), 서버 턴 루프(`submitAnswer`·랩업 8:45·자연 종료 = 작업 C), AppFeature 배선(sessionId payload = 작업 D). 상세 [[interview#면접 흐름]](lat.md/interview.md)
+   마이크 캡처 ✅ (2026-07-29, DomainSpeech) — 세션 전구간 레벨(1초)·발화 감지 로그로 마이크 동작 검증, STT 는 Implementation 교체 seam 만 마련. 상세 [[interview#음성 캡처]](lat.md/interview.md).
+   잔여 🔴: Speech Client 배선(TTS·STT·침묵 10초·사고 5초·마무리 멘트)·실녹화(`RecordingClient.startRecording` = 작업 B), 서버 턴 루프(`submitAnswer`·랩업 8:45·자연 종료 = 작업 C), AppFeature 배선(sessionId payload = 작업 D). 상세 [[interview#면접 흐름]](lat.md/interview.md)
 5. **PortfolioFeature**(설정 관리) — `list`/`delete` 재사용
 6. **AppFeature 배선** — Onboarding delegate(.finished/.dismiss) 수신 + Session/Report fullScreenCover 체인
 7. **InterviewReportFeature** stub → Part 3 본격화

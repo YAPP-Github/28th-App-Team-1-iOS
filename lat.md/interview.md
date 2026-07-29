@@ -64,9 +64,19 @@ Figma 2479:7569 · 2514:12754 · 2514:12799 · 2529:458.
 - backdrop 을 각 화면에 두고 State 시드로 핸들만 이어줘도 전환 시 카메라가 끊겨 보인다(실기기 확인) — `AVCaptureVideoPreviewLayer` 가 화면 교체와 함께 파괴·재생성되기 때문. 그래서 backdrop 은 코디네이터 뷰 상주, 핸들·스크림·모달 배경 블러는 화면 State 에서 파생만 한다(시작 전환 핸들 시드·onAppear 재요청은 백스톱으로 유지).
 - 녹화(`startRecording`/`stopRecording`)는 시그니처만 확정된 골격 — 실구현·호출처는 작업 B. liveValue 는 `RecordingError.notImplemented` 를 던진다.
 - 정지 지점: 준비→실패, 세션→리포트 대기, 세션→실패, 세션 중도 이탈. 재진입은 Readiness onAppear 가 다시 켠다.
-- Scope-on-enum 코디네이터는 화면 교체 시 자식 effect 를 취소하지 않는다 — readiness 의 프리뷰 시작 effect 가 화면 교체를 넘겨 살아남을 수 있어, 흐름 이탈(aborted·closeRequested)은 정지 완료 후 상위 통보로 순서를 보장한다(`stopPreviewThenNotifyClosed`).
+- Scope-on-enum 코디네이터는 화면 교체 시 자식 effect 를 취소하지 않는다 — readiness 의 프리뷰 시작 effect 가 화면 교체를 넘겨 살아남을 수 있어, 흐름 이탈(aborted·closeRequested)은 정지 완료 후 상위 통보로 순서를 보장한다(`stopCaptureDevicesThenNotifyClosed` — 마이크 캡처도 함께 정지, [[interview#음성 캡처]]).
 - 백그라운드 전환은 iOS 의 AVCaptureSession 인터럽션 자동 복구(비디오 전용 세션)에 맡긴다.
 - 브래킷 프레임 Figma color-burn 블렌드는 실기기 프리뷰 육안 확인 후 재검토(미결).
+
+## 음성 캡처
+
+`DomainSpeech`(SpeechClient) 가 AVAudioEngine 마이크 캡처를 actor 로 소유한다. 세션 화면이 전구간 이벤트 스트림을 구독해 로그로 마이크 동작을 검증한다 — STT 도입 전 검증 슬라이스(설계: docs/superpowers/specs/2026-07-29-mic-capture-design.md). 정지는 세션 effect 취소 + 코디네이터 `stopCaptureDevices` 이중.
+
+- 이벤트: `level`(1초 윈도 피크 dBFS) · `speechStarted`(−35 dBFS 상향 돌파) · `speechEnded`(−45 미만 1초 지속 — 히스테리시스) · `captureFailed`. 임계 상수는 실기기 튜닝 여지.
+- STT 교체 seam: Interface 에 transcription 엔드포인트를 추가하고 Implementation 이 같은 tap 버퍼를 STT 엔진에 공급 — 소비처(세션 Reducer)는 이벤트 매칭만 확장.
+- 소비처는 로그만(State 무변화, `os.Logger` category `MicCapture`) — STT 도입 시 inner 액션으로 승격.
+- AVAudioSession 은 `.playAndRecord` — 추후 질문 TTS 재생과 마이크 캡처를 한 세션에서 쓴다. 카메라 AVCaptureSession(비디오 전용)과 무충돌.
+- 엔진 정지는 스트림 onTermination(effect 취소 시)과 `stopCapture`(코디네이터) 양쪽에서 보장 — 둘 다 멱등.
 
 ## 세션
 

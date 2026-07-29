@@ -8,6 +8,7 @@
 import AVFoundation
 import ComposableArchitecture
 import DomainRecordingInterface
+import DomainSpeechInterface
 import Testing
 
 @testable import FeatureInterviewImplementation
@@ -25,12 +26,34 @@ struct InterviewSessionFeatureTests {
         } withDependencies: {
             $0.continuousClock = clock
             $0.recordingClient.startPreview = { handle }
+            $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
         }
         store.exhaustivity = .off   // 세션 시계는 기존 테스트가 고정 — 여기선 핸들 확보만 본다.
 
         await store.send(.view(.onAppear))
         await store.skipReceivedActions()
         #expect(store.state.previewHandle == handle)
+    }
+
+    @Test("진입 시 마이크 캡처 스트림을 구독한다 — 레벨·발화 로그 검증 배선")
+    func onAppearStartsMicCapture() async {
+        let clock = TestClock()
+        let captureStarted = LockIsolated(false)
+        let store = TestStore(initialState: InterviewSessionFeature.State()) {
+            InterviewSessionFeature()
+        } withDependencies: {
+            $0.continuousClock = clock
+            $0.recordingClient.startPreview = { nil }
+            $0.speechClient.startCapture = {
+                captureStarted.setValue(true)
+                return AsyncStream { $0.finish() }
+            }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.view(.onAppear))
+        await store.skipReceivedActions()
+        #expect(captureStarted.value)
     }
 
     @Test("8분 경과 시 종료가 해금되고 안내 토스트가 떴다가 사라진다")
@@ -41,6 +64,7 @@ struct InterviewSessionFeatureTests {
         } withDependencies: {
             $0.continuousClock = clock
             $0.recordingClient.startPreview = { nil }
+            $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
         }
         store.exhaustivity = .off   // 1초 틱 480회를 개별 검증하지 않는다.
 
@@ -66,6 +90,7 @@ struct InterviewSessionFeatureTests {
         } withDependencies: {
             $0.continuousClock = clock
             $0.recordingClient.startPreview = { nil }
+            $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
         }
         store.exhaustivity = .off
 
@@ -157,6 +182,7 @@ struct InterviewSessionFeatureTests {
         } withDependencies: {
             $0.continuousClock = clock
             $0.recordingClient.startPreview = { nil }
+            $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
         }
         store.exhaustivity = .off
 
