@@ -22,7 +22,6 @@ public struct OnboardingJobSelectionView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            navigationBar
             progressBar
             ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
@@ -36,25 +35,8 @@ public struct OnboardingJobSelectionView: View {
             continueButton
         }
         .background(Color.BlackWhite.white.ignoresSafeArea())
-        .navigationBarBackButtonHidden(true)
+        .hilitNavigationBar(leading: .icon(Image.Cancel.default24) { send(.userTappedClose) })
         .onAppear { send(.onAppear) }
-    }
-
-    private var navigationBar: some View {
-        HStack(spacing: 0) {
-            Button {
-                send(.userTappedClose)
-            } label: {
-                Image.Cancel.default24
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
-            }
-            .buttonStyle(.plain)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 24)
-        .frame(height: 54)
     }
 
     private var progressBar: some View {

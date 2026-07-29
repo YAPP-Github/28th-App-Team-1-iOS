@@ -21,7 +21,6 @@ public struct OnboardingJDLinkView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            navigationBar
             progressBar
             ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
@@ -39,16 +38,14 @@ public struct OnboardingJDLinkView: View {
         }
         .background(Color.BlackWhite.white.ignoresSafeArea())
         .dismissesKeyboardOnTap()
-        .navigationBarBackButtonHidden(true)
+        .hilitNavigationBar(
+            leading: .icon(Image.Cancel.default24) { send(.userTappedClose) },
+            allowsSwipeBack: false
+        )
         .onAppear { send(.onAppear) }
     }
 
-    // MARK: - 공통 골격 (STEP 1 과 동일 — 내비바·프로그레스 바)
-
-    /// 내비바 — X(닫기)만. 뒤로가기는 하단 «이전으로» 버튼이 담당한다 (Figma 1899:5866).
-    private var navigationBar: some View {
-        HilitNavigationBar(leading: .icon(Image.Cancel.default24) { send(.userTappedClose) })
-    }
+    // MARK: - 공통 골격 (STEP 1 과 동일 — 프로그레스 바)
 
     private var progressBar: some View {
         HStack(spacing: 2) {

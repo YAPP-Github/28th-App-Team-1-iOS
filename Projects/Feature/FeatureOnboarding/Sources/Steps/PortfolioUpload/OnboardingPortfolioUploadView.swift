@@ -26,7 +26,6 @@ public struct OnboardingPortfolioUploadView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            navigationBar
             progressBar
             ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
@@ -40,7 +39,10 @@ public struct OnboardingPortfolioUploadView: View {
             bottomBar
         }
         .background(Color.BlackWhite.white.ignoresSafeArea())
-        .navigationBarBackButtonHidden(true)
+        .hilitNavigationBar(
+            leading: .icon(Image.Cancel.default24) { send(.userTappedClose) },
+            allowsSwipeBack: false
+        )
         .fileImporter(
             isPresented: $store.isFileImporterPresented,
             allowedContentTypes: [.pdf]
@@ -86,10 +88,6 @@ public struct OnboardingPortfolioUploadView: View {
     }
 
     // MARK: - 공통 골격 (STEP 1 과 동일)
-
-    private var navigationBar: some View {
-        HilitNavigationBar(leading: .icon(Image.Cancel.default24) { send(.userTappedClose) })
-    }
 
     private var progressBar: some View {
         HStack(spacing: 2) {

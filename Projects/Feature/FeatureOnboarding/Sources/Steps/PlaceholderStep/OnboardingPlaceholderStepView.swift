@@ -21,7 +21,6 @@ public struct OnboardingPlaceholderStepView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            navigationBar
             progressBar
             Spacer()
             Text(store.title)
@@ -35,33 +34,11 @@ public struct OnboardingPlaceholderStepView: View {
             continueButton
         }
         .background(Color.BlackWhite.white.ignoresSafeArea())
-        .navigationBarBackButtonHidden(true)
-    }
-
-    private var navigationBar: some View {
-        HStack(spacing: 0) {
-            Button {
-                send(.userTappedBack)
-            } label: {
-                Image.Left.default
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
-            }
-            .buttonStyle(.plain)
-            Spacer(minLength: 0)
-            Button {
-                send(.userTappedClose)
-            } label: {
-                Image.Cancel.default24
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 24)
-        .frame(height: 54)
+        .hilitNavigationBar(
+            leading: .icon(Image.Left.default) { send(.userTappedBack) },
+            trailing: .icon(Image.Cancel.default24) { send(.userTappedClose) },
+            allowsSwipeBack: false
+        )
     }
 
     private var progressBar: some View {
