@@ -5,6 +5,8 @@
 //  Created by EunseoKim on 26/07/23.
 //
 
+import DomainCommonInterface
+
 /// Feedback Share API 에러 — State 가 다르게 반응해야 하는 경우의 수만큼만 둔다.
 /// 서버 코드 ↔ 케이스 매핑 표는 [[api#Feedback Share]].
 public enum FeedbackShareError: Error, Equatable, Sendable {
@@ -24,4 +26,20 @@ public enum FeedbackShareError: Error, Equatable, Sendable {
     case networkFailure
     case serverUnavailable
     case unexpected
+}
+
+// MARK: - 서버 코드 매핑 (공통 규칙·토큰 만료는 DomainAPIError 가 처리)
+
+extension FeedbackShareError: DomainAPIError {
+    public init?(serverCode code: String, message: String) {
+        switch code {
+        case "FEEDBACK_SHARE_NOT_FOUND": self = .shareNotFound
+        case "INTERVIEW_SESSION_NOT_FOUND": self = .sessionNotFound
+        case "FEEDBACK_SHARE_ALREADY_EXISTS": self = .alreadyExists
+        case "INVALID_SHARE_STATUS": self = .invalidStatusTransition
+        case "EMPTY_ATTITUDE_AXES", "TOO_MANY_ATTITUDE_AXES", "INVALID_ATTITUDE_AXIS":
+            self = .invalidAxes(message: message)
+        default: return nil
+        }
+    }
 }

@@ -32,10 +32,6 @@ private struct DSTypographyModifier: ViewModifier {
 }
 
 private extension DSTypography {
-    /// 렌더링 폰트의 고유 행간. 폰트 리소스 부재 시 같은 크기의 시스템 폰트로 폴백.
-    var intrinsicLineHeight: CGFloat {
-        _ = Pretendard.registerOnce
-        let font = UIFont(name: weight.postScriptName, size: size) ?? .systemFont(ofSize: size)
-        return font.lineHeight
-    }
+    /// 렌더링 폰트의 고유 행간. 생성 접근자가 미등록 시 등록까지 처리하므로 별도 부트스트랩이 없다.
+    var intrinsicLineHeight: CGFloat { weight.asset.font(size: size).lineHeight }
 }

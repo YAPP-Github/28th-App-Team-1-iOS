@@ -42,7 +42,7 @@ public struct SaveIndicator: View {
     private func label(_ text: String) -> some View {
         Text(text)
             .dsTypography(.body8)
-            .foregroundStyle(Color.Gray.g500)
+            .foregroundStyle(Color.GrayScale.g500)
     }
 }
 

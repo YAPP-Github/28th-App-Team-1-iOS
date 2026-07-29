@@ -32,7 +32,7 @@ struct GuestNicknameView: View {
             nameField
             Spacer(minLength: .ds(.p12))
 
-            PrimaryButton("다음") {
+            ButtonLarge("다음", .bottom) {
                 send(.nicknameNextTapped)
             }
             // 시안2: 이름을 입력해야 다음으로 — 빈 입력은 회색 비활성(ButtonLarge color=disabled).
@@ -50,18 +50,13 @@ struct GuestNicknameView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text("레포트에 표시될 당신의")
                     .dsTypography(.head4)
-                    .foregroundStyle(Color.Gray.g900)
-                HStack(spacing: 0) {
-                    // 그린 형광펜 마커 — DS HighlightedText(Figma highlighted-text), 온보딩과 동일.
-                    HighlightedText("이름", typography: .head4)
-                    Text("을 알려주세요")
-                        .dsTypography(.head4)
-                        .foregroundStyle(Color.Gray.g900)
-                }
+                    .foregroundStyle(Color.GrayScale.g900)
+                // 그린 형광펜 마커 — DS HighlightedText(Figma highlighted-text), 온보딩과 동일.
+                HighlightedText("이름을 알려주세요", typography: .head4).hilight("이름")
             }
             Text("이름은 피드백 레포트에만 반영이 됩니다")
                 .dsTypography(.body3)
-                .foregroundStyle(Color.Gray.g500)
+                .foregroundStyle(Color.GrayScale.g500)
         }
     }
 
@@ -75,11 +70,11 @@ struct GuestNicknameView: View {
                 // prompt 는 비어 있을 때만 — 남겨두면 입력 후에도 TextField 이상적 폭이 플레이스홀더
                 // 폭으로 잡혀, hug 되는 밑줄이 텍스트 길이를 따라가지 못한다(시안2 는 텍스트 폭 밑줄).
                 prompt: store.nickname.isEmpty
-                    ? Text("이름을 알려주세요").foregroundStyle(Color.Gray.g500)
+                    ? Text("이름을 알려주세요").foregroundStyle(Color.GrayScale.g500)
                     : nil
             )
             .dsTypography(.head4)
-            .foregroundStyle(Color.Gray.g900)
+            .foregroundStyle(Color.GrayScale.g900)
             .multilineTextAlignment(.center)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
@@ -91,7 +86,7 @@ struct GuestNicknameView: View {
             }
             // outline-large(4pt) 밑줄 — 입력 전 gray100(dsSeparator), 입력 시 green600(Figma 시안2 8636).
             Rectangle()
-                .fill(store.nickname.isEmpty ? Color.Gray.g100 : Color.HilitGreen.g600)
+                .fill(store.nickname.isEmpty ? Color.GrayScale.g100 : Color.HilitGreen.g600)
                 .frame(height: .ds(.large))
         }
         // Figma NameField(node 2192:5330)는 내용 폭만큼 hug — 밑줄이 텍스트를 따라가고 패널 중앙에 놓인다.
