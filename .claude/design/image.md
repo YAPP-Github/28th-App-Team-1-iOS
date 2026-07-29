@@ -40,14 +40,13 @@ Image.Img.micError           // 일러스트 — 크기·변형 없이 이름만
 | `Left` / `Right` | 쉐브론 ‹ / › | 뒤로·앞으로 |
 | `Loading` | 진행 링(ing)·대기 링(wait)·체크 원(success) | 단계 진행 표시 |
 | `Logo` | kakao 말풍선(노랑)·apple 사과 — with-bg/no-bg | 소셜 로그인 |
-| `Pause` | 세로 막대 2개 ‖ (그린 글리프) | 플레이어 일시정지 |
-| `Play` | 재생 삼각형 ▷ | 영상 재생 |
+| `Pause` | 세로 막대 2개 ‖ | 재생 중 표시 — 누르면 멈춤 |
+| `Play` | 막대 + 속 빈 삼각형 ▷ | 멈춘 상태 표시 — 누르면 재생 |
 | `Plus` | + | 추가 |
 | `Profile` | 사람 실루엣 | 프로필 |
 | `Q` | 사각 안 Q | 질문 표시 |
 | `Script` | 가로줄 3개 (대본) | 대본·스크립트 토글 |
 | `SkipL` / `SkipR` | ◁+막대 / 막대+▷ | 되감기·빨리감기 |
-| `Stop` | 세로 막대 2개 ‖ | 일시정지·정지 |
 | `Success` | 원 안 체크 (초록 = green 변형) | 완료·성공 |
 | `Timer` | 스톱워치 | 시간 제한 |
 | `Undo` | 반시계 화살표 ↺ | 되돌리기 |
@@ -56,6 +55,8 @@ Image.Img.micError           // 일러스트 — 크기·변형 없이 이름만
 | `Img` | 일러스트 — book(책)·link(사슬)·micError(다크 타일+마이크+빨간 배지)·networkError(다크 타일+네트워크)·tooltipTail(말풍선 꼬리 97×11)·tooltipTailDark(다크 꼬리 gray900) | 빈 상태·에러 화면·말풍선 |
 
 **주의 — Figma 와 이름이 다른 곳**: `Loading` 3종(`successGreen24`·`ingGreen24`·`successDark24`)은 Figma 원본 이름이 엉켜 있어(동명 2개·variant 문자열 노출) 그림 내용으로 명명했다 — Figma 에서 같은 이름을 찾지 말 것(디자이너 정리 요청 중). `Img.tooltipTail` 은 Figma «icon» 시트에 없는 별도 에셋이다.
+
+**주의 — `Pause`/`Play` 는 Figma 이름을 따르지 않는다**: Figma 는 세로 막대 2개를 «play», 재생 삼각형을 «stop» 으로 불러 이름과 그림이 뒤집혀 있다. 토큰은 **그림 기준**으로 다시 담았다 — 막대 2개 = `Pause`(green34·dark34·default24), 삼각형 = `Play`(같은 3종). «stop» 계열은 없앴다(정지 ■ 글리프는 애초에 없다). Figma 에서 같은 이름을 찾지 말 것 — 디자이너 정정 요청 대상.
 
 ## 구현 노트
 
