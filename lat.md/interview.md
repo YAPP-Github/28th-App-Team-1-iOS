@@ -22,7 +22,7 @@ Interface 에 계약 + `testValue`(unimplemented) + `previewValue`(샘플), Impl
 
 Part 2 «10분 음성 면접» 화면군 (`FeatureInterview`, Figma «[2] Interview_*» 프레임). 준비 → 세션 → 리포트 대기 / 실패의 단일 흐름이며 화면 전환은 전부 [[interview#코디네이터]] 담당. 설계 근거·남은 배선(TTS/STT·녹화)은 [ai-interview](../docs/work/ai-interview.md) §6.
 
-화면·타이밍·문구는 Part 2 PRD v3 에 정합된 상태(2026-07-27) — 카메라 프리뷰는 placeholder(`InterviewCameraBackdrop` seam), 음성 입출력은 inner 액션 seam, 서버 턴 루프(`submitAnswer`)는 mock 지연이다.
+화면·타이밍·문구는 Part 2 PRD v3 에 정합된 상태(2026-07-27) — 카메라 프리뷰는 실동작(DomainRecording, [[interview#프리뷰]]), 음성 입출력은 inner 액션 seam, 서버 턴 루프(`submitAnswer`)는 mock 지연이다.
 
 ## 코디네이터
 
@@ -53,8 +53,19 @@ Figma 2479:7569 · 2514:12754 · 2514:12799 · 2529:458.
 - 질문 준비(preload, PRD §3.2)는 `InterviewClient.sessionStatus` 3초 폴링(온보딩 분석 스텝과 같은 주기). READY/FAILED 에서 스스로 멈추고, 그 사이 네트워크 에러는 `try?` 로 삼켜 다음 틱 재시도 — «시스템이 알아서 다시 시도» 가 폴링 지속이라 클라 타임아웃도 재시도 버튼도 없다. 최종 실패는 서버 FAILED 만 신뢰한다.
 - 준비 중(preparing)엔 시작 버튼 비활성 — 리듀서도 `questionPrep == .ready` 를 재확인해 레이스를 무시한다. FAILED → delegate(.prepFailed) → 실패 화면(questionPrep).
 - 시작하기 탭에 권한 미허용 → 설정 유도 alert: [설정으로 이동]=`openSettings` / [닫기]=alert 만 닫고 화면 유지 — 시작 버튼 재탭이 재시도 지점(막다른 길 없음). 설정에서 권한을 바꾸면 iOS 가 앱을 종료시켜 onAppear 부터 재진입하므로 별도 복귀 재확인은 두지 않는다. 탭 시점엔 권한이 전부 결정된 상태(진입 다이얼로그가 모달)라 status 동기 확인으로 판정한다.
-- phase 자동 진행은 시간 연출(tentative) — RecordingClient(프리뷰) 도입 시 aligning→ready 를 실제 카메라 준비 신호로 교체.
-- 브래킷 프레임(`CameraGuideFrame`)·하단 티커는 에셋 없이 코드 드로잉 — Figma color-burn 블렌드는 카메라 배선 시 재검토.
+- aligning→ready 는 «최소 유지 시간(3초) + 프리뷰 해소» 이중 게이트 — 실패(권한 거부·시뮬레이터)도 해소로 치고 placeholder 로 진행한다(화면을 막지 않음, 게이트는 시작 탭). ready 이후는 시간 연출.
+- 브래킷 프레임(`CameraGuideFrame`)·하단 티커는 에셋 없이 코드 드로잉 — 블렌드 미결은 [[interview#프리뷰]].
+
+## 프리뷰
+
+`DomainRecording`(RecordingClient) 이 단일 AVCaptureSession 을 actor 로 소유한다. startPreview 는 멱등 — 준비 화면이 켜고, 시작 전환 시 코디네이터가 핸들을 세션 State 에 시드해 첫 프레임부터 끊김이 없다(onAppear 재요청은 백스톱). 정지는 코디네이터가 카메라 화면 이탈 전환에서만 수행한다.
+
+- 핸들(`CameraPreviewHandle`)은 identity-Equatable 래퍼 — TCA State 에 저장, 뷰(`InterviewCameraBackdrop`)는 핸들 유무로 실카메라/placeholder 분기.
+- 녹화(`startRecording`/`stopRecording`)는 시그니처만 확정된 골격 — 실구현·호출처는 작업 B. liveValue 는 `RecordingError.notImplemented` 를 던진다.
+- 정지 지점: 준비→실패, 세션→리포트 대기, 세션→실패, 세션 중도 이탈. 재진입은 Readiness onAppear 가 다시 켠다.
+- Scope-on-enum 코디네이터는 화면 교체 시 자식 effect 를 취소하지 않는다 — readiness 의 프리뷰 시작 effect 가 화면 교체를 넘겨 살아남을 수 있어, 흐름 이탈(aborted·closeRequested)은 정지 완료 후 상위 통보로 순서를 보장한다(`stopPreviewThenNotifyClosed`).
+- 백그라운드 전환은 iOS 의 AVCaptureSession 인터럽션 자동 복구(비디오 전용 세션)에 맡긴다.
+- 브래킷 프레임 Figma color-burn 블렌드는 실기기 프리뷰 육안 확인 후 재검토(미결).
 
 ## 세션
 

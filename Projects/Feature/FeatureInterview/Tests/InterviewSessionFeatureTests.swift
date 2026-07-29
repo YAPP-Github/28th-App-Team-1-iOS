@@ -5,7 +5,9 @@
 //  Created by 서정원 on 26/07/25.
 //
 
+import AVFoundation
 import ComposableArchitecture
+import DomainRecordingInterface
 import Testing
 
 @testable import FeatureInterviewImplementation
@@ -14,6 +16,23 @@ import Testing
 // 나머지 화면 상태는 순수 UI 라 프리뷰 육안 검증.
 @MainActor
 struct InterviewSessionFeatureTests {
+    @Test("진입 시 프리뷰 핸들을 확보한다 — 준비 화면이 켜 둔 세션의 멱등 승계")
+    func onAppearAcquiresPreviewHandle() async {
+        let clock = TestClock()
+        let handle = CameraPreviewHandle(session: AVCaptureSession())
+        let store = TestStore(initialState: InterviewSessionFeature.State()) {
+            InterviewSessionFeature()
+        } withDependencies: {
+            $0.continuousClock = clock
+            $0.recordingClient.startPreview = { handle }
+        }
+        store.exhaustivity = .off   // 세션 시계는 기존 테스트가 고정 — 여기선 핸들 확보만 본다.
+
+        await store.send(.view(.onAppear))
+        await store.skipReceivedActions()
+        #expect(store.state.previewHandle == handle)
+    }
+
     @Test("8분 경과 시 종료가 해금되고 안내 토스트가 떴다가 사라진다")
     func exitUnlocksAtEightMinutes() async {
         let clock = TestClock()
@@ -21,6 +40,7 @@ struct InterviewSessionFeatureTests {
             InterviewSessionFeature()
         } withDependencies: {
             $0.continuousClock = clock
+            $0.recordingClient.startPreview = { nil }
         }
         store.exhaustivity = .off   // 1초 틱 480회를 개별 검증하지 않는다.
 
@@ -45,6 +65,7 @@ struct InterviewSessionFeatureTests {
             InterviewSessionFeature()
         } withDependencies: {
             $0.continuousClock = clock
+            $0.recordingClient.startPreview = { nil }
         }
         store.exhaustivity = .off
 
@@ -135,6 +156,7 @@ struct InterviewSessionFeatureTests {
             InterviewSessionFeature()
         } withDependencies: {
             $0.continuousClock = clock
+            $0.recordingClient.startPreview = { nil }
         }
         store.exhaustivity = .off
 

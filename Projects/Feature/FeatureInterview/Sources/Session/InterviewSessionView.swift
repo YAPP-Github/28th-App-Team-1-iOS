@@ -24,7 +24,7 @@ public struct InterviewSessionView: View {
 
     public var body: some View {
         ZStack {
-            InterviewCameraBackdrop(showsTopScrim: false)
+            InterviewCameraBackdrop(showsTopScrim: false, previewHandle: store.previewHandle)
 
             CameraGuideFrame()
 

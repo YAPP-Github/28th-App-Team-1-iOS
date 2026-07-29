@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import DomainRecordingInterface
 
 // @lat: [[interview#코디네이터]]
 /// Part 2 면접 흐름 코디네이터 — 도메인 내부 화면 전환(준비 → 세션 → 실패/종료)만 담당한다.
@@ -49,6 +50,8 @@ public struct InterviewFeature {
         }
     }
 
+    @Dependency(\.recordingClient) var recordingClient
+
     public init() {}
 
     public var body: some ReducerOf<Self> {
@@ -58,37 +61,57 @@ public struct InterviewFeature {
         Reduce { state, action in
             switch action {
             case .screen(.readiness(.delegate(.startRequested))):
-                state.screen = .session(InterviewSessionFeature.State())
+                // 준비 화면의 프리뷰 핸들을 시드 — 세션 화면이 비동기 재요청을 기다리는 동안
+                // placeholder 로 떨어지는 깜빡임 방지. 재요청(onAppear)은 백스톱으로 유지된다.
+                guard case let .readiness(readiness) = state.screen else { return .none }
+                state.screen = .session(
+                    InterviewSessionFeature.State(previewHandle: readiness.previewHandle)
+                )
                 return .none
 
             case .screen(.readiness(.delegate(.prepFailed))):
                 state.screen = .failure(InterviewFailureFeature.State(kind: .questionPrep))
-                return .none
+                return stopPreview()
 
             case .screen(.session(.delegate(.finished))):
                 state.screen = .reportPending(InterviewReportPendingFeature.State())
-                return .none
+                return stopPreview()
 
             case .screen(.reportPending(.delegate(.goHomeRequested))):
                 return .send(.delegate(.finished))
 
             case .screen(.session(.delegate(.aborted))):
-                return .send(.delegate(.closed))
+                return stopPreviewThenNotifyClosed()
 
             case let .screen(.session(.delegate(.failed(kind)))):
                 state.screen = .failure(InterviewFailureFeature.State(kind: kind))
-                return .none
+                return stopPreview()
 
             case .screen(.failure(.delegate(.restartRequested))):
                 state.screen = .readiness(InterviewReadinessFeature.State(sessionId: state.sessionId))
                 return .none
 
             case .screen(.failure(.delegate(.closeRequested))):
-                return .send(.delegate(.closed))
+                return stopPreviewThenNotifyClosed()
 
             case .screen, .delegate:
                 return .none
             }
+        }
+    }
+
+    /// 카메라 화면(준비·세션)을 떠나는 전환 공통 — 프리뷰 정지(멱등).
+    /// 실패 화면 «다시 시작하기» 재진입은 Readiness onAppear 가 다시 켠다.
+    private func stopPreview() -> Effect<Action> {
+        .run { _ in await recordingClient.stopPreview() }
+    }
+
+    /// 흐름 이탈 공통 — 정지 완료 후 상위 통보. merge 로 두면 상위 dismiss 가 정지 effect 를
+    /// 취소할 수 있어(작업 D: ifLet 해제 시 자식 effect 취소) 순서를 보장한다.
+    private func stopPreviewThenNotifyClosed() -> Effect<Action> {
+        .run { send in
+            await recordingClient.stopPreview()
+            await send(.delegate(.closed))
         }
     }
 }

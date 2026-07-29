@@ -27,7 +27,7 @@ public struct InterviewReadinessView: View {
 
     public var body: some View {
         ZStack {
-            InterviewCameraBackdrop()
+            InterviewCameraBackdrop(previewHandle: store.previewHandle)
 
             CameraGuideFrame(showsCenterText: !isGuidePhase)
 

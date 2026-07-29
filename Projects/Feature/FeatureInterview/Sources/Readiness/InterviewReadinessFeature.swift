@@ -8,6 +8,7 @@
 import ComposableArchitecture
 import DomainInterviewInterface
 import DomainPermissionInterface
+import DomainRecordingInterface
 
 // @lat: [[interview#준비]]
 /// Part 2 진입 첫 화면 — 카메라 확인 + 면접 안내 (Figma «[2] Interview_Readiness» 2479:7569 ·
@@ -20,8 +21,8 @@ import DomainPermissionInterface
 /// 시작 게이트는 «guide2 + 권한 + 질문 준비 READY» 삼중 — 준비 중엔 시작 버튼 비활성(로딩 연출은 «협의 가능», 임시 비활성만).
 @Reducer
 public struct InterviewReadinessFeature {
-    /// phase 자동 진행 유지 시간 — 얼굴 인식·카메라 준비 신호가 없어 시간 연출로 채운다 (tentative).
-    /// TODO: RecordingClient(프리뷰) 도입 시 aligning→ready 를 실제 카메라 준비 신호로 교체.
+    /// phase 최소 유지 시간 — aligning 은 «최소 유지 + 프리뷰 해소» 이중 게이트(둘 다 충족 시 진행),
+    /// ready·guide1 은 시간 연출만. 얼굴 인식 기반 정렬 판정은 범위 밖(작업 B 이후).
     static let aligningHold: Duration = .seconds(3)
     static let readyHold: Duration = .seconds(2)
     static let guide1Hold: Duration = .seconds(3)
@@ -57,6 +58,12 @@ public struct InterviewReadinessFeature {
         /// onAppear 재진입 가드 — phase 타이머·권한 요청 effect 중복 실행 방지.
         public var hasStarted = false
         public var questionPrep: QuestionPrep = .preparing
+        /// 프리뷰 핸들 — 있으면 backdrop 이 실카메라, 없으면 placeholder.
+        public var previewHandle: CameraPreviewHandle?
+        /// aligning→ready 이중 게이트 플래그 — 최소 유지 시간 경과.
+        public var isAligningHoldElapsed = false
+        /// aligning→ready 이중 게이트 플래그 — 프리뷰 해소(성공·실패 무관).
+        public var isPreviewResolved = false
         /// 시작하기 탭 시 권한 미허용이면 띄우는 설정 유도 alert.
         @Presents public var alert: AlertState<Action.Alert>?
 
@@ -84,6 +91,8 @@ public struct InterviewReadinessFeature {
             case phaseHoldFinished
             /// 질문 준비 폴링 해소 — READY 또는 FAILED (PROCESSING 은 계속 돈다).
             case questionPrepResolved(State.QuestionPrep)
+            /// 프리뷰 해소 — 성공이면 핸들, 실패(권한 거부·장치 없음)면 nil. 실패여도 화면은 진행한다.
+            case previewResolved(CameraPreviewHandle?)
         }
 
         /// 권한 미허용 alert 버튼.
@@ -110,6 +119,7 @@ public struct InterviewReadinessFeature {
     @Dependency(\.continuousClock) var clock
     @Dependency(\.interviewClient) var interviewClient
     @Dependency(\.permissionClient) var permissionClient
+    @Dependency(\.recordingClient) var recordingClient
 
     public init() {}
 
@@ -120,7 +130,7 @@ public struct InterviewReadinessFeature {
                 guard !state.hasStarted else { return .none }
                 state.hasStarted = true
                 return .merge(
-                    requestPermissionsOnEntry(),
+                    requestPermissionsAndStartPreview(),
                     pollQuestionPrep(sessionId: state.sessionId),
                     scheduleAdvance(after: Self.aligningHold)
                 )
@@ -139,7 +149,16 @@ public struct InterviewReadinessFeature {
                 return .send(.delegate(.startRequested))
 
             case .inner(.phaseHoldFinished):
+                if state.phase == .aligning {
+                    state.isAligningHoldElapsed = true
+                    return advanceFromAligningIfReady(&state)
+                }
                 return advancePhase(&state)
+
+            case let .inner(.previewResolved(handle)):
+                state.previewHandle = handle
+                state.isPreviewResolved = true
+                return advanceFromAligningIfReady(&state)
 
             case let .inner(.questionPrepResolved(result)):
                 state.questionPrep = result
@@ -178,12 +197,17 @@ public struct InterviewReadinessFeature {
     /// 진입 시 사용 시점 요청(PRD §8) — notDetermined 만 시스템 다이얼로그가 뜬다.
     /// 거부돼 있어도 여기선 알리지 않는다(게이트는 시작하기 탭). 하나가 거부여도 나머지도
     /// 끝까지 요청한다 — 요청해야 설정 앱에 토글이 노출된다.
-    private func requestPermissionsOnEntry() -> Effect<Action> {
-        .run { _ in
+    /// 권한 해소 후 카메라 허용이면 프리뷰를 시작한다 — 거부·실패는 nil 해소로 placeholder 진행.
+    private func requestPermissionsAndStartPreview() -> Effect<Action> {
+        .run { send in
             for permission in [MediaPermission.camera, .microphone]
             where permissionClient.status(permission) == .notDetermined {
                 _ = await permissionClient.request(permission)
             }
+            guard permissionClient.status(.camera) == .granted else {
+                return await send(.inner(.previewResolved(nil)))
+            }
+            await send(.inner(.previewResolved(recordingClient.startPreview())))
         }
     }
 
@@ -206,19 +230,25 @@ public struct InterviewReadinessFeature {
         .cancellable(id: CancelID.prepPolling)
     }
 
-    /// aligning → ready → guide1 → guide2 한 칸 진행. guide2 는 종점 — 사용자 탭만 기다린다.
+    /// aligning→ready 이중 게이트 — 최소 유지 시간과 프리뷰 해소 중 늦게 온 신호가 전환을 트리거한다.
+    private func advanceFromAligningIfReady(_ state: inout State) -> Effect<Action> {
+        guard state.phase == .aligning, state.isAligningHoldElapsed, state.isPreviewResolved
+        else { return .none }
+        state.phase = .ready
+        return scheduleAdvance(after: Self.readyHold)
+    }
+
+    /// ready → guide1 → guide2 한 칸 진행. guide2 는 종점 — 사용자 탭만 기다린다.
     private func advancePhase(_ state: inout State) -> Effect<Action> {
         switch state.phase {
-        case .aligning:
-            state.phase = .ready
-            return scheduleAdvance(after: Self.readyHold)
         case .ready:
             state.phase = .guide1
             return scheduleAdvance(after: Self.guide1Hold)
         case .guide1:
             state.phase = .guide2
             return .none
-        case .guide2:
+        case .aligning, .guide2:
+            // aligning 은 이중 게이트(advanceFromAligningIfReady)가 처리 — 여기 도달하지 않는다.
             return .none
         }
     }
