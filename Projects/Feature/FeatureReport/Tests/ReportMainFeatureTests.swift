@@ -183,9 +183,8 @@ struct ReportMainFeatureTests {
         state.loadState = .loaded
         state.highlightDetail = ReportHighlightDetailFeature.State(
             context: HighlightContext(
-                sentence: "문장",
-                tone: .good,
-                analysis: nil,
+                transcript: "문장",
+                span: HighlightSpan(startIndex: 0, endIndex: 2, tone: "GOOD", analysis: nil),
                 evidenceAt: 12
             ),
             showsVideoJump: true
@@ -197,5 +196,151 @@ struct ReportMainFeatureTests {
             $0.highlightDetail = nil
         }
         await store.receive(\.delegate.videoRequested)
+    }
+
+    @Test("질문 탭은 선택 위치만 바꾸고, 범위를 벗어난 탭은 무시한다")
+    func questionTabSelectsCard() async {
+        let clock = TestClock()
+        let store = store(report: { _ in InterviewReportFixtures.ready }, clock: clock)
+
+        await store.send(.view(.onAppear))
+        await store.receive(\.inner.reportLoaded) {
+            $0.report = InterviewReportFixtures.ready
+            $0.loadState = .loaded
+        }
+
+        await store.send(.view(.userTappedQuestionTab(1))) {
+            $0.selectedCardIndex = 1
+        }
+        await store.send(.view(.userTappedQuestionTab(99)))
+        #expect(store.state.selectedCard == InterviewReportFixtures.improveCard)
+    }
+
+    @Test("카드가 줄면 선택 위치를 처음으로 되돌린다")
+    func selectionResetsWhenCardsShrink() async {
+        let clock = TestClock()
+        let responses = LockIsolated([InterviewReportFixtures.ready, InterviewReportFixtures.lowResolutionOnly])
+        let store = store(report: { _ in responses.withValue { $0.removeFirst() } }, clock: clock)
+
+        await store.send(.view(.onAppear))
+        await store.receive(\.inner.reportLoaded) {
+            $0.report = InterviewReportFixtures.ready
+            $0.loadState = .loaded
+        }
+        await store.send(.view(.userTappedQuestionTab(1))) {
+            $0.selectedCardIndex = 1
+        }
+
+        // 카드가 1장뿐인 응답이 다시 들어오면 선택 위치가 범위를 벗어난다.
+        await store.send(.inner(.reportLoaded(InterviewReportFixtures.lowResolutionOnly))) {
+            $0.report = InterviewReportFixtures.lowResolutionOnly
+            $0.selectedCardIndex = 0
+        }
+    }
+
+    @Test("레드플래그 느낌표는 툴팁을 토글한다")
+    func redFlagInfoTogglesTooltip() async {
+        let clock = TestClock()
+        let store = store(report: { _ in InterviewReportFixtures.withRedFlags }, clock: clock)
+
+        await store.send(.view(.onAppear))
+        await store.receive(\.inner.reportLoaded) {
+            $0.report = InterviewReportFixtures.withRedFlags
+            $0.loadState = .loaded
+        }
+        #expect(store.state.hasRedFlagNotices)
+
+        await store.send(.view(.userTappedRedFlagInfo)) { $0.isRedFlagTooltipVisible = true }
+        await store.send(.view(.userTappedRedFlagInfo)) { $0.isRedFlagTooltipVisible = false }
+    }
+
+    @Test("지인을 바꾸면 펼쳐 둔 코멘트를 접는다")
+    func guestTabResetsExpandedComments() async {
+        let clock = TestClock()
+        let store = store(report: { _ in InterviewReportFixtures.withGuestFeedback }, clock: clock)
+
+        await store.send(.view(.onAppear))
+        await store.receive(\.inner.reportLoaded) {
+            $0.report = InterviewReportFixtures.withGuestFeedback
+            $0.loadState = .loaded
+        }
+        #expect(store.state.hasGuestFeedback)
+
+        await store.send(.view(.userTappedAttitudeComment(axisCode: "EXPRESSION"))) {
+            $0.expandedCommentAxes = ["EXPRESSION"]
+        }
+        await store.send(.view(.userTappedGuestTab(1))) {
+            $0.selectedGuestIndex = 1
+            $0.expandedCommentAxes = []
+        }
+        // 범위 밖 탭은 무시한다.
+        await store.send(.view(.userTappedGuestTab(99)))
+        #expect(store.state.selectedGuest == InterviewReportFixtures.secondGuest)
+    }
+
+    @Test("태도 코멘트는 항목별로 펼치고 접는다")
+    func attitudeCommentToggles() async {
+        let clock = TestClock()
+        let store = store(report: { _ in InterviewReportFixtures.withGuestFeedback }, clock: clock)
+
+        await store.send(.view(.onAppear))
+        await store.receive(\.inner.reportLoaded) {
+            $0.report = InterviewReportFixtures.withGuestFeedback
+            $0.loadState = .loaded
+        }
+
+        await store.send(.view(.userTappedAttitudeComment(axisCode: "GAZE"))) {
+            $0.expandedCommentAxes = ["GAZE"]
+        }
+        await store.send(.view(.userTappedAttitudeComment(axisCode: "VOICE"))) {
+            $0.expandedCommentAxes = ["GAZE", "VOICE"]
+        }
+        await store.send(.view(.userTappedAttitudeComment(axisCode: "GAZE"))) {
+            $0.expandedCommentAxes = ["VOICE"]
+        }
+    }
+
+    @Test("폴링 타임아웃 후 수동 재시도가 폴링을 되살린다")
+    func reloadRestartsAfterPollTimeout() async {
+        let clock = TestClock()
+        let responses = LockIsolated([InterviewReportFixtures.generating, InterviewReportFixtures.ready])
+        // 상한을 소진한 상태에서 시작한다.
+        var state = ReportMainFeature.State(sessionId: 1)
+        state.pollTickCount = ReportMainFeature.pollLimit
+        state.loadState = .pollTimedOut
+        let store = TestStore(initialState: state) {
+            ReportMainFeature()
+        } withDependencies: {
+            $0.interviewReportClient = InterviewReportClient(
+                report: { _ in responses.withValue { $0.removeFirst() } }
+            )
+            $0.continuousClock = clock
+        }
+
+        await store.send(.view(.userTappedReload)) {
+            $0.pollTickCount = 0
+            $0.loadState = .loading
+        }
+        await store.receive(\.inner.reportLoaded) {
+            $0.report = InterviewReportFixtures.generating
+            $0.pollTickCount = 1
+        }
+
+        await clock.advance(by: ReportMainFeature.pollInterval)
+        await store.receive(\.inner.pollTicked)
+        await store.receive(\.inner.reportLoaded) {
+            $0.report = InterviewReportFixtures.ready
+            $0.loadState = .loaded
+        }
+    }
+
+    @Test("지인 피드백이 없으면 요청 카드를 보여준다")
+    func noGuestFeedbackShowsRequestCard() {
+        var state = ReportMainFeature.State(sessionId: 1)
+        state.report = InterviewReportFixtures.ready   // guestFeedback == nil
+
+        #expect(!state.hasGuestFeedback)
+        #expect(state.guestParticipantCount == 0)
+        #expect(state.selectedGuest == nil)
     }
 }

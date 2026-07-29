@@ -21,6 +21,9 @@ public struct ReportMainFeature {
     static let pollLimit = 75
     /// 한 줄 요약 아래 안내 줄 최대 개수 (PRD 2-4).
     static let maxRedFlagNotices = 2
+    /// 지인 피드백 요청 정원. 서버가 정원 필드를 안 내려서 클라 상수로 둔다 —
+    /// 응답에 필드가 생기면 이 상수 대신 그 값을 쓴다.
+    static let maxGuestCount = 4
 
     @ObservableState
     public struct State: Equatable {
@@ -29,6 +32,14 @@ public struct ReportMainFeature {
         public var report: InterviewReport?
         /// 폴링 횟수 — 상한 판정용.
         public var pollTickCount = 0
+        /// 상세 리포트에서 보고 있는 카드(질문 탭) 위치.
+        public var selectedCardIndex = 0
+        /// 레드플래그 툴팁 노출 여부 — 느낌표를 눌러 토글한다(기본은 접힘, 대본을 가리지 않게).
+        public var isRedFlagTooltipVisible = false
+        /// 지인 피드백에서 보고 있는 지인(탭) 위치.
+        public var selectedGuestIndex = 0
+        /// 코멘트를 펼쳐 둔 태도 항목 코드 — 지인을 바꾸면 비운다.
+        public var expandedCommentAxes: Set<String> = []
         @Presents public var highlightDetail: ReportHighlightDetailFeature.State?
 
         public enum LoadState: Equatable, Sendable {
@@ -53,9 +64,16 @@ public struct ReportMainFeature {
 
         public enum View: Equatable, Sendable {
             case onAppear
+            /// 폴링 상한 초과·재시도 가능 에러의 수동 재시도 (정의서 §4-4).
+            case userTappedReload
             case userTappedClose
             case userTappedWatchVideo
+            case userTappedQuestionTab(Int)
+            case userTappedRedFlagInfo
             case userTappedHighlight(cardIndex: Int, spanIndex: Int)
+            case userTappedGuestTab(Int)
+            /// 태도 코멘트 펼치기/접기 (항목 코드).
+            case userTappedAttitudeComment(axisCode: String)
             case userTappedPeerFeedback
             case userTappedRetry
         }
@@ -120,14 +138,44 @@ public struct ReportMainFeature {
             guard state.report == nil else { return .none }
             return fetch(sessionId: state.sessionId)
 
+        case .userTappedReload:
+            // 폴링 상한을 소진했던 화면이므로 카운터부터 되돌린다 — 안 그러면 첫 응답이 곧바로 다시 타임아웃.
+            state.pollTickCount = 0
+            state.loadState = .loading
+            return fetch(sessionId: state.sessionId)
+
         case .userTappedClose:
             return .send(.delegate(.closeRequested))
 
         case .userTappedWatchVideo:
             return .send(.delegate(.videoRequested(startAt: nil)))
 
+        case let .userTappedQuestionTab(index):
+            guard state.cards.indices.contains(index) else { return .none }
+            state.selectedCardIndex = index
+            return .none
+
+        case .userTappedRedFlagInfo:
+            state.isRedFlagTooltipVisible.toggle()
+            return .none
+
         case let .userTappedHighlight(cardIndex, spanIndex):
             return presentHighlightDetail(&state, cardIndex: cardIndex, spanIndex: spanIndex)
+
+        case let .userTappedGuestTab(index):
+            guard state.guests.indices.contains(index) else { return .none }
+            state.selectedGuestIndex = index
+            // 지인이 바뀌면 펼쳐 둔 코멘트는 다른 사람 것이라 접는다.
+            state.expandedCommentAxes = []
+            return .none
+
+        case let .userTappedAttitudeComment(axisCode):
+            if state.expandedCommentAxes.contains(axisCode) {
+                state.expandedCommentAxes.remove(axisCode)
+            } else {
+                state.expandedCommentAxes.insert(axisCode)
+            }
+            return .none
 
         case .userTappedPeerFeedback:
             return .send(.delegate(.peerFeedbackRequested))
@@ -141,6 +189,15 @@ public struct ReportMainFeature {
         switch action {
         case let .reportLoaded(report):
             state.report = report
+            // 폴링 중 카드 수가 줄어들 수 있다(분석 부족 확정) — 선택 위치가 범위를 벗어나면 처음으로 되돌린다.
+            if !state.cards.indices.contains(state.selectedCardIndex) {
+                state.selectedCardIndex = 0
+            }
+            // 지인은 반대로 늘어난다(피드백이 하나씩 도착) — 보고 있던 사람이 사라지는 경우만 되돌린다.
+            if !state.guests.indices.contains(state.selectedGuestIndex) {
+                state.selectedGuestIndex = 0
+                state.expandedCommentAxes = []
+            }
             switch report.status {
             case .generating:
                 return schedulePoll(&state)
@@ -219,6 +276,33 @@ public extension ReportMainFeature.State {
     }
 
     var cards: [InterviewReportCard] { report?.cards ?? [] }
+
+    /// 상세 리포트에서 지금 펼쳐 보고 있는 카드.
+    var selectedCard: InterviewReportCard? {
+        cards.indices.contains(selectedCardIndex) ? cards[selectedCardIndex] : nil
+    }
+
+    /// 레드플래그 안내 유무 — 섹션 제목 옆 느낌표·툴팁의 노출 조건 (정의서 §2-4).
+    var hasRedFlagNotices: Bool { !visibleRedFlagNotices.isEmpty }
+
+    /// 툴팁 문구 — 안내가 여러 건이면 줄바꿈으로 잇는다(최대 2건).
+    var redFlagTooltipMessage: String {
+        visibleRedFlagNotices.map(\.message).joined(separator: "\n")
+    }
+
+    /// 피드백을 제출한 지인 수 — 섹션이 통째로 nil 이면 0명.
+    var guestParticipantCount: Int { report?.guestFeedback?.participantCount ?? 0 }
+
+    /// 피드백을 남긴 지인들. 아무도 제출하지 않았으면 빈 배열.
+    var guests: [GuestReview] { report?.guestFeedback?.guests ?? [] }
+
+    /// 지인 피드백 섹션이 «요청 카드» 대신 «평가 목록» 을 보여줄 조건.
+    var hasGuestFeedback: Bool { !guests.isEmpty }
+
+    /// 지인 피드백에서 펼쳐 보고 있는 지인.
+    var selectedGuest: GuestReview? {
+        guests.indices.contains(selectedGuestIndex) ? guests[selectedGuestIndex] : nil
+    }
 
     /// 재생 가능한 영상 주소. 만료·nil·형식 오류를 한 곳에서 흡수해
     /// 플레이어가 만료를 알 필요 없게 한다 (정의서 §8).

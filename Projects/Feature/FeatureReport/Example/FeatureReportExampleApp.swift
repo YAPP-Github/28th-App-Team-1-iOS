@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import DomainFeedbackShareInterface
 import DomainInterviewReportInterface
 import DomainInterviewReportTesting
 import FeatureReportImplementation
@@ -25,6 +26,9 @@ struct FeatureReportExampleApp: App {
                     $0.interviewReportClient = InterviewReportClient(
                         report: { _ in InterviewReportFixtures.ready }
                     )
+                    // Example 은 Domain Implementation 을 link 하지 않아 liveValue 가 없다 —
+                    // 지인 피드백 링크 생성은 고정 토큰으로 대체한다.
+                    $0.feedbackShareClient = .previewValue
                 }
             )
         }

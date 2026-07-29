@@ -10,7 +10,7 @@ import SharedDesignSystemInterface
 import SwiftUI
 
 /// 상세 리포트의 질문 선택 탭. 카드가 5개를 넘으면 가로 스크롤한다(Figma 는 5개 기준 폭을 이미 넘긴다).
-/// 칩 생김새는 `DarkChip` 이 갖는다 — 지인 이름 탭과 같은 컴포넌트다.
+/// 칩 생김새는 `DarkChip`(16pt — DS `.mini` 미커버 티어)이 갖는다.
 struct QuestionTabBar: View {
     let cards: [InterviewReportCard]
     let selectedIndex: Int

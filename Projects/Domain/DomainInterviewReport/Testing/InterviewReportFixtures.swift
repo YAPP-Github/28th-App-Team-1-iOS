@@ -90,6 +90,56 @@ public enum InterviewReportFixtures {
         )
     }
 
+    /// 지인 2명이 피드백을 남긴 보고서 — 지인 피드백 섹션이 «보내기» 카드 대신 평가 목록으로 바뀐다.
+    public static var withGuestFeedback: InterviewReport {
+        InterviewReport(
+            status: .ready,
+            headline: "캐시 도입 결정의 이유와 한계까지 구체적인 수치로 설명해주셨어요.",
+            redFlagNotices: nil,
+            video: InterviewReportVideo(
+                url: "https://example.com/interview/1.mp4",
+                expired: false,
+                expiresAt: Date(timeIntervalSince1970: 1_782_172_800)
+            ),
+            cards: [strongCard, improveCard],
+            guestFeedback: GuestFeedbackSection(
+                participantCount: 2,
+                guests: [firstGuest, secondGuest]
+            )
+        )
+    }
+
+    // MARK: - 지인
+
+    /// 5축을 모두 채우고 코멘트 길이가 제각각인 지인 — 코멘트 펼치기 분기 확인용.
+    public static var firstGuest: GuestReview {
+        GuestReview(
+            alias: "허자연",
+            attitudeRatings: [
+                GuestAttitudeRating(axis: "GAZE", level: 3, comment: "꼬리질문에서 눈빛이 흔들려서 자신감이 없어 보였어요."),
+                GuestAttitudeRating(
+                    axis: "EXPRESSION",
+                    level: 1,
+                    comment: "꼬리질문에서 눈빛이 흔들려서 자신감이 없어 보였어요. 그래서 조금 아쉬웠습니다."
+                ),
+                GuestAttitudeRating(axis: "POSTURE", level: 1, comment: nil),
+                GuestAttitudeRating(axis: "GESTURE", level: 1, comment: nil),
+                GuestAttitudeRating(axis: "VOICE", level: 3, comment: "목소리가 조금 작게 들렸어요.")
+            ]
+        )
+    }
+
+    /// 일부 축만 남기고 서버가 새 코드를 섞어 보낸 지인 — 화면이 모르는 축을 건너뛰는지 확인용.
+    public static var secondGuest: GuestReview {
+        GuestReview(
+            alias: "박민주",
+            attitudeRatings: [
+                GuestAttitudeRating(axis: "GAZE", level: 2, comment: nil),
+                GuestAttitudeRating(axis: "NEW_AXIS", level: 1, comment: "서버가 축을 늘린 경우")
+            ]
+        )
+    }
+
     // MARK: - 카드
 
     /// 잘함 하이라이트가 있는 카드.
@@ -105,12 +155,25 @@ public enum InterviewReportFixtures {
                     startIndex: 0,
                     endIndex: 30,
                     tone: "GOOD",
-                    analysis: "문제부터 원인, 한계까지 스스로 짚었어요."
+                    analysis: "문제부터 원인, 한계까지 스스로 짚었어요.",
+                    evidenceStartAt: 0,
+                    evidenceEndAt: 3.4
                 )
             ],
             resolutionNotice: nil,
             cardRedFlagNotices: nil,
-            questionIntent: "성능 문제를 얼마나 구체적으로 인지했는지 확인하는 질문입니다."
+            questionIntent: "성능 문제를 얼마나 구체적으로 인지했는지 확인하는 질문입니다.",
+            // 진행바 칸·구간 이동 확인용 — 구간 단위 타임스탬프.
+            segments: [
+                TranscriptSegment(text: "프로파일링하니 DB 왕복이 7번 도는 N+1이 원인이었고,", start: 0, end: 3.4),
+                TranscriptSegment(text: "안 바뀌는 6번을 캐시로 흡수해 600ms를 깎았어요.", start: 3.4, end: 6.4)
+            ],
+            // 단어 단위는 현재 화면 미사용 — 디코딩 계약 확인용으로 앞부분만 둔다.
+            words: [
+                TranscriptWord(word: "프로파일링하니", start: 0, end: 0.9),
+                TranscriptWord(word: "DB", start: 0.95, end: 1.2),
+                TranscriptWord(word: "왕복이", start: 1.24, end: 1.6)
+            ]
         )
     }
 
@@ -127,7 +190,9 @@ public enum InterviewReportFixtures {
                     startIndex: 0,
                     endIndex: 24,
                     tone: "IMPROVE",
-                    analysis: "왜 그 방법이 통했는지 원인이 빠졌어요."
+                    analysis: "왜 그 방법이 통했는지 원인이 빠졌어요.",
+                    evidenceStartAt: 6.4,
+                    evidenceEndAt: 9.1
                 )
             ],
             resolutionNotice: nil,
@@ -137,7 +202,11 @@ public enum InterviewReportFixtures {
                     message: "답변 사이에 사실관계가 엇갈린 지점이 있었어요. 실제 면접관은 이런 모순에 민감할 수 있습니다."
                 )
             ],
-            questionIntent: "선택의 근거와 대안 검토를 확인하는 질문입니다."
+            questionIntent: "선택의 근거와 대안 검토를 확인하는 질문입니다.",
+            segments: [
+                TranscriptSegment(text: "결제가 느려서 캐시를 써서 빠르게 만들었어요.", start: 6.4, end: 9.1),
+                TranscriptSegment(text: "그 캐시는 팀이 원래 쓰던 것이라 저는 운영만 했어요.", start: 9.1, end: 12)
+            ]
         )
     }
 

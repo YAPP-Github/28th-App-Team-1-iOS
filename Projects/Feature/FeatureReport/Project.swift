@@ -9,6 +9,8 @@ let project = Project.makeModule(
         .feature(implements: "Report", factory: .init(dependencies: [
             .composableArchitecture,
             .domain(interface: .interviewReport),
+            // 지인 피드백 공유 링크 생성(항목 지정) — ReportPeerFeedbackFeature.
+            .domain(interface: .feedbackShare),
             .shared(interface: .designSystem)
         ])),
         .feature(testing: "Report", factory: .init(dependencies: [
@@ -19,12 +21,14 @@ let project = Project.makeModule(
         .feature(tests: "Report", factory: .init(dependencies: [
             .composableArchitecture,
             .domain(interface: .interviewReport),
+            .domain(interface: .feedbackShare),
             .project(target: "DomainInterviewReportTesting", path: .domain(.interviewReport))
         ])),
         // Example = 리포트 단독 데모. 서버 없이 fixture 를 주입해 화면 분기를 돌린다.
         .feature(example: "Report", factory: .init(dependencies: [
             .composableArchitecture,
             .domain(interface: .interviewReport),
+            .domain(interface: .feedbackShare),
             .project(target: "DomainInterviewReportTesting", path: .domain(.interviewReport))
         ]))
     ]

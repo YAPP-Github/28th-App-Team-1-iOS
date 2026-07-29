@@ -33,7 +33,7 @@ struct PeerFeedbackCard: View {
                             .dsTypography(.body2)
                             .foregroundStyle(Color.BlackWhite.white)
                         Rectangle()
-                            .fill(Color.Gray.g700)
+                            .fill(Color.GrayScale.g700)
                             .frame(width: .ds(.small), height: 16)
                         Text("\(participantCount)/\(maxCount)")
                             .dsTypography(.body2)
@@ -41,20 +41,21 @@ struct PeerFeedbackCard: View {
                     }
                     Text("\(maxCount)명에게 영상을 공유하고 태도 분석을 받아보세요!")
                         .dsTypography(.body7)
-                        .foregroundStyle(Color.GrayScale.s300)
+                        // @ds(color): #D2D6DE (Figma Gray scale/300) → GrayScale.g200 — 다크 카드 보조 텍스트, 팔레트에 s계열 없음
+                        .foregroundStyle(Color.GrayScale.g200)
                         .opacity(0.8)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                Image.Ic.chevronRight
+                Image.Right.white16
                     .resizable()
                     .scaledToFit()
                     .frame(width: 16, height: 16)
             }
             .padding(.trailing, .ds(.p16))
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.Gray.g900)
+            .background(Color.GrayScale.g900)
         }
         .buttonStyle(.plain)
     }

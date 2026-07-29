@@ -55,14 +55,14 @@ struct ReportFeatureTests {
 
         await store.send(.main(.view(.userTappedPeerFeedback)))
         await store.receive(\.main.delegate.peerFeedbackRequested) {
-            $0.path[id: 0] = .peerFeedback(ReportPeerFeedbackFeature.State())
+            $0.path[id: 0] = .peerFeedback(ReportPeerFeedbackFeature.State(sessionId: 1))
         }
     }
 
     @Test("뒤로 → 스택 pop")
     func backPopsStack() async {
         var state = loadedState()
-        state.path.append(.peerFeedback(ReportPeerFeedbackFeature.State()))
+        state.path.append(.peerFeedback(ReportPeerFeedbackFeature.State(sessionId: 1)))
         let store = TestStore(initialState: state) { ReportFeature() }
 
         await store.send(.path(.element(id: 0, action: .peerFeedback(.view(.userTappedBack)))))

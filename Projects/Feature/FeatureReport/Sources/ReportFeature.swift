@@ -21,7 +21,7 @@ public struct ReportFeature {
     public enum Path {
         /// 영상 다시보기 — 메인 CTA 또는 상세 시트의 «이 장면 영상으로 보기»
         case videoPlayer(ReportVideoPlayerFeature)
-        /// 지인 피드백 요청 — 메인 CTA (Part 4.5 스펙 대기)
+        /// 지인 피드백 요청 — 메인 CTA. 태도 항목 지정 + 공유 링크 생성.
         case peerFeedback(ReportPeerFeedbackFeature)
         /// 최종 보고서 — 지인 피드백 도착 후 (Part 4.6 스펙 대기)
         case final(ReportFinalFeature)
@@ -98,7 +98,9 @@ public struct ReportFeature {
             return .none
 
         case .peerFeedbackRequested:
-            state.path.append(.peerFeedback(ReportPeerFeedbackFeature.State()))
+            state.path.append(.peerFeedback(ReportPeerFeedbackFeature.State(
+                sessionId: state.main.sessionId
+            )))
             return .none
 
         case .retryRequested:
@@ -118,10 +120,8 @@ public struct ReportFeature {
             _ = state.path.popLast()
             return .none
 
-        // 이탈(X) — 어느 화면에서든 부모 통보.
-        case .element(id: _, action: .videoPlayer(.delegate(.closeRequested))),
-             .element(id: _, action: .peerFeedback(.delegate(.closeRequested))),
-             .element(id: _, action: .final(.delegate(.closeRequested))):
+        // 이탈(X) — 어느 화면에서든 부모 통보. 플레이어·지인 피드백은 X 가 «뒤로» 라 여기 없다.
+        case .element(id: _, action: .final(.delegate(.closeRequested))):
             return .send(.delegate(.closeRequested))
 
         default:

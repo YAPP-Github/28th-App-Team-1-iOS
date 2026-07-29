@@ -46,28 +46,29 @@ struct VideoCountdownCard: View {
             HStack(spacing: 0) {
                 Text(Self.title)
                     .dsTypography(isEnded ? .sub7 : .body2)
-                    .foregroundStyle(isEnded ? Color.Gray.g300 : Color.BlackWhite.white)
+                    .foregroundStyle(isEnded ? Color.GrayScale.g300 : Color.BlackWhite.white)
                 Spacer(minLength: .ds(.p8))
-                (isEnded ? Image.Ic.chevronRightDisabled : Image.Ic.chevronRight)
+                (isEnded ? Image.Right.disabledDark16 : Image.Right.white16)
                     .resizable()
                     .scaledToFit()
                     .frame(width: 16, height: 16)
             }
 
             Rectangle()
-                .fill(Color.Gray.g800)
+                .fill(Color.GrayScale.g800)
                 .frame(height: .ds(.small))
 
             HStack(spacing: 0) {
                 HStack(spacing: .ds(.p8)) {
-                    (isEnded ? Image.Ic.timerDisabled : Image.Ic.timerGreen)
+                    (isEnded ? Image.Timer.disabled24 : Image.Timer.green24)
                         .resizable()
                         .scaledToFit()
                         .frame(width: 24, height: 24)
 
                     Text(isEnded ? Self.expiredMessage : Self.activeMessage)
                         .dsTypography(.body9)
-                        .foregroundStyle(Color.GrayScale.s300)
+                        // @ds(color): #D2D6DE (Figma Gray scale/300) → GrayScale.g200 — 다크 카드 보조 텍스트, 팔레트에 s계열 없음
+                        .foregroundStyle(Color.GrayScale.g200)
                         .opacity(0.8)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -75,7 +76,7 @@ struct VideoCountdownCard: View {
                 if let remaining {
                     Text(Self.formatted(remaining))
                         .dsTypography(.sub3)
-                        .foregroundStyle(isEnded ? Color.Gray.g300 : Color.BlackWhite.white)
+                        .foregroundStyle(isEnded ? Color.GrayScale.g300 : Color.BlackWhite.white)
                         .monospacedDigit()
                 }
             }

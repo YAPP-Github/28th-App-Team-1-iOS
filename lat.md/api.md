@@ -69,6 +69,8 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 - 카드는 질문/답변 턴당 1장 — 같은 축이면 `axisOrder` 동일, `depthLevel` 로 구분 (표시: "질문 {axisOrder}-{depthLevel}").
 - `resolutionNotice` 가 있으면 해상도 낮음 — 능력 판단 보류, `highlightSpans` 는 빈 배열.
 - 영상 만료 시 `video.url` 만 nil — 대본·하이라이트는 유지. `guestFeedback` 은 제출자 0명이면 통째로 nil.
+- 대본 타임스탬프는 두 해상도로 온다 — 카드의 `segments`(구간: text/start/end)와 `words`(단어). 플레이어 진행바·구간 이동은 segment 단위이고 word 는 계약만 열어 둔 상태다(말속도·군말 지표 산출은 MVP 제외라 금지). `highlightSpans` 의 `evidenceStartAt`/`evidenceEndAt`(정의서 §9-1 요청 이름)은 아직 미확정이라, 없으면 클라가 구간 대본에서 문장을 찾아 그 구간 시작으로 대체한다.
+- **미검증 가정 2개**: `segments`/`words` 가 카드 안에 오는지, 시각이 영상 0초 기준인지(질문 낭독 포함 여부). 기준점이 다르면 진행바·seek 가 통째로 어긋난다 — 백엔드 확인 필요.
 
 에러는 `InterviewReportError` 로 매핑된다 — INTERVIEW_SESSION_NOT_FOUND → sessionNotFound, INTERVIEW_REPORT_NOT_FOUND → reportNotFound (둘 다 404 — 보고서 미생성 상태는 에러 코드로 구분).
 

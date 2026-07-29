@@ -24,9 +24,9 @@ struct AnalysisCard: View {
 
         var icon: Image {
             switch self {
-            case .question: Image.Ic.analyzeQuestion
-            case .strength: Image.Ic.analyzeSuccess
-            case .improvement: Image.Ic.analyzeProblem
+            case .question: Image.Analyze.question
+            case .strength: Image.Analyze.success
+            case .improvement: Image.Analyze.problem
             }
         }
 
@@ -56,7 +56,7 @@ struct AnalysisCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(kind.label)
                         .dsTypography(.body9)
-                        .foregroundStyle(Color.Gray.g400)
+                        .foregroundStyle(Color.GrayScale.g400)
                     if let title {
                         Text(title)
                             .dsTypography(.body1)
@@ -68,7 +68,7 @@ struct AnalysisCard: View {
 
             Text(contents)
                 .dsTypography(.body7)
-                .foregroundStyle(Color.Gray.g200)
+                .foregroundStyle(Color.GrayScale.g200)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -84,7 +84,7 @@ struct AnalysisTipCard: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: .ds(.p8)) {
-            Image.Ic.aiSmall
+            Image.Ai.green16
                 .resizable()
                 .scaledToFit()
                 .frame(width: 16, height: 16)
@@ -99,7 +99,7 @@ struct AnalysisTipCard: View {
         }
         .padding(.ds(.p12))
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.Gray.g800)
+        .background(Color.GrayScale.g800)
     }
 }
 

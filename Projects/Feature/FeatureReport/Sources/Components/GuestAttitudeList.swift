@@ -20,17 +20,16 @@ struct GuestFeedbackPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: .ds(.p20)) {
+            // 지인 이름 탭 — DS mini 버튼(다크 판) 그대로: 선택 green, 미선택 gray.
+            // 판(surface)은 화면 루트(`ReportMainView`)가 `.hilitSurface(.dark)` 로 선언한다.
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: .ds(.p8)) {
                     ForEach(Array(guests.enumerated()), id: \.offset) { index, guest in
-                        DarkChip(
-                            // 서버가 별명을 안 주면 순번으로 부른다 — 탭이 빈 칩으로 남지 않게.
-                            title: guest.alias ?? "지인 \(index + 1)",
-                            isSelected: index == selectedIndex,
-                            size: .small
-                        ) {
+                        // 서버가 별명을 안 주면 순번으로 부른다 — 탭이 빈 칩으로 남지 않게.
+                        Button(guest.alias ?? "지인 \(index + 1)") {
                             onSelectGuest(index)
                         }
+                        .buttonStyle(.mini(index == selectedIndex ? .green : .gray))
                     }
                 }
             }
@@ -60,7 +59,7 @@ struct GuestAttitudeList: View {
             ForEach(Array(ratings.enumerated()), id: \.offset) { index, rating in
                 if index > 0 {
                     Rectangle()
-                        .fill(Color.Gray.g800)
+                        .fill(Color.GrayScale.g800)
                         .frame(height: .ds(.small))
                 }
                 row(rating)
@@ -122,7 +121,7 @@ struct GuestAttitudeList: View {
                 commentText(comment)
                     .lineLimit(isExpanded ? nil : 1)
                     .truncationMode(.tail)
-                Image.Ic.chevronDown
+                Image.Down.disabled
                     .resizable()
                     .scaledToFit()
                     .frame(width: 16, height: 16)
@@ -135,7 +134,7 @@ struct GuestAttitudeList: View {
     private func commentText(_ comment: String) -> some View {
         Text(comment)
             .dsTypography(.body7)
-            .foregroundStyle(Color.Gray.g200)
+            .foregroundStyle(Color.GrayScale.g200)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -158,11 +157,11 @@ enum GuestAttitudeCopy {
 
     static func icon(for axis: AttitudeAxisKind) -> Image {
         switch axis {
-        case .gaze: Image.Ic.attitudeGaze
-        case .expression: Image.Ic.attitudeExpression
-        case .posture: Image.Ic.attitudePosture
-        case .gesture: Image.Ic.attitudeGesture
-        case .voice: Image.Ic.attitudeVoice
+        case .gaze: Image.Feedback.eyes20
+        case .expression: Image.Feedback.face20
+        case .posture: Image.Feedback.body20
+        case .gesture: Image.Feedback.hand20
+        case .voice: Image.Feedback.voice20
         }
     }
 
