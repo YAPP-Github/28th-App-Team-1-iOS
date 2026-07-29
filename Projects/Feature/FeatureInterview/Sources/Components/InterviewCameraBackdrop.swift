@@ -14,6 +14,8 @@ import SwiftUI
 /// 준비 화면은 상/하단 스크림 둘 다, 세션 진행 화면은 하단만 쓴다 (`showsTopScrim`).
 /// 카메라 프리뷰는 `previewHandle` 주입 — 있으면 실카메라(RecordingClient), 없으면 placeholder
 /// (권한 거부·시뮬레이터·시작 전). 핸들 확보·정지는 각 화면 Reducer/코디네이터 몫.
+/// 실앱에선 각 화면이 아니라 `InterviewView`(코디네이터 뷰)에 상주한다 — 화면 교체와 함께
+/// 갈아끼우면 프리뷰 레이어가 재생성되며 카메라가 끊겨 보인다.
 struct InterviewCameraBackdrop: View {
     var showsTopScrim = true
     /// 있으면 실카메라 프리뷰, 없으면 placeholder.
