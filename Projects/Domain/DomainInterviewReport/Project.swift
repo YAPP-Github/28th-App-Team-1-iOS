@@ -6,11 +6,13 @@ let project = Project.makeModule(
     name: "DomainInterviewReport",
     targets: [
         .domain(interface: "InterviewReport", factory: .init(dependencies: [
-            .composableArchitecture   // Client 계약이 TestDependencyKey/DependencyValues 를 사용
+            .composableArchitecture,      // Client 계약이 TestDependencyKey/DependencyValues 를 사용
+            .domain(interface: .common)   // DomainAPIError 채택 (에러 매핑 공통 계약)
         ])),
         .domain(implements: "InterviewReport", factory: .init(dependencies: [
-            .composableArchitecture,     // liveValue(DependencyKey) 구현
-            .core(interface: .network)   // 인프라 추상화(AuthorizedNetworkClient 계약)만 의존 — 구현은 App/Example 이 link
+            .composableArchitecture,      // liveValue(DependencyKey) 구현
+            .core(interface: .network),   // 인프라 추상화(AuthorizedNetworkClient 계약)만 의존 — 구현은 App/Example 이 link
+            .domain(interface: .common)   // InterviewReportError.mapping (DomainAPIError)
         ])),
         .domain(testing: "InterviewReport"),
         .domain(tests: "InterviewReport", factory: .init(dependencies: [

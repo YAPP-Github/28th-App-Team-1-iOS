@@ -53,7 +53,7 @@ struct GuestVideoPlayerView: View {
             } else {
                 placeholderContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color.Gray.g900)
+                    .background(Color.GrayScale.g900)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -78,7 +78,7 @@ struct GuestVideoPlayerView: View {
                     .frame(maxWidth: .infinity, maxHeight: videoMaxHeight)
             } else {
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.Gray.g900)
+                    .fill(Color.GrayScale.g900)
                     .aspectRatio(videoAspectRatio, contentMode: .fit)
                     .frame(maxWidth: .infinity, maxHeight: videoMaxHeight)
                     .overlay { placeholderContent }
@@ -100,10 +100,10 @@ struct GuestVideoPlayerView: View {
         VStack(spacing: .ds(.p8)) {
             Image(systemName: "video.slash")
                 .font(.title2)
-                .foregroundStyle(Color.Gray.g400)
+                .foregroundStyle(Color.GrayScale.g400)
             Text("영상을 준비 중이에요")
                 .dsTypography(.body7)
-                .foregroundStyle(Color.Gray.g400)
+                .foregroundStyle(Color.GrayScale.g400)
         }
     }
 
@@ -118,14 +118,14 @@ struct GuestVideoPlayerView: View {
                 if let text = boundary.questionText {
                     Text(text)
                         .dsTypography(.body10)
-                        .foregroundStyle(Color.Gray.g400)
+                        .foregroundStyle(Color.GrayScale.g400)
                         .lineLimit(1)
                 }
             }
             .padding(.horizontal, .ds(.p12))
             .padding(.vertical, .ds(.p8))
             // 다크 평가 배경 위 칩 — gray900 표면. DS 에 radius 토큰이 없어 리터럴 10pt 유지.
-            .background(Color.Gray.g900, in: RoundedRectangle(cornerRadius: 10))
+            .background(Color.GrayScale.g900, in: RoundedRectangle(cornerRadius: 10))
         }
         .buttonStyle(.plain)
     }

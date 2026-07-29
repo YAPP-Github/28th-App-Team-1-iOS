@@ -7,7 +7,8 @@ let project = Project.makeModule(
         // Interface가 AuthClient(DependencyValues 키) 선언을 위해 TCA를 직접 import 하므로
         // 의존을 명시해야 한다 — 누락 시 따뜻한 DerivedData에서만 우연히 빌드되는 거짓 성공이 난다.
         .domain(interface: "Auth", factory: .init(dependencies: [
-            .composableArchitecture
+            .composableArchitecture,
+            .domain(interface: .common)   // DomainAPIError 채택 (에러 매핑 공통 계약)
         ])),
         .domain(implements: "Auth", factory: .init(dependencies: [
             .composableArchitecture,
@@ -16,7 +17,8 @@ let project = Project.makeModule(
             .kakaoSDKAuth,
             .kakaoSDKUser,
             // 서버 세션 교환(login·refresh·logout) — NetworkClient·TokenStore 계약 (→ lat.md api#Auth)
-            .core(interface: .network)
+            .core(interface: .network),
+            .domain(interface: .common)   // AuthError.mapping (DomainAPIError)
         ])),
         .domain(testing: "Auth")
     ]
