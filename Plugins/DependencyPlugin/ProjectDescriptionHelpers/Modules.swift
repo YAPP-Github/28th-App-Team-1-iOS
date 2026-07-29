@@ -21,6 +21,8 @@ public enum ModulePath {
         case interview = "Interview"
         // 디바이스 측 IO (서버 API 아님) — 카메라·마이크 권한
         case permission = "Permission"
+        // 디바이스 측 IO — 카메라 프리뷰·A/V 캡처 (RecordingClient)
+        case recording = "Recording"
         // D14 서버 API 도메인 미러링 — [[api]]
         case jd = "JD"
         case job = "Job"
