@@ -88,20 +88,7 @@ public struct OnboardingPortfolioUploadView: View {
     // MARK: - 공통 골격 (STEP 1 과 동일)
 
     private var navigationBar: some View {
-        HStack(spacing: 0) {
-            Button {
-                send(.userTappedClose)
-            } label: {
-                Image.Cancel.default24
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
-            }
-            .buttonStyle(.plain)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 24)
-        .frame(height: 54)
+        HilitNavigationBar(leading: .icon(Image.Cancel.default24) { send(.userTappedClose) })
     }
 
     private var progressBar: some View {
@@ -265,7 +252,7 @@ public struct OnboardingPortfolioUploadView: View {
                 } label: {
                     // 구 cancelSmall(20pt 맨 X, g200 틴트)의 새 시트 대응이 없다 —
                     // 입력 클리어 계열(cancel mini)로 대체. Figma 화면 확정 시 재검토.
-                    Image.CancelMini.grey16
+                    Image.CancelMini.gray16
                         .resizable()
                         .scaledToFit()
                         .frame(width: 16, height: 16)

@@ -46,20 +46,7 @@ public struct OnboardingFocusProjectView: View {
     }
 
     private var navigationBar: some View {
-        HStack(spacing: 0) {
-            Button {
-                send(.userTappedClose)
-            } label: {
-                Image.Cancel.default24
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
-            }
-            .buttonStyle(.plain)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 24)
-        .frame(height: 54)
+        HilitNavigationBar(leading: .icon(Image.Cancel.default24) { send(.userTappedClose) })
     }
 
     private var progressBar: some View {
@@ -155,7 +142,7 @@ public struct OnboardingFocusProjectView: View {
             send(.userTappedClearText)
         } label: {
             // 원본 컬러 에셋(회색 원 + 블랙 X) — 틴트 없이 그대로 렌더.
-            Image.CancelMini.grey24
+            Image.CancelMini.gray24
                 .resizable()
                 .scaledToFit()
                 .frame(width: 24, height: 24)

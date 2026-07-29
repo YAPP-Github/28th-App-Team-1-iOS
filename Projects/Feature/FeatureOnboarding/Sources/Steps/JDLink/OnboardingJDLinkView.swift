@@ -47,20 +47,7 @@ public struct OnboardingJDLinkView: View {
 
     /// 내비바 — X(닫기)만. 뒤로가기는 하단 «이전으로» 버튼이 담당한다 (Figma 1899:5866).
     private var navigationBar: some View {
-        HStack(spacing: 0) {
-            Button {
-                send(.userTappedClose)
-            } label: {
-                Image.Cancel.default24
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
-            }
-            .buttonStyle(.plain)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 24)
-        .frame(height: 54)
+        HilitNavigationBar(leading: .icon(Image.Cancel.default24) { send(.userTappedClose) })
     }
 
     private var progressBar: some View {
@@ -308,7 +295,7 @@ public struct OnboardingJDLinkView: View {
     private func clearButton(size: CGFloat, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             // 크기별 별도 에셋(optical sizing) — 20 미만이면 16px 판, 이상이면 24px 판.
-            (size < 20 ? Image.CancelMini.grey16 : Image.CancelMini.grey24)
+            (size < 20 ? Image.CancelMini.gray16 : Image.CancelMini.gray24)
                 .resizable()
                 .scaledToFit()
                 .frame(width: size, height: size)
