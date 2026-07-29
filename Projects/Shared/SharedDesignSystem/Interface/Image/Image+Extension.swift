@@ -18,7 +18,15 @@ private typealias Asset = SharedDesignSystemInterfaceAsset
 public extension Image {
 
     enum Ai {
-        public static var green: Image { Asset.Assets.aiGreen.swiftUIImage }
+        public static var green16: Image { Asset.Assets.aiGreen16.swiftUIImage }
+        public static var green24: Image { Asset.Assets.aiGreen24.swiftUIImage }
+    }
+
+    /// 리포트 분석 말풍선(질문/잘함/개선) · 36pt 한 벌 — 크기가 하나라 이름에 생략.
+    enum Analyze {
+        public static var problem: Image { Asset.Assets.analyzeProblem.swiftUIImage }
+        public static var question: Image { Asset.Assets.analyzeQuestion.swiftUIImage }
+        public static var success: Image { Asset.Assets.analyzeSuccess.swiftUIImage }
     }
 
     enum Cancel {
@@ -95,6 +103,8 @@ public extension Image {
         public static var micError: Image { Asset.Assets.imgMicError.swiftUIImage }
         public static var networkError: Image { Asset.Assets.imgNetworkError.swiftUIImage }
         public static var tooltipTail: Image { Asset.Assets.imgTooltipTail.swiftUIImage }
+        /// 다크 말풍선 꼬리(gray900) — BubbleToast `.tooltip` 이 다크 화면에서 쓴다.
+        public static var tooltipTailDark: Image { Asset.Assets.imgTooltipTailDark.swiftUIImage }
     }
 
     enum Info {
@@ -140,6 +150,11 @@ public extension Image {
         public static var kakaoWithBg: Image { Asset.Assets.logoKakaoWithBg.swiftUIImage }
     }
 
+    /// 일시정지(두 막대) — 정지 글리프인 `Stop` 과 다르다. 플레이어 재생 버튼과 짝.
+    enum Pause {
+        public static var green34: Image { Asset.Assets.pauseGreen34.swiftUIImage }
+    }
+
     enum Play {
         public static var dark34: Image { Asset.Assets.playDark34.swiftUIImage }
         public static var default24: Image { Asset.Assets.playDefault24.swiftUIImage }
@@ -171,6 +186,8 @@ public extension Image {
         public static var dark24: Image { Asset.Assets.rightDark24.swiftUIImage }
         public static var default24: Image { Asset.Assets.rightDefault24.swiftUIImage }
         public static var disabled24: Image { Asset.Assets.rightDisabled24.swiftUIImage }
+        /// 다크 화면의 disabled(#494C58) — 밝은 화면 disabled(BCBEC6)와 별개 판.
+        public static var disabledDark16: Image { Asset.Assets.rightDisabledDark16.swiftUIImage }
         public static var grey16: Image { Asset.Assets.rightGrey16.swiftUIImage }
         public static var white16: Image { Asset.Assets.rightWhite16.swiftUIImage }
     }
@@ -209,6 +226,8 @@ public extension Image {
         public static var default24: Image { Asset.Assets.timerDefault24.swiftUIImage }
         public static var disabled16: Image { Asset.Assets.timerDisabled16.swiftUIImage }
         public static var disabled24: Image { Asset.Assets.timerDisabled24.swiftUIImage }
+        /// 그린(#ACEBA0) — 리포트 영상 시청 잔여 타이머.
+        public static var green24: Image { Asset.Assets.timerGreen24.swiftUIImage }
     }
 
     enum Undo {
@@ -231,6 +250,7 @@ public extension Image {
         public static var default16: Image { Asset.Assets.videoDefault16.swiftUIImage }
         public static var default24: Image { Asset.Assets.videoDefault24.swiftUIImage }
         public static var disabled24: Image { Asset.Assets.videoDisabled24.swiftUIImage }
+        public static var white16: Image { Asset.Assets.videoWhite16.swiftUIImage }
         public static var white24: Image { Asset.Assets.videoWhite24.swiftUIImage }
     }
 }

@@ -31,7 +31,7 @@ Figma 버튼 6종을 옮긴 체계. **경계 규칙: 레이아웃·슬롯을 소
 
 | 컴포넌트 | Figma | API | 용도 |
 |---|---|---|---|
-| `BubbleToast` | BubbleField 2555:7543 | `(_ message:)` | 폭 274 고정 블랙 토스트 — 위치·해제 타이밍은 호출부 |
+| `BubbleToast` | BubbleField 2555:7543 | `(_ message:, style: .toast/.tooltip)` | `.toast` 폭 274 블랙 · `.tooltip` 내용 폭 gray900 + 아래 꼬리(다크 화면). 위치·해제 타이밍은 호출부 |
 | `ChoiceChip` | button-medium 2150:7297 | `(_ label:, isSelected:, tone: .positive/.negative, action:)` | N지선다 등폭 척도 칩 — HStack 에 나란히. 외형은 `.medium(layout: .fill)` 이 그리고, 이 타입은 **«선택 상태 → 톤»** 규칙만 갖는다 |
 | `HighlightedText` | highlighted-text | `(_ text:, typography:, plainForeground:)` + 체인 `.hilight(_:)`·`.hilightColor(_:)`·`.hilightFill(_:)`·`.hilightIcon(_:)`·`.hilightColors(foreground:background:)` | 형광펜 마커. **문장 전체를 넘기고 `.hilight("부분")`** — 미지정 시 전체 강조. `hilightColor` 6종(green/black/gray/blue/red/none)은 글자색+배경색 한 쌍. `hilightFill` 3종(full/midlined/underlined), 띠 두께는 `typography` 파생(≥20pt 12, 아니면 8). `Text` 확장은 불가 — 내부 문자열을 못 꺼낸다 |
 | `Parallelogram` | highlighted-text 배경 | `Shape` — `(slant:)` | 하이라이트 배경 Shape. 직접 쓰기보다 `HighlightedText` 우선 |
