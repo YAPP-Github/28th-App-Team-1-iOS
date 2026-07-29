@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import DomainRecordingInterface
 
 // @lat: [[interview#세션]]
 /// Part 2 «10분 음성 면접» 진행 화면 — 단일 화면 + 턴 상태머신 (docs/work/ai-interview.md §6).
@@ -76,13 +77,18 @@ public struct InterviewSessionFeature {
         public var isEarlyExitWarningPresented = false
         /// onAppear 재진입 가드 — 세션 시계 effect 중복 실행 방지.
         public var hasStarted = false
+        /// 프리뷰 핸들 — 코디네이터가 준비 화면의 핸들을 시드해 첫 프레임부터 프리뷰가 붙는다
+        /// (nil 시드면 onAppear 멱등 재요청이 채울 때까지 placeholder). 재요청은 백스톱으로 유지.
+        public var previewHandle: CameraPreviewHandle?
 
         /// 최종 카운트다운 잔여 초 — 상한까지 남은 시간.
         public var countdownRemaining: Int {
             max(0, InterviewSessionFeature.hardCapSeconds - elapsedSeconds)
         }
 
-        public init() {}
+        public init(previewHandle: CameraPreviewHandle? = nil) {
+            self.previewHandle = previewHandle
+        }
     }
 
     public enum Action: ViewAction {
@@ -110,6 +116,8 @@ public struct InterviewSessionFeature {
         /// effect 결과·리듀서 내부 신호. 리듀서만 방출한다.
         @CasePathable
         public enum Inner: Equatable, Sendable {
+            /// 프리뷰 핸들 확보 — 실패(권한 회수 등)면 nil, placeholder 로 진행.
+            case previewStarted(CameraPreviewHandle?)
             /// 세션 시계 1초 경과.
             case clockTicked
             /// 질문 TTS 재생 완료 — answering 전환. TODO: SpeechClient 도입 시 effect 가 방출.
@@ -138,6 +146,7 @@ public struct InterviewSessionFeature {
     private enum CancelID { case clock, toast, processing }
 
     @Dependency(\.continuousClock) var clock
+    @Dependency(\.recordingClient) var recordingClient
 
     public init() {}
 
@@ -160,13 +169,18 @@ public struct InterviewSessionFeature {
             guard !state.hasStarted else { return .none }
             state.hasStarted = true
             // TODO: SpeechClient — 요약 질문 TTS 재생 시작(완료 시 questionPlaybackFinished) ·
-            //       RecordingClient — A/V 캡처 시작 (docs/work/ai-interview.md §3 예정).
-            return .run { send in
-                for await _ in clock.timer(interval: Self.clockTick) {
-                    await send(.inner(.clockTicked))
+            //       실녹화(RecordingClient.startRecording)는 작업 B — 지금은 프리뷰 승계만.
+            return .merge(
+                .run { send in
+                    await send(.inner(.previewStarted(recordingClient.startPreview())))
+                },
+                .run { send in
+                    for await _ in clock.timer(interval: Self.clockTick) {
+                        await send(.inner(.clockTicked))
+                    }
                 }
-            }
-            .cancellable(id: CancelID.clock)
+                .cancellable(id: CancelID.clock)
+            )
 
         case .userTappedAnswerComplete:
             guard state.phase == .answering else { return .none }
@@ -212,6 +226,10 @@ public struct InterviewSessionFeature {
 
     private func reduceInner(_ state: inout State, _ action: Action.Inner) -> Effect<Action> {
         switch action {
+        case let .previewStarted(handle):
+            state.previewHandle = handle
+            return .none
+
         case .clockTicked:
             return reduceClockTick(&state)
 
