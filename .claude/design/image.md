@@ -26,6 +26,7 @@ Image.Img.micError           // 일러스트 — 크기·변형 없이 이름만
 | 패밀리 | 생김새 | 주 용도 |
 |---|---|---|
 | `Ai` | 반짝이(4점 별), 초록 | AI 기능 표시 |
+| `Analyze` | 36pt 말풍선 픽토그램 3종 — question(물음표)·success(체크)·problem(느낌표) | 리포트 분석 카드 |
 | `Cancel` | 맨 X (배경 없음) | 닫기·취소 |
 | `CancelMini` | 원 배경 + X (회색 원/검정 원) | 입력 클리어·행 제거 |
 | `Coupon` | 티켓 모양 | 이용권 |
@@ -39,6 +40,7 @@ Image.Img.micError           // 일러스트 — 크기·변형 없이 이름만
 | `Left` / `Right` | 쉐브론 ‹ / › | 뒤로·앞으로 |
 | `Loading` | 진행 링(ing)·대기 링(wait)·체크 원(success) | 단계 진행 표시 |
 | `Logo` | kakao 말풍선(노랑)·apple 사과 — with-bg/no-bg | 소셜 로그인 |
+| `Pause` | 세로 막대 2개 ‖ (그린 글리프) | 플레이어 일시정지 |
 | `Play` | 재생 삼각형 ▷ | 영상 재생 |
 | `Plus` | + | 추가 |
 | `Profile` | 사람 실루엣 | 프로필 |
