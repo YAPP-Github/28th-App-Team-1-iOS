@@ -150,11 +150,15 @@ public extension Image {
         public static var kakaoWithBg: Image { Asset.Assets.logoKakaoWithBg.swiftUIImage }
     }
 
-    /// 일시정지(두 막대) — 정지 글리프인 `Stop` 과 다르다. 플레이어 재생 버튼과 짝.
+    /// 일시정지(세로 막대 2개) — 재생 중에 보이는 글리프.
+    /// **Figma 는 이 그림을 «play» 로 불렀지만** 그림이 기준이라 이름을 바꿔 담았다(→ design/image.md 주의).
     enum Pause {
+        public static var dark34: Image { Asset.Assets.pauseDark34.swiftUIImage }
+        public static var default24: Image { Asset.Assets.pauseDefault24.swiftUIImage }
         public static var green34: Image { Asset.Assets.pauseGreen34.swiftUIImage }
     }
 
+    /// 재생(막대 + 속 빈 삼각형 ▷) — 멈춘 상태에 보이는 글리프. Figma 원본 이름은 «stop» 이다.
     enum Play {
         public static var dark34: Image { Asset.Assets.playDark34.swiftUIImage }
         public static var default24: Image { Asset.Assets.playDefault24.swiftUIImage }
@@ -206,12 +210,6 @@ public extension Image {
     enum SkipR {
         public static var dark20: Image { Asset.Assets.skipRDark20.swiftUIImage }
         public static var dark34: Image { Asset.Assets.skipRDark34.swiftUIImage }
-    }
-
-    enum Stop {
-        public static var dark34: Image { Asset.Assets.stopDark34.swiftUIImage }
-        public static var default24: Image { Asset.Assets.stopDefault24.swiftUIImage }
-        public static var green34: Image { Asset.Assets.stopGreen34.swiftUIImage }
     }
 
     enum Success {
