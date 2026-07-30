@@ -8,7 +8,9 @@ let project = Project.makeModule(
         // D3: Feature 는 Interface 를 두지 않는다.
         .feature(implements: "Auth", factory: .init(dependencies: [
             .composableArchitecture,
-            .domain(interface: .auth)
+            .domain(interface: .auth),
+            .domain(interface: .job),          // 가입 온보딩 직군 선택(AuthOnboardingJob)
+            .shared(interface: .designSystem)
         ])),
         .feature(testing: "Auth"),
         // Tests/Example 소스가 직접 import하는 모듈은 전이 의존에 기대지 않고 명시한다 —
@@ -19,7 +21,8 @@ let project = Project.makeModule(
         ])),
         .feature(example: "Auth", factory: .init(dependencies: [
             .composableArchitecture,
-            .domain(interface: .auth)
+            .domain(interface: .auth),
+            .domain(interface: .job)
         ]))
     ]
 )

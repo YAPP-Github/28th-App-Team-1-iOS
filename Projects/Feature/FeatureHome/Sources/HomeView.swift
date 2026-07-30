@@ -8,6 +8,8 @@
 import ComposableArchitecture
 import SwiftUI
 
+/// 홈 진입점 — 화면은 1개, `phase` 스위치로 서브뷰를 연결한다(GuestFeedbackView 패턴).
+/// 서브뷰 4개는 Figma 프레임과 1:1 스텁 — 시안 수령 시 각 파일에서 UI 를 채운다.
 @ViewAction(for: HomeFeature.self)
 public struct HomeView: View {
     @Bindable public var store: StoreOf<HomeFeature>
@@ -17,25 +19,42 @@ public struct HomeView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 16) {
-            Text("Home")
-
-            // dev 전용 임시 진입 — 온보딩 본체 통합 전까지 실서버 API 확인용. 배포 계에선 숨겨진다.
-            if store.showsOnboardingEntry {
-                Button("온보딩 시작 (dev)") {
-                    send(.userTappedOnboarding)
-                }
-                .buttonStyle(.borderedProminent)
-            }
-
-            // dev 디버그 — 서버 로그아웃 + 토큰·온보딩 draft 전체 삭제 후 첫 로그인 화면으로. 배포 계에선 숨겨진다.
-            if store.showsDebugLogout {
-                Button("로그아웃 (dev)", role: .destructive) {
-                    send(.userTappedLogout)
-                }
-                .buttonStyle(.bordered)
+        Group {
+            switch store.phase {
+            case .default:
+                HomeDefaultView(store: store)
+            case .report:
+                HomeReportView()
+            case let .startInterview(variant):
+                HomeStartInterviewView(variant: variant)
+            case let .duringInterview(variant):
+                HomeDuringInterviewView(variant: variant)
             }
         }
         .onAppear { send(.onAppear) }
     }
+}
+
+#Preview("HomeDefault") {
+    HomeView(
+        store: Store(initialState: HomeFeature.State(showsOnboardingEntry: true, showsDebugLogout: true)) {
+            HomeFeature()
+        }
+    )
+}
+
+#Preview("HomeStartInterview — 소진") {
+    HomeView(
+        store: Store(initialState: HomeFeature.State(phase: .startInterview(.exhausted))) {
+            HomeFeature()
+        }
+    )
+}
+
+#Preview("HomeDuringInterview — 진행 중") {
+    HomeView(
+        store: Store(initialState: HomeFeature.State(phase: .duringInterview(.inProgress))) {
+            HomeFeature()
+        }
+    )
 }
