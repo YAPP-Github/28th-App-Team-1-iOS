@@ -8,8 +8,8 @@
 import SharedDesignSystemInterface
 import SwiftUI
 
-/// 면접 영상 진입 카드 — Figma «countdown-card»(property1=active / end).
-/// 남은 시청 시간을 1초마다 갱신한다.
+/// 면접 영상 진입 카드 — 그림은 DS `CountdownCard`(Figma «countdown-card») 가 그리고,
+/// 이 타입은 «만료 시각 → 남은 시간·상태» 파생과 1초 갱신, 탭만 소유한다.
 ///
 /// 갱신을 `TimelineView` 로 뷰 안에서 처리하는 이유: 남은 시간은 서버 `expiresAt` 에서 파생되는 표시값이라
 /// State 에 둘 필요가 없다. 리듀서에 1초 틱 effect 를 넣으면 폴링과 무관한 액션이 매초 흘러
@@ -34,56 +34,18 @@ struct VideoCountdownCard: View {
     }
 
     private func button(remaining: TimeInterval?, isEnded: Bool) -> some View {
+        // DS CountdownCard 는 탭을 갖지 않는다(목적지가 화면마다 달라서) — 호출부인 여기가 감싼다.
         Button(action: onTap) {
-            card(remaining: remaining, isEnded: isEnded)
+            CountdownCard(
+                title: Self.title,
+                subtitle: isEnded ? Self.expiredMessage : Self.activeMessage,
+                // 기한을 모르면(nil) 시간 표기를 비운다 — 카운트다운 없는 정적 카드.
+                time: remaining.map(Self.formatted) ?? "",
+                status: isEnded ? .ended : .active
+            )
         }
         .buttonStyle(.plain)
         .disabled(isExpired)
-    }
-
-    private func card(remaining: TimeInterval?, isEnded: Bool) -> some View {
-        VStack(alignment: .leading, spacing: .ds(.p10)) {
-            HStack(spacing: 0) {
-                Text(Self.title)
-                    .dsTypography(isEnded ? .sub7 : .body2)
-                    .foregroundStyle(isEnded ? Color.GrayScale.g300 : Color.BlackWhite.white)
-                Spacer(minLength: .ds(.p8))
-                (isEnded ? Image.Right.disabled16 : Image.Right.white16)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 16, height: 16)
-            }
-
-            Rectangle()
-                .fill(Color.GrayScale.g800)
-                .frame(height: .ds(.small))
-
-            HStack(spacing: 0) {
-                HStack(spacing: .ds(.p8)) {
-                    (isEnded ? Image.Timer.disabled24 : Image.Timer.green24)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 24, height: 24)
-
-                    Text(isEnded ? Self.expiredMessage : Self.activeMessage)
-                        .dsTypography(.body9)
-                        // @ds(color): #D2D6DE (Figma Gray scale/300) → GrayScale.g200 — 다크 카드 보조 텍스트, 팔레트에 s계열 없음
-                        .foregroundStyle(Color.GrayScale.g200)
-                        .opacity(0.8)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: .ds(.p8))
-                if let remaining {
-                    Text(Self.formatted(remaining))
-                        .dsTypography(.sub3)
-                        .foregroundStyle(isEnded ? Color.GrayScale.g300 : Color.BlackWhite.white)
-                        .monospacedDigit()
-                }
-            }
-        }
-        .padding(.ds(.p12))
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.HilitBlack.b800)
     }
 
     /// HH:MM:SS — 하루를 넘겨도 시(hour) 자리로 이어 붙인다(00:00:00 자리수 고정).
