@@ -50,7 +50,8 @@ public struct ReportVideoPlayerView: View {
             }
             chrome
         }
-        .navigationBarBackButtonHidden(true)
+        // 영상 풀블리드 위 투명 바(기본값) — X 는 플레이어를 닫고 리포트로 (리듀서 소유).
+        .hilitNavigationBar(theme: .dark, onClose: { send(.userTappedBack) })
         .contentShape(Rectangle())
         .onTapGesture { send(.userTappedSurface) }
         .onAppear {
@@ -131,32 +132,14 @@ public struct ReportVideoPlayerView: View {
 
     // MARK: - 상단·하단 고정 요소
 
+    /// 상단 X 는 `.hilitNavigationBar` 가 얹는다 — 여기는 하단 바만 남는다.
     private var chrome: some View {
         VStack(spacing: 0) {
-            navigationBar
             Spacer(minLength: 0)
             if store.isBottomBarVisible {
                 bottomBar
             }
         }
-    }
-
-    /// Figma 는 좌측 X 하나 — 플레이어를 닫으면 리포트로 돌아간다.
-    private var navigationBar: some View {
-        HStack(spacing: 0) {
-            Button {
-                send(.userTappedBack)
-            } label: {
-                Image.Cancel.white24
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
-            }
-            .buttonStyle(.plain)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, .ds(.p20))
-        .frame(height: Self.navigationBarHeight)
     }
 
     private var bottomBar: some View {
@@ -239,7 +222,6 @@ public struct ReportVideoPlayerView: View {
 
     /// «hilit opacity/dark/65%».
     private static let dimOpacity: Double = 0.65
-    private static let navigationBarHeight: CGFloat = 54
     /// 컨트롤 터치 영역 44 · 글리프 34 (Figma video-control).
     private static let controlSize: CGFloat = 44
     private static let glyphSize: CGFloat = 34

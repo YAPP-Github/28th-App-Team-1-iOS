@@ -24,16 +24,14 @@ public struct ReportMainView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 0) {
-            navigationBar
-            content
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.HilitBlack.b900.ignoresSafeArea())
-        // 다크 판 선언 — 하위 `.mini`(재시도 버튼·지인 이름 탭)의 팔레트가 다크용으로 바뀐다.
-        .hilitSurface(.dark)
-        .navigationBarBackButtonHidden(true)
-        .onAppear { send(.onAppear) }
+        content
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.HilitBlack.b900.ignoresSafeArea())
+            // 다크 판 선언 — 하위 `.mini`(재시도 버튼·지인 이름 탭)의 팔레트가 다크용으로 바뀐다.
+            .hilitSurface(.dark)
+            // X = 리포트 닫기(플로우 종료) — 기본 pop 이 아니라 리듀서가 소유한다.
+            .hilitNavigationBar(theme: .dark, onClose: { send(.userTappedClose) })
+            .onAppear { send(.onAppear) }
         .sheet(item: $store.scope(state: \.highlightDetail, action: \.highlightDetail)) { store in
             ReportHighlightDetailView(store: store)
         }
@@ -75,25 +73,6 @@ public struct ReportMainView: View {
             .padding(.top, .ds(.p10))
             .padding(.bottom, .ds(.p24))
         }
-    }
-
-    // MARK: - 상단
-
-    private var navigationBar: some View {
-        HStack(spacing: 0) {
-            Button {
-                send(.userTappedClose)
-            } label: {
-                Image.Cancel.white24
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
-            }
-            .buttonStyle(.plain)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, .ds(.p20))
-        .frame(height: 54)
     }
 
     /// 한 줄 요약 — 서버 소유 문구. nil 이면 분석 부족 폴백만 쓴다 (정의서 §6).

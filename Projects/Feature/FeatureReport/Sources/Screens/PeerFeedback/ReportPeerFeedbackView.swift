@@ -22,7 +22,6 @@ public struct ReportPeerFeedbackView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            navigationBar
             titleBox
             axisList
                 // Figma 절대 배치(title-box 하단 217 → 목록 268) 실측치. spacing 스케일 밖의 레이아웃 값이다.
@@ -57,7 +56,8 @@ public struct ReportPeerFeedbackView: View {
                     .presentationDetents([.medium, .large])
             }
         }
-        .navigationBarBackButtonHidden(true)
+        // X = 이 화면 나가기 — 리듀서가 소유(뒤로 신호를 delegate 로 올린다).
+        .hilitNavigationBar(theme: .dark, onClose: { send(.userTappedBack) })
         .onAppear { send(.onAppear) }
     }
 
@@ -66,33 +66,12 @@ public struct ReportPeerFeedbackView: View {
         URL(string: link) ?? link
     }
 
-    private var navigationBar: some View {
-        HStack(spacing: 0) {
-            Button {
-                send(.userTappedBack)
-            } label: {
-                Image.Cancel.white24
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
-            }
-            .buttonStyle(.plain)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, .ds(.p20))
-        .frame(height: 54)
-    }
-
+    /// 화면 머리글 — 글자색(다크 판 white/g300)·수직 리듬은 DS `TitleBox` 가 `.hilitSurface(.dark)` 에서 파생.
     private var titleBox: some View {
-        VStack(alignment: .leading, spacing: .ds(.p4)) {
-            Text("지인에게 어떤 항목을\n평가받을까요?")
-                .dsTypography(.head3)
-                .foregroundStyle(Color.BlackWhite.white)
-            Text("지인은 면접 태도를 중심으로 평가합니다.\n평가받고 싶은 항목을 선택해 주세요.")
-                .dsTypography(.body4)
-                .foregroundStyle(Color.GrayScale.g300)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        TitleBox(
+            ["지인에게 어떤 항목을", "평가받을까요?"],
+            sub: "지인은 면접 태도를 중심으로 평가합니다.\n평가받고 싶은 항목을 선택해 주세요."
+        )
         .padding(.horizontal, .ds(.p20))
         .padding(.top, .ds(.p10))
     }
@@ -140,29 +119,13 @@ public struct ReportPeerFeedbackView: View {
 
     /// 링크 생성 완료 모달 — 딤 65% + 폭 327 흰 카드 + 하단 «링크 복사하기»(Figma 3165:15492).
     /// 배경 탭으로는 닫히지 않는다. 링크는 이미 만들어졌고 복사만 남았다.
+    /// 카드는 DS `Modal`(링크 배지 74 + 타이틀 + modal 버튼) — 딤은 호출부인 여기가 깐다.
     private var completionModal: some View {
         ZStack {
             Color.HilitBlack.b900.opacity(0.65)
                 .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                VStack(spacing: .ds(.p20)) {
-                    Image.Img.link
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 74, height: 74)
-                    Text("링크 생성 완료!\n지인에게 보내보세요.")
-                        .dsTypography(.sub4)
-                        // @ds(color): #262A30 (Figma Gray scale/800) → HilitBlack.b800 — 흰 모달 제목, 팔레트에 s계열 없음
-                        .foregroundStyle(Color.HilitBlack.b800)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                }
-                .padding(.horizontal, .ds(.p24))
-                // Figma padding-40 — spacing 스케일(4~24) 밖의 값이라 실측치를 그대로 쓴다.
-                .padding(.vertical, 40)
-                .background(Color.BlackWhite.white)
-
+            Modal("링크 생성 완료!\n지인에게 보내보세요.", icon: Image.Img.link) {
                 ButtonLarge("링크 복사하기", .modal) {
                     send(.userTappedCopyLink)
                 }
