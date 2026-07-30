@@ -8,14 +8,14 @@
 
 | 영역 | 기준 | 문서 |
 |---|---|---|
-| 버튼 | 탭하면 **액션이 실행**된다 (action 클로저) | `component/button.md` |
+| 버튼 | 탭하면 **액션이 실행**된다 (action 클로저). 버튼의 팔레트·상태를 다루는 모디파이어(`.hilitSurface`·`.hilitButtonLoading`)도 여기 — 액션은 없지만 API 근거가 버튼 문서에 있다 | `component/button.md` |
 | 입력 | 값을 **바인딩으로 주고받는다** + 필드에 붙는 안내/에러 줄 | `component/input.md` |
 | 표시 | 값을 받아 **보여주기만** 한다 | `component/display.md` |
 | 내비게이션 | **화면·영역 전환**이나 진행 위치를 다룬다 (바인딩을 받아도 이쪽이 이긴다) | `component/navigation.md` |
 
 ## 카탈로그
 
-**알파벳순 유지** — 새 행을 끝에 붙이지 말고 제자리에 끼워 넣는다(동시 추가 시 git 이 자동 병합).
+**알파벳순 유지** — 새 행을 끝에 붙이지 말고 제자리에 끼워 넣는다(동시 추가 시 git 이 자동 병합). 모디파이어 앞의 `.` 은 정렬에서 무시하고 이름으로 끼운다.
 
 | 컴포넌트 | 한 줄 | 영역 |
 |---|---|---|
@@ -27,8 +27,10 @@
 | `DashIndicator` | 진행 단계 대시 | 내비게이션 |
 | `FieldSubText` | 필드 아래 서브 텍스트 한 줄 | 입력 |
 | `HighlightedText` | 형광펜 마커 텍스트 | 표시 |
+| `.hilitButtonLoading` | 버튼 로딩 오버레이 (시안에 없음) | 버튼 |
 | `HilitCheckboxStyle` | 체크박스 (`ToggleStyle`) | 입력 |
 | `HilitNavigationBar` | 커스텀 내비바 (부착은 모디파이어) | 내비게이션 |
+| `.hilitSurface` | 화면 판 톤 선언 → 하위 팔레트 전환 | 버튼 |
 | `HilitTextEditor` | 여러 줄 입력 박스 | 입력 |
 | `HilitTextField` | 한 줄 입력 필드 | 입력 |
 | `HilitToggleStyle` | 스위치 토글 (`ToggleStyle`) | 입력 |
@@ -41,8 +43,6 @@
 | `TabSelector` | 밑줄 텍스트 탭 줄 | 내비게이션 |
 | `TagLabel` | 소형 사각 태그 | 표시 |
 | `TitleBox` | 화면 머리글 (뱃지·타이틀·서브) | 표시 |
-| `.hilitButtonLoading` | 버튼 로딩 오버레이 (시안에 없음) | 버튼 |
-| `.hilitSurface` | 화면 판 톤 선언 → 하위 팔레트 전환 | 버튼 |
 
 ## 승격 규칙 (Feature → Shared)
 
