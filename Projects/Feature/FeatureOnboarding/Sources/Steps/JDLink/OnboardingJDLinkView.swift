@@ -39,8 +39,8 @@ public struct OnboardingJDLinkView: View {
         .background(Color.BlackWhite.white.ignoresSafeArea())
         .dismissesKeyboardOnTap()
         .hilitNavigationBar(
-            leading: .icon(Image.Cancel.default24) { send(.userTappedClose) },
-            allowsSwipeBack: false
+            background: .filled,
+            onClose: { send(.userTappedClose) }
         )
         .onAppear { send(.onAppear) }
     }
@@ -322,38 +322,14 @@ public struct OnboardingJDLinkView: View {
     // MARK: - 하단 CTA (이전으로 | 계속하기)
 
     /// 분할 CTA 바 — 뒤로가기가 내비바가 아니라 여기에 있다 (Figma 1609:9659).
+    /// 한쪽만 비활성은 그 자식의 `.disabled` 로 표현한다 (DS 2버튼 규약).
     private var bottomBar: some View {
-        HStack(spacing: 0) {
-            Button {
-                send(.userTappedBack)
-            } label: {
-                Text("이전으로")
-                    .dsTypography(.sub7)
-                    .foregroundStyle(Color.BlackWhite.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 22)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            Rectangle()
-                .fill(Color.GrayScale.g700) // 구분선 — Figma 벡터 색 미확인, gray-700 추정 (보고 참조)
-                .frame(width: 1, height: 25)
-
-            Button {
-                send(.userTappedContinue)
-            } label: {
-                Text("계속하기")
-                    .dsTypography(.sub7)
-                    .foregroundStyle(store.isContinueEnabled ? Color.BlackWhite.white : Color.GrayScale.g500)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 22)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .disabled(!store.isContinueEnabled)
+        ButtonLarge(.bottom, tone: .dark) {
+            Button("이전으로") { send(.userTappedBack) }
+        } trailing: {
+            Button("계속하기") { send(.userTappedContinue) }
+                .disabled(!store.isContinueEnabled)
         }
-        .background(Color.HilitBlack.b800.ignoresSafeArea(edges: .bottom))
     }
 }
 

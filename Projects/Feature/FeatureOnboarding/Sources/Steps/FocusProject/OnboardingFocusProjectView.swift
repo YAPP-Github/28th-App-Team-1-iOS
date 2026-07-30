@@ -41,8 +41,8 @@ public struct OnboardingFocusProjectView: View {
         .background(Color.BlackWhite.white.ignoresSafeArea())
         .dismissesKeyboardOnTap()
         .hilitNavigationBar(
-            leading: .icon(Image.Cancel.default24) { send(.userTappedClose) },
-            allowsSwipeBack: false
+            background: .filled,
+            onClose: { send(.userTappedClose) }
         )
         .onAppear { send(.onAppear) }
     }
@@ -169,36 +169,11 @@ public struct OnboardingFocusProjectView: View {
     /// 하단 CTA — 이 스텝 고유의 이분할 바 («이전으로 | 계속하기»).
     /// 선택 스텝이라 계속하기는 항상 활성. 뒤로가기는 내비바가 아닌 여기서 처리한다.
     private var bottomBar: some View {
-        HStack(spacing: 0) {
-            Button {
-                send(.userTappedBack)
-            } label: {
-                Text("이전으로")
-                    .dsTypography(.sub7)
-                    .foregroundStyle(Color.BlackWhite.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 22)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            Rectangle()
-                .fill(Color.GrayScale.g700)
-                .frame(width: 1, height: 25)
-
-            Button {
-                send(.userTappedContinue)
-            } label: {
-                Text("계속하기")
-                    .dsTypography(.sub7)
-                    .foregroundStyle(Color.BlackWhite.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 22)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
+        ButtonLarge(.bottom, tone: .dark) {
+            Button("이전으로") { send(.userTappedBack) }
+        } trailing: {
+            Button("계속하기") { send(.userTappedContinue) }
         }
-        .background(Color.HilitBlack.b800.ignoresSafeArea(edges: .bottom))
     }
 }
 
