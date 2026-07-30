@@ -23,7 +23,9 @@ struct AppFeature {
     @ObservableState
     struct State: Equatable {
         var auth = AuthFeature.State()
-        /// 로그인 게이트. 토큰 영속화가 없으므로 앱 재실행 시 항상 false에서 시작(의도된 범위 제한).
+        /// 자동 로그인 판정 전 — true 동안 Splash 를 보여준다. onAppear 의 토큰 확인이 내린다.
+        var isCheckingSession = true
+        /// 로그인 게이트 — Splash 판정(Keychain 토큰 유무)이 초기값을 정한다.
         var isAuthenticated = false
         var home = HomeFeature.State()
         var selectedTab: Tab = .home
@@ -58,10 +60,16 @@ struct AppFeature {
                 // dev 계에서만 Home 온보딩 진입·디버그 로그아웃 버튼을 노출한다.
                 state.home.showsOnboardingEntry = AppEnvironment.isDev
                 state.home.showsDebugLogout = AppEnvironment.isDev
+                // Splash(SP) 자동 로그인 판정 — Keychain 토큰 유무로 홈 직행/로그인 분기.
+                // 만료 세션은 첫 인증 요청의 LOGIN_EXPIRED 전파가 걷어낸다([[api#토큰 수명주기]]).
+                // TODO: 서버 검증(check)·스플래시 최소 노출 연출은 정책 확정 시.
+                state.isAuthenticated = authClient.isAuthenticated()
+                state.isCheckingSession = false
                 return .none
             case .auth(.delegate(.signedIn)):
                 // 새 로그인 = 새 세션. 이전 사용자가 하던 화면·데이터를 전부 버리고 초기 State 에서 시작한다.
                 state = State()
+                state.isCheckingSession = false
                 state.isAuthenticated = true
                 state.home.showsOnboardingEntry = AppEnvironment.isDev
                 state.home.showsDebugLogout = AppEnvironment.isDev
@@ -90,7 +98,9 @@ struct AppFeature {
                 return .none
             case .sessionCleared:
                 // 로그아웃 정리 완료 — 초기 State 로 리셋(isAuthenticated=false → 첫 소셜 로그인 화면).
+                // isCheckingSession 은 내린다 — 로그아웃 복귀는 판정이 아니라 확정 상태라 Splash 를 다시 띄우지 않는다.
                 state = State()
+                state.isCheckingSession = false
                 state.home.showsOnboardingEntry = AppEnvironment.isDev
                 state.home.showsDebugLogout = AppEnvironment.isDev
                 return .none

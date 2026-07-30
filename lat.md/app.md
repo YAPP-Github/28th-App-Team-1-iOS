@@ -15,10 +15,10 @@
 2. 앱 레벨 sheet 로 Profile 제시: `state.editProfile = ProfileFeature.State(profileId: id)` (`@Presents` + `.ifLet`)
 3. 저장 완료 `editProfile(.presented(.delegate(.profileSaved(profile))))` → sheet 닫고 `users(.profileUpdated(profile))` 로 결과 통보
 
-대표 흐름 — **로그인 루트 게이트**:
-1. `AuthFeature`가 카카오 로그인 성공 시 `delegate(.signedIn)` 방출 (자격증명 획득+서버 세션 교환까지 완료 → [[auth]])
-2. AppFeature가 수신해 `state = State()`로 초기화 후 `isAuthenticated = true` — 새 로그인은 새 세션이므로 이전 사용자의 in-memory State(화면·선택값)를 버린다
-3. 토큰은 Keychain(TokenStore)에 영속되지만 자동 로그인 배선 전이라 앱 재실행 시 다시 `AuthView`부터 시작(의도된 범위 제한) → [[auth]]
+대표 흐름 — **Splash 판정 + 로그인 루트 게이트**:
+1. `AppFeature.onAppear` 가 `authClient.isAuthenticated()`(Keychain 토큰 유무)로 자동 로그인을 판정 — 판정 동안 `SplashView`(`isCheckingSession`), 토큰 있으면 홈 직행, 없으면 `AuthView`(가입 플로우 스택)
+2. `AuthFeature`(가입 플로우 코디네이터)가 기존 회원 로그인 또는 가입 온보딩 완료 시 `delegate(.signedIn)` 방출 (→ [[auth#가입 플로우]])
+3. AppFeature가 수신해 `state = State()`로 초기화 후 `isAuthenticated = true` — 새 로그인은 새 세션이므로 이전 사용자의 in-memory State(화면·선택값)를 버린다. 리셋 시 `isCheckingSession` 은 내린 채 유지(재판정·Splash 재노출 없음)
 
 대표 흐름 — **dev 디버그 로그아웃** (Home 임시 버튼):
 1. dev 계에서만 `AppFeature.onAppear` 가 `home.showsDebugLogout` 을 켜고, Home 로그아웃 버튼이 `delegate(.logoutRequested)` 방출

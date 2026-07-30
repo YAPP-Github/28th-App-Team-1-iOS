@@ -14,7 +14,10 @@ struct AppView: View {
 
     var body: some View {
         Group {
-            if store.isAuthenticated {
+            if store.isCheckingSession {
+                // Splash(SP) — 자동 로그인 판정 동안 표시. 판정은 AppFeature.onAppear.
+                SplashView()
+            } else if store.isAuthenticated {
                 TabView(selection: $store.selectedTab) {
                     HomeView(store: store.scope(state: \.home, action: \.home))
                         .tabItem { Label("홈", systemImage: "house") }

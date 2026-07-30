@@ -2,54 +2,50 @@
 //  AuthView.swift
 //  FeatureAuthImplementation
 //
-//  Created by 서정원 on 26/07/10.
+//  Created by EunSeo on 26/07/31.
 //
 
 import ComposableArchitecture
 import SwiftUI
 
+/// 가입·로그인 플로우 진입점. 루트(A0 소셜 로그인) + 가입 경로 스택을 NavigationStack 으로 렌더한다.
+/// AppFeature 는 이 뷰만 제시하면 되고, 화면 전환은 코디네이터(AuthFeature)가 담당한다.
+/// AuthSuspension(A4)은 이 스택 밖 — 홈 게이트 응답으로 AppFeature 가 별도 제시한다.
 public struct AuthView: View {
-    @Bindable var store: StoreOf<AuthFeature>
+    @Bindable public var store: StoreOf<AuthFeature>
 
     public init(store: StoreOf<AuthFeature>) {
         self.store = store
     }
 
     public var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
-
-            Text("hilit")
-                .font(.largeTitle.bold())
-
-            Spacer()
-
-            VStack(spacing: 12) {
-                Button {
-                    store.send(.userTappedSignIn(.kakao))
-                } label: {
-                    Text("카카오로 로그인")
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                }
-                .buttonStyle(.borderedProminent)
-
-                Button {
-                    store.send(.userTappedSignIn(.apple))
-                } label: {
-                    Label("Apple로 로그인", systemImage: "applelogo")
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.black)
+        NavigationStack(
+            path: $store.scope(state: \.path, action: \.path)
+        ) {
+            AuthCreateAccountView(
+                store: store.scope(state: \.createAccount, action: \.createAccount)
+            )
+        } destination: { store in
+            switch store.case {
+            case let .terms(store):
+                AuthTermsView(store: store)
+            case let .naming(store):
+                AuthOnboardingNamingView(store: store)
+            case let .job(store):
+                AuthOnboardingJobView(store: store)
+            case let .experience(store):
+                AuthOnboardingExperienceView(store: store)
+            case let .register(store):
+                AuthOnboardingRegisterView(store: store)
             }
-            .padding(.horizontal, 24)
-            .disabled(store.isLoading)
-            .opacity(store.isLoading ? 0.5 : 1)
-
-            Spacer().frame(height: 40)
         }
-        .alert($store.scope(state: \.alert, action: \.alert))
     }
+}
+
+#Preview("가입 플로우") {
+    AuthView(
+        store: Store(initialState: AuthFeature.State()) {
+            AuthFeature()
+        }
+    )
 }
