@@ -21,10 +21,6 @@ public struct CameraPreviewHandle: Equatable, @unchecked Sendable {
     public init(session: AVCaptureSession) {
         self.session = session
     }
-
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.session === rhs.session
-    }
 }
 
 /// 녹화 산출물 참조 — 필드는 작업 B(실녹화)에서 확정(파일 URL·업로드 키 등). 지금은 자리만.
@@ -42,10 +38,7 @@ public enum RecordingError: Error, Equatable {
 }
 
 public struct RecordingClient: Sendable {
-    /// 전면 카메라 프리뷰 시작 — 이미 실행 중이면 기존 핸들 반환(멱등).
-    /// 권한 미허용·전면 카메라 없음(시뮬레이터)·구성 실패면 nil — 호출부는 placeholder 로 진행한다.
     public var startPreview: @Sendable () async -> CameraPreviewHandle?
-    /// 프리뷰 정지 + 세션 해제 — 미실행 상태에서 불러도 안전(멱등).
     public var stopPreview: @Sendable () async -> Void
     /// 녹화 시작 — 시그니처만 확정(work doc §3), 실구현·호출처는 작업 B.
     public var startRecording: @Sendable (_ sessionId: Int) async throws -> Void

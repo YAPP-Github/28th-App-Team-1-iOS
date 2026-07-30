@@ -13,7 +13,7 @@ import Testing
 
 @testable import FeatureInterviewImplementation
 
-// 코디네이터 화면 전환 중 «세션 종료 → 리포트 대기 경유 → 상위 통보» 만 고정한다.
+// 코디네이터 delegate 라우팅을 분기별로 고정한다 — 화면 전환·캡처 정지·상위 통보.
 @MainActor
 struct InterviewFeatureTests {
     @Test("세션 종료는 리포트 대기 화면을 경유하고, 홈으로 탭이 상위에 종료를 통보한다")
@@ -104,5 +104,59 @@ struct InterviewFeatureTests {
         await store.finish()
         #expect(previewStopped.value == 1)
         #expect(captureStopped.value == 1)
+    }
+
+    @Test("세션 중도 이탈은 화면 전환 없이 캡처 장치를 정지한 뒤 상위에 종료를 통보한다")
+    func sessionAbortStopsDevicesThenNotifiesClosed() async {
+        let previewStopped = LockIsolated(0)
+        let captureStopped = LockIsolated(0)
+        var initialState = InterviewFeature.State(sessionId: 1)
+        initialState.screen = .session(InterviewSessionFeature.State())
+        let store = TestStore(initialState: initialState) {
+            InterviewFeature()
+        } withDependencies: {
+            $0.recordingClient.stopPreview = { previewStopped.withValue { $0 += 1 } }
+            $0.speechClient.stopCapture = { captureStopped.withValue { $0 += 1 } }
+        }
+
+        await store.send(.screen(.session(.delegate(.aborted))))
+        await store.receive(\.delegate.closed)
+        await store.finish()
+        #expect(previewStopped.value == 1)
+        #expect(captureStopped.value == 1)
+    }
+
+    @Test("세션 실패 통보는 같은 kind 의 실패 화면으로 전환하고 캡처 장치를 정지한다")
+    func sessionFailureRoutesToFailureScreen() async {
+        let previewStopped = LockIsolated(0)
+        let captureStopped = LockIsolated(0)
+        var initialState = InterviewFeature.State(sessionId: 1)
+        initialState.screen = .session(InterviewSessionFeature.State())
+        let store = TestStore(initialState: initialState) {
+            InterviewFeature()
+        } withDependencies: {
+            $0.recordingClient.stopPreview = { previewStopped.withValue { $0 += 1 } }
+            $0.speechClient.stopCapture = { captureStopped.withValue { $0 += 1 } }
+        }
+
+        await store.send(.screen(.session(.delegate(.failed(.network))))) {
+            $0.screen = .failure(InterviewFailureFeature.State(kind: .network))
+        }
+        await store.finish()
+        #expect(previewStopped.value == 1)
+        #expect(captureStopped.value == 1)
+    }
+
+    @Test("실패 화면 다시 시작하기는 같은 세션 id 로 준비 화면에 재진입한다")
+    func restartReentersReadinessWithSameSession() async {
+        var initialState = InterviewFeature.State(sessionId: 7)
+        initialState.screen = .failure(InterviewFailureFeature.State(kind: .speechRecognition))
+        let store = TestStore(initialState: initialState) {
+            InterviewFeature()
+        }
+
+        await store.send(.screen(.failure(.delegate(.restartRequested)))) {
+            $0.screen = .readiness(InterviewReadinessFeature.State(sessionId: 7))
+        }
     }
 }

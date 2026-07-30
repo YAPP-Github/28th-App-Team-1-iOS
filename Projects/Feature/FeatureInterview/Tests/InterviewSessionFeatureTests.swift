@@ -13,8 +13,8 @@ import Testing
 
 @testable import FeatureInterviewImplementation
 
-// 세션 시계 상태머신(8:00 해금 → 11:50 카운트다운 → 12:00 종료)만 고정한다 —
-// 나머지 화면 상태는 순수 UI 라 프리뷰 육안 검증.
+// 세션 시계 상태머신(8:00 해금 → 11:50 카운트다운 → 12:00 종료)·턴 전환·이탈/실패 통보를 고정한다 —
+// 화면 렌더링은 순수 UI 라 프리뷰 육안 검증.
 @MainActor
 struct InterviewSessionFeatureTests {
     @Test("진입 시 프리뷰 핸들을 확보한다 — 준비 화면이 켜 둔 세션의 멱등 승계")
@@ -201,5 +201,30 @@ struct InterviewSessionFeatureTests {
 
         await store.send(.view(.userTappedFinishInterview))   // 세션 시계 정리
         await store.finish()
+    }
+
+    // 호출처(SpeechClient·NetworkClient)가 아직 없는 분기 — 배선 전에 직접 send 로 동작을 고정한다.
+    @Test("실패 감지는 열린 모달과 진행 중인 세션 effect 를 정리하고 실패를 통보한다")
+    func failureDetectedCleansUpAndNotifiesFailure() async {
+        let clock = TestClock()
+        var initialState = InterviewSessionFeature.State()
+        initialState.isExitConfirmPresented = true
+        let store = TestStore(initialState: initialState) {
+            InterviewSessionFeature()
+        } withDependencies: {
+            $0.continuousClock = clock
+            $0.recordingClient.startPreview = { nil }
+            $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
+        }
+        store.exhaustivity = .off   // 시계 틱은 기존 테스트가 고정 — 여기선 정리·통보만 본다.
+
+        await store.send(.view(.onAppear))
+        await clock.advance(by: .seconds(1))   // 세션 시계 effect 가 실제로 돌고 있는 상태를 만든다.
+        await store.skipReceivedActions()
+
+        await store.send(.inner(.failureDetected(.network)))
+        await store.receive(\.delegate.failed, .network)
+        #expect(store.state.isExitConfirmPresented == false)
+        await store.finish()   // 시계·마이크 effect 가 취소되지 않았으면 여기서 실패한다.
     }
 }
