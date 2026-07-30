@@ -10,6 +10,7 @@ public enum ModulePath {
         case auth = "Auth"
         case guestFeedback = "GuestFeedback"
         case onboarding = "Onboarding"
+        case interview = "Interview"
 
         public static let name = "Feature"
     }
@@ -18,6 +19,12 @@ public enum ModulePath {
         case common = "Common"
         case auth = "Auth"
         case interview = "Interview"
+        // 디바이스 측 IO (서버 API 아님) — 카메라·마이크 권한
+        case permission = "Permission"
+        // 디바이스 측 IO — 카메라 프리뷰·A/V 캡처 (RecordingClient)
+        case recording = "Recording"
+        // 디바이스 측 IO — 마이크 캡처·발화 감지, 추후 TTS/STT (SpeechClient)
+        case speech = "Speech"
         // D14 서버 API 도메인 미러링 — [[api]]
         case jd = "JD"
         case job = "Job"

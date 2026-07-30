@@ -109,6 +109,9 @@ public extension Target {
                 ]
             ],
             "LSApplicationQueriesSchemes": ["kakaokompassauth", "kakaolink", "kakaotalk"],
+            // 카메라·마이크는 사용 시점 요청(docs/work/ai-interview.md §5 권한) — 목적 문구 없으면 요청 즉시 크래시.
+            "NSCameraUsageDescription": "AI 면접에서 얼굴과 답변 영상 녹화를 위해 카메라를 사용합니다.",
+            "NSMicrophoneUsageDescription": "AI 면접에서 음성 답변 인식과 녹음을 위해 마이크를 사용합니다.",
             // ⚠️ D14 개발 서버가 HTTP + IP 직결이라 임시 전면 허용 (Dev.xcconfig 참조).
             //    운영 서버 HTTPS 전환 시 반드시 제거 — App Store 심사에서 사유 요구됨.
             "NSAppTransportSecurity": ["NSAllowsArbitraryLoads": true]

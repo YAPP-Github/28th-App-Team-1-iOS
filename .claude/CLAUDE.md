@@ -10,8 +10,8 @@ Tuist/                                       ← Project.makeModule + 타겟 팩
 Projects/
 ├── App/       composition root — AppFeature(탭 코디네이터) · Config/{Dev,QA,Prod}.xcconfig · DocC
 ├── Core/      Common · Network
-├── Domain/    Common · Auth · Interview · InterviewReport · JD · Job · Portfolio · User · FeedbackShare · GuestFeedback    (모델 + Client)
-├── Feature/   Common · Home · Auth · Onboarding                   (화면 — Interface 없음)
+├── Domain/    Common · Auth · Interview · InterviewReport · JD · Job · Portfolio · User · FeedbackShare · GuestFeedback · Permission · Recording · Speech    (모델 + Client)
+├── Feature/   Common · Home · Auth · Onboarding · Interview       (화면 — Interface 없음)
 └── Shared/    Common · DesignSystem (토큰 + 공용 컴포넌트)
 ```
 
