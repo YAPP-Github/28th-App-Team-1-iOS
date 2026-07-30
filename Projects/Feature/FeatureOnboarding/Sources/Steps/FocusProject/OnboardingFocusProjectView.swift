@@ -22,7 +22,6 @@ public struct OnboardingFocusProjectView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            navigationBar
             progressBar
             ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
@@ -41,25 +40,11 @@ public struct OnboardingFocusProjectView: View {
         }
         .background(Color.BlackWhite.white.ignoresSafeArea())
         .dismissesKeyboardOnTap()
-        .navigationBarBackButtonHidden(true)
+        .hilitNavigationBar(
+            background: .filled,
+            onClose: { send(.userTappedClose) }
+        )
         .onAppear { send(.onAppear) }
-    }
-
-    private var navigationBar: some View {
-        HStack(spacing: 0) {
-            Button {
-                send(.userTappedClose)
-            } label: {
-                Image.Cancel.default24
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
-            }
-            .buttonStyle(.plain)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 24)
-        .frame(height: 54)
     }
 
     private var progressBar: some View {
@@ -155,7 +140,7 @@ public struct OnboardingFocusProjectView: View {
             send(.userTappedClearText)
         } label: {
             // 원본 컬러 에셋(회색 원 + 블랙 X) — 틴트 없이 그대로 렌더.
-            Image.CancelMini.grey24
+            Image.CancelMini.gray24
                 .resizable()
                 .scaledToFit()
                 .frame(width: 24, height: 24)
@@ -184,36 +169,11 @@ public struct OnboardingFocusProjectView: View {
     /// 하단 CTA — 이 스텝 고유의 이분할 바 («이전으로 | 계속하기»).
     /// 선택 스텝이라 계속하기는 항상 활성. 뒤로가기는 내비바가 아닌 여기서 처리한다.
     private var bottomBar: some View {
-        HStack(spacing: 0) {
-            Button {
-                send(.userTappedBack)
-            } label: {
-                Text("이전으로")
-                    .dsTypography(.sub7)
-                    .foregroundStyle(Color.BlackWhite.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 22)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            Rectangle()
-                .fill(Color.GrayScale.g700)
-                .frame(width: 1, height: 25)
-
-            Button {
-                send(.userTappedContinue)
-            } label: {
-                Text("계속하기")
-                    .dsTypography(.sub7)
-                    .foregroundStyle(Color.BlackWhite.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 22)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
+        ButtonLarge(.bottom, tone: .dark) {
+            Button("이전으로") { send(.userTappedBack) }
+        } trailing: {
+            Button("계속하기") { send(.userTappedContinue) }
         }
-        .background(Color.HilitBlack.b800.ignoresSafeArea(edges: .bottom))
     }
 }
 

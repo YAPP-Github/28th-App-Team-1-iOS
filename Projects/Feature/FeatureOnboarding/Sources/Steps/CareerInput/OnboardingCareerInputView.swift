@@ -22,7 +22,6 @@ public struct OnboardingCareerInputView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            navigationBar
             progressBar
             header
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -34,25 +33,10 @@ public struct OnboardingCareerInputView: View {
             bottomBar
         }
         .background(Color.BlackWhite.white.ignoresSafeArea())
-        .navigationBarBackButtonHidden(true)
-    }
-
-    /// 내비바 — 디자인상 닫기(X)만 있다. 뒤로는 하단 바의 «이전으로»가 담당.
-    private var navigationBar: some View {
-        HStack(spacing: 0) {
-            Button {
-                send(.userTappedClose)
-            } label: {
-                Image.Cancel.default24
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
-            }
-            .buttonStyle(.plain)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 24)
-        .frame(height: 54)
+        .hilitNavigationBar(
+            background: .filled,
+            onClose: { send(.userTappedClose) }
+        )
     }
 
     private var progressBar: some View {
@@ -154,38 +138,14 @@ public struct OnboardingCareerInputView: View {
 
     // MARK: - 하단 바
 
-    /// 하단 «이전으로 | 계속하기» 바 — 이 스텝은 STEP 1 의 단일 CTA 와 달리 두 버튼 + 세로 구분선.
+    /// 하단 «이전으로 | 계속하기» 바 — 이 스텝은 STEP 1 의 단일 CTA 와 달리 2분할.
+    /// 배경·구분선·등폭 배치·눌림은 `ButtonLarge(.bottom, tone: .dark)` 가 소유한다.
     private var bottomBar: some View {
-        HStack(spacing: 60) {
-            Button {
-                send(.userTappedBack)
-            } label: {
-                Text("이전으로")
-                    .dsTypography(.sub7)
-                    .foregroundStyle(Color.BlackWhite.white)
-                    .padding(.vertical, 22)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            // 세로 구분선 — Figma grayscale/gray-700(#494C58). dsGray700 토큰은 부모 세션이 일괄 추가.
-            Rectangle()
-                .fill(Color.GrayScale.g700)
-                .frame(width: 1, height: 25)
-
-            Button {
-                send(.userTappedContinue)
-            } label: {
-                Text("계속하기")
-                    .dsTypography(.sub7)
-                    .foregroundStyle(Color.BlackWhite.white)
-                    .padding(.vertical, 22)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
+        ButtonLarge(.bottom, tone: .dark) {
+            Button("이전으로") { send(.userTappedBack) }
+        } trailing: {
+            Button("계속하기") { send(.userTappedContinue) }
         }
-        .frame(maxWidth: .infinity)
-        .background(Color.HilitBlack.b800.ignoresSafeArea(edges: .bottom))
     }
 }
 

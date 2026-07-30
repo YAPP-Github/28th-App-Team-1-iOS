@@ -13,7 +13,7 @@ private typealias Asset = SharedDesignSystemInterfaceAsset
 
 // @lat: [[architecture#디자인 시스템]]
 // 이미지 토큰 — 아이콘은 Figma 아이콘 패밀리별 enum(`Cancel`·`Plus`…), 일러스트는 `Img`.
-// 멤버 이름은 «색변형 + 크기» 다 (`Cancel.dark24`). 크기는 그 패밀리에 여러 개일 때만 붙는다 —
+// 멤버 이름은 «색변형 + 크기» 다 (`Cancel.white24`). 크기는 그 패밀리에 여러 개일 때만 붙는다 —
 // 하나뿐이면 생략한다(`Left.default`). 에셋은 색이 구워진 채로 쓰고 틴트하지 않는다.
 public extension Image {
 
@@ -22,26 +22,26 @@ public extension Image {
         public static var green24: Image { Asset.Assets.aiGreen24.swiftUIImage }
     }
 
-    /// 리포트 분석 말풍선(질문/잘함/개선) · 36pt 한 벌 — 크기가 하나라 이름에 생략.
-    enum Analyze {
-        public static var problem: Image { Asset.Assets.analyzeProblem.swiftUIImage }
-        public static var question: Image { Asset.Assets.analyzeQuestion.swiftUIImage }
-        public static var success: Image { Asset.Assets.analyzeSuccess.swiftUIImage }
-    }
-
     enum Cancel {
-        public static var dark16: Image { Asset.Assets.cancelDark16.swiftUIImage }
-        public static var dark20: Image { Asset.Assets.cancelDark20.swiftUIImage }
-        public static var dark24: Image { Asset.Assets.cancelDark24.swiftUIImage }
         public static var default24: Image { Asset.Assets.cancelDefault24.swiftUIImage }
         public static var disabled24: Image { Asset.Assets.cancelDisabled24.swiftUIImage }
+        public static var white16: Image { Asset.Assets.cancelWhite16.swiftUIImage }
+        public static var white20: Image { Asset.Assets.cancelWhite20.swiftUIImage }
+        public static var white24: Image { Asset.Assets.cancelWhite24.swiftUIImage }
     }
 
     enum CancelMini {
         public static var black16: Image { Asset.Assets.cancelMiniBlack16.swiftUIImage }
-        public static var black24: Image { Asset.Assets.cancelMiniBlack24.swiftUIImage }
-        public static var grey16: Image { Asset.Assets.cancelMiniGrey16.swiftUIImage }
-        public static var grey24: Image { Asset.Assets.cancelMiniGrey24.swiftUIImage }
+        public static var default24: Image { Asset.Assets.cancelMiniDefault24.swiftUIImage }
+        public static var gray16: Image { Asset.Assets.cancelMiniGray16.swiftUIImage }
+        public static var gray24: Image { Asset.Assets.cancelMiniGray24.swiftUIImage }
+    }
+
+    /// 체크박스 안 체크 표시 12×11 — Figma «Checkbox»(3768:16630) 내부 벡터라 아이콘 시트에 없다.
+    /// green = 켜짐(b800 판 위) / gray = 꺼짐(흰 판 위 유령 체크).
+    enum Check {
+        public static var gray: Image { Asset.Assets.checkGray.swiftUIImage }
+        public static var green: Image { Asset.Assets.checkGreen.swiftUIImage }
     }
 
     enum Coupon {
@@ -50,9 +50,9 @@ public extension Image {
     }
 
     enum Down {
-        public static var dark: Image { Asset.Assets.downDark.swiftUIImage }
         public static var `default`: Image { Asset.Assets.downDefault.swiftUIImage }
         public static var disabled: Image { Asset.Assets.downDisabled.swiftUIImage }
+        public static var white: Image { Asset.Assets.downWhite.swiftUIImage }
     }
 
     enum Edit {
@@ -86,30 +86,51 @@ public extension Image {
     }
 
     enum File {
-        public static var dark16: Image { Asset.Assets.fileDark16.swiftUIImage }
-        public static var dark20: Image { Asset.Assets.fileDark20.swiftUIImage }
-        public static var dark24: Image { Asset.Assets.fileDark24.swiftUIImage }
         public static var default16: Image { Asset.Assets.fileDefault16.swiftUIImage }
         public static var default20: Image { Asset.Assets.fileDefault20.swiftUIImage }
         public static var default24: Image { Asset.Assets.fileDefault24.swiftUIImage }
         public static var disabled16: Image { Asset.Assets.fileDisabled16.swiftUIImage }
         public static var disabled20: Image { Asset.Assets.fileDisabled20.swiftUIImage }
         public static var disabled24: Image { Asset.Assets.fileDisabled24.swiftUIImage }
+        public static var green20: Image { Asset.Assets.fileGreen20.swiftUIImage }
+        public static var green36: Image { Asset.Assets.fileGreen36.swiftUIImage }
+        public static var white16: Image { Asset.Assets.fileWhite16.swiftUIImage }
+        public static var white20: Image { Asset.Assets.fileWhite20.swiftUIImage }
+        public static var white24: Image { Asset.Assets.fileWhite24.swiftUIImage }
+        public static var white36: Image { Asset.Assets.fileWhite36.swiftUIImage }
+    }
+
+    enum HilitAnalyze {
+        public static var aiSparkle: Image { Asset.Assets.hilitAnalyzeAiSparkle.swiftUIImage }
+        public static var problem: Image { Asset.Assets.hilitAnalyzeProblem.swiftUIImage }
+        public static var question: Image { Asset.Assets.hilitAnalyzeQuestion.swiftUIImage }
+        public static var success: Image { Asset.Assets.hilitAnalyzeSuccess.swiftUIImage }
     }
 
     enum Img {
         public static var book: Image { Asset.Assets.imgBook.swiftUIImage }
+        public static var feedback: Image { Asset.Assets.imgFeedback.swiftUIImage }
+        public static var finish: Image { Asset.Assets.imgFinish.swiftUIImage }
         public static var link: Image { Asset.Assets.imgLink.swiftUIImage }
         public static var micError: Image { Asset.Assets.imgMicError.swiftUIImage }
         public static var networkError: Image { Asset.Assets.imgNetworkError.swiftUIImage }
+        public static var oppEllipsis: Image { Asset.Assets.imgOppEllipsis.swiftUIImage }
+        public static var oppO: Image { Asset.Assets.imgOppO.swiftUIImage }
+        public static var oppX: Image { Asset.Assets.imgOppX.swiftUIImage }
+        public static var person: Image { Asset.Assets.imgPerson.swiftUIImage }
+        public static var reportEmpty: Image { Asset.Assets.imgReportEmpty.swiftUIImage }
+        public static var success: Image { Asset.Assets.imgSuccess.swiftUIImage }
+        public static var talk: Image { Asset.Assets.imgTalk.swiftUIImage }
         public static var tooltipTail: Image { Asset.Assets.imgTooltipTail.swiftUIImage }
-        /// 다크 말풍선 꼬리(gray900) — BubbleToast `.tooltip` 이 다크 화면에서 쓴다.
-        public static var tooltipTailDark: Image { Asset.Assets.imgTooltipTailDark.swiftUIImage }
     }
 
     enum Info {
         public static var `default`: Image { Asset.Assets.infoDefault.swiftUIImage }
         public static var disabled: Image { Asset.Assets.infoDisabled.swiftUIImage }
+        /// 빨간 안내 아이콘 — Figma 는 `info-field/red` 안에서 인스턴스에 e500 을 덮어썼을 뿐
+        /// 아이콘 시트에 이름 붙은 변형이 없다. 틴트가 금지라 `default` 와 같은 도형을
+        /// e500 으로 다시 칠한 에셋으로 둔다(`Issue.error*` 와 같은 방식).
+        public static var error: Image { Asset.Assets.infoError.swiftUIImage }
     }
 
     enum Issue {
@@ -122,23 +143,19 @@ public extension Image {
     }
 
     enum Left {
-        public static var dark: Image { Asset.Assets.leftDark.swiftUIImage }
         public static var `default`: Image { Asset.Assets.leftDefault.swiftUIImage }
         public static var disabled: Image { Asset.Assets.leftDisabled.swiftUIImage }
+        public static var white: Image { Asset.Assets.leftWhite.swiftUIImage }
     }
 
     enum Loading {
-        public static var dark24: Image { Asset.Assets.loadingDark24.swiftUIImage }
-        public static var ingDark16: Image { Asset.Assets.loadingIngDark16.swiftUIImage }
-        public static var ingGreen24: Image { Asset.Assets.loadingIngGreen24.swiftUIImage }
-        public static var ingGrey16: Image { Asset.Assets.loadingIngGrey16.swiftUIImage }
+        public static var black24: Image { Asset.Assets.loadingBlack24.swiftUIImage }
+        public static var gray24: Image { Asset.Assets.loadingGray24.swiftUIImage }
+        public static var ingBlack16: Image { Asset.Assets.loadingIngBlack16.swiftUIImage }
+        public static var ingGray16: Image { Asset.Assets.loadingIngGray16.swiftUIImage }
         public static var ingWhite16: Image { Asset.Assets.loadingIngWhite16.swiftUIImage }
-        public static var successDark16: Image { Asset.Assets.loadingSuccessDark16.swiftUIImage }
-        public static var successDark24: Image { Asset.Assets.loadingSuccessDark24.swiftUIImage }
-        public static var successGreen24: Image { Asset.Assets.loadingSuccessGreen24.swiftUIImage }
-        public static var successGrey16: Image { Asset.Assets.loadingSuccessGrey16.swiftUIImage }
-        public static var waitDark16: Image { Asset.Assets.loadingWaitDark16.swiftUIImage }
-        public static var waitGrey16: Image { Asset.Assets.loadingWaitGrey16.swiftUIImage }
+        public static var waitBlack16: Image { Asset.Assets.loadingWaitBlack16.swiftUIImage }
+        public static var waitGray16: Image { Asset.Assets.loadingWaitGray16.swiftUIImage }
         public static var waitWhite16: Image { Asset.Assets.loadingWaitWhite16.swiftUIImage }
         public static var white24: Image { Asset.Assets.loadingWhite24.swiftUIImage }
     }
@@ -146,39 +163,41 @@ public extension Image {
     enum Logo {
         public static var appleNoBg: Image { Asset.Assets.logoAppleNoBg.swiftUIImage }
         public static var appleWithBg: Image { Asset.Assets.logoAppleWithBg.swiftUIImage }
+        public static var appleWithBg24: Image { Asset.Assets.logoAppleWithBg24.swiftUIImage }
+        /// Hilit 워드마크 57×24 — 내비바 logo 변형 (Figma 3768:5296)
+        public static var hilit: Image { Asset.Assets.logoHilit.swiftUIImage }
         public static var kakaoNoBg: Image { Asset.Assets.logoKakaoNoBg.swiftUIImage }
         public static var kakaoWithBg: Image { Asset.Assets.logoKakaoWithBg.swiftUIImage }
+        public static var kakaoWithBg24: Image { Asset.Assets.logoKakaoWithBg24.swiftUIImage }
     }
 
-    /// 일시정지(세로 막대 2개) — 재생 중에 보이는 글리프.
-    /// **Figma 는 이 그림을 «play» 로 불렀지만** 그림이 기준이라 이름을 바꿔 담았다(→ design/image.md 주의).
     enum Pause {
-        public static var dark34: Image { Asset.Assets.pauseDark34.swiftUIImage }
         public static var default24: Image { Asset.Assets.pauseDefault24.swiftUIImage }
         public static var green34: Image { Asset.Assets.pauseGreen34.swiftUIImage }
+        public static var white34: Image { Asset.Assets.pauseWhite34.swiftUIImage }
     }
 
-    /// 재생(막대 + 속 빈 삼각형 ▷) — 멈춘 상태에 보이는 글리프. Figma 원본 이름은 «stop» 이다.
     enum Play {
-        public static var dark34: Image { Asset.Assets.playDark34.swiftUIImage }
         public static var default24: Image { Asset.Assets.playDefault24.swiftUIImage }
         public static var green34: Image { Asset.Assets.playGreen34.swiftUIImage }
+        public static var white34: Image { Asset.Assets.playWhite34.swiftUIImage }
     }
 
     enum Plus {
-        public static var dark16: Image { Asset.Assets.plusDark16.swiftUIImage }
-        public static var dark20: Image { Asset.Assets.plusDark20.swiftUIImage }
-        public static var dark24: Image { Asset.Assets.plusDark24.swiftUIImage }
         public static var default16: Image { Asset.Assets.plusDefault16.swiftUIImage }
         public static var default20: Image { Asset.Assets.plusDefault20.swiftUIImage }
         public static var default24: Image { Asset.Assets.plusDefault24.swiftUIImage }
         public static var disabled16: Image { Asset.Assets.plusDisabled16.swiftUIImage }
         public static var disabled20: Image { Asset.Assets.plusDisabled20.swiftUIImage }
         public static var disabled24: Image { Asset.Assets.plusDisabled24.swiftUIImage }
+        public static var white16: Image { Asset.Assets.plusWhite16.swiftUIImage }
+        public static var white20: Image { Asset.Assets.plusWhite20.swiftUIImage }
+        public static var white24: Image { Asset.Assets.plusWhite24.swiftUIImage }
     }
 
     enum Profile {
         public static var `default`: Image { Asset.Assets.profileDefault.swiftUIImage }
+        public static var defaultAlt: Image { Asset.Assets.profileDefaultAlt.swiftUIImage }
         public static var disabled: Image { Asset.Assets.profileDisabled.swiftUIImage }
     }
 
@@ -187,34 +206,37 @@ public extension Image {
     }
 
     enum Right {
-        public static var dark24: Image { Asset.Assets.rightDark24.swiftUIImage }
         public static var default24: Image { Asset.Assets.rightDefault24.swiftUIImage }
+        public static var disabled16: Image { Asset.Assets.rightDisabled16.swiftUIImage }
         public static var disabled24: Image { Asset.Assets.rightDisabled24.swiftUIImage }
-        /// 다크 화면의 disabled(#494C58) — 밝은 화면 disabled(BCBEC6)와 별개 판.
-        public static var disabledDark16: Image { Asset.Assets.rightDisabledDark16.swiftUIImage }
-        public static var grey16: Image { Asset.Assets.rightGrey16.swiftUIImage }
+        public static var gray16: Image { Asset.Assets.rightGray16.swiftUIImage }
         public static var white16: Image { Asset.Assets.rightWhite16.swiftUIImage }
+        public static var white24: Image { Asset.Assets.rightWhite24.swiftUIImage }
     }
 
     enum Script {
-        public static var dark20: Image { Asset.Assets.scriptDark20.swiftUIImage }
-        public static var dark24: Image { Asset.Assets.scriptDark24.swiftUIImage }
         public static var default24: Image { Asset.Assets.scriptDefault24.swiftUIImage }
+        public static var white20: Image { Asset.Assets.scriptWhite20.swiftUIImage }
+        public static var white24: Image { Asset.Assets.scriptWhite24.swiftUIImage }
     }
 
     enum SkipL {
-        public static var dark20: Image { Asset.Assets.skipLDark20.swiftUIImage }
-        public static var dark34: Image { Asset.Assets.skipLDark34.swiftUIImage }
+        public static var white20: Image { Asset.Assets.skipLWhite20.swiftUIImage }
+        public static var white34: Image { Asset.Assets.skipLWhite34.swiftUIImage }
     }
 
     enum SkipR {
-        public static var dark20: Image { Asset.Assets.skipRDark20.swiftUIImage }
-        public static var dark34: Image { Asset.Assets.skipRDark34.swiftUIImage }
+        public static var white20: Image { Asset.Assets.skipRWhite20.swiftUIImage }
+        public static var white34: Image { Asset.Assets.skipRWhite34.swiftUIImage }
     }
 
     enum Success {
+        public static var black16: Image { Asset.Assets.successBlack16.swiftUIImage }
+        public static var black24: Image { Asset.Assets.successBlack24.swiftUIImage }
         public static var default16: Image { Asset.Assets.successDefault16.swiftUIImage }
         public static var default20: Image { Asset.Assets.successDefault20.swiftUIImage }
+        public static var gray16: Image { Asset.Assets.successGray16.swiftUIImage }
+        public static var gray24: Image { Asset.Assets.successGray24.swiftUIImage }
         public static var green16: Image { Asset.Assets.successGreen16.swiftUIImage }
         public static var green20: Image { Asset.Assets.successGreen20.swiftUIImage }
     }
@@ -224,20 +246,20 @@ public extension Image {
         public static var default24: Image { Asset.Assets.timerDefault24.swiftUIImage }
         public static var disabled16: Image { Asset.Assets.timerDisabled16.swiftUIImage }
         public static var disabled24: Image { Asset.Assets.timerDisabled24.swiftUIImage }
-        /// 그린(#ACEBA0) — 리포트 영상 시청 잔여 타이머.
+        public static var green16: Image { Asset.Assets.timerGreen16.swiftUIImage }
         public static var green24: Image { Asset.Assets.timerGreen24.swiftUIImage }
     }
 
     enum Undo {
-        public static var dark: Image { Asset.Assets.undoDark.swiftUIImage }
         public static var `default`: Image { Asset.Assets.undoDefault.swiftUIImage }
         public static var disabled: Image { Asset.Assets.undoDisabled.swiftUIImage }
+        public static var white: Image { Asset.Assets.undoWhite.swiftUIImage }
     }
 
     enum Up {
-        public static var dark: Image { Asset.Assets.upDark.swiftUIImage }
         public static var `default`: Image { Asset.Assets.upDefault.swiftUIImage }
         public static var disabled: Image { Asset.Assets.upDisabled.swiftUIImage }
+        public static var white: Image { Asset.Assets.upWhite.swiftUIImage }
     }
 
     enum Upload {

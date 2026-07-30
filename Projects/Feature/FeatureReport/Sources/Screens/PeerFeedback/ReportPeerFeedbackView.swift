@@ -40,8 +40,8 @@ public struct ReportPeerFeedbackView: View {
         .hilitSurface(.dark)
         .overlay(alignment: .bottom) {
             if let toast = store.toast {
-                BubbleToast(toast)
-                    // CTA(높이 55) 위 10pt — BubbleToast 독스트링의 표준 배치.
+                BubbleField(toast)
+                    // CTA(높이 55) 위 10pt — BubbleField 독스트링의 표준 배치.
                     .padding(.bottom, 65)
             }
         }
@@ -71,7 +71,7 @@ public struct ReportPeerFeedbackView: View {
             Button {
                 send(.userTappedBack)
             } label: {
-                Image.Cancel.dark24
+                Image.Cancel.white24
                     .resizable()
                     .scaledToFit()
                     .frame(width: 24, height: 24)

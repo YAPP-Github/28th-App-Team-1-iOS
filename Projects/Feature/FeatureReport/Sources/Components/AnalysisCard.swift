@@ -24,9 +24,9 @@ struct AnalysisCard: View {
 
         var icon: Image {
             switch self {
-            case .question: Image.Analyze.question
-            case .strength: Image.Analyze.success
-            case .improvement: Image.Analyze.problem
+            case .question: Image.HilitAnalyze.question
+            case .strength: Image.HilitAnalyze.success
+            case .improvement: Image.HilitAnalyze.problem
             }
         }
 

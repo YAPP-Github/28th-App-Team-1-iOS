@@ -76,6 +76,7 @@ public struct HighlightedText: View {
 
     private let text: String
     private let typography: DSTypography
+    private let alignment: TextAlignment
     private let plainForeground: Color
     private var tone: Tone = .green
     private var fill: Fill = .full
@@ -86,15 +87,20 @@ public struct HighlightedText: View {
 
     /// 마커 스타일은 전부 `hilight…` 체인으로 얹는다 — 여기엔 텍스트 자체의 속성만 둔다.
     ///
-    /// - Parameter plainForeground: 강조되지 않은 부분의 글자색. 마커 색은 `hilightColor(_:)` 가
-    ///   정하므로 이건 화면 배경에 맞춰 따로 준다 (다크 배경이면 흰색 등).
+    /// - Parameters:
+    ///   - alignment: 줄이 넘칠 때 각 줄을 어느 쪽에 붙일지. 가운데·오른쪽 정렬은 흘려 배치가 부모 폭을
+    ///     채워야 성립하므로, 호출부가 `.frame(maxWidth:)` 등으로 폭을 줘야 눈에 보인다.
+    ///   - plainForeground: 강조되지 않은 부분의 글자색. 마커 색은 `hilightColor(_:)` 가
+    ///     정하므로 이건 화면 배경에 맞춰 따로 준다 (다크 배경이면 흰색 등).
     public init(
         _ text: String,
         typography: DSTypography = .head3,
+        alignment: TextAlignment = .leading,
         plainForeground: Color = Color.GrayScale.g900
     ) {
         self.text = text
         self.typography = typography
+        self.alignment = alignment
         self.plainForeground = plainForeground
     }
 
@@ -146,7 +152,7 @@ public struct HighlightedText: View {
     private var bandHeight: CGFloat { typography.size >= 20 ? 12 : 8 }
 
     public var body: some View {
-        HighlightFlow(lineSpacing: typography.lineHeight - typography.size) {
+        HighlightFlow(lineSpacing: typography.lineHeight - typography.size, alignment: alignment) {
             ForEach(Array(segments.enumerated()), id: \.offset) { _, segment in
                 if segment.isHighlighted {
                     marker(segment.text)
@@ -243,43 +249,65 @@ public struct HighlightedText: View {
 
 /// 가로로 채우다 넘치면 다음 줄로 내리는 레이아웃. 부분 배경을 그리려면 토큰을 개별 뷰로 둬야 하는데,
 /// 기본 스택은 줄바꿈을 못 해서 이걸 쓴다.
+///
+/// 줄을 먼저 다 묶은 뒤에 배치한다 — 한 줄을 오른쪽으로 밀어 정렬하려면 그 줄의 총 폭을 미리 알아야 한다.
 private struct HighlightFlow: Layout {
     let lineSpacing: CGFloat
+    let alignment: TextAlignment
+
+    private struct Row {
+        var indices: [Int] = []
+        var width: CGFloat = 0
+        var height: CGFloat = 0
+    }
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> CGSize {
-        let maxWidth = proposal.width ?? .infinity
-        var rowWidth: CGFloat = 0
-        var rowHeight: CGFloat = 0
-        var total = CGSize.zero
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if rowWidth + size.width > maxWidth, rowWidth > 0 {
-                total.width = max(total.width, rowWidth)
-                total.height += rowHeight + lineSpacing
-                rowWidth = 0
-                rowHeight = 0
-            }
-            rowWidth += size.width
-            rowHeight = max(rowHeight, size.height)
+        let rows = rows(subviews: subviews, maxWidth: proposal.width ?? .infinity)
+        let contentWidth = rows.map(\.width).max() ?? 0
+        let height = rows.map(\.height).reduce(0, +) + lineSpacing * CGFloat(max(rows.count - 1, 0))
+        // 가운데·오른쪽 정렬은 부모 폭을 채워야 «줄마다» 밀 수 있다. 왼쪽 정렬은 내용 폭을 그대로 hug.
+        guard alignment != .leading, let proposed = proposal.width, proposed.isFinite else {
+            return CGSize(width: contentWidth, height: height)
         }
-        total.width = max(total.width, rowWidth)
-        total.height += rowHeight
-        return total
+        return CGSize(width: max(contentWidth, proposed), height: height)
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) {
-        var origin = bounds.origin
-        var rowHeight: CGFloat = 0
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if origin.x + size.width > bounds.maxX, origin.x > bounds.minX {
-                origin.x = bounds.minX
-                origin.y += rowHeight + lineSpacing
-                rowHeight = 0
+        var originY = bounds.minY
+        for row in rows(subviews: subviews, maxWidth: bounds.width) {
+            var originX = bounds.minX + (bounds.width - row.width) * offsetFactor
+            for index in row.indices {
+                let size = subviews[index].sizeThatFits(.unspecified)
+                subviews[index].place(at: CGPoint(x: originX, y: originY), proposal: ProposedViewSize(size))
+                originX += size.width
             }
-            subview.place(at: origin, proposal: ProposedViewSize(size))
-            origin.x += size.width
-            rowHeight = max(rowHeight, size.height)
+            originY += row.height + lineSpacing
+        }
+    }
+
+    /// 넘치는 지점마다 끊어 줄로 묶는다. 한 조각이 혼자서 폭을 넘으면 그 줄에 그대로 두고 넘치게 한다.
+    private func rows(subviews: Subviews, maxWidth: CGFloat) -> [Row] {
+        var result: [Row] = []
+        var current = Row()
+        for (index, subview) in subviews.enumerated() {
+            let size = subview.sizeThatFits(.unspecified)
+            if current.width + size.width > maxWidth, !current.indices.isEmpty {
+                result.append(current)
+                current = Row()
+            }
+            current.indices.append(index)
+            current.width += size.width
+            current.height = max(current.height, size.height)
+        }
+        if !current.indices.isEmpty { result.append(current) }
+        return result
+    }
+
+    private var offsetFactor: CGFloat {
+        switch alignment {
+        case .leading: 0
+        case .center: 0.5
+        case .trailing: 1
         }
     }
 }
@@ -292,6 +320,14 @@ private struct HighlightFlow: Layout {
     }
     .padding(.ds(.p20))
     .background(Color.BlackWhite.white)
+}
+
+#Preview("가운데 정렬 — 줄마다 밀린다") {
+    HighlightedText("타이틀을 이렇게 적어주세요 두 번째 줄은 이렇게 입력해주세요", alignment: .center)
+        .hilight("이렇게")
+        .frame(maxWidth: .infinity)
+        .padding(.ds(.p20))
+        .background(Color.BlackWhite.white)
 }
 
 #Preview("색 6종") {

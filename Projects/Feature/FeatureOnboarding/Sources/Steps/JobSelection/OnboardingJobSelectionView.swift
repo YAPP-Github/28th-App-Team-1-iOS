@@ -22,7 +22,6 @@ public struct OnboardingJobSelectionView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            navigationBar
             progressBar
             ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
@@ -36,25 +35,8 @@ public struct OnboardingJobSelectionView: View {
             continueButton
         }
         .background(Color.BlackWhite.white.ignoresSafeArea())
-        .navigationBarBackButtonHidden(true)
+        .hilitNavigationBar(background: .filled, onClose: { send(.userTappedClose) })
         .onAppear { send(.onAppear) }
-    }
-
-    private var navigationBar: some View {
-        HStack(spacing: 0) {
-            Button {
-                send(.userTappedClose)
-            } label: {
-                Image.Cancel.default24
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
-            }
-            .buttonStyle(.plain)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 24)
-        .frame(height: 54)
     }
 
     private var progressBar: some View {
@@ -123,21 +105,10 @@ public struct OnboardingJobSelectionView: View {
         .buttonStyle(.plain)
     }
 
+    /// 이 스텝만 단일 CTA (첫 스텝 — 이전 없음). 비활성 룩은 DS 가 소유한다.
     private var continueButton: some View {
-        Button {
-            send(.userTappedContinue)
-        } label: {
-            Text("계속하기")
-                // TODO: 활성 상태 Figma 미확인 — 우선 텍스트 white. 디자인 확정 시 조정.
-                .dsTypography(.sub7)
-                .foregroundStyle(store.isContinueEnabled ? Color.BlackWhite.white : Color.GrayScale.g400)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 22)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(!store.isContinueEnabled)
-        .background(Color.HilitBlack.b800.ignoresSafeArea(edges: .bottom))
+        ButtonLarge("계속하기", .bottom) { send(.userTappedContinue) }
+            .disabled(!store.isContinueEnabled)
     }
 }
 

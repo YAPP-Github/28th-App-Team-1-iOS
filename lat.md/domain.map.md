@@ -29,7 +29,7 @@ AppFeature  --.users(.profileUpdated)-->       Users   (list/detail 갱신)
 | Auth (로그인 게이트) | DomainAuth | AuthClient → [[auth]] |
 | Common — NetworkExample (네트워킹 화면 템플릿) | DomainJob | JobClient → [[api#Job]] |
 | Onboarding (Part 1 위저드 — [[onboarding]] · [ai-interview](../docs/work/ai-interview.md) §5) | DomainJob · DomainJD · DomainPortfolio (분석 스텝 세션 연결 시 + DomainInterview) | JobClient · JDClient · PortfolioClient (+ InterviewClient) |
-| InterviewSession (예정) | DomainInterview | InterviewClient → [[interview]] |
+| Interview (Part 2 면접 흐름 — [[interview#면접 흐름]]) | DomainInterview · DomainPermission | InterviewClient → [[interview]] · PermissionClient → [[interview#권한]] |
 | Portfolio 관리 (예정) | DomainPortfolio | PortfolioClient → [[api#Portfolio]] |
 | Users (예정 — 데모 패턴) | DomainUser | UserClient → [[api#User]] |
 | Report (골격 — 화면 4종 자리표시, [[report]] · [ai-interview-report](../docs/work/ai-interview-report.md)) | DomainInterviewReport (지인 피드백 연결 시 + DomainFeedbackShare) | InterviewReportClient → [[api#Interview Report]] |
@@ -49,6 +49,6 @@ D14 공통 규약(성공/실패 envelope·토큰 수명주기)은 그 위에 얹
 YAPP APP 1팀 「AI 면접 연습 앱」을 우리 아키텍처에 녹인 후속 도메인 설계(현재 데모 탭과 별개) — Onboarding(Part1)/Session/Report Feature + Domain 군. Part 1 은 PRD v3 로 `FeatureOnboarding` 구현 중(초안 가칭 InterviewSetup 실현). 서버 연동 Domain 은 [[api]] 미러링으로 실체화됐다.
 
 - 전체 개요·Part 1/2 → [ai-interview](../docs/work/ai-interview.md)
-- 기획 시점 Client 설계와 실 서버의 대응: QuestionClient → **InterviewClient**(질문 생성·턴 진행이 세션 API 로 통합, [[api#Interview]]) · PortfolioClient → 동명([[api#Portfolio]]) · 직군/JD 입력 → **JobClient·JDClient**. SpeechClient(TTS/STT)·PermissionClient·RecordingClient 는 디바이스 측 IO 라 별개로 남는다(서버 API 아님).
+- 기획 시점 Client 설계와 실 서버의 대응: QuestionClient → **InterviewClient**(질문 생성·턴 진행이 세션 API 로 통합, [[api#Interview]]) · PortfolioClient → 동명([[api#Portfolio]]) · 직군/JD 입력 → **JobClient·JDClient**. SpeechClient(TTS/STT)·RecordingClient 는 디바이스 측 IO 라 별개로 남는다(서버 API 아님) — 같은 축의 PermissionClient 는 DomainPermission ✅([[interview#권한]]), RecordingClient 는 DomainRecording(프리뷰 ✅, [[interview#프리뷰]]), SpeechClient 는 DomainSpeech(마이크 캡처 ✅, [[interview#음성 캡처]])로 실현.
 - **Part 3 분석 보고서 & 영상 복기** → [ai-interview-report](../docs/work/ai-interview-report.md). `FeatureInterviewReport`(R0·R1 + V0·V1·V2, 자체 Path). 신규 Domain: DomainPlayback(영상 자산·재생 시간축) · DomainReview(자기평가 영구 저장), DomainScoring 확장(폴링·기준선).
 - ⚠️ cross-feature: `Session --finished--> AppFeature --present--> Report`, `Report --requestFriendFeedback--> AppFeature`. 평가 독립성 — 친구에 넘기는 payload 는 챕터 경계만.

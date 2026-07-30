@@ -26,7 +26,6 @@ public struct OnboardingPortfolioUploadView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            navigationBar
             progressBar
             ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
@@ -40,7 +39,11 @@ public struct OnboardingPortfolioUploadView: View {
             bottomBar
         }
         .background(Color.BlackWhite.white.ignoresSafeArea())
-        .navigationBarBackButtonHidden(true)
+        .hilitNavigationBar(
+            background: .filled,
+            allowsSwipeBack: !store.upload.isUploading,
+            onClose: { send(.userTappedClose) }
+        )
         .fileImporter(
             isPresented: $store.isFileImporterPresented,
             allowedContentTypes: [.pdf]
@@ -86,23 +89,6 @@ public struct OnboardingPortfolioUploadView: View {
     }
 
     // MARK: - 공통 골격 (STEP 1 과 동일)
-
-    private var navigationBar: some View {
-        HStack(spacing: 0) {
-            Button {
-                send(.userTappedClose)
-            } label: {
-                Image.Cancel.default24
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
-            }
-            .buttonStyle(.plain)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 24)
-        .frame(height: 54)
-    }
 
     private var progressBar: some View {
         HStack(spacing: 2) {
@@ -265,7 +251,7 @@ public struct OnboardingPortfolioUploadView: View {
                 } label: {
                     // 구 cancelSmall(20pt 맨 X, g200 틴트)의 새 시트 대응이 없다 —
                     // 입력 클리어 계열(cancel mini)로 대체. Figma 화면 확정 시 재검토.
-                    Image.CancelMini.grey16
+                    Image.CancelMini.gray16
                         .resizable()
                         .scaledToFit()
                         .frame(width: 16, height: 16)
@@ -304,37 +290,12 @@ public struct OnboardingPortfolioUploadView: View {
     // MARK: - 하단 CTA (이 스텝은 이전으로/계속하기 2버튼 — STEP 1 과 다름)
 
     private var bottomBar: some View {
-        HStack(spacing: 0) {
-            Button {
-                send(.userTappedBack)
-            } label: {
-                Text("이전으로")
-                    .dsTypography(.sub7)
-                    .foregroundStyle(Color.BlackWhite.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 22)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            Rectangle()
-                .fill(Color.GrayScale.g700)
-                .frame(width: 1, height: 25)
-
-            Button {
-                send(.userTappedContinue)
-            } label: {
-                Text("계속하기")
-                    .dsTypography(.sub7)
-                    .foregroundStyle(store.isContinueEnabled ? Color.BlackWhite.white : Color.GrayScale.g400)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 22)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .disabled(!store.isContinueEnabled)
+        ButtonLarge(.bottom, tone: .dark) {
+            Button("이전으로") { send(.userTappedBack) }
+        } trailing: {
+            Button("계속하기") { send(.userTappedContinue) }
+                .disabled(!store.isContinueEnabled)
         }
-        .background(Color.HilitBlack.b800.ignoresSafeArea(edges: .bottom))
     }
 }
 
