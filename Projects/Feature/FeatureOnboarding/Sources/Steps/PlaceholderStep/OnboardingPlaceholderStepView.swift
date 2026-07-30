@@ -21,7 +21,6 @@ public struct OnboardingPlaceholderStepView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            navigationBar
             progressBar
             Spacer()
             Text(store.title)
@@ -35,33 +34,8 @@ public struct OnboardingPlaceholderStepView: View {
             continueButton
         }
         .background(Color.BlackWhite.white.ignoresSafeArea())
-        .navigationBarBackButtonHidden(true)
-    }
-
-    private var navigationBar: some View {
-        HStack(spacing: 0) {
-            Button {
-                send(.userTappedBack)
-            } label: {
-                Image.Left.default
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
-            }
-            .buttonStyle(.plain)
-            Spacer(minLength: 0)
-            Button {
-                send(.userTappedClose)
-            } label: {
-                Image.Cancel.default24
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 24)
-        .frame(height: 54)
+        // 최종 시안은 뒤로 버튼 없음(X 통일) — 뒤로는 스와이프백·하단 바 몫.
+        .hilitNavigationBar(background: .filled, onClose: { send(.userTappedClose) })
     }
 
     private var progressBar: some View {
@@ -77,18 +51,7 @@ public struct OnboardingPlaceholderStepView: View {
     }
 
     private var continueButton: some View {
-        Button {
-            send(.userTappedContinue)
-        } label: {
-            Text("계속하기")
-                .dsTypography(.sub7)
-                .foregroundStyle(Color.BlackWhite.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 22)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .background(Color.HilitBlack.b800.ignoresSafeArea(edges: .bottom))
+        ButtonLarge("계속하기", .bottom) { send(.userTappedContinue) }
     }
 }
 

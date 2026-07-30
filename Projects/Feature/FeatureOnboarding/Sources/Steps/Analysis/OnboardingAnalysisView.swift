@@ -22,30 +22,17 @@ public struct OnboardingAnalysisView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            navigationBar
             content
         }
         .background(Color.HilitBlack.b800.ignoresSafeArea())
-        .navigationBarBackButtonHidden(true)
+        .hilitNavigationBar(
+            theme: .dark,
+            background: .filled,
+            allowsSwipeBack: false,   // 제출 중 이탈 = 세션 생성 버림
+            onClose: { send(.userTappedClose) }
+        )
         .animation(.easeInOut(duration: 0.3), value: store.phase)
         .onAppear { send(.onAppear) }
-    }
-
-    private var navigationBar: some View {
-        HStack(spacing: 0) {
-            Button {
-                send(.userTappedClose)
-            } label: {
-                Image.Cancel.dark24
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
-            }
-            .buttonStyle(.plain)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 24)
-        .frame(height: 54)
     }
 
     @ViewBuilder
