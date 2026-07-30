@@ -35,7 +35,7 @@ public struct OnboardingJobSelectionView: View {
             continueButton
         }
         .background(Color.BlackWhite.white.ignoresSafeArea())
-        .hilitNavigationBar(leading: .icon(Image.Cancel.default24) { send(.userTappedClose) })
+        .hilitNavigationBar(background: .filled, onClose: { send(.userTappedClose) })
         .onAppear { send(.onAppear) }
     }
 
@@ -105,21 +105,10 @@ public struct OnboardingJobSelectionView: View {
         .buttonStyle(.plain)
     }
 
+    /// 이 스텝만 단일 CTA (첫 스텝 — 이전 없음). 비활성 룩은 DS 가 소유한다.
     private var continueButton: some View {
-        Button {
-            send(.userTappedContinue)
-        } label: {
-            Text("계속하기")
-                // TODO: 활성 상태 Figma 미확인 — 우선 텍스트 white. 디자인 확정 시 조정.
-                .dsTypography(.sub7)
-                .foregroundStyle(store.isContinueEnabled ? Color.BlackWhite.white : Color.GrayScale.g400)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 22)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(!store.isContinueEnabled)
-        .background(Color.HilitBlack.b800.ignoresSafeArea(edges: .bottom))
+        ButtonLarge("계속하기", .bottom) { send(.userTappedContinue) }
+            .disabled(!store.isContinueEnabled)
     }
 }
 

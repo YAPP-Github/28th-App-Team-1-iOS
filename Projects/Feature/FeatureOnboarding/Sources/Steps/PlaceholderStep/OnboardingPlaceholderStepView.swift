@@ -34,11 +34,8 @@ public struct OnboardingPlaceholderStepView: View {
             continueButton
         }
         .background(Color.BlackWhite.white.ignoresSafeArea())
-        .hilitNavigationBar(
-            leading: .icon(Image.Left.default) { send(.userTappedBack) },
-            trailing: .icon(Image.Cancel.default24) { send(.userTappedClose) },
-            allowsSwipeBack: false
-        )
+        // 최종 시안은 뒤로 버튼 없음(X 통일) — 뒤로는 스와이프백·하단 바 몫.
+        .hilitNavigationBar(background: .filled, onClose: { send(.userTappedClose) })
     }
 
     private var progressBar: some View {
@@ -54,18 +51,7 @@ public struct OnboardingPlaceholderStepView: View {
     }
 
     private var continueButton: some View {
-        Button {
-            send(.userTappedContinue)
-        } label: {
-            Text("계속하기")
-                .dsTypography(.sub7)
-                .foregroundStyle(Color.BlackWhite.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 22)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .background(Color.HilitBlack.b800.ignoresSafeArea(edges: .bottom))
+        ButtonLarge("계속하기", .bottom) { send(.userTappedContinue) }
     }
 }
 

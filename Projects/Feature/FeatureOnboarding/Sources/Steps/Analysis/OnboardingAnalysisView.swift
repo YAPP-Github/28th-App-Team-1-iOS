@@ -26,9 +26,10 @@ public struct OnboardingAnalysisView: View {
         }
         .background(Color.HilitBlack.b800.ignoresSafeArea())
         .hilitNavigationBar(
-            leading: .icon(Image.Cancel.white24) { send(.userTappedClose) },
-            background: Color.HilitBlack.b800,
-            allowsSwipeBack: false
+            theme: .dark,
+            background: .filled,
+            allowsSwipeBack: false,   // 제출 중 이탈 = 세션 생성 버림
+            onClose: { send(.userTappedClose) }
         )
         .animation(.easeInOut(duration: 0.3), value: store.phase)
         .onAppear { send(.onAppear) }

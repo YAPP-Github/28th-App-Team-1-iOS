@@ -10,74 +10,97 @@ import SwiftUI
 // Figma «Navigationbar» 컴포넌트 세트 — icon 2446:7485 · text 3029:11189 · logo 3632:13967
 /// 커스텀 내비게이션바 — 시스템 내비바 대신 화면 콘텐츠 최상단에 놓는 54pt 바.
 ///
-/// Figma 3변형을 슬롯 조합으로 옮겼다:
-/// - **icon**: 좌 아이콘 + 중앙 타이틀 + 우 아이콘 — `HilitNavigationBar("타이틀", leading: …, trailing: .icon(…))`
-/// - **text**: 우측이 텍스트 버튼 — `trailing: .text("버튼") { … }`
-/// - **logo**: Hilit 워드마크 + 우측 아이콘 — `HilitNavigationBar.logo(trailing: …)`
+/// 최종 시안은 3변형으로 닫혔고 뒤로가기 버튼이 없다(닫기 X 통일 — pop 은 하단 CTA·스와이프백 몫):
+/// - **X | 타이틀 | +** — `HilitNavigationBar("타이틀", trailing: .plus { … }, onClose: { … })`
+/// - **X | 타이틀 | 텍스트** — `trailing: .text("버튼") { … }`
+/// - **로고 | 프로필** — `HilitNavigationBar.logo(onProfile:)` (루트 전용)
 ///
-/// 시안의 show 토글은 슬롯에 `nil` 을 넘기는 것과 같다. 아이콘은 인스턴스 스왑 슬롯이라
-/// `Image` 토큰을 직접 받는다(기본값 없음 — 닫기인지 뒤로인지는 화면이 안다).
-/// 배경은 그리지 않는다 — 화면 배경 위에 얹는 투명 바라서, 다크 화면(`Cancel.white24`)에서도 그대로 쓴다.
+/// leading X 는 상수라 슬롯이 아니라 필수 액션(`onClose`)이다. 시안의 show 토글은
+/// `trailing: nil`(기본). 아이콘 색변형(`default24`/`white24`)·타이틀색은 `theme` 이 파생하므로
+/// 화면이 고르지 않는다 — 다크 배경에 검정 X 같은 조합이 표현 불가능하다.
 ///
-/// `NavigationStack` push 화면에서는 시스템 백버튼과 겹치지 않게
-/// `.navigationBarBackButtonHidden(true)` 를 화면 쪽에서 함께 건다 (기존 관행).
+/// `theme` 은 mini 버튼의 `.hilitSurface(.light/.dark)` 와 같은 «판 톤» 축이다.
+/// 내비바는 Environment 가 아니라 파라미터로 받는다 — 빼먹으면 조용히 틀리는 물건이라 명시가 안전.
 public struct HilitNavigationBar: View {
-    /// 좌·우 슬롯 내용물. `.text` 는 Figma 상 trailing 전용 (leading 에 넣으면 DEBUG assert).
-    public enum Accessory {
-        case icon(Image, action: () -> Void)
+    /// 바가 놓이는 판의 톤 — 아이콘 색변형·타이틀색·`.filled` 배경색을 전부 파생한다.
+    public enum Theme: Sendable {
+        case light
+        case dark
+    }
+
+    /// trailing 슬롯 — 시안의 두 종만. 다크 trailing 은 시안이 없어 DEBUG assert (필요 시 디자이너 확인 후 추가).
+    public enum Trailing {
+        case plus(action: () -> Void)
         case text(String, action: () -> Void)
     }
 
-    private enum Center {
-        case title(String?)
-        case logo
+    /// 바 배경 — 기본은 투명(영상 풀블리드처럼 뒤 화면이 비쳐야 하는 케이스).
+    /// 스크롤 화면은 콘텐츠가 바 밑으로 지나가므로 `.filled`(theme 색) 로 칠한다.
+    /// 스크림(그라데이션) 시안이 생기면 case 추가로 확장한다.
+    public enum Background: Sendable {
+        case transparent
+        case filled
     }
 
-    private let center: Center
-    private let leading: Accessory?
-    private let trailing: Accessory?
+    private enum Content {
+        case standard(title: String?, trailing: Trailing?, onClose: (() -> Void)?)
+        case logo(onProfile: (() -> Void)?)
+    }
 
-    /// icon·text 변형 — 중앙 타이틀(없으면 빈 중앙), 좌·우 슬롯 옵션.
+    private let content: Content
+    private let theme: Theme
+
+    /// `onClose` 기본값용 — 스택에 있으면 pop, present 됐으면 dismiss 를 SwiftUI 가 자동 분기.
+    /// 어느 쪽이든 리듀서에는 `popFrom(id:)`/`PresentationAction.dismiss` 액션으로 도착한다(우회 아님).
+    @Environment(\.dismiss) private var dismiss
+
+    /// 표준 바 — X(항상 표시) + 중앙 타이틀 + trailing 슬롯.
+    ///
+    /// `onClose` 생략 = 기본 동작(pop, 없으면 dismiss). 클로저 전달 = **override** —
+    /// 확인 팝업을 먼저 띄우거나(리듀서가 `.userTappedClose` 를 가로챔) 플로우 전체를
+    /// 종료(delegate)하는 화면은 자기 액션을 넘긴다. 패턴 예시는 `design/component/navigation.md`.
     public init(
         _ title: String? = nil,
-        leading: Accessory? = nil,
-        trailing: Accessory? = nil
+        trailing: Trailing? = nil,
+        theme: Theme = .light,
+        onClose: (() -> Void)? = nil
     ) {
-        self.center = .title(title)
-        self.leading = leading
-        self.trailing = trailing
         #if DEBUG
-        if case .text = leading {
-            assertionFailure("HilitNavigationBar: 텍스트 버튼은 trailing 전용 (Figma text 변형)")
-        }
+        assert(!(theme == .dark && trailing != nil),
+               "HilitNavigationBar: 다크 바의 trailing 시안이 없다 — 필요하면 디자이너 확인 후 추가.")
         #endif
+        self.content = .standard(title: title, trailing: trailing, onClose: onClose)
+        self.theme = theme
     }
 
-    private init(center: Center, leading: Accessory?, trailing: Accessory?) {
-        self.center = center
-        self.leading = leading
-        self.trailing = trailing
+    /// logo 변형 — Hilit 워드마크 + 우측 프로필 (Figma 3632:13967, 루트 전용이라 X 없음).
+    public static func logo(onProfile: (() -> Void)? = nil) -> HilitNavigationBar {
+        HilitNavigationBar(content: .logo(onProfile: onProfile), theme: .light)
     }
 
-    /// logo 변형 — Hilit 워드마크 좌측 고정, 우측 아이콘 슬롯 옵션 (Figma 는 profile).
-    public static func logo(trailing: Accessory? = nil) -> HilitNavigationBar {
-        HilitNavigationBar(center: .logo, leading: nil, trailing: trailing)
+    private init(content: Content, theme: Theme) {
+        self.content = content
+        self.theme = theme
     }
 
     public var body: some View {
         HStack(spacing: 6) {
-            switch center {
-            case let .title(title):
-                slotView(leading, alignment: .leading)
+            switch content {
+            case let .standard(title, trailing, onClose):
+                iconSlot(closeIcon, action: onClose ?? { dismiss() }, alignment: .leading)
                 centerTitle(title)
-                slotView(trailing, alignment: .trailing)
-            case .logo:
+                trailingSlot(trailing)
+            case let .logo(onProfile):
                 Image.Logo.hilit
                     .resizable()
                     .scaledToFit()
                     .frame(width: 57, height: 24)
                 Spacer(minLength: 0)
-                slotView(trailing, alignment: .trailing)
+                if let onProfile {
+                    iconSlot(Image.Profile.default, action: onProfile, alignment: .trailing)
+                } else {
+                    Color.clear.frame(width: 40)
+                }
             }
         }
         // 슬롯 26(아이콘 24 + 상하 1) + 상하 p14 = 총 54 (Figma 실측).
@@ -86,12 +109,38 @@ public struct HilitNavigationBar: View {
         .padding(.vertical, .ds(.p14))
     }
 
+    // MARK: - theme 파생 값
+
+    private var closeIcon: Image {
+        switch theme {
+        case .light: Image.Cancel.default24
+        case .dark: Image.Cancel.white24
+        }
+    }
+
+    private var titleColor: Color {
+        switch theme {
+        case .light: Color.HilitBlack.b800
+        case .dark: Color.BlackWhite.white
+        }
+    }
+
+    /// `.filled` 일 때 바 배경 — 화면 배경 토큰과 같은 값이라 이음새가 없다.
+    var fillColor: Color {
+        switch theme {
+        case .light: Color.BlackWhite.white
+        case .dark: Color.HilitBlack.b800
+        }
+    }
+
+    // MARK: - 슬롯
+
     @ViewBuilder
     private func centerTitle(_ title: String?) -> some View {
         if let title {
             Text(title)
                 .dsTypography(.sub7)
-                .foregroundStyle(Color.HilitBlack.b800)
+                .foregroundStyle(titleColor)
                 .multilineTextAlignment(.center)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity)
@@ -101,19 +150,23 @@ public struct HilitNavigationBar: View {
     }
 
     /// 아이콘 슬롯은 폭 40 고정(시안 leading 컨테이너 값) — 비어 있어도 유지해 타이틀 중앙을 지킨다.
-    /// 텍스트 버튼(trailing 전용)만 내용 폭 — 시안도 hug 라 타이틀이 살짝 좌측으로 치우친다.
+    private func iconSlot(_ image: Image, action: @escaping () -> Void, alignment: Alignment) -> some View {
+        Button(action: action) {
+            image
+                .resizable()
+                .scaledToFit()
+                .frame(width: 24, height: 24)
+        }
+        .buttonStyle(.plain)
+        .frame(width: 40, alignment: alignment)
+    }
+
+    /// 텍스트 버튼만 내용 폭 — 시안도 hug 라 타이틀이 살짝 좌측으로 치우친다.
     @ViewBuilder
-    private func slotView(_ accessory: Accessory?, alignment: Alignment) -> some View {
-        switch accessory {
-        case let .icon(image, action):
-            Button(action: action) {
-                image
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
-            }
-            .buttonStyle(.plain)
-            .frame(width: 40, alignment: alignment)
+    private func trailingSlot(_ trailing: Trailing?) -> some View {
+        switch trailing {
+        case let .plus(action):
+            iconSlot(Image.Plus.default24, action: action, alignment: .trailing)
         case let .text(label, action):
             Button(action: action) {
                 Text(label)
@@ -134,99 +187,111 @@ public struct HilitNavigationBar: View {
 
 public extension View {
     /// 시스템 내비바를 숨기고 `HilitNavigationBar` 를 상단 safe area 에 얹는다.
-    /// 화면은 바 내용(타이틀·슬롯)만 선언하고, 배관(`navigationBarBackButtonHidden`·
-    /// `toolbar(.hidden)`·`safeAreaInset`)은 여기가 소유한다 — 화면마다 깜빡할 일 없음.
+    /// 화면은 바 내용(타이틀·trailing·onClose)만 선언하고, 배관(`navigationBarBackButtonHidden`·
+    /// `toolbar(.hidden)`·`safeAreaInset`·스와이프백 delegate)은 여기가 소유한다.
     ///
-    /// `background` 는 스크롤 콘텐츠가 바 아래로 지나갈 때 비치지 않게 바 뒤에 깐다 —
-    /// 화면 배경색과 같은 토큰을 넘긴다(다크 화면이면 `Color.HilitBlack.b800` + white 아이콘).
-    ///
-    /// `navigationBarBackButtonHidden` 이 끄는 엣지 스와이프백은
-    /// `UINavigationController+SwipeBack.swift` 가 전역 복구한다.
-    /// 뒤로가기가 필요한 push 화면은 leading 에 `Image.Left.*` 버튼도 함께 놓을 것(보이는 어포던스).
+    /// `navigationBarBackButtonHidden` 이 끄는 엣지 스와이프백은 `SwipeBackPolicy` 가
+    /// 이 화면이 보이는 동안만 복구한다(전역 아님 — `UINavigationController+SwipeBack.swift`).
     ///
     /// `allowsSwipeBack: false` — 스와이프 pop 을 이 화면에서만 끈다.
-    /// 스와이프는 버튼과 달리 화면의 «나가기 전 로직»(저장·확인)을 안 태우므로,
-    /// pop 이 리듀서 로직과 묶인 플로우(온보딩 스텝 등)는 끄고 버튼으로만 뒤로 간다.
+    /// 스와이프는 버튼과 달리 화면의 «나가기 전 로직»(확인·제출)을 안 태우므로,
+    /// pop 전에 되물을 게 있는 화면만 끈다. 상태 파생 값 가능(`!store.isUploading` 등).
+    ///
+    /// `onClose` 생략 = X 기본 동작(pop, 없으면 dismiss — `@Environment(\.dismiss)`).
+    /// 클로저 전달 = override — 확인 팝업·플로우 종료 등 화면 리듀서가 닫기를 소유한다.
     func hilitNavigationBar(
         _ title: String? = nil,
-        leading: HilitNavigationBar.Accessory? = nil,
-        trailing: HilitNavigationBar.Accessory? = nil,
-        background: Color = Color.BlackWhite.white,
-        allowsSwipeBack: Bool = true
+        trailing: HilitNavigationBar.Trailing? = nil,
+        theme: HilitNavigationBar.Theme = .light,
+        background: HilitNavigationBar.Background = .transparent,
+        allowsSwipeBack: Bool = true,
+        onClose: (() -> Void)? = nil
     ) -> some View {
         attachHilitNavigationBar(
-            HilitNavigationBar(title, leading: leading, trailing: trailing),
+            HilitNavigationBar(title, trailing: trailing, theme: theme, onClose: onClose),
             background: background,
             allowsSwipeBack: allowsSwipeBack
         )
     }
 
-    /// logo 변형(Hilit 워드마크) 부착 — 홈처럼 브랜드 바를 쓰는 루트 화면용.
+    /// logo 변형(Hilit 워드마크 + 프로필) 부착 — 홈처럼 브랜드 바를 쓰는 루트 화면용.
     func hilitLogoNavigationBar(
-        trailing: HilitNavigationBar.Accessory? = nil,
-        background: Color = Color.BlackWhite.white
+        background: HilitNavigationBar.Background = .transparent,
+        onProfile: (() -> Void)? = nil
     ) -> some View {
         // logo 변형은 루트 전용 — 루트는 pop 대상이 없어 스와이프백 스위치가 무의미.
-        attachHilitNavigationBar(.logo(trailing: trailing), background: background, allowsSwipeBack: true)
+        attachHilitNavigationBar(.logo(onProfile: onProfile), background: background, allowsSwipeBack: true)
     }
 
     private func attachHilitNavigationBar(
         _ bar: HilitNavigationBar,
-        background: Color,
+        background: HilitNavigationBar.Background,
         allowsSwipeBack: Bool
     ) -> some View {
         safeAreaInset(edge: .top, spacing: 0) {
-            bar.background(background)
+            bar.background {
+                if background == .filled {
+                    bar.fillColor
+                }
+            }
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .background {
-            if !allowsSwipeBack {
-                SwipeBackDisabler()
-            }
+            SwipeBackPolicy(allows: allowsSwipeBack)
         }
     }
 }
 
 // MARK: - Previews
 
-#Preview("icon — 닫기·추가") {
+#Preview("표준 — X만 / X+플러스 / X+텍스트") {
     VStack(spacing: 0) {
-        HilitNavigationBar(
-            "타이틀",
-            leading: .icon(Image.Cancel.default24) {},
-            trailing: .icon(Image.Plus.default24) {}
-        )
+        HilitNavigationBar("타이틀", onClose: {})
+        Divider()
+        HilitNavigationBar("타이틀", trailing: .plus {}, onClose: {})
+        Divider()
+        HilitNavigationBar("타이틀", trailing: .text("버튼") {}, onClose: {})
         Divider()
         Spacer()
     }
 }
 
-#Preview("text — 우측 텍스트 버튼") {
+#Preview("X 기본 동작 — onClose 생략 = pop") {
+    NavigationStack {
+        NavigationLink("다음 화면으로 push") {
+            Text("X 를 누르면 pop (기본 동작)")
+                .hilitNavigationBar("기본 X", background: .filled)
+        }
+    }
+}
+
+#Preview("다크 — trailing 없음") {
     VStack(spacing: 0) {
-        HilitNavigationBar(
-            "타이틀",
-            leading: .icon(Image.Cancel.default24) {},
-            trailing: .text("버튼") {}
-        )
-        Divider()
+        HilitNavigationBar("타이틀", theme: .dark, onClose: {})
         Spacer()
     }
+    .background(Color.HilitBlack.b800)
 }
 
 #Preview("logo — 워드마크·프로필") {
     VStack(spacing: 0) {
-        HilitNavigationBar.logo(trailing: .icon(Image.Profile.default) {})
+        HilitNavigationBar.logo(onProfile: {})
         Divider()
         Spacer()
     }
 }
 
-#Preview("슬롯 생략 — 닫기만 / 타이틀만") {
-    VStack(spacing: 0) {
-        HilitNavigationBar(leading: .icon(Image.Cancel.default24) {})
-        HilitNavigationBar("타이틀")
-        Divider()
-        Spacer()
+#Preview("배경 — filled vs transparent (스크롤 통과 대비)") {
+    HStack(spacing: 0) {
+        ScrollView {
+            VStack { ForEach(0..<30) { Text("콘텐츠 \($0)").frame(maxWidth: .infinity) } }
+        }
+        .hilitNavigationBar("filled", background: .filled, onClose: {})
+
+        ScrollView {
+            VStack { ForEach(0..<30) { Text("콘텐츠 \($0)").frame(maxWidth: .infinity) } }
+        }
+        .hilitNavigationBar("transparent", onClose: {})
     }
 }

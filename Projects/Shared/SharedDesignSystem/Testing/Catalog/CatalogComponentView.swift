@@ -119,19 +119,13 @@ struct CatalogComponentView: View {
     }
 
     private var hilitNavigationBar: some View {
-        CatalogGroup("HilitNavigationBar — icon / text / logo") {
+        CatalogGroup("HilitNavigationBar — 표준(X 고정) / 다크 / logo") {
             VStack(spacing: 0) {
-                HilitNavigationBar(
-                    "타이틀",
-                    leading: .icon(Image.Cancel.default24) {},
-                    trailing: .icon(Image.Plus.default24) {}
-                )
-                HilitNavigationBar(
-                    "타이틀",
-                    leading: .icon(Image.Cancel.default24) {},
-                    trailing: .text("버튼") {}
-                )
-                HilitNavigationBar.logo(trailing: .icon(Image.Profile.default) {})
+                HilitNavigationBar("타이틀", trailing: .plus {}, onClose: {})
+                HilitNavigationBar("타이틀", trailing: .text("버튼") {}, onClose: {})
+                HilitNavigationBar("타이틀", theme: .dark, onClose: {})
+                    .background(Color.HilitBlack.b800)
+                HilitNavigationBar.logo(onProfile: {})
             }
         }
     }
