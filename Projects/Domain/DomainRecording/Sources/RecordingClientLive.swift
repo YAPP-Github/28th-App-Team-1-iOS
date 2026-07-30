@@ -31,9 +31,12 @@ actor CameraSessionManager {
     func startPreview() -> CameraPreviewHandle? {
         if let handle { return handle }
         guard
+            // 준비 화면 게이트와 별개로 계약(권한 미허용 → nil)을 여기서도 강제 — notDetermined 로
+            // 세션을 구성하면 검은 프레임 + 시스템 권한 프롬프트가 엉뚱한 시점에 뜬다.
+            AVCaptureDevice.authorizationStatus(for: .video) == .authorized,
             let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
             let input = try? AVCaptureDeviceInput(device: device)
-        else { return nil }   // 시뮬레이터·장치 없음 — 호출부가 placeholder 로 진행
+        else { return nil }   // 권한 미허용·시뮬레이터·장치 없음 — 호출부가 placeholder 로 진행
 
         let session = AVCaptureSession()
         session.beginConfiguration()

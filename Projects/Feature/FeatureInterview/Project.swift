@@ -46,6 +46,6 @@ let project = Project.makeModule(
                 // 마이크 캡처 실물 IO — 세션 화면 레벨·발화 로그 검증용 (liveValue 활성화).
                 .project(target: "DomainSpeechImplementation", path: .domain(.speech))
             ]
-        )),
+        ))
     ]
 )

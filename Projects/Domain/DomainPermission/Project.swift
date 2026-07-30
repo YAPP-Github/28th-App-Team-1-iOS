@@ -12,6 +12,6 @@ let project = Project.makeModule(
             .composableArchitecture   // liveValue(DependencyKey) 구현 — 서버 IO 없음(AVFoundation 디바이스 권한)
         ])),
         .domain(testing: "Permission"),
-        .domain(tests: "Permission"),
+        .domain(tests: "Permission")
     ]
 )

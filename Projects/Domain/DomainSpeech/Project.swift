@@ -16,13 +16,13 @@ let project = Project.makeModule(
     name: "DomainSpeech",
     targets: [
         .domain(interface: "Speech", factory: .init(dependencies: [
-            .composableArchitecture,   // Client 계약이 TestDependencyKey/DependencyValues 를 사용
+            .composableArchitecture   // Client 계약이 TestDependencyKey/DependencyValues 를 사용
         ])),
         .domain(implements: "Speech", factory: .init(dependencies: [
-            .composableArchitecture,   // liveValue(DependencyKey) 구현
+            .composableArchitecture   // liveValue(DependencyKey) 구현
             // 인프라가 필요하면 여기에: .core(interface: .network)
         ])),
         .domain(testing: "Speech"),
-        .domain(tests: "Speech"),
+        .domain(tests: "Speech")
     ]
 )
