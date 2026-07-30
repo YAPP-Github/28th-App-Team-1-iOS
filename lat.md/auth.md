@@ -38,8 +38,8 @@ Sign in with Apple entitlement가 App 타겟에 필요하다(`TargetFactory.enti
 
 ## 다음 작업
 
-세션 교환(`login`)·Keychain(TokenStore)·자동 재발급(refresh)은 #23 에서 Client 레벨로 구현됐다([[api#Auth]]). 남은 것은 Feature/App 배선이다.
+세션 교환(`login`)·Keychain(TokenStore)·자동 재발급(refresh)은 #23 에서 Client 레벨로 구현됐고, AuthFeature 도 signIn→login 교환까지 배선됐다([[api#Auth]]). 남은 것은 가입 플로우 확장 — PRD Part 7 매핑(A1 약관 동의·A0 분기·SP 자동 로그인)은 [home-account](../docs/work/home-account.md) §2 가 단일 소스.
 
-- **AuthFeature 배선**: `signInFinished(.success(credential))` 뒤에 `authClient.login(credential)` 교환을 잇는다 — 현재는 credential 획득까지만 성공 처리하고 delegate(.signedIn)을 올린다.
-- **자동 로그인**: AppFeature 게이트(`State.isAuthenticated`)를 `authClient.isAuthenticated()` 초기값으로 연결 — 지금은 앱 재실행 시 항상 false 다.
-- **로그아웃 UX**: 설정 화면에서 `authClient.logout()` 호출 + 게이트 복귀.
+- **자동 로그인(SP 스플래시)**: AppFeature 게이트(`State.isAuthenticated`)를 `authClient.isAuthenticated()` 초기값으로 연결 — 지금은 앱 재실행 시 항상 false 다.
+- **A1 약관 동의**: 필수 5종 동의 화면 + 제출(=계정 생성 확정, DomainAuth 확장 — 서버 협의 S-1 대기). login 응답의 신규/기존 판별 수신.
+- **로그아웃 UX**: 설정 화면(Part 5)에서 `authClient.logout()` 호출 + 게이트 복귀.
