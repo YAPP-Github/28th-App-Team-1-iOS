@@ -11,7 +11,7 @@ description: 피그마 시안을 이 레포의 SwiftUI 화면으로 옮긴다. �
 
 ## 0. 준비
 
-1. **`.claude/design.md` 를 먼저 읽는다.** 토큰 목록·컴포넌트 9종·에셋 로드 규칙이 거기 있다. 필요하면 `.claude/design/{color,typography,spacing,component,image}.md` 로 들어간다. 이걸 건너뛰면 이미 있는 토큰을 raw 로 박게 된다 — 이 스킬이 막으려는 바로 그 일이다.
+1. **`.claude/design.md` 를 먼저 읽는다.** 토큰·공용 컴포넌트·에셋 로드 규칙의 영역 인덱스가 거기 있다. 필요하면 `.claude/design/{color,typography,spacing,component,image}.md` 로 들어간다. 이걸 건너뛰면 이미 있는 토큰을 raw 로 박게 된다 — 이 스킬이 막으려는 바로 그 일이다.
 2. **시안을 읽는다.** Figma MCP(`get_design_context`·`get_screenshot`·`get_variable_defs`)를 쓴다. 플러그인 스킬 `figma:figma-design-to-code`·`figma:figma-swiftui` 가 추출 절차를 담당하니 그쪽을 따르되, **매핑·주석 규칙은 이 스킬이 우선한다** (그 스킬들은 raw 수치를 그대로 쓰라고 할 수 있다).
 3. **MCP 가 인증 안 돼 있으면** 거기서 멈추지 말고 사용자에게 스크린샷이나 값 목록(색·크기·폰트·간격)을 달라고 한 뒤 같은 규칙으로 진행한다.
 
@@ -21,15 +21,15 @@ Figma 의 raw 수치를 그대로 박지 않는다. 각 값마다 대응 토큰�
 
 | 시안이 주는 것 | 먼저 찾을 곳 | 형태 |
 |---|---|---|
-| 색 HEX | `design/color.md` 팔레트 23색 | `Color.GrayScale.g800` · `Color.Error.e500` |
-| 폰트(`head1_sb_32` 등) | `design/typography.md` 25종 | `.dsTypography(.head3)` |
-| padding·gap | `design/spacing.md` (4~24) | `.padding(.ds(.p20))` |
-| 버튼·칩·태그·토스트 | `design/component.md` | `ButtonLarge("계속하기", .bottom) { … }` · `.buttonStyle(.medium(.green))` |
-| 아이콘·일러스트 | `design/image.md` | `Image.Cancel.dark24` · `Image.Img.…` (틴트 금지 — 색변형별 에셋) |
+| 색 HEX | `.claude/design/color.md` 팔레트 | `Color.GrayScale.g800` · `Color.Error.e500` |
+| 폰트(`head1_sb_32` 등) | `.claude/design/typography.md` | `.dsTypography(.head3)` |
+| padding·gap | `.claude/design/spacing.md` | `.padding(.ds(.p20))` |
+| 버튼·칩·태그·토스트 | `.claude/design/component.md` 인덱스 → `.claude/design/component/<영역>.md` | `ButtonLarge("계속하기", .bottom) { … }` · `.buttonStyle(.medium(.green))` |
+| 아이콘·일러스트 | `.claude/design/image.md` | `Image.Cancel.white24` · `Image.Img.…` (틴트 금지 — 색변형별 에셋) |
 
 **근사 판단**: 시안 값이 토큰과 미세하게 다르면(#FF5858 vs #FF5757) 토큰을 쓴다 — 팔레트가 진실이다. 다만 눈에 띄게 다르면 토큰을 쓰되 원본을 태그로 남긴다(§2 화살표 형태). "눈에 띄는가"의 기준은 나란히 놓고 구별되는가다.
 
-**커스텀 만들기 전에 `design/component.md` 카탈로그를 먼저 검토한다.** 손으로 만든 버튼이 기존 스타일과 같은 모양이면 그건 중복이다.
+**커스텀 만들기 전에 `.claude/design/component.md` 카탈로그(인덱스)를 먼저 검토한다.** 손으로 만든 버튼이 기존 스타일과 같은 모양이면 그건 중복이다. API 는 인덱스가 가리키는 영역 문서에서 읽는다 — 전체를 읽지 않는다.
 
 ## 2. `@ds` 태그 — 없는 것을 남긴다
 

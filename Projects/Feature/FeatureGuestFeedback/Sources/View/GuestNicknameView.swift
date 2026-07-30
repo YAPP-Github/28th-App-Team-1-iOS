@@ -18,7 +18,6 @@ import SwiftUI
 @ViewAction(for: GuestFeedbackFeature.self)
 struct GuestNicknameView: View {
     @Bindable var store: StoreOf<GuestFeedbackFeature>
-    @FocusState private var fieldFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -63,35 +62,14 @@ struct GuestNicknameView: View {
     // MARK: - Name field (중앙 정렬 · 텍스트 폭 밑줄)
 
     private var nameField: some View {
-        VStack(spacing: .ds(.p8)) {
-            TextField(
-                "",
-                text: $store.nickname,
-                // prompt 는 비어 있을 때만 — 남겨두면 입력 후에도 TextField 이상적 폭이 플레이스홀더
-                // 폭으로 잡혀, hug 되는 밑줄이 텍스트 길이를 따라가지 못한다(시안2 는 텍스트 폭 밑줄).
-                prompt: store.nickname.isEmpty
-                    ? Text("이름을 알려주세요").foregroundStyle(Color.GrayScale.g500)
-                    : nil
-            )
-            .dsTypography(.head4)
-            .foregroundStyle(Color.GrayScale.g900)
-            .multilineTextAlignment(.center)
-            .textInputAutocapitalization(.never)
-            .autocorrectionDisabled()
-            .submitLabel(.done)
-            .focused($fieldFocused)
+        // DS NameField(Figma «name-field» 2192:5331) — 내용 폭 hug 라 밑줄이 글자를 따라가고,
+        // maxWidth 로 패널 중앙에 놓인다. 밑줄 색(g100→g600)은 입력값에서 파생된다.
+        NameField("이름을 알려주세요", text: $store.nickname)
+            .frame(maxWidth: .infinity)
             .onSubmit {
                 guard !store.nickname.isEmpty else { return }
                 send(.nicknameNextTapped)
             }
-            // outline-large(4pt) 밑줄 — 입력 전 gray100(dsSeparator), 입력 시 green600(Figma 시안2 8636).
-            Rectangle()
-                .fill(store.nickname.isEmpty ? Color.GrayScale.g100 : Color.HilitGreen.g600)
-                .frame(height: .ds(.large))
-        }
-        // Figma NameField(node 2192:5330)는 내용 폭만큼 hug — 밑줄이 텍스트를 따라가고 패널 중앙에 놓인다.
-        .fixedSize(horizontal: true, vertical: false)
-        .frame(maxWidth: .infinity)
     }
 }
 

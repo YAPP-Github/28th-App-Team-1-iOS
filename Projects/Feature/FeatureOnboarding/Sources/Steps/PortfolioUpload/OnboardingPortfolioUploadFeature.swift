@@ -27,6 +27,11 @@ public struct OnboardingPortfolioUploadFeature {
         case failed(message: String)
         /// 완료 — 파일 행 표시, 계속하기 활성.
         case uploaded(fileName: String, portfolioId: UUID)
+
+        /// 업로드·폴링 진행 중 — 이 동안만 스와이프백을 막는다(이탈 = 폴링·서버 파일 버림).
+        public var isUploading: Bool {
+            if case .uploading = self { true } else { false }
+        }
     }
 
     @ObservableState

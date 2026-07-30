@@ -73,7 +73,7 @@ struct GuestEvaluationView: View {
                 }
 
                 if store.isCompletionToastVisible {
-                    BubbleToast("모든 평가가 끝났어요!")
+                    BubbleField("모든 평가가 끝났어요!")
                         // Figma 시안(node 2555:7543): CTA(55pt) 위 10pt — 55 는 ButtonLarge 고정 높이(대응 토큰 없어 리터럴).
                         .padding(.bottom, 55 + CGFloat.ds(.p10))
                         .transition(.opacity)
