@@ -55,4 +55,4 @@ Action enum 을 `view(View)` / `inner(Inner)` / `delegate(Delegate)` 로 나눈�
 - **행간 구현**: SwiftUI 에 line-height 가 없어 `lineSpacing + 상하 패딩` 보정으로 Figma px 값을 재현. Dynamic Type 은 미반영(고정 사이즈) — 도입 결정 시 `relativeTo:` 전환.
 - **스펙 대조**: 토큰 ↔ Figma 스타일명 1:1 은 `DSTypographyTests` 가 고정한다. 상세 토큰 표 → `.claude/design/typography.md` (인덱스: `.claude/design.md`). spacing 상세 → `.claude/design/spacing.md`.
 - **색상**: Figma «Hilit_Color_Guide»(node 366-173) 확정 팔레트 23색 — 패밀리 enum(`Color.HilitGreen.g500`·`Color.GrayScale.g600`…). 에셋명은 HEX(`Color636777`)라 의미가 없어 enum 이 의미를 입힌다. 카탈로그도 같은 6그룹 폴더(namespace 미사용), 로드는 Tuist 생성 접근자, 토큰↔HEX 대조는 `ColorPaletteTests`. 상세 표 → `.claude/design/color.md`.
-- **이미지**: Figma «icon» 시트(node 1941-7000) 아이콘 패밀리 30종·토큰 134개 — 패밀리 enum(`Image.Cancel.dark24`), 일러스트는 `Image.Img`. 색변형이 전부 별도 에셋이라 **틴트하지 않는다**. 크기별 별도 에셋 유지(Figma 가 크기마다 다시 그림 — optical sizing). 명명·마이그레이션 규칙 → `.claude/design/image.md`.
+- **이미지**: Figma «icon» 시트(node 1941-7000) — 패밀리 enum(`Image.Cancel.white24`), 일러스트는 `Image.Img`. 색변형이 전부 별도 에셋이라 **틴트하지 않는다**. 크기별 별도 에셋 유지(Figma 가 크기마다 다시 그림 — optical sizing). 명명·마이그레이션 규칙 → `.claude/design/image.md`.

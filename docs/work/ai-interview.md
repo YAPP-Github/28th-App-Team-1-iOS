@@ -6,13 +6,14 @@
 > 시스템 전체 그림/결정 근거·Client 분리(D3)는 [[architecture]], 도메인 큰 그림은 [[domain.map]] 참고.
 > 출처: Confluence 「Part1. 면접 질문 생성」 / 「Part2. AI와 10분 면접」 (기준일 2026-06-09)
 > · **「[PRD] AI 면접 Part 1 — 면접 전 입력 & 포트폴리오 등록」 v3** (2026-07 확정 — §5 전면 반영, 변경 이력 17건은 PRD 1장)
+> · **「[PRD] Part 2 — 면접 진행·질문 생성·채점 엔진」 v3** (2026-07-27 확정 — §6 «PRD v3 정합 현황» 반영)
 
 ## 0. 제품 → 레이어 매핑
 
 | 기획 | Feature 모듈 | 도메인 내 navigation |
 |---|---|---|
 | Part 1 면접 전 입력 & 포폴 등록(위저드) | `OnboardingFeature` (FeatureOnboarding — **구현 중**) | 자체 `StackState` 6스텝 (S0~S3.5) → §5 · [[onboarding]] |
-| Part 2 10분 음성 면접 | `InterviewSessionFeature` ★ | 단일 화면 + 턴 **상태머신** |
+| Part 2 10분 음성 면접 | `InterviewSessionFeature` ★ (FeatureInterview — **화면 상태머신 구현**, 음성 배선 전) | 단일 화면 + 턴 **상태머신** · 준비/실패/리포트 대기 화면 전환은 모듈 내 `InterviewFeature` 코디네이터 |
 | 포트폴리오 관리(설정) | `PortfolioFeature` | — |
 | Part 3 보고서/영상 복기 | `InterviewReportFeature` (R0·R1 + V0·V1·V2) | 자체 `Path` (R0→V0→V1→V2→R1) → [ai-interview-report](ai-interview-report.md) |
 | Part 4 사람 평가(유료) | (후속, 별도) | — |
@@ -35,7 +36,7 @@ App  (composition root — 레이어 umbrella link → liveValue 활성화)
     ├── InterviewSessionFeature ┬ DomainInterviewInterface
     │   (턴 상태머신)            ├ DomainSpeechInterface     (TTS + STT)
     │                           ├ DomainRecordingInterface  (A/V 캡처·보존)
-    │                           ├ DomainPermissionInterface
+    │                           ├ DomainPermissionInterface ✅ (준비 화면 권한 게이트)
     │                           └ SharedDesignSystem
     ├── PortfolioFeature ─────── DomainPortfolioInterface · SharedDesignSystem
     └── InterviewReportFeature ─ DomainScoringInterface · SharedDesignSystem
@@ -49,8 +50,8 @@ App  (composition root — 레이어 umbrella link → liveValue 활성화)
 Onboarding --delegate(.finished)-------------▶ AppFeature --fullScreenCover--▶ Session
                                                (🔴 세션 payload 확장 필요 — 현재 신호만, §5 분석)
 Onboarding --delegate(.dismiss)--------------▶ AppFeature --중도 이탈 (draft 보존, §5)
-Session --delegate(.finished(result))--------▶ AppFeature --dismiss + present--▶ Report
-Session --delegate(.aborted)-----------------▶ AppFeature --dismiss (기록 폐기)
+Session --delegate(.finished)----------------▶ 코디네이터 --리포트 대기 화면--▶ delegate(.finished) --▶ AppFeature
+Session --delegate(.aborted)-----------------▶ AppFeature --dismiss (턴은 서버가 보존 — 차감 D1, PRD §3.7)
 설정 Portfolio --delegate(.emptied)----------▶ AppFeature --다음 연습 진입 시 S2 강제 라우팅
 ```
 
@@ -64,9 +65,9 @@ Session --delegate(.aborted)-----------------▶ AppFeature --dismiss (기록 �
 | **JDClient** (DomainJD) | JD 링크 크롤링·정제·**서버 캐싱** (S1은 캐싱만 — 분석은 세션 생성 시, PRD §3.1) | `validate(url)→JDValidation` — reason: `CRAWLING_FAILED`·`CONTENT_TOO_SHORT`·`EXTRACTION_FAILED` | S1 | ✅ |
 | **PortfolioClient** (DomainPortfolio) | PDF 등록(202)·상태 폴링·목록(재설치 복구)·삭제 | `register(PortfolioUpload)→PortfolioProcessing` · `status(id)` · `list()→[Portfolio]` · `delete(id)` | S2·설정 | ✅ |
 | **InterviewClient** (DomainInterview) | 세션 생성(= S0~S3 **일괄 수집** + 연관성 검사, PRD §3.8)·준비 폴링·답변 제출·질문 오디오 | `createSession(InterviewConfig)→202` · `sessionStatus(id)` · `submitAnswer` · `questionAudioStream` | S3.5/S4·Part2 | ✅ |
-| **SpeechClient** | 음성 입출력 | `speak(text)→AsyncStream<TTSEvent>` · `transcribe()→AsyncStream<Transcript>` (partial/final + **confidence**) · `stop()` | Part2 | 예정 |
-| **PermissionClient** | 카메라·마이크 권한 — **iOS 는 사용 시점 요청**(PRD §8, 심사 리젝 방지) | `status()` · `request()→Bool` | P0 | 예정 |
-| **RecordingClient** | A/V 캡처 + 30일 보존 | `start(sessionId)` · `stop()→RecordingRef` | P1·P4 | 예정 |
+| **SpeechClient** (DomainSpeech) | 음성 입출력 | 현재 `startCapture()→AsyncStream<SpeechCaptureEvent>` · `stopCapture()` — 예정: `speak(text)→AsyncStream<TTSEvent>` · `transcribe()→AsyncStream<Transcript>` (partial/final + **confidence**) | Part2 | 마이크 캡처(레벨·발화 로그) ✅ · TTS/STT 예정(작업 B) |
+| **PermissionClient** (DomainPermission) | 카메라·마이크 권한 — **iOS 는 사용 시점 요청**(PRD §8, 심사 리젝 방지) + 설정 유도 | `status(MediaPermission)` · `request(MediaPermission)→Bool` · `openSettings()` | 준비 화면(P0) | ✅ |
+| **RecordingClient** (DomainRecording) | 전면 카메라 프리뷰 + A/V 캡처·30일 보존(골격) | `startPreview()→CameraPreviewHandle?` · `stopPreview()` · `startRecording(sessionId)` · `stopRecording()→RecordingRef` | P0·P1·P4 | 프리뷰 ✅ · 녹화는 골격만(작업 B) |
 | **ScoringClient** | 세션 제출·보고서 → [ai-interview-report](ai-interview-report.md) | `submit(session)` · `report(id)→Report` | P4·Part3 | 예정 |
 
 초안의 `QuestionClient`·`PortfolioClient.processOCR/checkRelevance` 는 **서버 내재화로 소멸** — OCR(파싱)·임베딩은 `register` 후 폴링 안에서 서버가 처리하고, 연관성 검사는 `createSession` 이 수행해 실패를 `FREETEXT_NOT_RELEVANT` 에러로 돌려준다. 질문 생성도 세션 API 에 흡수(질문 별도 조회 없음).
@@ -152,7 +153,8 @@ S0~S3 입력을 로컬 draft 로 자동 저장 — **앱 진짜 종료(kill/크�
 
 ### 권한·문구·측정
 
-- 카메라·마이크 권한: **iOS = 사용 시점 요청**(온보딩 강제 시 심사 리젝 — AOS 만 온보딩 획득). Part 2 진입 직전 P0(§6 `preparing`)과 정합. Info.plist 목적 문구·거부 시 "영상 필수라 이용 불가" 안내 필요.
+- 카메라·마이크 권한: **iOS = 사용 시점 요청**(온보딩 강제 시 심사 리젝 — AOS 만 온보딩 획득). ✅ 준비 화면(Readiness)이 진입 시 요청만 하고(거부여도 가이드 조용히 진행), 게이트는 «시작하기» 탭 — 미허용이면 설정 유도 alert([설정으로 이동]/[닫기=화면 유지, 재시도는 재탭]) — [[interview#준비]]. alert 문구는 임시(PM 확정본 대기, `permissionDeniedAlert()` 한 곳만 교체).
+  - 앱 타겟·Example 둘 다 Info.plist 목적 문구 보유(`Target+Templates.swift` .app 팩토리 / FeatureInterview Project.swift). Example 의 실행 직후 `AVCaptureDevice.requestAccess` 임시 배선은 제거(2026-07-27) — DomainPermissionImplementation link 로 대체.
 - 문구는 PM 확정본(PRD §6 표) — 서버 응답 `message` 우선, 클라 fallback 하드코딩. 노출 컴포넌트(toast/modal/dialog) 공통 규칙은 디자인 후속.
 - 측정(PRD §7: 글자 수 분포·연관성 실패/오판율·처리 시간·FAILED_FILE/SYSTEM 비율)은 애널리틱스 도입 시 이벤트 설계로 이월.
 
@@ -161,42 +163,59 @@ S0~S3 입력을 로컬 draft 로 자동 저장 — **앱 진짜 종료(kill/크�
 **겹치는 타이머 + 실시간 오디오 스트림 + 인터럽트**가 한 reducer에 모인다. TCA 정석 레시피:
 
 ### (a) 턴 phase = 명시적 enum 상태머신
+현행 구현(`InterviewSessionFeature.State.Phase`) — View 가 그리는 상태 칩 3종(PRD §3.5)에 1:1 대응한다:
 ```swift
 enum Phase {
-    case preparing                        // P0 권한
-    case asking(InterviewQuestion)        // 질문 TTS 재생 (마이크 일시정지)
-    case thinking(remaining: Int)         // 5초 카운트다운
-    case answering(lastSpeechAt: Double?) // 녹음 + 실시간 STT
-    case fillerTransition                 // 턴 사이 필러 TTS
-    case wrappingUp                       // 8:45+ 랩업 (새 질문 금지)
-    case finished(EndStatus)
+    case asking            // 질문 TTS 재생 — 칩 «질문 듣는 중»
+    case answering         // 답변 녹음 — 칩 «답변 녹음 중» + «답변 완료하기»
+    case processingAnswer  // 답변 확정 직후 — 칩 «답변을 정리하고 있어요» (되돌리지 않는다)
+    case finalCountdown    // 11:50~ 빨간 «N초» 초읽기 — 상태 칩 없음
 }
 ```
+- P0 권한·질문 준비 대기는 **준비 화면(Readiness) 게이트**로 실현([[interview#준비]]) — 세션 phase 가 아니다.
+- 구 기획서의 `thinking(5초)`·`fillerTransition`·`wrappingUp`·`finished(EndStatus)` 는 phase 로 두지 않는다: **침묵 판정·발화 감지·사고 5초·필러/마무리 멘트는 SpeechClient(작업 B)** 가, **랩업 8:45·자연 종료는 서버 신호(작업 C)** 가 결정한다. 종료는 phase 가 아니라 `delegate(.finished/.aborted)`.
+- 하단 토스트는 2종(`exitUnlocked` 8분 해금 · `timeExpired` 상한 도달)뿐 — «답변이 기록 됐어요» 토스트는 칩 3종 확정으로 소멸.
 
 ### (b) 질문 텍스트는 State에만, View엔 노출 X
-디자인 방향성 = **TTS-only**. View는 `visibleStatus`(듣는중/생각중/말하는중/카운트다운)만 그린다.
+디자인 방향성 = **TTS-only**. View 는 상태 칩(질문 듣는 중 / 답변 녹음 중 / 답변을 정리하고 있어요)과 카운트다운만 그린다.
 
 ### (c) 모든 타이머·스트림은 취소 가능 effect, CancelID로 관리
+현행은 `enum CancelID { case clock, toast, processing }` — 음성 배선(작업 B) 때 `silence`·`tts`·`stt` 가 붙는다.
 ```swift
-enum CancelID { case session, thinking, silence, tts, stt, hardCap }
 @Dependency(\.continuousClock) var clock
-@Dependency(\.speechClient) var speech
+@Dependency(\.speechClient) var speech   // 작업 B
 ```
-- **세션 시계**(0.1s tick): 누적 시간 → `8:00 수동종료 활성` · `8:45 wrappingUp` · `12:00 hard cap 강제종료`.
-- **TTS**: `speak(q.text)` 스트림 `.finished` → `thinking(5)` 시작.
-- **5초 생각**: 카운트다운, 먼저 말하면(STT partial 수신) 즉시 `answering` 점프(②→③).
+- **세션 시계**(현행 1초 tick — 표기가 m:ss): 누적 시간 → `8:00 수동종료 해금`(+해금 토스트 3초) · `11:50 finalCountdown`(10초 초읽기) · `12:00 hard cap 강제종료`. 8:45 랩업(새 질문 금지)은 클라 임계가 아니라 **서버 신호**(작업 C). ✅ 구현 — `hardCapSeconds = 12*60`(PRD §3.6). 「10:00 종료」는 구 기획 수치로 소멸.
+- **타이머 표기**: 10분을 넘어도 m:ss 상승 표기를 그대로 유지하고, «12분» 숫자는 어떤 화면·문구에도 노출하지 않는다(§3.10 — 사용자에게는 «약 10분»).
+- **TTS**: `speak(q.text)` 스트림 `.finished` → 사고 5초 카운트다운 시작(작업 B).
+- **5초 생각**: 카운트다운, 먼저 말하면(STT partial 수신) 즉시 `answering` 점프.
 - **STT**: `transcribe()` partial마다 `lastSpeechAt` 갱신 + `silence` 타이머 리셋.
-- **종료 판정**(④): 발화 후 10초 침묵 → `endTurn(.answered)` / 무발화 15초 → "질문 다시?" / 임계 미만 침묵 → 대기.
-- **SKIP**(⑤)·**재청취**(⑥)·**필러**(⑦)는 별도 action.
+- **종료 판정**: 발화 후 **10초 침묵** → 답변 확정(`processingAnswer`). ~~무발화 15초 → "질문 다시?"~~ 는 **PRD v3 로 소멸** — 무응답 재질의는 서버 몫이고 5회 재질의 종료 규칙은 §3.4(화면·멘트 미확정, §10). 사용자가 «답변 완료하기» 를 누르면 침묵 판정을 기다리지 않고 그 즉시 확정한다 ✅.
+- **답변 완료 버튼 게이팅**(발화 시작 후에만 노출)·**필러/마무리 멘트**는 STT partial 신호 의존 — 작업 B.
 
-### (d) 세션 무결성 — P2 중단 = 폐기
-`scenePhase` + `AVAudioSession` interruption(전화·백그라운드·네트워크) 구독 → 모든 CancelID cancel + recording 폐기 + `.delegate(.aborted)`. (논의 N: 전화 차단 기술적 불가하면 이 경로 확정.)
+### (d) 세션 무결성 — P2 중단 = 이탈 신호(기록은 서버 보존)
+`scenePhase` + `AVAudioSession` interruption(전화·백그라운드·네트워크) 구독 → 모든 CancelID cancel + `.delegate(.aborted)`. (논의 N: 전화 차단 기술적 불가하면 이 경로 확정.)
+⚠️ `aborted` 는 **기록 폐기가 아니다** — PRD §3.7 상 그때까지의 턴은 서버가 보존하고 이용권도 차감된다(D1). 클라는 «흐름을 벗어났다» 는 신호만 올리고, 8분 전 X 탭은 그 사실을 먼저 알리는 중도 이탈 경고 모달을 띄운다(«지금 나가면 이용권 1회가 차감돼요» — 리포트 언급 금지) ✅.
 
 ### (e) STT 30% 실패(P3)
 `Transcript.confidence` 턴별 집계 → 임계 초과 시 세션 초기화. (논의 H/I: 측정식·귀책분리는 인터페이스가 confidence/무음비율을 주는지에 의존 → confidence 필수.)
 
 ### 꼬리질문 depth (기획서 §3)
 0~4년차 = 한 프로젝트 3단계 / 5년차+ = 5단계. 10분 최대 10질문. STAR 5단계(의사결정 맥락 → 트레이드오프 → 실패·모호함 → 성공지표 모호함 → 응용) 위임은 `InterviewClient.submitAnswer` 가 담당 — 직전 답변을 제출하면 서버가 depth 를 판단해 `AnswerResult.nextQuestion`(`TurnInfo` 의 turnLevel/depthLevel 포함)으로 다음 질문을 돌려준다. 클라는 별도 질문 조회 없이 이 응답 루프만 돈다.
+
+### PRD v3(Part 2) 정합 현황 — 2026-07-27
+
+「[PRD] Part 2 — 면접 진행·질문 생성·채점 엔진」 v3 대비 **서버·미디어 없이 맞출 수 있는 화면·타이밍·문구·종료 경로**를 정합시켰다. 근거·차이표는 [스펙](../superpowers/specs/2026-07-27-interview-part2-prd-alignment-design.md), 실행 단위는 [플랜](../superpowers/plans/2026-07-27-interview-part2-prd-alignment.md).
+
+- ✅ **타이밍**(§3.6) hard cap 12:00 · 11:50 초읽기 · 8:00 해금 · «12분» 미노출(§3.10)
+- ✅ **상태 칩 3종**(§3.5) asking/answering/processingAnswer — «답변이 기록 됐어요» 토스트 제거
+- ✅ **질문 준비 게이트**(§3.2) 준비 화면 `sessionStatus` 3초 폴링, 시작 게이트 = guide2 + 권한 + READY 삼중, 클라 타임아웃 없음
+- ✅ **실패 화면 3종**(§3.2·§3.7·§3.9) questionPrep(처음으로만·재시도 없음) / network(홈으로만) / speechRecognition(다시 시작하기)
+- ✅ **종료 경로**(§3.7·§3.8) 8분 전 중도 이탈 경고 → `aborted` / 8분 후·상한·마치기 → 리포트 대기 화면 경유 → `finished`. 확정 문구는 부록 C
+- 🔴 **Speech/Recording 배선(작업 B)** — 발화 감지 기반 «답변 완료하기» 게이팅 · 침묵 10초 확정 · 사고 5초 카운트다운 · 필러/마무리 멘트 · A/V 캡처
+- 🔴 **서버 턴 루프(작업 C)** — `submitAnswer` 로 `processingAnswer` 2초 mock 교체 · 랩업 8:45 · 자연 종료
+- 🔴 **AppFeature 배선(작업 D)** — 온보딩 산출 `sessionId` 를 `InterviewFeature.State(sessionId:)` 로 전달(현재는 Example 주입)
+- 🟡 **범위 제외** — 8:00 이후 잔여 시간 인디케이터(디자인 미확정) · 5회 재질의 종료(§3.4 — PRD §10 미확정)
 
 ## 7. 기획서 "논의할 문제" → 아키텍처 영향도
 
@@ -224,7 +243,12 @@ v3 로 **닫힌** 논의(초안 미결 → 해소): 재시도/멱등성(전면 �
 1. ~~**Domain 모델 + SharedDesignSystem**~~ ✅ Job·JD·Portfolio·Interview Interface + DS 토큰 구현
 2. ~~**Domain Clients = Interface 먼저**~~ ✅ Job·JD·Portfolio·Interview (Speech·Permission·Recording·Scoring 은 Part2/3 착수 시). liveValue 는 Implementation stub
 3. **OnboardingFeature (Part 1)** — 6스텝 골격·직군·연차·JD·포폴·집중프로젝트 ✅ / **분석 스텝 세션 API 연결 🔴** (§5 개발 포인트) + 입력 draft
-4. **InterviewSessionFeature** ★ — mock SpeechClient(스크립트 AsyncStream) + `TestClock`로 상태머신 결정론 검증. 디바이스 의존 전에 Example 앱 + 단위테스트로 격리
+4. **InterviewSessionFeature** ★ — mock SpeechClient(스크립트 AsyncStream) + `TestClock`로 상태머신 결정론 검증. 디바이스 의존 전에 Example 앱 + 단위테스트로 격리.
+   **화면 골격 ✅ (2026-07-25, FeatureInterview 모듈)** — 준비(카메라 확인·가이드)→세션(시계·8분 해금·최종 카운트다운·종료 확인)→실패 화면 상태머신 + 코디네이터, 세션 시계는 TestClock 테스트 고정.
+   권한(Permission) 준비 화면 게이트 ✅(2026-07-27) · **PRD v3 화면 정합 ✅(2026-07-27)** — 타이밍 12:00·상태 칩 3종·질문 준비 폴링 게이트·실패 3종·중도 이탈 경고·리포트 대기(§6 «PRD v3 정합 현황»).
+   카메라 프리뷰 ✅ (2026-07-28, DomainRecording) — 준비·세션 화면 실동작, aligning→ready 는 «최소 유지+프리뷰 해소» 이중 게이트, 이탈 시 코디네이터가 정지. backdrop 은 InterviewView 상주(2026-07-29 — 화면 교체 시 프리뷰 레이어 재생성으로 끊겨 보이던 문제 해소). 상세 [[interview#프리뷰]](lat.md/interview.md).
+   마이크 캡처 ✅ (2026-07-29, DomainSpeech) — 세션 전구간 레벨(1초)·발화 감지 로그로 마이크 동작 검증, STT 는 Implementation 교체 seam 만 마련. 상세 [[interview#음성 캡처]](lat.md/interview.md).
+   잔여 🔴: Speech Client 배선(TTS·STT·침묵 10초·사고 5초·마무리 멘트)·실녹화(`RecordingClient.startRecording` = 작업 B), 서버 턴 루프(`submitAnswer`·랩업 8:45·자연 종료 = 작업 C), AppFeature 배선(sessionId payload = 작업 D). 상세 [[interview#면접 흐름]](lat.md/interview.md)
 5. **PortfolioFeature**(설정 관리) — `list`/`delete` 재사용
 6. **AppFeature 배선** — Onboarding delegate(.finished/.dismiss) 수신 + Session/Report fullScreenCover 체인
 7. **InterviewReportFeature** stub → Part 3 본격화
@@ -236,3 +260,12 @@ v3 로 **닫힌** 논의(초안 미결 → 해소): 재시도/멱등성(전면 �
 - ~~Part 3 Scoring 입출력 스키마 (보고서 항목) — 별도 기획 필요~~ → 기획서 나옴, 설계 완료 [ai-interview-report](ai-interview-report.md) (ScoringClient 확장 + PlaybackClient·ReviewClient 신규)
 - Part 4 사람 평가 연계 + 유료 게이팅(논의 L)
 - 탭 구성(연습/기록/설정) — 제품 IA 확정 시 [[domain.map]] 갱신
+
+### PM·디자인 회신 대기 (Part 2, 2026-07-27 기준)
+
+- **사고 5초 · 침묵 10초 수치 기술 검토 회신**(PRD §3.6 «클라 회신 대기») — 작업 B(SpeechClient) 착수 전에 잠가야 하는 값. 확정 전까진 상수 미배선.
+- **신규 화면 3종 시안 미출** — 질문 준비 실패(`Interview_QuestionPrepFailure`) · 중도 이탈 경고(`Interview_EarlyExitWarning`) · 리포트 대기(`Interview_ReportPending`). 기존 레이아웃·DS 토큰 재사용으로 임시 구현했고(배지는 network error 임시 전용), 시안 확정 시 교체.
+- **상태 칩 «답변을 정리하고 있어요» 시안 미출** — 현재 answering 칩 스타일 1:1 재사용(문구만 PRD 확정본).
+- **8분 이후 잔여 시간 인디케이터**(§3.6) — 시각 표현 미확정이라 미구현. 디자인 나오면 세션 상단 칩과 함께 재설계.
+- **«답변이 기록 됐어요» 토스트 제거 확인** — PRD 칩 3종이 확정 표기라 제거했으나 Figma 구 시안에는 남아 있다. 디자인 확인 필요.
+- 준비 화면 권한 미허용 alert 문구 — PM 확정본 대기(`permissionDeniedAlert()` 한 곳만 교체, §5 권한).

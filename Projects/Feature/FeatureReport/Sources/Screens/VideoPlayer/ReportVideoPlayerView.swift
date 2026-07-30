@@ -147,7 +147,7 @@ public struct ReportVideoPlayerView: View {
             Button {
                 send(.userTappedBack)
             } label: {
-                Image.Cancel.dark24
+                Image.Cancel.white24
                     .resizable()
                     .scaledToFit()
                     .frame(width: 24, height: 24)
@@ -177,7 +177,7 @@ public struct ReportVideoPlayerView: View {
         Button {
             send(.userTappedTranscriptToggle)
         } label: {
-            (store.isTranscriptVisible ? Image.Cancel.dark20 : Image.Script.dark20)
+            (store.isTranscriptVisible ? Image.Cancel.white20 : Image.Script.white20)
                 .resizable()
                 .scaledToFit()
                 .frame(width: 20, height: 20)
@@ -191,9 +191,9 @@ public struct ReportVideoPlayerView: View {
 
     private var playbackControls: some View {
         HStack(spacing: Self.controlsSpacing) {
-            skipButton(Image.SkipL.dark34) { send(.userTappedSkipBackward) }
+            skipButton(Image.SkipL.white34) { send(.userTappedSkipBackward) }
             playPauseButton
-            skipButton(Image.SkipR.dark34) { send(.userTappedSkipForward) }
+            skipButton(Image.SkipR.white34) { send(.userTappedSkipForward) }
         }
     }
 

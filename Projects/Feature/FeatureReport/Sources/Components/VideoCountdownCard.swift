@@ -48,7 +48,7 @@ struct VideoCountdownCard: View {
                     .dsTypography(isEnded ? .sub7 : .body2)
                     .foregroundStyle(isEnded ? Color.GrayScale.g300 : Color.BlackWhite.white)
                 Spacer(minLength: .ds(.p8))
-                (isEnded ? Image.Right.disabledDark16 : Image.Right.white16)
+                (isEnded ? Image.Right.disabled16 : Image.Right.white16)
                     .resizable()
                     .scaledToFit()
                     .frame(width: 16, height: 16)

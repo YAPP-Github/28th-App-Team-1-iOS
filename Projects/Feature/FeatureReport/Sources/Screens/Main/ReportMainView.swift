@@ -84,7 +84,7 @@ public struct ReportMainView: View {
             Button {
                 send(.userTappedClose)
             } label: {
-                Image.Cancel.dark24
+                Image.Cancel.white24
                     .resizable()
                     .scaledToFit()
                     .frame(width: 24, height: 24)
@@ -170,7 +170,7 @@ public struct ReportMainView: View {
         }
         .overlay(alignment: .topLeading) {
             if store.hasRedFlagNotices, store.isRedFlagTooltipVisible {
-                BubbleToast(store.redFlagTooltipMessage, style: .tooltip)
+                BubbleField(store.redFlagTooltipMessage, .mini(mood: .dark))
                     // 가로는 섹션 폭에 맞추고 세로만 내용대로 늘린다 — 안내 문구가 길어 한 줄로 두면
                     // 말풍선이 화면 밖으로 나간다(툴팁 변형은 내용 폭이라 스스로 줄바꿈하지 않는다).
                     .fixedSize(horizontal: false, vertical: true)

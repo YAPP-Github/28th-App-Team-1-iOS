@@ -7,9 +7,10 @@
 
 import SwiftUI
 
-/// 소형 사각 태그 — Figma «tag» 1:1. px4 · SemiBold12(.body8) · 모서리 0,
+/// 소형 사각 태그 — Figma «tag» 1:1. px4 · Medium14(.body6) · 모서리 0,
 /// 배경/텍스트 토큰만 용도별로 갈아끼운다(기본 = 회색 «선택» 태그 조합).
-/// 예: 선택 입력 안내(gray100/gray600), 척도 극 라벨(positive200/positive800 · error200/error500).
+/// 예: 선택 입력 안내(gray100/gray600), 척도 극 라벨(positive200/positive800 · error200/error500),
+/// `TitleBox` 의 «필수» 뱃지(black800/green500).
 public struct TagLabel: View {
     private let text: String
     private let foreground: Color
@@ -27,7 +28,7 @@ public struct TagLabel: View {
 
     public var body: some View {
         Text(text)
-            .dsTypography(.body8)
+            .dsTypography(.body6)
             .foregroundStyle(foreground)
             .padding(.horizontal, .ds(.p4))
             .background(background)
