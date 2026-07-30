@@ -64,7 +64,7 @@ Projects/
 
 ## 디자인 시스템
 
-UI 코드(View·컴포넌트·에셋) 작성·수정 **전에 `.claude/design.md` 읽는다** — 토큰·표준 컴포넌트·에셋 로드 규칙 참조. **Figma MCP(`get_design_context` 등)로 화면 옮길 때도 raw 수치(색·크기·폰트) 박지 말고 `design.md` 토큰·컴포넌트로 매핑.** 모듈 `Shared/SharedDesignSystem`(토큰 전 영역 + 공용 컴포넌트 — 목록·승격 규칙은 `.claude/design/component.md`), 의존 `.shared(interface: .designSystem)`. **허브 문서에 토큰 개수·컴포넌트 이름을 열거하지 않는다** — 추가할 때마다 같은 줄이 바뀌어 충돌한다. 열거는 상세 문서 몫.
+UI 코드(View·컴포넌트·에셋) 작성·수정 **전에 `.claude/design.md` 읽는다** — 토큰·표준 컴포넌트·에셋 로드 규칙 참조. **Figma MCP(`get_design_context` 등)로 화면 옮길 때도 raw 수치(색·크기·폰트) 박지 말고 `design.md` 토큰·컴포넌트로 매핑.** 모듈 `Shared/SharedDesignSystem`(토큰 전 영역 + 공용 컴포넌트 — 목록·승격 규칙은 `.claude/design/component.md` 인덱스, API 는 그 아래 `design/component/*.md`), 의존 `.shared(interface: .designSystem)`. **허브 문서에 토큰 개수·컴포넌트 이름을 열거하지 않는다** — 추가할 때마다 같은 줄이 바뀌어 충돌한다. 열거는 상세 문서 몫.
 
 ## 참고
 

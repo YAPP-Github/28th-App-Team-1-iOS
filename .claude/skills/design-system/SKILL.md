@@ -11,7 +11,7 @@ description: HILIT 디자인 시스템 레퍼런스·변경 절차. 색·타이�
 ## 절대 규칙
 
 1. **토큰 우선** — 색·타이포·spacing·아이콘은 리터럴 금지. 없으면 만들지 말고 `@ds(...)` 태그로 남긴다(→ `figma-screen` 스킬 §2).
-2. **커스텀 만들기 전에 카탈로그 검토** — `design/component.md` 에 같은 모양이 있으면 그게 중복이다.
+2. **커스텀 만들기 전에 카탈로그 검토** — `design/component.md`(인덱스) 에 같은 모양이 있으면 그게 중복이다.
 3. **아이콘 틴트 금지** — 색은 에셋에 구워져 있다. `foregroundStyle` 로 바꾸려 들면 무효다(과거 사고 → `design/lessons.md`).
 4. **버튼 상태를 파라미터로 넘기지 않는다** — pressed·disabled 는 `configuration.isPressed`/`@Environment(\.isEnabled)` 몫.
 5. **없는 토큰·에셋을 몰래 만들지 않는다** — DS 변경은 아래 «변경 절차» 를 탄다.
@@ -24,7 +24,8 @@ description: HILIT 디자인 시스템 레퍼런스·변경 절차. 색·타이�
 | 폰트 크기·weight·Figma 스타일명 대응 | `.claude/design/typography.md` |
 | 간격·테두리 두께 | `.claude/design/spacing.md` |
 | 아이콘·일러스트 · **「이렇게 생긴 아이콘」으로 찾기** | `.claude/design/image.md` (생김새 역매핑 표) |
-| 컴포넌트 API·승격 규칙 | `.claude/design/component.md` |
+| 어떤 컴포넌트가 있나 · 승격 규칙 | `.claude/design/component.md` (인덱스 — 이름·한 줄·영역) |
+| 컴포넌트 API·시안 근거 | `.claude/design/component/{button,input,display,navigation}.md` — 영역 분류 기준은 인덱스에 |
 | 과거에 뭘 틀렸나 | `.claude/design/lessons.md` |
 | 규칙 요약·영역 인덱스 | `.claude/design.md` |
 
@@ -40,7 +41,7 @@ description: HILIT 디자인 시스템 레퍼런스·변경 절차. 색·타이�
 | 타이포 추가·변경 | `design/typography.md` 표 |
 | spacing·outline 토큰 | `design/spacing.md` 표 |
 | 아이콘·일러스트 에셋 | `design/image.md` 표 (에셋 → `tuist generate` → 패밀리 enum 감싸기 순서는 `design.md` «에셋 로드 규칙») |
-| 컴포넌트 추가·API 변경·삭제 | `design/component.md` 해당 표 행 |
+| 컴포넌트 추가·API 변경·삭제 | `design/component/<영역>.md` 해당 표 행 **+ `design/component.md` 인덱스 한 줄**(추가·삭제·개명 시) |
 | 실수해서 규칙이 생김 | `design/lessons.md` 항목 추가 |
 | **심볼·파일 경로 이름 변경** | 옛 이름으로 `grep -rn --include="*.md"` 해서 **걸리는 문서 전부** (lat.md·docs·다른 스킬 포함) |
 
@@ -55,7 +56,8 @@ grep -rn --include="*.md" '옛이름' . | grep -v worktrees
 이 레포는 여럿이 DS 를 동시에 만진다. 실측상 허브(`design.md`)가 잎 문서보다 3배 자주 바뀌었다. 그래서:
 
 1. **허브(`design.md`·`CLAUDE.md`)는 되도록 건드리지 않는다.** 영역 인덱스 표는 «어디로 가면 되는지»만 적혀 있고 토큰 개수·컴포넌트 이름을 열거하지 않는다 — 그래야 뭘 추가해도 허브가 안 바뀐다. 열거를 다시 넣지 말 것.
-2. **변경은 잎 문서에서.** 새 컴포넌트는 `design/component.md` 의 **자기 카테고리 표**에만 행을 추가한다(버튼 표 / 그 밖 표). 다른 사람 표를 건드리지 않으면 같은 줄에서 만날 일이 없다.
+2. **변경은 잎 문서에서.** 새 컴포넌트는 `design/component/<영역>.md` **자기 영역 파일**에만 행을 추가한다(버튼/입력/표시/내비게이션). 다른 영역 파일을 건드리지 않으면 같은 줄에서 만날 일이 없다. 「Figma 원본 불일치」 노트도 영역 파일마다 따로 있으니 자기 영역 것만 늘린다.
+   인덱스(`component.md`)는 컴포넌트가 **늘거나 줄거나 이름이 바뀔 때만** 건드린다 — API 만 고쳤으면 인덱스는 그대로다.
    표 안에서도 **끝에 붙이지 말고 알파벳순 제자리에 끼워 넣는다** — 둘이 동시에 추가해도 서로 다른 줄이라 자동 병합된다. 끝에 붙이면 같은 자리라 반드시 충돌한다.
 3. **`lessons.md` 는 append-only** — 항상 파일 끝에 붙인다. `.gitattributes` 가 `merge=union` 으로 잡아둬서 둘이 동시에 추가해도 양쪽 다 남는다(충돌 없음).
 4. **한 커밋에 한 영역.** 색 작업과 컴포넌트 작업을 한 커밋에 섞으면 리베이스 때 통째로 충돌한다.
