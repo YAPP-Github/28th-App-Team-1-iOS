@@ -4,6 +4,9 @@
 @_exported import DomainCommonImplementation
 @_exported import DomainAuthImplementation
 @_exported import DomainInterviewImplementation
+@_exported import DomainPermissionImplementation
+@_exported import DomainRecordingImplementation
+@_exported import DomainSpeechImplementation
 @_exported import DomainInterviewReportImplementation
 @_exported import DomainJDImplementation
 @_exported import DomainJobImplementation
@@ -11,4 +14,3 @@
 @_exported import DomainUserImplementation
 @_exported import DomainFeedbackShareImplementation
 @_exported import DomainGuestFeedbackImplementation
-
