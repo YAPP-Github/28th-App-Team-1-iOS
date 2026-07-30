@@ -24,8 +24,8 @@ import SwiftUI
 /// 아이콘은 instance-swap 슬롯이라 열어뒀다(`InfoField` 와 반대 — 모달마다 다른 일러스트가 실재).
 /// 일러스트는 디자인된 크기 그대로 그린다 — `.frame` 으로 늘리지 않는다(`design/image.md`).
 /// 버튼 슬롯엔 `ButtonLarge(.modal, …)` 단일/2버튼을 그대로 넣는다 — 배색·눌림은 그쪽 몫.
-/// 폭은 고정하지 않는다 — 시안 327 은 화면 375 에서 좌우 여백 24 를 뺀 값이라 호출부(오버레이) 몫.
-/// 딤 배경·표시 전환도 컴포넌트 밖 — 이 타입은 카드만 그린다.
+/// 폭은 고정하지 않는다 — 시안 327 은 화면 375 에서 좌우 여백 24 를 뺀 값이라 오버레이 몫.
+/// 딤 배경·표시 전환·좌우 여백은 `.hilitModal` 오버레이가 준다 — 이 타입은 카드만 그린다.
 public struct Modal<Buttons: View>: View {
     private let text: String
     private let subText: String?
