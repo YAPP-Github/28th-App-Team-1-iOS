@@ -19,9 +19,14 @@ struct AppView: View {
                 SplashView()
             } else if store.isAuthenticated {
                 TabView(selection: $store.selectedTab) {
-                    HomeView(store: store.scope(state: \.home, action: \.home))
-                        .tabItem { Label("홈", systemImage: "house") }
-                        .tag(AppFeature.Tab.home)
+                    // 탭 루트마다 자기 NavigationStack — 홈의 로고 내비바(.hilitLogoNavigationBar)는
+                    // 시스템 바 기반이라 스택 밖에선 조용히 안 그려진다 (navigation.md «부착 — push vs present»).
+                    // 홈 내부 push 가 생기면 HomeFeature 의 Path/StackState 로 승격한다.
+                    NavigationStack {
+                        HomeView(store: store.scope(state: \.home, action: \.home))
+                    }
+                    .tabItem { Label("홈", systemImage: "house") }
+                    .tag(AppFeature.Tab.home)
                 }
                 // dev 전용 온보딩 위저드 — Home 진입 버튼으로만 열린다 (로그인 이후이므로 토큰 보유).
                 .fullScreenCover(

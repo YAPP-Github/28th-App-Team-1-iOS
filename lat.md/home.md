@@ -9,7 +9,7 @@
 
 **두 덩어리 — Reducer 2개 + 폴더 2개** (한 모듈 안). `Sources/Home/` 은 `HomeFeature` + `HomeView`(+ `HomeDefaultView`·`HomeReportView`), `Sources/StartInterview/` 은 `StartInterviewFeature` + `StartInterviewView`, 공용 배경·제스처는 `Sources/Components/`.
 
-«홈» 3화면은 `State.phase`(GuestFeedback 패턴) — `default` / `report(ReportVariant)` 이고 report 의 변형 축은 «오랜만이에요 OO님!» 인사말 표시 여부(`returning`/`recent`) 하나다. 「면접 시작」 3화면(처음/동일 정보/이용권 소진)은 phase 가 아니라 `@Presents var startInterview` 로 **cover present** — 홈 탭엔 NavigationStack 이 없어 push 경로가 없다(`.claude/design/component/navigation.md` «부착 — push vs present»). `HomeDuringInterview` 는 MVP 제외로 삭제했다(커밋 `c3e14ee` 에 남음).
+«홈» 3화면은 `State.phase`(GuestFeedback 패턴) — `default` / `report(ReportVariant)` 이고 report 의 변형 축은 «오랜만이에요 OO님!» 인사말 표시 여부(`returning`/`recent`) 하나다. 「면접 시작」 3화면(처음/동일 정보/이용권 소진)은 phase 가 아니라 `@Presents var startInterview` 로 **cover present** — 홈 위에 겹쳐 올라오는 전체화면 전환이지 홈 스택의 push 가 아니다. 홈 탭 자체는 AppView 가 NavigationStack 으로 감싼다(로고 내비바가 시스템 바 기반이라 스택 밖에선 조용히 안 그려짐 — `.claude/design/component/navigation.md` «부착 — push vs present»). `HomeDuringInterview` 는 MVP 제외로 삭제했다(커밋 `c3e14ee` 에 남음).
 
 phase 를 정하는 홈 진입 로드(잔여·기록·포폴)는 미배선(서버 협의 대기) — phase 는 서버 판정의 표시일 뿐, 진실은 탭 시점 게이트 재검증([home-account](../docs/work/home-account.md) §3·§5). 응답 자리는 `inner(.reportsLoaded([Report]))` 하나가 잡아 뒀다(목록·phase 를 함께 갱신, 호출부는 TODO).
 
