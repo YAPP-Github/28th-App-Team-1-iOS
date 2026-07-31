@@ -331,7 +331,7 @@ private extension CatalogComponentView {
                     Color.clear.hilitNavigationBar("타이틀", trailing: .plus {}, background: .filled, leading: .hidden)
                 }
                 navigationBarDemo {
-                    Color.clear.hilitNavigationBar("타이틀", theme: .dark, background: .filled, onClose: {})
+                    Color.clear.hilitNavigationBar("타이틀", surface: .dark, background: .filled, onClose: {})
                 }
                 navigationBarDemo {
                     Color.clear.hilitLogoNavigationBar(background: .filled, onProfile: {})
