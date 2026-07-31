@@ -25,8 +25,8 @@ public struct OnboardingCareerInputView: View {
             progressBar
             header
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
+                .padding(.horizontal, .ds(.p20))
+                .padding(.top, .ds(.p16))
             Spacer(minLength: 0)
             careerSentence
             Spacer(minLength: 0)
@@ -47,20 +47,20 @@ public struct OnboardingCareerInputView: View {
                     .frame(height: 4)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 4)
+        .padding(.horizontal, .ds(.p20))
+        .padding(.vertical, .ds(.p4))
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: .ds(.p10)) {
             Text("필수")
                 .dsTypography(.body7)
                 .foregroundStyle(Color.HilitGreen.g500)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 4)
+                .padding(.horizontal, .ds(.p12))
+                .padding(.vertical, .ds(.p4))
                 .background(Color.HilitBlack.b800, in: RoundedRectangle(cornerRadius: 2))
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: .ds(.p8)) {
                 Text("연차를 입력해 주세요.")
                     .dsTypography(.head3)
                     .foregroundStyle(Color.GrayScale.g800)
@@ -75,7 +75,7 @@ public struct OnboardingCareerInputView: View {
 
     /// "내 경력은 [휠] 이다." — 앞뒤 텍스트가 휠의 선택 행(중앙)과 같은 줄에 놓인다.
     private var careerSentence: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: .ds(.p12)) {
             Text("내 경력은")
                 .dsTypography(.sub4)
                 .foregroundStyle(Color.HilitBlack.b800)

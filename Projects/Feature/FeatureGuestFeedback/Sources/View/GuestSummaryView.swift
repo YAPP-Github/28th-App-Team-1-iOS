@@ -115,15 +115,14 @@ struct GuestSummaryView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            // Figma 카드 padding px16 — 가로 16은 대응 spacing 토큰이 없어 리터럴 유지.
-            .padding(.horizontal, 16)
+            .padding(.horizontal, .ds(.p16))
             .padding(.vertical, .ds(.p14))
             .overlay(cardBorder)
             .overlay(alignment: .topTrailing) {
-                Image(systemName: "square.and.pencil")
-                    .font(.ds(.body5))
-                    .foregroundStyle(Color.GrayScale.g400)
-                    .padding(.ds(.p12))
+                // 시안 feedback-card(2102:9128) 우상단 «edit/16px/disabled» — 색은 에셋에 구워진 원본색.
+                Image.Edit.disabled16
+                    .padding(.top, .ds(.p12))
+                    .padding(.trailing, .ds(.p16))
             }
             .contentShape(RoundedRectangle(cornerRadius: 6))
         }
