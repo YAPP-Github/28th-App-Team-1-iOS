@@ -15,12 +15,12 @@
 | `HighlightedText` | highlighted-text | `(_ text:, typography:, alignment:, plainForeground:)` + 체인 `.hilight(_:)`·`.hilightColor(_:)`·`.hilightFill(_:)`·`.hilightIcon(_:)`·`.hilightColors(foreground:background:)` | 형광펜 마커. **문장 전체를 넘기고 `.hilight("부분")`** — 미지정 시 전체 강조. `hilightColor` 6종(green/black/gray/blue/red/none)은 글자색+배경색 한 쌍. `hilightFill` 3종(full/midlined/underlined), 띠 두께는 `typography` 파생(≥20pt 12, 아니면 8). `Text` 확장은 불가 — 내부 문자열을 못 꺼낸다. `alignment` 는 넘친 줄을 **줄마다** 미는 것이라 호출부가 폭을 줘야 보인다 |
 | `.hilitBottomSheet` | 시안에 없음 (딤은 modal 2302:6080 과 공유) | 모디파이어 — `(isPresented:, onDimTap:) { 시트 }` / `(item:, onDimTap:) { sheet in switch … }` | 바텀시트 오버레이 — 딤(`HilitDim`, `.hilitModal` 과 공유) 위 바닥 정렬 + 아래에서 슬라이드(move 0.25). **껍데기만** — 시트 판(배경·상단 코너·패딩)은 호출부가 그린다(화면마다 커스텀 시트가 실재해 카드 비표준). 판을 홈 인디케이터 아래까지 깔려면 배경 shape 에 `.ignoresSafeArea(edges: .bottom)`(파일 프리뷰 참조). **값 기반·읽기 전용** — 계약은 `.hilitModal` 과 동일, 딤 탭 닫기만 `onDimTap` 클로저(리듀서 액션)로 열려 있음. 드래그 닫기 없음. 시트 2개↑ 화면은 `item:` 에 enum 하나 |
 | `HilitDivider` | divider 435:828 | `()` | 구분선 한 줄 — 1pt g800, **다크 판 전제**(흰 판 위에서는 실선처럼 무겁다. 밝은 판의 선은 이 토큰이 아니다 — `CountdownCard` 의 b800 판 안 선은 g700). 라이트 변형이 필요해지면 축을 열기 전에 디자이너 확인. 이름의 `Hilit` 은 SwiftUI `Divider` 와의 충돌 회피(`HilitTextField` 와 같은 이유). 폭은 호출부 몫 |
-| `.hilitModal` | modal 2302:6080 (딤) | 모디파이어 — `(isPresented:) { 카드 }` / `(item:) { modal in switch … }` | 모달 오버레이 — 딤(블랙 60%, 대응 토큰 없어 리터럴은 `HilitDim` 한 곳 — `.hilitBottomSheet` 와 공유) 위 중앙 카드 + 좌우 px24(시안 327 = 375−48) + opacity 0.2 전환. **값 기반·읽기 전용** — 스스로 닫지 않는다(닫힘은 카드 버튼이 리듀서 액션으로), 딤 탭 dismiss 없음. 모달 2개↑ 화면은 `item:` 에 enum 하나 — 동시 표출을 타입으로 차단(InterviewSession). 시안 backdrop blur 40 미포함 — 필요하면 호출부가 배경 블러로 근사 |
+| `.hilitModal` | modal 2302:6080 (딤) | 모디파이어 — `(isPresented:) { 카드 }` / `(item:) { modal in switch … }` | 모달의 **오버레이 층** — 카드와의 분담·레시피는 아래 «모달 — 두 층 조립». 딤(블랙 60%, 대응 토큰 없어 리터럴은 `HilitDim` 한 곳 — `.hilitBottomSheet` 와 공유) 위 중앙 카드 + 좌우 px24(시안 327 = 375−48) + opacity 0.2 전환. **값 기반·읽기 전용** — 스스로 닫지 않는다(닫힘은 카드 버튼이 리듀서 액션으로), 딤 탭 dismiss 없음. 모달 2개↑ 화면은 `item:` 에 enum 하나 — 동시 표출을 타입으로 차단(InterviewSession). 시안 backdrop blur 40 미포함 — 필요하면 호출부가 배경 블러로 근사 |
 | `HomeModal` | home modal 435:1565 — opp 439:10408 · port 439:10409 | `(_ title:, subTitle:, icon:, info:) { content }` | 홈 모달 카드 — 흰 판 p24 **네 변** · 세로 리듬 12, **버튼 슬롯 없음**. 텍스트 순서가 `Modal` 과 반대다(**서브타이틀이 타이틀 위**) — 순서 축·버튼 유무 축을 새로 만들지 않으려고 별 타입으로 뒀다. 타이틀 `sub4` b800(`Modal` 은 레거시 변수 탓에 g900). `content` 는 port 케이스의 파일 카드 자리 — `FileCard` 를 넣는다. 폭·딤 배경·표시 전환은 `.hilitModal` 몫 |
 | `LoadingModal` | modal/loading 435:1543 (인스턴스 439:10407) | `()` | 로딩 모달 카드 — 170 정사각 흰 판 가운데 74 스피너 링(b800 링 위 g500 호 0.31 바퀴, 두께 10, 1초 회전). **회전은 시안에 없다** — 정지 이미지로는 로딩으로 안 읽혀 코드가 준다. 텍스트·취소 슬롯 없음(문구가 필요해지면 시안을 먼저 받는다). **`.hilitButtonLoading` 과 별개** — 그쪽은 버튼 스코프 오버레이이고 시안에 없다 |
 | `LoadingText` | loading/text 439:10225(롤링) · 439:10226(정착) | `(_ phrases: [String], activeIndex:, phase: .rolling/.settled)` | 로딩 문구 롤링 줄 — 문구를 가로 한 줄에 gap6 으로 늘어놓고(`sub7`) **활성 문구를 컨테이너 중앙에 맞춘다**(전용 `Layout` 이 한 패스에 배치 — 폭 실측 왕복 없음). 앞뒤 문구는 좌우로 넘쳐 잘린다. 비활성 g700 / 활성은 롤링 g600 · 정착 g50. **모션 스펙은 시안에 없다**(주석만 달려 있다) — 슬라이드 0.3 · 샤이닝 불투명도 왕복으로 근사했고 확정되면 재조정 |
 | `MessageCard` | message-card — detail 435:1392 · mini 435:1401 | `(_ size: .detail(subtitle:title:contents:) / .mini(_), icon: Image = .HilitAnalyze.problem)` | AI 메시지 카드 — `.detail` b800 판 p12 «36 분석 아이콘 + 서브타이틀(`body9` g400)·타이틀(`body1` Bold 16) / 본문(`body7` g200)», `.mini` g800 판 «16 그린 스파클 + 본문 흰 글자». 두 판 색이 다른 게 시안이다. show 축은 값의 유무. `.detail` 아이콘은 instance-swap 슬롯(`hilit analyze` 3판), `.mini` 는 스파클로 닫혀 있다. 시안의 글자 열 270 고정은 유연 폭으로 옮겼다 |
-| `Modal` | modal 2302:6080 | `(_ text:, subText:, icon:, info:) { ButtonLarge(.modal, …) }` | 모달 카드 — 흰 판(px24·py40·gap20) + 하단 버튼 슬롯. Figma `showIcon`·`showSubText`·`showInfoField` 축은 **파라미터 nil** 로 표현. 아이콘은 열린 슬롯(모달마다 다른 일러스트가 실재 — `InfoField` 와 반대), 안내줄은 `InfoField(.gray)` 고정. 폭·딤 배경·표시 전환은 `.hilitModal` 몫(카드만 그린다) |
+| `Modal` | modal 2302:6080 | `(_ text:, subText:, icon:, info:) { ButtonLarge(.modal, …) }` | 모달의 **카드 층**(확인·경고용 — 카드 선택 기준은 아래 «모달 — 두 층 조립») — 흰 판(px24·py40·gap20) + 하단 버튼 슬롯. Figma `showIcon`·`showSubText`·`showInfoField` 축은 **파라미터 nil** 로 표현. 아이콘은 열린 슬롯(모달마다 다른 일러스트가 실재 — `InfoField` 와 반대), 안내줄은 `InfoField(.gray)` 고정. 폭·딤 배경·표시 전환은 `.hilitModal` 몫(카드만 그린다) |
 | `Parallelogram` | highlighted-text 배경 | `Shape` — `(slant:)` | 하이라이트 배경 Shape. 직접 쓰기보다 `HighlightedText` 우선 |
 | `QuoteField` | quote-field — gray 435:1351 · greenOnDark 435:1354 · block 435:1357 | `(_ text:, style: .gray/.greenOnDark/.block, onEdit:)` | 작성된 코멘트 인용 줄 — 세로 바 + 한 줄(말줄임). **입력 위젯 아님**(커서·placeholder 상태 없음), 편집은 `.block` 의 «수정» 링크가 밖으로 넘긴다. `onEdit` 은 `.block` 전용(DEBUG assert) |
 | `ReportCard` | report-card-open 439:9750 · report-card-close 439:9758 | `(date:, status: .open(title:) / .close)` | 리포트 목록 줄 — `.open` b800 판(px20/py24) «날짜 `body3` g500 / 타이틀 `sub4` 흰 / 오른쪽 그린 44 사각 안 24 화살표», `.close` 연한 그린 띠(p20) + 날짜 한 줄. 시안은 **독립 컴포넌트 둘**(variant set 아님)인데 같은 목록의 두 상태라 한 타입으로 합쳤다. **탭 없음**(목적지가 화면마다 다르다). 좌우 여백이 판 안(px20)에 있어 **화면 폭을 그대로 채우는** 줄이다 — 콘텐츠 열에 넣지 않는다. `.close` 판 색 #D2EFCC 는 대응 토큰이 없어 보류(`design/color.md` 승격 대기) |
@@ -28,6 +28,50 @@
 | `TagLabel` | tag 1941:7132 | `(_ text:, style: .grayGray, size: .compact)` | 소형 사각 태그 — «선택» 안내, 척도 극 라벨. 시트는 **padding 행 × 색조합 열** 두 축이라 파라미터도 둘 — `size` = `.compact`(`padding=0px` px4·`body6` m14) / `.regular`(`4px` px12·py4·`body5` sb14), `style` = 시트 칸의 «배경-글자» 축약을 푼 이름(`b-gr` → `.blackGreen`). **두 행에 다 있는 칸은 `blackGreen`·`grayGray` 뿐**이라 나머지는 한 행 전용 — 없는 조합은 `init` assert(`Style.sizes`·`Size.styles` 가 시트의 행/열). 색을 열린 `Color` 로 받던 옛 API 는 시안에 없는 조합을 만들 수 있어 닫았다(2026-07-31). `body6` 은 2026-07-30 에 `.body8` 오구현 정정한 값이다(사고 사례 10·13번) |
 | `TitleBox` | title-box 2094:7912 · title 2044:1856 | `(_ lines: [Line], tag:, sub:, alignment:)` · `Line(_ text:, highlight:)` | 화면 머리글 — «뱃지 8 타이틀 4 서브» 수직 리듬. 타이틀 줄은 `head3` + 그린 마커(`HighlightedText`), 뱃지는 `TagLabel(style: .blackGreen)`, 서브는 `body4`. Figma `status` 축 = `alignment`, `light/dark` 축 = `.hilitSurface(_:)`(판은 화면 속성), `show*` 축 = 값의 유무. `Line` 은 문자열 리터럴로도 쓴다(마커 없는 줄). **시안의 좌우 px20 은 뺐다** — 화면이 이미 콘텐츠 열에 20 을 줘서 겹친다. 폭은 호출부 몫 |
 | `VideoOverlay` | video overlay 435:847(dark/open) · 435:845(dark/close) · 435:849(light/close) | `(_ variant:, height: CGFloat? = nil)` | 영상 위 아래쪽 그라디언트 스크림 — 위 투명, 아래 불투명한 세로 램프. Figma 축은 `mood`×`status` 인데 **light/open 은 실재하지 않아** 3조합만 enum 으로 닫았다(2축 곱으로 열면 없는 조합이 생긴다). 탭을 먹지 않는다(`allowsHitTesting(false)` 내장). 높이는 램프 «모양»과 분리 — 스톱이 비율이라 어느 높이에서도 시안 곡선이 유지되고, 기본값은 시안 높이. light/close 의 마지막 스톱 109.21% 는 SwiftUI 가 [0,1] 로 잘라 버리므로 **100% 지점 색을 보간**해 넣었다(alpha ≈ 0.907) |
+
+## 모달 — 두 층 조립
+
+모달은 항상 **오버레이 × 카드** 두 층이다. 외우는 건 한 문장 — **카드는 스스로 못 뜨고, 오버레이는 스스로 안 닫힌다.**
+
+| 층 | 담당 | 담당 아닌 것 |
+|---|---|---|
+| `.hilitModal` (모디파이어) | 딤(블랙 60%)·중앙 배치·표시 전환·좌우 여백 24 | 카드 생김새 — 아무 뷰나 받는다 |
+| `Modal` / `HomeModal` / `LoadingModal` (View) | 흰 판·내용·버튼 슬롯 | 폭·딤·표시/닫힘 — 단독으로 화면에 놓지 않는다 |
+
+**카드 고르기**:
+
+| 상황 | 카드 |
+|---|---|
+| 확인·경고 팝업 — 버튼으로 답을 받는다 | `Modal` (버튼 슬롯 = `ButtonLarge(.modal, …)` 단일/2버튼) |
+| 홈 안내 — 버튼 없음, 서브타이틀이 타이틀 **위**, 파일 카드 슬롯 | `HomeModal` |
+| 처리 중 — 화면 전체 잠금 | `LoadingModal()` (인자 없음) |
+
+**표준 레시피** (TCA):
+
+```swift
+// 모달 1개 — Bool
+.hilitModal(isPresented: store.isExitConfirmPresented) {
+    Modal("정말 나가시겠어요?") {
+        ButtonLarge(.modal, tone: .twoColor) {
+            Button("취소") { send(.userTappedCancelExit) }
+        } trailing: {
+            Button("나가기") { send(.userTappedConfirmExit) }
+        }
+    }
+}
+
+// 모달 2개↑ — enum 하나로 동시 표출을 타입으로 차단 (Bool 여러 개 금지)
+.hilitModal(item: store.presentedModal) { modal in
+    switch modal {
+    case .exitConfirm: Modal("면접을 마칠까요?") { … }
+    case .loading: LoadingModal()
+    }
+}
+```
+
+**닫힘은 항상 리듀서** — 오버레이는 값 기반·읽기 전용이라 버튼 클로저가 액션을 보내 상태를 내려야 닫힌다. 딤 탭 dismiss 없음(시안에 없음). SwiftUI `.sheet`/`.alert` 처럼 스스로 닫히길 기대하면 안 닫힌다 — 여기가 제일 자주 헷갈리는 지점.
+
+같은 계약의 형제가 `.hilitBottomSheet` — 붙는 위치(바닥)와 딤 탭 닫기(`onDimTap` 클로저)만 다르고, 시트 판은 표준 카드 없이 호출부가 그린다.
 
 ## Figma 원본 불일치 — 디자이너 확인 대기
 
