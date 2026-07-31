@@ -5,12 +5,14 @@
 //  Created by EunSeo on 26/07/31.
 //
 
+// Figma: «Onboarding_ExperienceSelection» https://figma.com/design/ZG7FUxWCvITmnvzZi7fpTS/?node-id=3632-14460
+
 import ComposableArchitecture
 import SharedDesignSystemInterface
 import SwiftUI
 
-// Figma «AuthOnboardingExperience» — 시안 수령 전엔 면접 위저드 «STEP 2_연차»(node 1609:8561) 레이아웃 재사용.
-// FeatureOnboarding OnboardingCareerInputView 의 복사본 — 가입 플로우 이관분(Feature 간 코드 공유 금지라 복사).
+/// 가입 온보딩 연차 선택 — 상단(내비바 · 진행 대시 · title-box)은 앞 화면 «Onboarding_JobSelection»
+/// 과 동일하고 진행 단계 값만 다르다. 본문은 문장형 휠 «내 경력은 [연차] 이다».
 @ViewAction(for: AuthOnboardingExperienceFeature.self)
 public struct AuthOnboardingExperienceView: View {
     @Bindable public var store: StoreOf<AuthOnboardingExperienceFeature>
@@ -22,11 +24,10 @@ public struct AuthOnboardingExperienceView: View {
     public var body: some View {
         VStack(spacing: 0) {
             progressBar
-            header
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
+            titleBox
+            // @ds(layout): 101 — title-box 하단(y231) ↔ 휠 상단(y332). 좁은 화면에선 줄어든다
             Spacer(minLength: 0)
+                .frame(maxHeight: 101)
             experienceSentence
             Spacer(minLength: 0)
             bottomBar
@@ -38,6 +39,12 @@ public struct AuthOnboardingExperienceView: View {
         )
     }
 
+    // MARK: - 상단
+
+    /// 진행 대시 — 화면 폭을 균등 분할한다.
+    // @ds(component): progress bar 3877:11601 — 공용 `DashIndicator` 는 조각 20pt 고정폭 · gap 4 라
+    //                 폭을 채우는 이 변형을 표현할 수 없다. 시안 정리되면 `DashIndicator` 에 폭 축 추가 후 교체
+    // @ds(spacing): gap 2 · 대시 높이 4 — 진행 대시 (spacing 토큰은 4 부터, 높이 토큰 없음)
     private var progressBar: some View {
         HStack(spacing: 2) {
             ForEach(1...store.totalSteps, id: \.self) { step in
@@ -46,64 +53,70 @@ public struct AuthOnboardingExperienceView: View {
                     .frame(height: 4)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 4)
+        .padding(.horizontal, .ds(.p20))
+        .padding(.vertical, .ds(.p4))
+        .padding(.top, .ds(.p8))
     }
 
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("필수")
-                .dsTypography(.body7)
-                .foregroundStyle(Color.HilitGreen.g500)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 4)
-                .background(Color.HilitBlack.b800, in: RoundedRectangle(cornerRadius: 2))
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("연차를 입력해 주세요.")
-                    .dsTypography(.head3)
-                    .foregroundStyle(Color.GrayScale.g800)
-                Text("지금까지 근무한 모든 기간의 합\n(정규직·계약직·프리랜서 포함, 인턴)입니다.")
-                    .dsTypography(.body3)
-                    .foregroundStyle(Color.GrayScale.g500)
-            }
-        }
+    /// 뱃지 «필수» + 그린 마커 타이틀 + 서브 — 좌우 여백은 호출부(=여기) 몫이다.
+    private var titleBox: some View {
+        TitleBox(
+            [.init("연차를 입력해 주세요", highlight: "연차")],
+            tag: "필수",
+            sub: "지금까지 근무한 모든 기간의 합\n(정규직·계약직·프리랜서 포함, 인턴)입니다."
+        )
+        .padding(.horizontal, .ds(.p20))
+        .padding(.top, .ds(.p20))
     }
 
     // MARK: - 문장형 연차 휠
 
-    /// "내 경력은 [휠] 이다." — 앞뒤 텍스트가 휠의 선택 행(중앙)과 같은 줄에 놓인다.
+    /// «내 경력은 [휠] 이다» — 앞뒤 텍스트가 휠의 선택 행(중앙)과 같은 줄에 놓인다.
+    // @ds(spacing): 29 — 문장 텍스트 ↔ 휠 좌우 간격 (시안 x 119→148 · 252→281. spacing 토큰은 4~24)
     private var experienceSentence: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 29) {
             Text("내 경력은")
                 .dsTypography(.sub4)
                 .foregroundStyle(Color.HilitBlack.b800)
             experienceWheel
-            Text("이다.")
+            Text("이다")
                 .dsTypography(.sub4)
                 .foregroundStyle(Color.HilitBlack.b800)
         }
     }
 
     /// 연차 휠 — 세로 스크롤 + viewAligned 스냅으로 중앙 행이 선택값이 된다 (iOS 17 API).
+    // @ds(component): wheel-picker 3632:14474 — 스냅 휠 + 상·하 페이드. 공용 컴포넌트 없음
     private var experienceWheel: some View {
         ScrollView(.vertical) {
             VStack(spacing: 0) {
-                ForEach(store.options, id: \.self) { option in
-                    Text(option.label)
-                        .dsTypography(.sub4)
-                        .foregroundStyle(Color.HilitBlack.b800)
-                        .frame(height: WheelMetric.rowHeight)
+                ForEach(store.options) { option in
+                    wheelRow(option)
                 }
             }
             .scrollTargetLayout()
         }
         .scrollTargetBehavior(.viewAligned)
         .scrollPosition(id: wheelSelection, anchor: .center)
-        .contentMargins(.vertical, WheelMetric.verticalMargin, for: .scrollContent)
+        .contentMargins(.vertical, WheelMetric.verticalInset, for: .scrollContent)
         .scrollIndicators(.hidden)
         .frame(width: WheelMetric.width, height: WheelMetric.height)
         .overlay { wheelFade.allowsHitTesting(false) }
+    }
+
+    /// 휠 한 행 — 중앙(선택) 행만 그린 마커가 깔리고, 나머지는 회색 평문이다.
+    private func wheelRow(_ option: ExperienceOption) -> some View {
+        let isSelected = option == store.selectedExperience
+        return Group {
+            if isSelected {
+                HighlightedText(option.label, typography: .sub4, alignment: .center)
+            } else {
+                Text(option.label)
+                    .dsTypography(.sub4)
+                    .foregroundStyle(Color.GrayScale.g400)
+            }
+        }
+        .frame(width: WheelMetric.width, height: WheelMetric.rowHeight)
     }
 
     /// 휠 스크롤 위치 ↔ 상태 연결 — 스냅 결과만 view 액션으로 올리고, 상태가 바뀌면 휠도 따라 스크롤된다.
@@ -117,15 +130,13 @@ public struct AuthOnboardingExperienceView: View {
         )
     }
 
-    /// 중앙 선택 행만 또렷하게 남기는 페이드.
+    /// 중앙 선택 행만 또렷하게 남기는 페이드 — 시안은 상·하 73pt 흰 그라데이션 두 장(3632:14500/14501).
     private var wheelFade: some View {
         LinearGradient(
             stops: [
                 .init(color: Color.BlackWhite.white, location: 0),
-                .init(color: Color.BlackWhite.white.opacity(0.75), location: 0.22),
-                .init(color: Color.BlackWhite.white.opacity(0), location: 0.38),
-                .init(color: Color.BlackWhite.white.opacity(0), location: 0.62),
-                .init(color: Color.BlackWhite.white.opacity(0.75), location: 0.78),
+                .init(color: Color.BlackWhite.white.opacity(0), location: WheelMetric.fadeRatio),
+                .init(color: Color.BlackWhite.white.opacity(0), location: 1 - WheelMetric.fadeRatio),
                 .init(color: Color.BlackWhite.white, location: 1)
             ],
             startPoint: .top,
@@ -135,25 +146,30 @@ public struct AuthOnboardingExperienceView: View {
 
     // MARK: - 하단 바
 
-    /// 하단 «이전으로 | 계속하기» 바 — 배경·구분선·등폭 배치·눌림은 `ButtonLarge(.bottom, tone: .dark)` 가 소유.
+    /// 하단 «이전 | 다음» 바 — 배경·구분선·등폭 배치·눌림은 `ButtonLarge(.bottom, tone: .dark)` 가 소유.
+    /// 휠은 항상 선택값을 가지므로 «다음» 은 상시 활성이다.
     private var bottomBar: some View {
         ButtonLarge(.bottom, tone: .dark) {
-            Button("이전으로") { send(.userTappedBack) }
+            Button("이전") { send(.userTappedBack) }
         } trailing: {
-            Button("계속하기") { send(.userTappedContinue) }
+            Button("다음") { send(.userTappedContinue) }
         }
     }
 }
 
 // MARK: - WheelMetric
 
-/// Figma «3안_mask» 치수 — 휠 마스크 146×206, 행 높이 44.
+/// Figma «wheel-picker» 3632:14474 치수 — 프레임 104×171, 5행이 들어가 행 높이 34, 상·하 페이드 73.
+// @ds(layout): 104×171 · 행 34 · 페이드 73 — 휠 치수 (DS 에 휠 규격 없음)
 private enum WheelMetric {
-    static let rowHeight: CGFloat = 44
-    static let width: CGFloat = 146
-    static let height: CGFloat = 206
+    static let width: CGFloat = 104
+    static let height: CGFloat = 171
+    static let rowHeight: CGFloat = 34
+    static let fadeHeight: CGFloat = 73
     /// 첫/마지막 항목도 중앙 정렬이 가능하도록 하는 스크롤 상하 여백.
-    static let verticalMargin: CGFloat = (height - rowHeight) / 2
+    static let verticalInset: CGFloat = (height - rowHeight) / 2
+    /// 페이드가 투명해지는 지점 (프레임 높이 비율).
+    static let fadeRatio: CGFloat = fadeHeight / height
 }
 
 // MARK: - Previews
@@ -166,7 +182,7 @@ private enum WheelMetric {
     )
 }
 
-#Preview("연차 선택 — 3년차") {
+#Preview("연차 선택 — 3년 이상") {
     AuthOnboardingExperienceView(
         store: Store(
             initialState: AuthOnboardingExperienceFeature.State(

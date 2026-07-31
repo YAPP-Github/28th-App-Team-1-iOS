@@ -19,12 +19,11 @@ public struct ExperienceOption: Hashable, Sendable, Identifiable {
     public let years: Int
     public var id: Int { years }
 
-    /// 문장형 휠 라벨 — «내 경력은 [label] 이다.»
+    /// 문장형 휠 라벨 — «내 경력은 [label] 이다» (Figma 3632:14460 의 휠 표기).
     public var label: String {
         switch years {
         case 0: "신입"
-        case Self.maxYears: "\(Self.maxYears)년 이상"
-        default: "\(years)년차"
+        default: "\(years)년 이상"
         }
     }
 

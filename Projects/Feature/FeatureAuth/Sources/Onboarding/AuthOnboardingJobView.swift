@@ -5,13 +5,16 @@
 //  Created by EunSeo on 26/07/31.
 //
 
+// Figma: «Onboarding_JobSelection» 초기 https://figma.com/design/ZG7FUxWCvITmnvzZi7fpTS/?node-id=3632-14414
+//                                  선택됨 https://figma.com/design/ZG7FUxWCvITmnvzZi7fpTS/?node-id=3632-14437
+
 import ComposableArchitecture
 import DomainJobInterface
 import SharedDesignSystemInterface
 import SwiftUI
 
-// Figma «AuthOnboardingJob» — 시안 수령 전엔 면접 위저드 «STEP 1_직군선택»(node 1609:8484) 레이아웃 재사용.
-// FeatureOnboarding OnboardingJobSelectionView 의 복사본 — 가입 플로우 이관분(Feature 간 코드 공유 금지라 복사).
+/// 가입 온보딩 2 — 직군 선택. 선택 상태는 칩 색(gray↔green)으로만 갈리고,
+/// 하단 CTA 의 활성/비활성 룩은 DS(`ButtonLarge`)가 `isEnabled` 에서 파생한다.
 @ViewAction(for: AuthOnboardingJobFeature.self)
 public struct AuthOnboardingJobView: View {
     @Bindable public var store: StoreOf<AuthOnboardingJobFeature>
@@ -24,13 +27,11 @@ public struct AuthOnboardingJobView: View {
         VStack(spacing: 0) {
             progressBar
             ScrollView {
-                VStack(alignment: .leading, spacing: 32) {
-                    header
+                VStack(alignment: .leading, spacing: 0) {
+                    titleBox
                     jobChips
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
             }
             continueButton
         }
@@ -39,82 +40,81 @@ public struct AuthOnboardingJobView: View {
         .onAppear { send(.onAppear) }
     }
 
+    // MARK: - progress bar
+
+    /// 시안 «progress bar» 3877:11580 — 단계 수만큼 등폭으로 늘어나는 대시.
+    // @ds(component): 등폭 stretch 대시 — DS `DashIndicator` 는 조각 20 고정폭·간격 4 라 이 시안을 못 그린다
+    // @ds(spacing): 2 — 대시 사이 간격 (DSSpacing 은 4 부터)
+    // @ds(spacing): 4 — 대시 두께
     private var progressBar: some View {
         HStack(spacing: 2) {
-            ForEach(1...store.totalSteps, id: \.self) { step in
+            ForEach(1...max(store.totalSteps, 1), id: \.self) { step in
                 Rectangle()
                     .fill(step <= store.step ? Color.HilitBlack.b800 : Color.GrayScale.g50)
+                    .frame(maxWidth: .infinity)
                     .frame(height: 4)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 4)
+        .padding(.horizontal, .ds(.p20))
+        .padding(.vertical, .ds(.p4))
+        // 시안의 top-bar ↔ progress bar 간격 8 (내비바는 모디파이어가 얹는다)
+        .padding(.top, .ds(.p8))
     }
 
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("필수")
-                .dsTypography(.body7)
-                .foregroundStyle(Color.HilitGreen.g500)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 4)
-                .background(Color.HilitBlack.b800, in: RoundedRectangle(cornerRadius: 2))
+    // MARK: - title-box
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text("\(store.userName)님의 직군을\n선택해 주세요.")
-                    .dsTypography(.head3)
-                    .foregroundStyle(Color.GrayScale.g800)
-                Text("\(store.userName)님의 현재 직군을 선택해 주세요.")
-                    .dsTypography(.body3)
-                    .foregroundStyle(Color.GrayScale.g500)
-            }
-        }
+    private var titleBox: some View {
+        TitleBox(
+            [.init("\(store.userName)님의 직군을", highlight: "직군"), "선택해 주세요."],
+            tag: "필수",
+            sub: "\(store.userName)님의 현재 직군을 선택해 주세요."
+        )
+        .padding(.horizontal, .ds(.p20))
+        .padding(.top, .ds(.p20))
     }
 
-    @ViewBuilder
+    // MARK: - 직무 칩
+
     private var jobChips: some View {
-        if store.isLoading, store.jobs.isEmpty {
-            ProgressView()
-                .frame(maxWidth: .infinity)
-        } else {
-            ChipFlowLayout(spacing: 8) {
-                ForEach(store.jobs) { job in
-                    jobChip(job)
+        Group {
+            if store.jobs.isEmpty, store.isLoading {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+            } else {
+                ChipFlowLayout(spacing: .ds(.p8)) {
+                    ForEach(store.jobs) { job in
+                        jobChip(job)
+                    }
                 }
             }
         }
+        .padding(.horizontal, .ds(.p20))
+        // @ds(spacing): 34 — 칩 영역 위·아래 여백 (DSSpacing 은 24 까지)
+        .padding(.vertical, 34)
     }
 
+    /// 미선택 `.gray`(흰 판·g100 테두리·g700 글자) ↔ 선택 `.green`(g500 판·g600 테두리·g800 글자).
+    /// 선택은 pressed·disabled 같은 «상태»가 아니라 시안이 색 축으로 표현하므로 색 파라미터로 넘긴다.
     private func jobChip(_ job: Job) -> some View {
-        let isSelected = store.selectedJobID == job.id
-        return Button {
+        Button(job.label) {
             send(.userTappedJob(job.id))
-        } label: {
-            Text(job.label)
-                .font(.ds(.body2))
-                .foregroundStyle(Color.HilitBlack.b800)
-                .padding(.horizontal, 32)
-                .padding(.vertical, 16)
-                .background(Color.BlackWhite.white)
-                .overlay {
-                    // TODO: 선택 상태 Figma 미확인 — 우선 보더 강조. 디자인 확정 시 조정.
-                    Rectangle()
-                        .strokeBorder(isSelected ? Color.HilitBlack.b800 : Color.chipBorder, lineWidth: 1.2)
-                }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.medium(store.selectedJobID == job.id ? .green : .gray))
     }
 
-    /// 첫 수집 화면과 동일하게 단일 CTA — 뒤로는 스와이프백 몫. 비활성 룩은 DS 가 소유한다.
+    // MARK: - 하단 CTA
+
+    /// 단일 CTA — 뒤로는 스와이프백·내비바 X 몫. 비활성 룩(g50 판·g300 글자)은 DS 가 소유한다.
     private var continueButton: some View {
-        ButtonLarge("계속하기", .bottom) { send(.userTappedContinue) }
+        ButtonLarge("다음", .bottom) { send(.userTappedContinue) }
             .disabled(!store.isContinueEnabled)
     }
 }
 
 // MARK: - ChipFlowLayout
 
-/// 칩을 좌→우로 채우다 폭을 넘치면 줄바꿈하는 flow 레이아웃 (Figma 칩 배치 재현).
+/// 칩을 좌→우로 채우다 폭을 넘치면 줄바꿈하는 flow 레이아웃.
+// @ds(layout): flow/wrap — 가변폭 칩 줄바꿈. DS 에 flow 컨테이너 없음(`ChoiceChip` 은 등폭 HStack 전용)
 private struct ChipFlowLayout: Layout {
     var spacing: CGFloat = 8
 
@@ -165,28 +165,33 @@ private struct ChipFlowLayout: Layout {
     }
 }
 
-private extension Color {
-    /// 칩 기본 보더 · #EDEDED — Figma 변수 미바인딩 raw 값이라 DS 토큰화 보류.
-    static let chipBorder = Color(red: 237 / 255, green: 237 / 255, blue: 237 / 255)
-}
-
 // MARK: - Previews
 
+/// 시안(3632:14414)의 칩 순서 — 서버 응답 순서가 곧 표시 순서다.
 private let previewJobs: [Job] = [
     Job(jobId: 1, jobRole: "BACKEND", label: "백엔드"),
-    Job(jobId: 2, jobRole: "ANDROID", label: "Android"),
-    Job(jobId: 3, jobRole: "IOS", label: "iOS"),
-    Job(jobId: 4, jobRole: "FRONTEND", label: "프론트엔드"),
-    Job(jobId: 5, jobRole: "DATA_ENGINEER", label: "데이터 엔지니어"),
+    Job(jobId: 2, jobRole: "DATA_ENGINEER", label: "데이터 엔지니어"),
+    Job(jobId: 3, jobRole: "ANDROID", label: "Android"),
+    Job(jobId: 4, jobRole: "IOS", label: "iOS"),
+    Job(jobId: 5, jobRole: "FRONTEND", label: "프론트엔드"),
     Job(jobId: 6, jobRole: "INFRA_SRE", label: "인프라 ⋅ SRE")
 ]
 
-#Preview("직군 선택") {
-    AuthOnboardingJobView(
-        store: Store(initialState: AuthOnboardingJobFeature.State(userName: "재원")) {
-            AuthOnboardingJobFeature()
-        } withDependencies: {
-            $0.jobClient = JobClient(jobs: { previewJobs })
-        }
-    )
+private func previewStore(selecting jobID: Job.ID? = nil) -> StoreOf<AuthOnboardingJobFeature> {
+    var state = AuthOnboardingJobFeature.State(userName: "재원")
+    state.jobs = previewJobs
+    state.selectedJobID = jobID
+    return Store(initialState: state) {
+        AuthOnboardingJobFeature()
+    } withDependencies: {
+        $0.jobClient = JobClient(jobs: { previewJobs })
+    }
+}
+
+#Preview("직군 선택 — 초기") {
+    AuthOnboardingJobView(store: previewStore())
+}
+
+#Preview("직군 선택 — 선택됨") {
+    AuthOnboardingJobView(store: previewStore(selecting: 4))
 }

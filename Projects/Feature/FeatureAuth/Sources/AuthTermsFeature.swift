@@ -23,13 +23,26 @@ public struct AuthTermsFeature {
 
         public var id: String { rawValue }
 
+        /// 체크박스 행 라벨 — Figma 3768:16671 문구 그대로.
         public var title: String {
             switch self {
-            case .age14: "(필수) 만 14세 이상입니다"
+            case .age14: "(필수) 만 14세 이상입니다."
             case .termsOfService: "(필수) 서비스 이용약관 동의"
             case .privacy: "(필수) 개인정보 수집·이용 동의"
             case .avRecording: "(필수) 면접 영상·음성 촬영과 저장 동의"
             case .overseasTransfer: "(필수) 개인정보 국외 이전 동의"
+            }
+        }
+
+        /// 전문 바텀시트 머리글 — 행 라벨의 «(필수)» 접두를 뗀 문서 이름.
+        /// 시안에 실린 건 `termsOfService`(3768:17200 «서비스 이용 약관») 하나뿐이고 나머지는 그 형식을 따랐다.
+        public var documentTitle: String {
+            switch self {
+            case .age14: "만 14세 이상 확인"
+            case .termsOfService: "서비스 이용 약관"
+            case .privacy: "개인정보 수집·이용 동의"
+            case .avRecording: "면접 영상·음성 촬영과 저장 동의"
+            case .overseasTransfer: "개인정보 국외 이전 동의"
             }
         }
 

@@ -7,7 +7,8 @@ let project = Project.makeModule(
     targets: [
         // D3: Feature 는 Interface 를 두지 않는다 (단일 Implementation). → DocC FeatureInterface / architecture.md D3
         .feature(implements: "Home", factory: .init(dependencies: [
-            .composableArchitecture
+            .composableArchitecture,
+            .shared(interface: .designSystem)
         ])),
         .feature(testing: "Home"),
         .feature(tests: "Home"),

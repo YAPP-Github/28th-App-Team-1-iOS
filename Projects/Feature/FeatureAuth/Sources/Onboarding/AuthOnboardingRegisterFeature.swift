@@ -15,7 +15,8 @@ import ComposableArchitecture
 public struct AuthOnboardingRegisterFeature {
     @ObservableState
     public struct State: Equatable {
-        /// 완료 문구에 쓸 사용자 이름 — 코디네이터가 주입한다.
+        /// 코디네이터가 주입하는 사용자 이름. 확정 시안(node 3632:14643)의 완료 문구는 이름을
+        /// 끼우지 않아 화면에 안 쓰이지만, 프로필 일괄 제출(아래 TODO)이 여기로 오면 필요해 남긴다.
         public var userName: String
 
         public init(userName: String = "") {
