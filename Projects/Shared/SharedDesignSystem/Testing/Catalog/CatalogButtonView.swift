@@ -103,12 +103,14 @@ struct CatalogButtonView: View {
     }
 
     private var mini: some View {
-        CatalogGroup(".mini(_:layout:) — 밝은 판") {
+        CatalogGroup(".mini(_:style:layout:) — 밝은 판") {
             VStack(alignment: .leading, spacing: .ds(.p8)) {
                 ForEach(MiniButtonStyle.Tone.allCases, id: \.self) { tone in
                     Button(String(describing: tone)) {}
                         .buttonStyle(.mini(tone))
                 }
+                // status 축 — outlined 는 시안상 black 행 전용.
+                Button("outlined") {}.buttonStyle(.mini(.black, style: .outlined))
                 Button {
                 } label: {
                     HStack(spacing: .ds(.p8)) {
