@@ -14,7 +14,7 @@ import SwiftUI
 /// 제출 전 요약 화면 — "재원님에게 이렇게 전달 될 거예요" 축별 평가 리스트 + 전송 CTA.
 /// Figma 최종 «[4] 온보딩 - 메인(요약)»(node 2101:8781) 1:1 — 라이트 톤(흰 배경),
 /// «평가 항목» 헤더 + «영상 다시보기» 버튼, 카드 탭 = 해당 축 수정(summaryCardTapped), 연필 아이콘.
-/// 하단 블랙 `ButtonLarge`(.bottom). `submitTapped` 은 라우터의 confirmationDialog(제출 불가역 경고)를 경유한다.
+/// 하단 블랙 `ButtonLarge`(.bottom). `submitTapped` 은 DS Modal(제출 불가역 경고, `.hilitModal`)을 경유한다.
 @ViewAction(for: GuestFeedbackFeature.self)
 struct GuestSummaryView: View {
     let store: StoreOf<GuestFeedbackFeature>
@@ -36,29 +36,45 @@ struct GuestSummaryView: View {
                 submitButton
             }
         }
+        .hilitModal(isPresented: store.isSubmitConfirmPresented) {
+            submitConfirmModal
+        }
+    }
+
+    /// 제출 불가역 확인 — 시스템 confirmationDialog 대신 DS `Modal` 2버튼(문구는 기존 다이얼로그 그대로).
+    private var submitConfirmModal: some View {
+        Modal(
+            "제출하면 다시 고칠 수 없어요",
+            subText: "제출 후에는 내용을 수정할 수 없어요."
+        ) {
+            ButtonLarge(.modal, tone: .twoColor) {
+                Button("취소") { send(.submitConfirmDismissed) }
+            } trailing: {
+                Button("제출하기") { send(.submitConfirmTapped) }
+            }
+        }
     }
 
     // MARK: - 헤더 (타이틀 · 그린 마커 · 안내)
 
-    /// "재원님에게" / "[이렇게 전달] 될 거예요" 2행(head3_b_24) + 수정 안내 부제 — Figma title-box(2101:8797).
+    /// DS TitleBox — Figma «title-box»(3029:9187) 1:1: "{게스트}님, / 정성스러운 [피드백] 감사해요".
     private var header: some View {
-        VStack(alignment: .leading, spacing: .ds(.p8)) {
-            VStack(alignment: .leading, spacing: 0) {
-                Text("\(requesterName)님에게")
-                    .dsTypography(.head3)
-                    .foregroundStyle(Color.GrayScale.g900)
-                // 그린 형광펜 마커 — DS HighlightedText(Figma highlighted-text), 온보딩과 동일.
-                HighlightedText("이렇게 전달될 거예요").hilight("이렇게 전달")
-            }
-            Text("항목을 누르면 바로 수정할 수 있어요")
-                .dsTypography(.body3)
-                .foregroundStyle(Color.GrayScale.g500)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        TitleBox(
+            [
+                TitleBox.Line("\(guestName)님,"),
+                TitleBox.Line("정성스러운 피드백 감사해요", highlight: "피드백")
+            ],
+            sub: "\(requesterName)님에게 다음 피드백을 전달할게요"
+        )
     }
 
     private var requesterName: String {
         store.entry?.requesterName ?? "지원자"
+    }
+
+    /// 타이틀의 게스트 이름 — 닉네임 확정 없이 요약에 오는 경로는 없지만, 빈 값이면 서버 자동 별칭 관례(지인N)를 따른다.
+    private var guestName: String {
+        store.nickname.isEmpty ? "지인" : store.nickname
     }
 
     /// «평가 항목» 섹션 라벨 + 우측 «영상 다시보기» 미니 버튼(Figma button-mini/with-icon 2227:4448).
@@ -91,86 +107,66 @@ struct GuestSummaryView: View {
         }
     }
 
-    /// 카드 1개 — 축명 + 선택 라벨("(이)라고 평가했어요") + (코멘트 있으면) 코멘트 한 줄.
+    /// 카드 1개 — 축명 + 선택 라벨("(이)라고 평가했어요") + (코멘트 있으면) 인용 줄(DS QuoteField).
     /// 카드 전체가 버튼 — 탭하면 해당 축 수정으로 돌아간다(우상단 연필이 시각 힌트).
+    /// Figma «feedback-card»(2102:9128) — 직각 판, g100 테두리(outline-m) + 왼쪽 outline-mega(6pt) 액센트.
     private func summaryRow(_ axis: AttitudeAxis) -> some View {
         let rating = store.ratings[axis.code]
         return Button {
             send(.summaryCardTapped(axis))
         } label: {
-            VStack(alignment: .leading, spacing: .ds(.p4)) {
+            // @ds(spacing): 6 — 카드 안 행 사이 (spacing 토큰은 4 다음이 8)
+            VStack(alignment: .leading, spacing: 6) {
                 Text(axis.displayName)
                     .dsTypography(.body9)
                     .foregroundStyle(Color.GrayScale.g400)
 
-                HStack(spacing: .ds(.p4)) {
+                HStack(spacing: 0) {
                     selectedLabel(for: axis, level: rating?.level)
                     Text("(이)라고 평가했어요")
                         .dsTypography(.body2)
-                        .foregroundStyle(Color.GrayScale.g900)
+                        .foregroundStyle(Color.HilitBlack.b800)
                 }
 
                 if let comment = rating?.comment, !comment.isEmpty {
-                    commentRow(comment)
+                    QuoteField(comment)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, .ds(.p16))
-            .padding(.vertical, .ds(.p14))
-            .overlay(cardBorder)
+            .padding(.vertical, .ds(.p12))
+            .overlay(
+                Rectangle()
+                    .strokeBorder(Color.GrayScale.g100, lineWidth: .ds(.medium))
+            )
+            .overlay(alignment: .leading) {
+                Rectangle()
+                    .fill(Color.GrayScale.g100)
+                    .frame(width: .ds(.mega))   // DSOutline.mega = 6pt 좌측 액센트 바
+            }
             .overlay(alignment: .topTrailing) {
                 // 시안 feedback-card(2102:9128) 우상단 «edit/16px/disabled» — 색은 에셋에 구워진 원본색.
                 Image.Edit.disabled16
                     .padding(.top, .ds(.p12))
                     .padding(.trailing, .ds(.p16))
             }
-            .contentShape(RoundedRectangle(cornerRadius: 6))
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
 
-    /// 선택한 4단계 라벨 칩 — level 1·2 는 긍정(positive), 3·4 는 부정(error) 톤. 미선택은 "-" 중립.
+    /// 선택한 4단계 라벨 칩 — level 1·2 는 긍정(blue 톤 + ⓘ청록), 3·4 는 부정(red 톤, 아이콘 없음). 미선택은 "-" 중립.
     @ViewBuilder
     private func selectedLabel(for axis: AttitudeAxis, level: Int?) -> some View {
         if let level, (1...4).contains(level) {
             let isPositive = level <= 2
-            labelChip(
-                AxisScaleCopy.labels(for: axis.code)[level - 1],
-                foreground: isPositive ? Color.Positive.p800 : Color.Error.e500,
-                background: isPositive ? Color.Positive.p200 : Color.Error.e200
-            )
+            HighlightedText(AxisScaleCopy.labels(for: axis.code)[level - 1], typography: .body2)
+                .hilightColor(isPositive ? .blue : .red)
+                .hilightIcon(isPositive ? Image.Info.positive : nil)
         } else {
-            labelChip("-", foreground: Color.GrayScale.g600, background: Color.GrayScale.g100)
+            HighlightedText("-", typography: .body2)
+                .hilightColors(foreground: Color.GrayScale.g600, background: Color.GrayScale.g100)
         }
-    }
-
-    /// 평행사변형 배경 칩 — DS HighlightedText(body3_m_16) 소비.
-    private func labelChip(_ text: String, foreground: Color, background: Color) -> some View {
-        HighlightedText(text, typography: .body3)
-            .hilightColors(foreground: foreground, background: background)
-    }
-
-    /// 코멘트 한 줄 — 세로 바 + 회색 텍스트(body9_m_12), 넘치면 말줄임.
-    private func commentRow(_ comment: String) -> some View {
-        HStack(spacing: .ds(.p4)) {
-            Rectangle()
-                .fill(Color.GrayScale.g100)
-                // Figma 2px 세로 바 — 대응 두께 토큰 없어 리터럴 유지.
-                .frame(width: 2)
-            Text(comment)
-                .dsTypography(.body9)
-                .foregroundStyle(Color.GrayScale.g400)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .fixedSize(horizontal: false, vertical: true)
-    }
-
-    /// 카드 테두리 — gray100 스트로크(outline-m), 모서리 6pt(대응 radius 토큰 없어 리터럴).
-    private var cardBorder: some View {
-        RoundedRectangle(cornerRadius: 6)
-            .strokeBorder(Color.GrayScale.g100, lineWidth: .ds(.medium))
     }
 
     // MARK: - 하단 CTA
