@@ -43,19 +43,17 @@ public struct InterviewSessionView: View {
         }
         // 카메라 위 다크 판 — 하위 `.mini` 버튼 팔레트가 이 선언을 따라 전환된다 (design/component.md).
         .hilitSurface(.dark)
-        // Figma ExitConfirm 딤: black 60% + backdrop blur — 배경 콘텐츠를 블러해 근사한다.
-        .blur(radius: (store.isExitConfirmPresented || store.isEarlyExitWarningPresented) ? 20 : 0)
-        .overlay {
-            if store.isExitConfirmPresented {
-                exitConfirmOverlay
-            } else if store.isEarlyExitWarningPresented {
-                earlyExitWarningOverlay
+        // Figma ExitConfirm 딤: black 60%(.hilitModal 몫) + backdrop blur — 배경 콘텐츠를 블러해 근사한다.
+        .blur(radius: presentedModal != nil ? 20 : 0)
+        // 표출 페이드(0.2s easeInOut)는 .hilitModal 내장 애니메이션이 블러까지 함께 몬다.
+        .hilitModal(item: presentedModal) { modal in
+            switch modal {
+            case .exitConfirm: exitConfirmModal
+            case .earlyExitWarning: earlyExitWarningModal
             }
         }
         .animation(.easeInOut(duration: 0.3), value: store.phase)
         .animation(.easeInOut(duration: 0.3), value: store.toast)
-        .animation(.easeInOut(duration: 0.2), value: store.isExitConfirmPresented)
-        .animation(.easeInOut(duration: 0.2), value: store.isEarlyExitWarningPresented)
         .onAppear { send(.onAppear) }
     }
 
@@ -87,7 +85,7 @@ public struct InterviewSessionView: View {
     private var statusArea: some View {
         switch store.phase {
         case .asking:
-            VStack(spacing: 4) {
+            VStack(spacing: .ds(.p4)) {
                 HighlightedText("질문 듣는 중", typography: .body2)
                     .hilightColor(.green)
                 Text("끝까지 듣고 대답해 주세요")
@@ -131,29 +129,47 @@ public struct InterviewSessionView: View {
         .frame(minHeight: 34)
     }
 
-    private var exitConfirmOverlay: some View {
-        ZStack {
-            Color.black.opacity(0.6)
-                .ignoresSafeArea()
-            InterviewExitConfirmModal(
-                onContinue: { send(.userTappedContinueInterview) },
-                onFinish: { send(.userTappedFinishInterview) }
-            )
+    // MARK: - 종료 확인·이탈 경고 모달 (DS Modal + .hilitModal)
+
+    /// 리듀서의 표출 Bool 2개를 뷰에서 enum 으로 접는다 — `.hilitModal(item:)` 규약(동시 표출 차단).
+    private enum PresentedModal: Equatable {
+        case exitConfirm
+        case earlyExitWarning
+    }
+
+    private var presentedModal: PresentedModal? {
+        if store.isExitConfirmPresented {
+            .exitConfirm
+        } else if store.isEarlyExitWarningPresented {
+            .earlyExitWarning
+        } else {
+            nil
+        }
+    }
+
+    /// 면접 종료 확인 — Figma «modal»(2555:7739) 1:1, 문구는 부록 C 확정.
+    private var exitConfirmModal: some View {
+        Modal(
+            "면접을 마칠까요?",
+            subText: "마치기를 클릭하는 즉시 면접이 종료됩니다.\n지금까지 답변으로 분석을 시작해요.",
+            icon: Image.Img.book
+        ) {
+            ButtonLarge(.modal, tone: .twoColor) {
+                Button("계속하기") { send(.userTappedContinueInterview) }
+            } trailing: {
+                Button("마치기") { send(.userTappedFinishInterview) }
+            }
         }
     }
 
     /// 8분 전 중도 이탈 경고 (Interview_EarlyExitWarning) — 차감 사실만, 리포트 언급 금지 (PRD §3.7).
-    private var earlyExitWarningOverlay: some View {
-        ZStack {
-            Color.black.opacity(0.6)
-                .ignoresSafeArea()
-            InterviewExitConfirmModal(
-                title: "지금 나가면 이용권 1회가 차감돼요",
-                message: nil,
-                finishLabel: "나가기",
-                onContinue: { send(.userTappedContinueInterview) },
-                onFinish: { send(.userTappedLeaveInterview) }
-            )
+    private var earlyExitWarningModal: some View {
+        Modal("지금 나가면 이용권 1회가 차감돼요", icon: Image.Img.book) {
+            ButtonLarge(.modal, tone: .twoColor) {
+                Button("계속하기") { send(.userTappedContinueInterview) }
+            } trailing: {
+                Button("나가기") { send(.userTappedLeaveInterview) }
+            }
         }
     }
 }
