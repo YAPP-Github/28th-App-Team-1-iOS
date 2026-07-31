@@ -145,9 +145,12 @@ public struct FileUpload: View {
 
     /// 파일 한 줄 — 아래 테두리가 없다(진행 바가 바로 붙는다).
     ///
-    /// 이 행은 Figma 에서 별도 컴포넌트 «card»(card-pdf, Part5) 인스턴스다 — 그 컴포넌트가
-    /// DS 로 올라오면 이 private 판을 걷어내고 조립으로 바꾼다. 여기서는 file-upload 가 쓰는
-    /// 한 가지 구성(그린 파일 아이콘 + 파일명 + 상태 문구 + X + 미니 버튼)만 그린다.
+    /// 이 행은 Figma 에서 «card»(card-pdf, Part5) 인스턴스고 그 컴포넌트는 `FileCard` 로
+    /// DS 에 있다 — 그래도 조립하지 않고 private 로 남긴다(결정): `FileCard` 는 4변 1.5
+    /// 테두리 + 날짜·용량 메타 구조인데 이 행은 3변 테두리(아래는 진행 바가 잇는다) +
+    /// 상태 문구 구조라, 조립하려면 `FileCard` 에 단일 소비자용 테두리·행 옵션을 열어야
+    /// 한다. 여기서는 file-upload 가 쓰는 한 가지 구성(그린 파일 아이콘 + 파일명 +
+    /// 상태 문구 + X + 미니 버튼)만 그린다.
     private func fileRow(item: Item, isCompleted: Bool) -> some View {
         HStack(spacing: .ds(.p12)) {
             // 36pt b800 사각과 그린 파일 글리프가 에셋에 구워져 있다.
@@ -258,8 +261,9 @@ public struct FileUpload: View {
 //    자간 -2%, Medium 12 / 행간 140% / 자간 -2%. 토큰(`body2`·`body9`)은 행간 130% · 자간 -2.5% 라
 //    행간이 미세하게 좁다. 토큰 우선 원칙대로 토큰을 썼다(디자이너 확인 대기).
 //    같은 파일의 `.empty`(`body6_m_14`)·행(`body2_sb_16`·`body9_m_12`)은 변수에 제대로 묶여 있다.
-// ② `.progressing`·`.completed` 행은 별도 컴포넌트 «card»(card-pdf) 인스턴스다 — 위 `fileRow`
-//    독스트링 참조. 두 컴포넌트가 같은 행을 그리는 상태라 card-pdf 승격 시 합쳐야 한다.
+// ② `.progressing`·`.completed` 행은 «card»(card-pdf) 인스턴스고 DS 엔 `FileCard` 가 있다 —
+//    그래도 private 유지로 결정(테두리 3변 vs 4변, 메타 vs 상태 문구 — 위 `fileRow` 독스트링).
+//    시안이 행 모양을 바꾸면 두 파일을 같이 고쳐야 한다.
 //
 // MARK: - Figma 원본 값 조정
 //
