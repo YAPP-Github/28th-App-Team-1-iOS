@@ -55,9 +55,7 @@ struct HomeReportView: View {
             greenPanel
             reportSheet
         }
-        // 스트라이프가 그린 판 «위»에 얹혀야 해서 background 순서가 중요하다 — 뒤에 붙는 쪽이 더 아래로 간다.
-        .background { stripeBackdrop }
-        .background(Color.HilitGreen.g500)
+        .background { HomeGreenBackdrop() }
         .ignoresSafeArea(edges: .bottom)
         .hilitLogoNavigationBar(background: .filled, onProfile: onProfileTapped)
         .onAppear { expandedReportID = expandedReportID ?? reports.first?.id }
@@ -100,24 +98,6 @@ struct HomeReportView: View {
             .padding(.horizontal, .ds(.p10))
             .padding(.vertical, .ds(.p16))
             .padding(.horizontal, .ds(.p20))
-    }
-
-    /// 배경 8줄 — 각 줄이 다른 세로 white 그라데이션 + 0.2 white 테두리(«블라인드» 결).
-    // @ds(component): 세로 스트라이프 배경 8줄 (그라데이션 정지점 표 + 0.2 테두리) — 공용 컴포넌트·토큰 없음
-    private var stripeBackdrop: some View {
-        HStack(spacing: 0) {
-            ForEach(Array(Self.stripeStops.enumerated()), id: \.offset) { _, stops in
-                LinearGradient(
-                    stops: stops.map { .init(color: Color.BlackWhite.white.opacity($0.opacity), location: $0.location) },
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                // @ds(spacing): 0.2 — 스트라이프 경계선 두께 (DSOutline 최소값이 1)
-                .border(Color.BlackWhite.white, width: 0.2)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .allowsHitTesting(false)
     }
 
     // MARK: - 바텀시트
@@ -210,7 +190,9 @@ struct HomeReportView: View {
         } label: {
             Text(report.dateText)
                 .dsTypography(.body3)
-                .foregroundStyle(Self.collapsedRowText)
+                // @ds(color): #0A1C1F → HilitBlack.b900 — 접힌 행 날짜. 시안값은 변수 미바인딩 raw 라
+                //   팔레트 최근접(#121316, Δ≈9)으로 통일했다 (사용자 결정 2026-07-31)
+                .foregroundStyle(Color.HilitBlack.b900)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.ds(.p20))
                 .background(Self.collapsedRowBackground)
@@ -239,21 +221,6 @@ struct HomeReportView: View {
 
     // @ds(color): #D2EFCC (Figma «hilit green/200») — 접힌 리포트 행 배경. 팔레트에 그린 200 단계가 없다
     private static let collapsedRowBackground = Color(red: 210 / 255, green: 239 / 255, blue: 204 / 255)
-
-    // @ds(color): #0A1C1F — 접힌 리포트 행 날짜 텍스트. 최근접 b900(#121316) 과 Δ≈9 로 눈에 띄게 다름(청록 기운)
-    private static let collapsedRowText = Color(red: 10 / 255, green: 28 / 255, blue: 31 / 255)
-
-    /// 배경 스트라이프 8줄의 세로 그라데이션 정지점 — (white 불투명도, 위치). Figma 값 그대로.
-    private static let stripeStops: [[(opacity: Double, location: Double)]] = [
-        [(1, 0.1356), (0.4, 0.3246), (1, 1)],
-        [(1, 0.1145), (0.4, 0.2573), (0.3, 0.4750), (0.4, 0.5887), (1, 1)],
-        [(1, 0.1179), (0.4, 0.2310), (0.2, 0.3939), (0.1, 0.5040), (0.4, 0.6844), (1, 1)],
-        [(1, 0.1170), (0.3, 0.2336), (0.1, 0.3172), (0.1, 0.3974), (0.3, 0.6881), (1, 1)],
-        [(1, 0.1331), (0.3, 0.2442), (0.1, 0.3929), (0.1, 0.5084), (0.3, 0.6257), (1, 1)],
-        [(1, 0.1221), (0.4, 0.2742), (0.2, 0.3748), (0.1, 0.5122), (0.4, 0.6896), (1, 1)],
-        [(1, 0.1422), (0.4, 0.3279), (0.3, 0.4285), (0.4, 0.5898), (1, 1)],
-        [(1, 0.1404), (0.4, 0.5127), (1, 1)]
-    ]
 }
 
 // MARK: - 시안 값

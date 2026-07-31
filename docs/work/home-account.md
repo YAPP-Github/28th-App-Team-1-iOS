@@ -23,7 +23,7 @@
 | `AuthOnboardingJob` | Part1 S0a 직군 선택 | FeatureAuth/Onboarding — FeatureOnboarding STEP1 **복사**(원본은 위저드 정리 시 제거) | 골격 ✅ |
 | `AuthOnboardingExperience` | Part1 S0b 연차 선택 | FeatureAuth/Onboarding — FeatureOnboarding STEP2 **복사** | 골격 ✅ |
 | `AuthOnboardingRegister` | 등록 완료 (PRD «가입 완료 화면 없음» 을 디자인이 뒤집음) | FeatureAuth/Onboarding — 완료 후 `delegate(.signedIn)` | 골격 ✅ / 🔴 프로필 제출 시점 미결 |
-| 홈 — **단일 화면 + phase 4종** (§3) | Part6 전체 | FeatureHome — `State.phase` + `Sources/View/` 서브뷰 스텁 4개 | 골격 ✅ / 🔴 로드 4종·위젯 UI |
+| 홈 — **두 덩어리(홈 3화면 + 면접 시작 3화면)** (§3) | Part6 전체 | FeatureHome — `Sources/Home/`(`HomeFeature.phase`) + `Sources/StartInterview/`(`StartInterviewFeature`, cover present) | 골격 ✅ / 🔴 로드 4종·위젯 UI |
 | A2 권한 안내 | Part7 | **Out — AOS 전용.** iOS 는 사용 시점 요청 (Part2 준비 화면 게이트 ✅, [[interview#권한]]) | — |
 | A3 재동의 | Part7 | MVP 미도안 — 분기 자리만 예약 | 🟡 |
 | 로그아웃·탈퇴 | Part 5 소유 (탈퇴 완료 → `AuthCreateAccount` 복귀만 계약) | 참고 | — |
@@ -119,12 +119,14 @@ AuthTerms 제출 후 이어지는 4화면. AuthFeature 도메인 내부 내비(�
 
 **화면 4종이 아니라 화면 1개** — Figma 프레임 4종(`HomeDefault`·`HomeReport`·`HomeStartInterview`·`HomeDuringInterview`)은 같은 화면의 상태 변형이다. `GuestFeedbackFeature` 패턴 채택: `State.phase` enum 하나로 상태를 관리하고 뷰가 phase 스위치로 서브뷰를 연결한다(→ `FeatureGuestFeedback/Sources/GuestFeedbackFeature.swift`).
 
+**구현 시 수정 (2026-07-31)** — 시안을 받고 두 덩어리로 쪼갰다: «홈»(`HomeDefault` + `HomeReport` 2변형 = `State.phase`)과 «면접 시작»(시안 3장 = `StartInterviewFeature`, 홈 위로 cover present). `HomeDuringInterview` 는 **MVP 제외** — 화면·phase 케이스 모두 삭제(아래 표·`Phase` 스케치의 During 행은 결정 기록으로 남긴다).
+
 | Figma 프레임 | 상태 의미 (구두 브리핑 — Figma 수령 시 확정) |
 |---|---|
 | `HomeDefault` | 기본 상태 |
-| `HomeReport` | 면접 기록(레포트) 표시 상태 |
-| `HomeStartInterview` | 시작 CTA 변형 — 처음 / 등록 포폴 있음 / 무료 횟수 모두 사용 |
-| `HomeDuringInterview` | 진행 중 면접 있음 / 레포트 제작 시점 |
+| `HomeReport` | 면접 기록(레포트) 표시 상태 — 구현은 «오랜만이에요 OO님!» 인사말 표시 여부 2변형(`returning`/`recent`) |
+| `HomeStartInterview` | 시작 CTA 변형 — 처음 / 등록 포폴 있음 / 무료 횟수 모두 사용. **phase 아니라 present** (홈 탭에 NavigationStack 없음) |
+| `HomeDuringInterview` | 진행 중 면접 있음 / 레포트 제작 시점 — **MVP 제외 (2026-07-31 삭제)** |
 
 구성(위→아래): **잔여 "N회 남음" → 위젯① 면접 연습 진행(주 CTA) → 위젯② 면접 기록 → 위젯③ 마이페이지**. 위계: 핵심 행동(연습 시작) 최대, 동기(기록·잔여) 곁에, 관리(마이페이지)는 진입점만.
 
@@ -203,15 +205,16 @@ Onboarding --delegate(.finished(sessionId:))-▶ AppFeature → 면접 시작 (�
 HomeFeature 는 «외부 IO 없는 Feature 예시»([[home]])에서 벗어난다 — `.domain(interface:)` 의존이 생기는 첫 확장. 화면 상태는 서버 판정의 표시일 뿐(탭 시점 게이트가 진실 — TTL 레이스 미결 #4 도 «탭 시 재검증»으로 흡수 제안):
 
 ```swift
-// 화면 1개 — GuestFeedback 패턴 (State.phase → 뷰 스위치). Figma 프레임 4종과 1:1 (§3 표)
+// 홈 화면 — GuestFeedback 패턴 (State.phase → 뷰 스위치). §3 «구현 시 수정» 반영 후 2종
 public enum Phase: Equatable, Sendable {
     case `default`                       // HomeDefault
-    case report                          // HomeReport
-    case startInterview(Start)           // HomeStartInterview
-    case duringInterview(During)         // HomeDuringInterview
+    case report(ReportVariant)           // HomeReport — 인사말 표시 여부가 축
+    // case startInterview(Start)        // → StartInterviewFeature 로 분리 (cover present)
+    // case duringInterview(During)      // → MVP 제외로 삭제 (2026-07-31)
 }
-public enum Start: Equatable, Sendable { case first, hasPortfolio, exhausted }
-public enum During: Equatable, Sendable { case inProgress, reportGenerating }
+public enum ReportVariant: Equatable, Sendable { case returning, recent }
+// 면접 시작은 별 Reducer: StartInterviewFeature.Variant { first, hasPortfolio, exhausted }
+// (삭제) During: Equatable, Sendable { case inProgress, reportGenerating } — MVP 제외
 // 위젯② 행별 상태는 phase 와 별개 유지:
 enum ReportRow { case first; case final(lastUpdatedAt:); case generationFailed } // + foldable 펼침 상태
 ```

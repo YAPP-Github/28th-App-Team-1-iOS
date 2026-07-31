@@ -23,7 +23,7 @@ struct HomeDefaultView: View {
 
     var body: some View {
         ZStack {
-            curtainBackground
+            HomeGreenBackdrop()
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -154,41 +154,6 @@ struct HomeDefaultView: View {
             .padding(.top, .ds(.p8))
         }
     }
-
-    // MARK: - 배경 커튼
-
-    /// 그린 판 위에 세로 밴드 8개(흰 그라데이션)를 겹친 장식 배경 — 위·아래는 흰색으로 덮이고
-    /// 가운데 띠만 그린이 비쳐 커튼 주름처럼 보인다. 상단이 흰색이라 내비바(흰 판)와 이음새가 없다.
-    // @ds(component): 세로 밴드 8개 × 흰 그라데이션 정지점 — 홈 전용 장식 배경, DS 에 없음
-    private var curtainBackground: some View {
-        HStack(spacing: 0) {
-            ForEach(Self.curtainBands.indices, id: \.self) { index in
-                LinearGradient(
-                    stops: Self.curtainBands[index].map {
-                        Gradient.Stop(color: Color.BlackWhite.white.opacity($0.opacity), location: $0.location)
-                    },
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                // @ds(spacing): 0.2 — 밴드 경계선 두께 (DSOutline 최소가 1)
-                .border(Color.BlackWhite.white, width: 0.2)
-            }
-        }
-        .background(Color.HilitGreen.g500)
-    }
-
-    /// 밴드별 흰색 정지점 — `location` 은 화면 전체 높이 비율(시안 812pt 기준의 % 를 그대로 옮긴 값)이라
-    /// 기기 높이가 달라도 같은 비율로 늘어난다. 밴드마다 정지점이 달라 주름이 불규칙해 보인다.
-    private static let curtainBands: [[(opacity: Double, location: CGFloat)]] = [
-        [(1, 0.136), (0.4, 0.325), (1, 1)],
-        [(1, 0.115), (0.4, 0.257), (0.3, 0.475), (0.4, 0.589), (1, 1)],
-        [(1, 0.118), (0.4, 0.231), (0.2, 0.394), (0.1, 0.504), (0.4, 0.684), (1, 1)],
-        [(1, 0.117), (0.3, 0.234), (0.1, 0.317), (0.1, 0.397), (0.3, 0.688), (1, 1)],
-        [(1, 0.133), (0.3, 0.244), (0.1, 0.393), (0.1, 0.508), (0.3, 0.626), (1, 1)],
-        [(1, 0.122), (0.4, 0.274), (0.2, 0.375), (0.1, 0.512), (0.4, 0.690), (1, 1)],
-        [(1, 0.142), (0.4, 0.328), (0.3, 0.429), (0.4, 0.590), (1, 1)],
-        [(1, 0.140), (0.4, 0.513), (1, 1)]
-    ]
 }
 
 #Preview("HomeDefault — 시안") {
