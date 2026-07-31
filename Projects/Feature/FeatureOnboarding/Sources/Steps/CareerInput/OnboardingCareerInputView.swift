@@ -10,7 +10,7 @@ import SharedDesignSystemInterface
 import SwiftUI
 
 // Figma «STEP 2_연차» (node 1609:8561) 구현.
-// 구성: 내비바(X만) · 프로그레스(2/5) · 헤더(필수 뱃지+타이틀+설명) · 문장형 연차 휠 · 하단 «이전으로|계속하기» 바.
+// 구성: 네비바(X만) · 프로그레스(2/5) · 헤더(필수 뱃지+타이틀+설명) · 문장형 연차 휠 · 하단 «이전으로|계속하기» 바.
 // @ViewAction 매크로가 send(_:) 를 제공한다 — View 는 store.send(.view(...)) 대신 send(.userTappedBack) 로만 방출.
 @ViewAction(for: OnboardingCareerInputFeature.self)
 public struct OnboardingCareerInputView: View {

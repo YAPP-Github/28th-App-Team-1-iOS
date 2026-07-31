@@ -40,7 +40,7 @@ Image.Img.micError           // 일러스트 — 크기·변형 없이 이름만
 | `Issue` | 원 안 느낌표 (빨강 = error 변형) | 오류·경고 |
 | `Left` / `Right` | 쉐브론 ‹ / › | 뒤로·앞으로 |
 | `Loading` | 진행 링(ing)·대기 링(wait)·기본 링(접두사 없음) | 단계 진행 표시 |
-| `Logo` | kakao 말풍선(노랑)·apple 사과 — with-bg/no-bg (+`…WithBg24` 는 24px 판) · hilit 워드마크 57×24 | 소셜 로그인 · 내비바 logo 변형 |
+| `Logo` | kakao 말풍선(노랑)·apple 사과 — with-bg/no-bg (+`…WithBg24` 는 24px 판) · hilit 워드마크 57×24 | 소셜 로그인 · 네비바 logo 변형 |
 | `Pause` | 세로 막대 2개 ‖ | 일시정지 |
 | `Play` | 왼쪽 세로 막대 + 삼각형 2개 — **순수 ▷ 가 아니다** | 영상 재생 |
 | `Plus` | + | 추가 |

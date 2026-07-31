@@ -11,7 +11,7 @@
 | 버튼 | 탭하면 **액션이 실행**된다 (action 클로저). 버튼의 팔레트·상태를 다루는 모디파이어(`.hilitSurface`·`.hilitButtonLoading`)도 여기 — 액션은 없지만 API 근거가 버튼 문서에 있다 | `component/button.md` |
 | 입력 | 값을 **바인딩으로 주고받는다** + 필드에 붙는 안내/에러 줄 | `component/input.md` |
 | 표시 | 값을 받아 **보여주기만** 한다 | `component/display.md` |
-| 내비게이션 | **화면·영역 전환**이나 진행 위치를 다룬다 (바인딩을 받아도 이쪽이 이긴다) | `component/navigation.md` |
+| 네비게이션 | **화면·영역 전환**이나 진행 위치를 다룬다 (바인딩을 받아도 이쪽이 이긴다) | `component/navigation.md` |
 
 ## 카탈로그
 
@@ -25,7 +25,7 @@
 | `CameraGuideFrame` | 카메라 얼굴 맞춤 가이드 프레임 327² | 표시 |
 | `ChoiceChip` | N지선다 등폭 척도 칩 | 버튼 |
 | `CountdownCard` | 남은 시간 다크 카드 | 표시 |
-| `DashIndicator` | 진행 단계 대시 | 내비게이션 |
+| `DashIndicator` | 진행 단계 대시 | 네비게이션 |
 | `FeedbackCard` | 지인 피드백 한 장 — 왼쪽 6pt 테두리 | 표시 |
 | `FieldSubText` | 필드 아래 서브 텍스트 한 줄 | 입력 |
 | `FileCard` | 첨부 파일 한 줄 카드 | 표시 |
@@ -36,10 +36,10 @@
 | `.hilitButtonLoading` | 버튼 로딩 오버레이 (시안에 없음) | 버튼 |
 | `HilitCheckboxStyle` | 체크박스 (`ToggleStyle`) | 입력 |
 | `HilitDivider` | 다크 판 구분선 | 표시 |
-| `.hilitLogoNavigationBar` | 내비바 — 루트 브랜드 판(로고·프로필) | 내비게이션 |
+| `.hilitLogoNavigationBar` | 네비바 — 루트 브랜드 판(로고·프로필) | 네비게이션 |
 | `.hilitModal` | 모달 딤 오버레이 표출 (모디파이어) | 표시 |
-| `.hilitNavigationBar` | 내비바 — push 화면(스택 안) | 내비게이션 |
-| `.hilitPresentedNavigationBar` | 내비바 — present 단독 화면(스택 밖) | 내비게이션 |
+| `.hilitNavigationBar` | 네비바 — push 화면(스택 안) | 네비게이션 |
+| `.hilitPresentedNavigationBar` | 네비바 — present 단독 화면(스택 밖) | 네비게이션 |
 | `.hilitSurface` | 화면 판 톤 선언 → 하위 팔레트 전환 | 버튼 |
 | `HilitTextEditor` | 여러 줄 입력 박스 | 입력 |
 | `HilitTextField` | 한 줄 입력 필드 | 입력 |
@@ -55,7 +55,7 @@
 | `QuoteField` | 작성된 코멘트 인용 줄 | 표시 |
 | `ReportCard` | 리포트 목록 줄 — 펼침·접힘 | 표시 |
 | `SaveIndicator` | 자동 저장 상태 | 표시 |
-| `TabSelector` | 밑줄 텍스트 탭 줄 | 내비게이션 |
+| `TabSelector` | 밑줄 텍스트 탭 줄 | 네비게이션 |
 | `TagLabel` | 소형 사각 태그 | 표시 |
 | `TitleBox` | 화면 머리글 (뱃지·타이틀·서브) | 표시 |
 | `VideoControl` | 영상 컨트롤 줄 | 버튼 |

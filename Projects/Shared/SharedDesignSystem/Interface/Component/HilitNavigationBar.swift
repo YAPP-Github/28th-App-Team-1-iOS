@@ -13,7 +13,7 @@ import SwiftUI
 //   text  439:10398(max) · 439:10399(왼쪽 아이콘 미노출) · 439:10400(텍스트 미노출)
 //   logo  439:10401(로고+프로필) · 439:10402(로고 단독)
 // (text 행엔 «오른쪽 아이콘 미노출» 칸이 없다 — 그 조합은 icon 행 439:10395 와 같은 그림이라 안 그린 것.)
-/// 내비바 네임스페이스 — **시스템 내비바에 내용만 꽂는다**. 부착 모디파이어 3종:
+/// 네비바 네임스페이스 — **시스템 네비바에 내용만 꽂는다**. 부착 모디파이어 3종:
 /// - push 화면(NavigationStack 안): `.hilitNavigationBar` — 시스템 바
 /// - 루트 브랜드 바: `.hilitLogoNavigationBar` — 시스템 바
 /// - present 화면(스택 밖 cover/sheet): `.hilitPresentedNavigationBar` — 시스템 바가
@@ -41,7 +41,7 @@ import SwiftUI
 /// (`default24`/`white24`)·타이틀색·`.filled` 배경색·상태바 글자색 네 값이 전부 이 한 축에서
 /// 파생되므로 화면이 낱개로 고르지 않는다 — 다크 바닥에 검정 X 같은 조합이 표현 불가능하다.
 ///
-/// mini 버튼의 `.hilitSurface(.light/.dark)` 와 같은 축·같은 이름이지만, 내비바는
+/// mini 버튼의 `.hilitSurface(.light/.dark)` 와 같은 축·같은 이름이지만, 네비바는
 /// Environment 가 아니라 파라미터로 받는다 — 빼먹으면 조용히 틀리는 물건이라 명시가 안전.
 ///
 /// 높이는 44(시스템 표준)로 간다 — 이 시안은 py14 로 52~54 를 재지만 «기본 UI 를 토대로 쓴다»는
@@ -135,7 +135,7 @@ extension HilitNavigationBar.Surface {
 // MARK: - 화면 부착 모디파이어
 
 public extension View {
-    /// 시스템 내비바에 표준 변형(X + 중앙 타이틀 + trailing 슬롯)을 꽂는다.
+    /// 시스템 네비바에 표준 변형(X + 중앙 타이틀 + trailing 슬롯)을 꽂는다.
     /// 화면은 바 내용(타이틀·trailing·onClose)만 선언하고, 배관(타이틀 스타일·시스템 백버튼 숨김·
     /// 배경 visibility·스와이프백 delegate)은 여기가 소유한다.
     ///
@@ -191,7 +191,7 @@ public extension View {
         ))
     }
 
-    /// present 된 화면(스택 밖 — fullScreenCover/sheet 단독)용 수동 내비바.
+    /// present 된 화면(스택 밖 — fullScreenCover/sheet 단독)용 수동 네비바.
     /// 시스템 바는 NavigationStack 밖에서 안 그려지므로, 같은 룩(44pt)의 바를
     /// `safeAreaInset` 으로 직접 얹는다. push 화면은 `.hilitNavigationBar` 를 쓴다.
     ///

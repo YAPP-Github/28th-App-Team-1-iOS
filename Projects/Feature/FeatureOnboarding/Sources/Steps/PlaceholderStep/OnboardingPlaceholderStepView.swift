@@ -9,7 +9,7 @@ import ComposableArchitecture
 import SharedDesignSystemInterface
 import SwiftUI
 
-// 온보딩 STEP 2+ 자리표시 뷰. 직군 선택과 같은 골격(내비바·프로그레스 바·하단 CTA)만 두고
+// 온보딩 STEP 2+ 자리표시 뷰. 직군 선택과 같은 골격(네비바·프로그레스 바·하단 CTA)만 두고
 // 본문은 비워 뒀다 — 실제 스텝 Figma 가 오면 OnboardingJobSelectionView 처럼 채운다.
 @ViewAction(for: OnboardingPlaceholderStepFeature.self)
 public struct OnboardingPlaceholderStepView: View {

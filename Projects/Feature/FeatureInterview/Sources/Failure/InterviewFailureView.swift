@@ -10,7 +10,7 @@ import SharedDesignSystemInterface
 import SwiftUI
 
 // Figma «[2] Interview_SttFailure»(2550:7504) · «[2] Interview_NetworkFailure»(2638:17018) 구현.
-// 흰 배경 · 좌상단 X 내비바 · 중앙(배지 54 + 타이틀/본문 + 이용권 안내) · 하단 버튼은 kind 별 분기(STT 다시 시작하기 / 네트워크 홈으로 / 질문 준비 처음으로).
+// 흰 배경 · 좌상단 X 네비바 · 중앙(배지 54 + 타이틀/본문 + 이용권 안내) · 하단 버튼은 kind 별 분기(STT 다시 시작하기 / 네트워크 홈으로 / 질문 준비 처음으로).
 // 질문 준비 실패(Interview_QuestionPrepFailure)는 시안 미출 — 동일 레이아웃 임시.
 // @ViewAction 매크로가 send(_:) 를 제공한다 — View 는 store.send(.view(...)) 대신 send(.onAppear) 로만 방출.
 @ViewAction(for: InterviewFailureFeature.self)
