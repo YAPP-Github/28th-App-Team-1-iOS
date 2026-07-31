@@ -23,28 +23,14 @@ public struct InterviewFailureView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            navigationBar
             Spacer(minLength: 0)
             content
             Spacer(minLength: 0)
             bottomButton
         }
         .background(Color.BlackWhite.white.ignoresSafeArea())
-        .navigationBarBackButtonHidden(true)
-    }
-
-    private var navigationBar: some View {
-        HStack(spacing: 0) {
-            Button {
-                send(.userTappedClose)
-            } label: {
-                Image.Cancel.default24
-            }
-            .buttonStyle(.plain)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, .ds(.p20))
-        .frame(height: 54)
+        // 시안 «component/navigationbar»(X만) — 실패 화면은 스와이프 pop 이 리듀서 닫기 로직을 우회하므로 끈다.
+        .hilitNavigationBar(allowsSwipeBack: false, onClose: { send(.userTappedClose) })
     }
 
     // MARK: - 중앙 콘텐츠 (배지 + title-box + info-field, gap 24)
@@ -85,18 +71,10 @@ public struct InterviewFailureView: View {
         .hilightColor(.red)
     }
 
+    /// 시안 «info-field» 인스턴스 — DS `InfoField(.gray)` 1:1. 좌우 여백 20 은 화면 몫.
     private var infoField: some View {
-        HStack(spacing: .ds(.p8)) {
-            Image.Info.default
-            Text(ticketNotice)
-                .dsTypography(.body9)
-                .foregroundStyle(Color.GrayScale.g700)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(.horizontal, .ds(.p14))
-        .padding(.vertical, .ds(.p12))
-        .background(Color.GrayScale.g100)
-        .padding(.horizontal, .ds(.p20))
+        InfoField(ticketNotice)
+            .padding(.horizontal, .ds(.p20))
     }
 
     /// PRD §3.9 STT = 재시작 유도 · §3.7 네트워크 = 홈으로만 · §3.2 질문 준비 = 처음으로만(재시도 없음).

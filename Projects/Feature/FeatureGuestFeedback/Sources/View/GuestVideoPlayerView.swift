@@ -69,9 +69,8 @@ struct GuestVideoPlayerView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .overlay(alignment: .bottomTrailing) {
                         Button(action: onExpandTapped) {
-                            Image(systemName: "arrow.up.left.and.arrow.down.right")
-                                .padding(.ds(.p8))
-                                .background(.thinMaterial, in: Circle())
+                            // 시안(2150:7278) 실측 30px «expand/default» — 회색 타일·흰 글리프까지 에셋에 구워진 판.
+                            Image.Expand.default30
                         }
                         .padding(.ds(.p8))
                     }

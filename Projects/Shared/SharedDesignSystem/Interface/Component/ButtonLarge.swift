@@ -92,10 +92,13 @@ public struct ButtonLarge<Leading: View, Trailing: View>: View {
 
     // MARK: - 2버튼
 
+    /// 모달 반반(twoColor)만 패딩 없이 카드 바닥을 꽉 채운다 — 시안 «modal»(2555:7739)의
+    /// 버튼 영역은 좌 g50 · 우 b800 이 반반 풀블리드다. 세로 여백은 세그먼트가 제 배경 안에 갖는다.
     private func pair(tone: PairTone) -> some View {
-        HStack(spacing: tone.dividerColor == nil ? 0 : .ds(.p8)) {
+        let fills = kind == .modal && tone == .twoColor
+        return HStack(spacing: tone.dividerColor == nil ? 0 : .ds(.p8)) {
             leading
-                .buttonStyle(SegmentStyle(tone: tone, side: .leading))
+                .buttonStyle(SegmentStyle(tone: tone, side: .leading, fillsContainer: fills))
             if let dividerColor = tone.dividerColor {
                 // @ds(spacing): 1×25 — 두 라벨 사이 구분선 (토큰 없음)
                 Rectangle()
@@ -103,11 +106,11 @@ public struct ButtonLarge<Leading: View, Trailing: View>: View {
                     .frame(width: 1, height: 25)
             }
             trailing
-                .buttonStyle(SegmentStyle(tone: tone, side: .trailing))
+                .buttonStyle(SegmentStyle(tone: tone, side: .trailing, fillsContainer: fills))
         }
-        .padding(.horizontal, kind.horizontalPadding)
-        .padding(.top, kind == .bottom ? .ds(.p20) : .ds(.p16))
-        .padding(.bottom, kind == .bottom ? .ds(.p10) : .ds(.p16))
+        .padding(.horizontal, fills ? 0 : kind.horizontalPadding)
+        .padding(.top, fills ? 0 : kind == .bottom ? .ds(.p20) : .ds(.p16))
+        .padding(.bottom, fills ? 0 : kind == .bottom ? .ds(.p10) : .ds(.p16))
         .background {
             if let shared = tone.sharedBackground {
                 shared.ignoresSafeArea(edges: kind.safeAreaEdges)
@@ -234,6 +237,7 @@ private struct SingleStyle: ButtonStyle {
 }
 
 /// 2버튼 한쪽 — 배경·divider 는 컨테이너 몫이라 라벨색과 반반 배경만 맡는다.
+/// `fillsContainer` 면 세로 여백을 배경 안쪽에 가져 반반 판이 컨테이너 높이를 꽉 채운다.
 private struct SegmentStyle: ButtonStyle {
     enum Side { case leading, trailing }
 
@@ -241,11 +245,13 @@ private struct SegmentStyle: ButtonStyle {
 
     let tone: ButtonLargePairTone
     let side: Side
+    var fillsContainer = false
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .dsTypography(.sub7)
             .frame(maxWidth: .infinity, minHeight: DSTypography.sub7.lineHeight)
+            .padding(.vertical, fillsContainer ? .ds(.p16) : 0)
             .foregroundStyle(foreground)
             .background {
                 if let ownBackground { ownBackground }

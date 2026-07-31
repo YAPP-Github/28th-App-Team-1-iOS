@@ -198,9 +198,8 @@ struct GuestEvaluationView: View {
 
     private var emptyCommentLabel: some View {
         HStack(spacing: .ds(.p8)) {
-            Image(systemName: "plus")
-                .font(.ds(.body6))
-                .foregroundStyle(Color.GrayScale.g900)
+            // 시안 button-optional(2227:4511)의 «plus/16px/default» — 색은 에셋에 구워진 원본색.
+            Image.Plus.default16
             Text("왜 그렇게 느꼈나요?")
                 .dsTypography(.body6)
                 .foregroundStyle(Color.GrayScale.g900)
@@ -210,11 +209,11 @@ struct GuestEvaluationView: View {
         .padding(.ds(.p8))
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(
-            // Figma button-optional(2227:4511) — 시안이 직사각형(radius 0) 점선 테두리.
+            // Figma button-optional(2227:4511) — 직사각형(radius 0) 점선 테두리, 두께 outline-m.
             Rectangle()
                 .strokeBorder(
                     Color.GrayScale.g100,
-                    style: StrokeStyle(lineWidth: .ds(.small), dash: [4])
+                    style: StrokeStyle(lineWidth: .ds(.medium), dash: [4])
                 )
         )
     }
