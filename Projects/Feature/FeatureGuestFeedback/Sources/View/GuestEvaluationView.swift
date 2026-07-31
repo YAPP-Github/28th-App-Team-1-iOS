@@ -209,11 +209,11 @@ struct GuestEvaluationView: View {
         .padding(.ds(.p8))
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(
-            // Figma button-optional(2227:4511) — 시안이 직사각형(radius 0) 점선 테두리.
+            // Figma button-optional(2227:4511) — 직사각형(radius 0) 점선 테두리, 두께 outline-m.
             Rectangle()
                 .strokeBorder(
                     Color.GrayScale.g100,
-                    style: StrokeStyle(lineWidth: .ds(.small), dash: [4])
+                    style: StrokeStyle(lineWidth: .ds(.medium), dash: [4])
                 )
         )
     }
