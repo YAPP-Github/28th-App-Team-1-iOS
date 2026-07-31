@@ -11,14 +11,19 @@
 
 import SwiftUI
 
-/// 모달 카드 — 흰 판(아이콘·제목·서브텍스트·안내줄) + 하단 `ButtonLarge(.modal)`.
+/// 모달 **카드 층** — 확인·경고 팝업의 흰 판(아이콘·제목·서브텍스트·안내줄) + 하단 `ButtonLarge(.modal)`.
+/// 단독으로 화면에 놓지 않는다 — 항상 `.hilitModal` 오버레이에 얹는다(딤·중앙 배치·표시 전환은 그쪽 몫).
+/// 카드 세 계열(확인 `Modal` / 홈 안내 `HomeModal` / 로딩 `LoadingModal`)의 선택 기준·표준 레시피는
+/// `design/component/display.md` «모달 — 두 층 조립».
 ///
 /// ```swift
-/// Modal("텍스트를 입력해주세요",
-///       subText: "서브텍스트를 입력해주세요",
-///       icon: Image.Img.book,
-///       info: "텍스트를 입력해주세요") {
-///     ButtonLarge("버튼1", .modal) { }
+/// .hilitModal(isPresented: store.isConfirmPresented) {
+///     Modal("텍스트를 입력해주세요",
+///           subText: "서브텍스트를 입력해주세요",
+///           icon: Image.Img.book,
+///           info: "텍스트를 입력해주세요") {
+///         ButtonLarge("버튼1", .modal) { send(.userTappedConfirm) }
+///     }
 /// }
 /// ```
 ///
