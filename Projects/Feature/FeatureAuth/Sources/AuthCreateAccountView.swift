@@ -74,8 +74,7 @@ public struct AuthCreateAccountView: View {
             SocialLoginButton(
                 title: "카카오톡으로 로그인",
                 icon: Image.Logo.kakaoWithBg24,
-                // @ds(color): #FEE500 — 카카오 브랜드 배경. 팔레트 23색에 없다 (Figma 변수명 `kakao`)
-                background: Color(red: 254 / 255, green: 229 / 255, blue: 0),
+                background: Color.Brand.kakao,
                 foreground: Color.HilitBlack.b900
             ) {
                 send(.userTappedSignIn(.kakao))

@@ -46,7 +46,9 @@ PRD Part 6·7 확정(2026-07-31)으로 FeatureAuth 가 로그인 단일 화면�
 
 ## AppFeature 통합
 
-Splash 판정 → 로그인 전/후 루트 게이트로 분기한다. `AppFeature.onAppear` 가 `authClient.isAuthenticated()`(Keychain 토큰 유무)로 `State.isAuthenticated` 초기값을 정하고 `isCheckingSession` 을 내린다 — 판정 동안 `SplashView`, false 면 `AuthView`(가입 플로우 스택) 전체화면, true 면 TabView. `AuthFeature`(코디네이터)가 가입 완료 또는 기존 회원 로그인 시 `delegate(.signedIn)`을 올리면 AppFeature 가 수신해 전환한다(cross-feature 조립은 AppFeature에서만). → [[app]]
+Splash 판정 → 로그인 전/후 루트 게이트로 분기한다. 판정 동안 `SplashView`, 미인증이면 `AuthView`(가입 플로우 스택) 전체화면, 인증됐으면 TabView. → [[app]]
+
+`AppFeature.onAppear` 가 `authClient.isAuthenticated()`(Keychain 토큰 유무)로 `State.isAuthenticated` 초기값을 정하고 `isCheckingSession` 을 내린다. `AuthFeature`(코디네이터)가 가입 완료 또는 기존 회원 로그인 시 `delegate(.signedIn)`을 올리면 AppFeature 가 수신해 전환한다(cross-feature 조립은 AppFeature에서만).
 
 ## 다음 작업
 
@@ -54,5 +56,5 @@ Splash 판정 → 로그인 전/후 루트 게이트로 분기한다. `AppFeatur
 
 - **동의 제출·신규/기존 분기 API(S-1)**: DomainAuth 확장 + 코디네이터 분기 교체 — 서버 협의 후.
 - **프로필 제출 시점**: 이름·직군·연차를 화면별 즉시 vs 등록 완료 일괄 — 확정 시 `UserClient.registerName`·`updateProfile` 배선.
-- **Figma UI 연결**: 전 화면 골격 → 시안 교체(figma-screen). A0 실패 alert → 토스트 교체 포함.
+- **Figma UI 연결**: 가입 플로우 8화면(Splash·CreateAccount·Terms+전문시트·Suspension·이름·직군·연차·등록완료)은 시안 교체 완료(2026-07-31, figma-screen). 남은 것은 A0 실패 alert → 토스트 교체.
 - **로그아웃 UX**: 설정 화면(Part 5)에서 `authClient.logout()` 호출 + 게이트 복귀.

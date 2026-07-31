@@ -23,9 +23,8 @@ public struct AuthOnboardingRegisterView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            // @ds(layout): 시안 그룹 y=268 (375×812 절대배치, 상하 여백 224:280) → Spacer 균등 중앙(≈y=296).
-            // 오토레이아웃이 없는 프레임이라 «약간 위쪽 중앙»이 의도로 보이고, 28pt 차는 비율 스페이서가
-            // 필요해 보류했다 — 디자이너 확정 후 비율/고정 여백 중 하나로 교체.
+            // 시안은 그룹을 y=268(정중앙보다 28 위)에 절대 배치하지만, 전면 안내 화면은
+            // 정중앙으로 통일한다(사용자 결정 2026-07-31) — AuthSuspensionView 와 같은 규칙.
             Spacer(minLength: 0)
 
             completionMessage

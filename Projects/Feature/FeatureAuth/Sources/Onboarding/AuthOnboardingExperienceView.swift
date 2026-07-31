@@ -41,21 +41,12 @@ public struct AuthOnboardingExperienceView: View {
 
     // MARK: - 상단
 
-    /// 진행 대시 — 화면 폭을 균등 분할한다.
-    // @ds(component): progress bar 3877:11601 — 공용 `DashIndicator` 는 조각 20pt 고정폭 · gap 4 라
-    //                 폭을 채우는 이 변형을 표현할 수 없다. 시안 정리되면 `DashIndicator` 에 폭 축 추가 후 교체
-    // @ds(spacing): gap 2 · 대시 높이 4 — 진행 대시 (spacing 토큰은 4 부터, 높이 토큰 없음)
+    /// 진행 대시 — 시안 progress bar 3877:11601 은 화면 폭을 균등 분할하므로 `layout: .fill`.
     private var progressBar: some View {
-        HStack(spacing: 2) {
-            ForEach(1...store.totalSteps, id: \.self) { step in
-                Rectangle()
-                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.GrayScale.g50)
-                    .frame(height: 4)
-            }
-        }
-        .padding(.horizontal, .ds(.p20))
-        .padding(.vertical, .ds(.p4))
-        .padding(.top, .ds(.p8))
+        DashIndicator(count: store.totalSteps, current: store.step, layout: .fill)
+            .padding(.horizontal, .ds(.p20))
+            .padding(.vertical, .ds(.p4))
+            .padding(.top, .ds(.p8))
     }
 
     /// 뱃지 «필수» + 그린 마커 타이틀 + 서브 — 좌우 여백은 호출부(=여기) 몫이다.

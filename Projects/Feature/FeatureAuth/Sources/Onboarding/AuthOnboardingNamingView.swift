@@ -46,19 +46,11 @@ public struct AuthOnboardingNamingView: View {
     }
 
     /// 가입 온보딩 진행 위치 — 조각 수는 `totalSteps`, 켜지는 범위는 `step` 에서 파생.
-    // @ds(component): progress bar 3877:11573 — 조각 h4 가 가로를 등분한다. DS `DashIndicator` 는
-    //                 조각이 20×4 고정폭이라 못 쓴다 (온보딩 4화면 공용 승격 후보)
-    // @ds(spacing): 2 — 조각 사이 간격 (spacing 토큰은 4~24 뿐)
+    /// 시안 progress bar 3877:11573 = 폭 등분 변형이라 `layout: .fill`.
     private var progressBar: some View {
-        HStack(spacing: 2) {
-            ForEach(1...max(store.totalSteps, 1), id: \.self) { step in
-                Rectangle()
-                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.GrayScale.g50)
-                    .frame(height: 4)
-            }
-        }
-        .padding(.horizontal, .ds(.p20))
-        .padding(.vertical, .ds(.p4))
+        DashIndicator(count: store.totalSteps, current: store.step, layout: .fill)
+            .padding(.horizontal, .ds(.p20))
+            .padding(.vertical, .ds(.p4))
     }
 
     /// 이름 입력란 — 폭은 내용 hug 라 가운데 정렬은 호출부(`frame(maxWidth:)`) 몫.

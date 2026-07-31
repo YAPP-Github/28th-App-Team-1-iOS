@@ -22,10 +22,10 @@ public struct AuthSuspensionView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
+            // 시안은 안내 블록을 y=280(정중앙보다 24.5 위)에 절대 배치하지만,
+            // 전면 안내 화면은 정중앙으로 통일한다(사용자 결정 2026-07-31) — 기기 폭·높이에 무관하게 같은 결.
             noticeBlock
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                // @ds(layout): 안내 블록 y=280 (위 237 : 아래 286) — 정중앙보다 24.5 위. 아래 49 여백으로 재현
-                .padding(.bottom, 49)
 
             bottomBar
         }
