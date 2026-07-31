@@ -79,6 +79,20 @@ struct AppFeature {
             case .home(.delegate(.onboardingRequested)):
                 state.onboarding = OnboardingFeature.State()
                 return .none
+            case .home(.delegate(.interviewStartRequested)):
+                // TODO: 면접 플로우 조립 — 게이트(checkStartEligibility) 결과별 라우팅(위저드 cover / S2 강제 /
+                //       AuthSuspension). `FeatureInterview` 는 아직 App 에 scope 조차 없다
+                //       (docs/work/home-account.md §4, 미결 6-1 서버 협의).
+                return .none
+            case .home(.delegate(.interviewInfoEditRequested)):
+                // TODO: 면접 정보 수정(직군·연차·JD·포폴) 진입 조립 — 소유 Feature 확정 후.
+                return .none
+            case .home(.delegate(.profileRequested)):
+                // TODO: 마이페이지 진입 — Part 5 Feature 가 생기면 조립한다(docs/work/home-account.md §4).
+                return .none
+            case .home(.delegate(.reportDetailRequested)):
+                // TODO: 리포트 상세(r1/최종) 제시 — `InterviewReportFeature` 통합 후 sessionId 로 배선.
+                return .none
             case .home(.delegate(.logoutRequested)):
                 // 서버 로그아웃(+토큰 Keychain 삭제)·온보딩 draft(UserDefaults) 삭제. 실패해도 로컬 정리는 진행.
                 return .run { send in

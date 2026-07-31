@@ -146,6 +146,8 @@ AuthTerms 제출 후 이어지는 4화면. AuthFeature 도메인 내부 내비(�
 | `ACCOUNT_SUSPENDED` | `AuthSuspension` 정지 안내 (§2) | cross-feature — AppFeature 제시 |
 | 기타 (`RATE_LIMITED` 등) | 각 안내 | 홈 내부 |
 
+**추가 (2026-07-31 배선)** — 시안에 위젯① 버튼이 없고 문구(«밑으로 스크롤해서 면접을 시작해 보세요!»)만 있어, 면접 시작 화면 진입을 **리포트 시트 하향 드래그(60pt 임계값) + 안내 문구 탭** 두 경로로 열었다. 모션 시안이 없어 임계값·전환은 구현자 판단이고 코드에 TODO 로 표시했다 — 시안 수령 시 확정. 게이트(`checkStartEligibility`)는 아직 없어 present 는 무조건 열린다.
+
 ### 위젯 ② 면접 기록 (마이페이지 PRD 3.3·3.4 이관)
 
 세션당 1행·최신순, MVP 최대 3~4행 전체 노출(페이지네이션 없음). 행 탭 → 펼침(foldable, 재탭 접힘) = 메타데이터 + [레포트 보기].
@@ -159,6 +161,8 @@ AuthTerms 제출 후 이어지는 4화면. AuthFeature 도메인 내부 내비(�
 메타데이터(전부 **세션 스냅샷** 값): 직군·연차(면접 당시 값) / 포트폴리오 파일명(원본 삭제 시 «삭제된 포트폴리오» 배지 + 파일명 유지) / JD(url 문자열 또는 «JD 직접 입력») / 시각 4종(서버 시간 — 면접 진행·레포트 생성·지인 피드백 요청·최종 마지막 업데이트).
 
 [레포트 보기] → `InterviewReportFeature` 는 cross-feature — `delegate` → AppFeature 제시([ai-interview-report](ai-interview-report.md)).
+
+**추가 (2026-07-31 배선)** — 목록·펼침은 `HomeFeature.State` 가 든다: `reports: IdentifiedArrayOf<Report>`(개수는 `reports.count` 파생) · `expandedReportID`(1개, 재탭 접힘 — 리듀서 토글). 행 모델 `Report` 는 아직 `dateText`·`title` 만 있는 **뷰 표시용**이라 위 표의 행 상태·메타데이터 필드는 미구현 — 목록 API 계약(미결 #1) 확정 시 `DomainInterviewReport` 로 이관한다.
 
 ### 잔여 무료 횟수 — 홈 단독 표시
 
@@ -187,6 +191,8 @@ Onboarding --delegate(.finished(sessionId:))-▶ AppFeature → 면접 시작 (�
 ```
 
 기존 dev 임시 진입(`showsOnboardingEntry`·`showsDebugLogout`)은 위젯①·마이페이지(로그아웃은 Part 5)로 흡수되며 제거 예정.
+
+**추가 (2026-07-31 배선) — 위 표의 delegate 4건이 실제 케이스로 들어갔다.** 이름은 구현 기준: `interviewStartRequested`(StartInterview 의 [시작하기]) · `interviewInfoEditRequested`([수정하기]) · `profileRequested`(마이페이지) · `reportDetailRequested(id:)`(리포트 상세 — 인자는 아직 세션 id 가 아니라 표시 모델의 행 id, 목록 계약 확정 시 교체). `AppFeature` 는 네 케이스를 **명시로 받고 `.none` + TODO** — `resumeInterviewRequested(sessionId:)` 는 held 세션 로드가 없어 아직 만들지 않았다. 홈 내부에 남는 것: 펼침 토글(`userTappedReportRow`)·면접 시작 화면 present.
 
 ## 5. Client / Domain 영향
 
