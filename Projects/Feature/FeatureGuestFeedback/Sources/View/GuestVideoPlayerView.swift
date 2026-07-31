@@ -69,9 +69,9 @@ struct GuestVideoPlayerView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .overlay(alignment: .bottomTrailing) {
                         Button(action: onExpandTapped) {
-                            Image(systemName: "arrow.up.left.and.arrow.down.right")
-                                .padding(.ds(.p8))
-                                .background(.thinMaterial, in: Circle())
+                            // DS `Expand.default24` — g200 사각 타일 + 흰 화살표가 에셋에 구워져 있어
+                            // 뒤에 별도 배경(thinMaterial 원)을 깔지 않는다(코너 0 판이라 원이 어긋난다).
+                            Image.Expand.default24
                         }
                         .padding(.ds(.p8))
                     }
@@ -96,11 +96,11 @@ struct GuestVideoPlayerView: View {
         }
     }
 
+    /// 영상 미도착 자리 — **시안에 없는 코드 전용 상태**다(Figma 에 placeholder 변형이 없다).
+    /// 아이콘만 DS 로 맞춘다: `Video.disabled24`(g200 글리프) — 다크 판 위 «아직 없음» 톤.
     private var placeholderContent: some View {
         VStack(spacing: .ds(.p8)) {
-            Image(systemName: "video.slash")
-                .font(.title2)
-                .foregroundStyle(Color.GrayScale.g400)
+            Image.Video.disabled24
             Text("영상을 준비 중이에요")
                 .dsTypography(.body7)
                 .foregroundStyle(Color.GrayScale.g400)

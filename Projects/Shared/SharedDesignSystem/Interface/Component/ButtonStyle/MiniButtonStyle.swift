@@ -5,8 +5,8 @@
 //  Created by EunseoKim on 26/07/26.
 //
 
-// Figma: «ButtonMini» https://figma.com/design/ZG7FUxWCvITmnvzZi7fpTS/?node-id=1941-6780
-//        «button-mini/with-icon» node-id=2227-4441 — 아이콘은 변형이 아니라 라벨 구성이다:
+// Figma: «button-mini» https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=435-739
+//        «button-mini/with-icon» light 439-10204 · dark 439-10205 — 아이콘은 변형이 아니라 라벨 구성이다:
 //        Button { HStack(spacing: .ds(.p8)) { Image.Video.default16; Text("영상 다시보기") } }
 
 import SwiftUI
@@ -19,7 +19,8 @@ public struct MiniButtonStyle: ButtonStyle {
     public enum Tone: Sendable, CaseIterable {
         /// 검정 채움 (라이트 판 기본)
         case black
-        /// 회색 — 라이트: g100 바탕(with-icon 마스터), 다크: g900 바탕
+        /// 회색 — 라이트: g100 바탕 + b800 라벨, 다크: g900 바탕.
+        /// 다크 라벨색은 `layout` 에 걸린다 — `.withIcon` 은 시안(439:10205)대로 흰색, 텍스트 전용은 g300.
         case gray
         /// 그린 채움
         case green
@@ -91,9 +92,14 @@ public struct MiniButtonStyle: ButtonStyle {
             return Palette(background: pressed ? Color.GrayScale.g900 : Color.HilitBlack.b800,
                            foreground: Color.BlackWhite.white)
         case .gray:
-            return surface == .dark
-                ? Palette(background: Color.GrayScale.g900, foreground: Color.GrayScale.g300)
-                : Palette(background: Color.GrayScale.g100, foreground: Color.HilitBlack.b800)
+            guard surface == .dark else {
+                // Figma `button-mini/with-icon` light 439:10204 — g100 바탕 + b800 라벨.
+                return Palette(background: Color.GrayScale.g100, foreground: Color.HilitBlack.b800)
+            }
+            // 다크 판 회색은 `with-icon` dark(439:10205)만 시안이 있고 라벨이 **흰색**이다.
+            // 텍스트 전용 다크 회색은 확정 시안이 없어 기존 g300 을 유지한다 — 그래서 라벨색이 layout 에 걸린다.
+            return Palette(background: Color.GrayScale.g900,
+                           foreground: layout == .withIcon ? Color.BlackWhite.white : Color.GrayScale.g300)
         case .green:
             return Palette(background: Color.HilitGreen.g500, foreground: Color.HilitGreen.g800)
         case .white:
@@ -191,6 +197,9 @@ public extension ButtonStyle where Self == MiniSubButtonStyle {
             Button("버튼") {}.buttonStyle(.mini(.gray))
             Button("비활성") {}.buttonStyle(.mini(.black)).disabled(true)
         }
+        // with-icon — 라이트 판(439:10204)과 다크 판(439:10205). 다크 라벨은 흰색이다.
+        // @ds(image): 다크 판 시안 아이콘은 흰색인데 `video/16px/white` 에셋이 아직 없다 —
+        //             에셋이 들어오면 아래 다크 쪽 `Image.Video.default16` 을 그것으로 바꾼다.
         HStack(spacing: .ds(.p8)) {
             Button {} label: {
                 HStack(spacing: .ds(.p8)) {
@@ -202,6 +211,18 @@ public extension ButtonStyle where Self == MiniSubButtonStyle {
                 }
             }
             .buttonStyle(.mini(.gray, layout: .withIcon))
+
+            Button {} label: {
+                HStack(spacing: .ds(.p8)) {
+                    Image.Video.default16
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 16, height: 16)
+                    Text("영상 다시보기")
+                }
+            }
+            .buttonStyle(.mini(.gray, layout: .withIcon))
+            .hilitSurface(.dark)
         }
         HStack(spacing: .ds(.p8)) {
             Button("버튼") {}.buttonStyle(.mini(.gray))

@@ -48,7 +48,7 @@ Figma 의 raw 수치를 그대로 박지 않는다. 각 값마다 대응 토큰�
 // @ds(radius): 12 — 카드 모서리 (DSRadius 토큰 없음)
 .clipShape(RoundedRectangle(cornerRadius: 12))
 
-// @ds(spacing): 32 — 섹션 사이 (spacing 토큰은 4~24 뿐)
+// @ds(spacing): 32 — 섹션 사이 (spacing 스케일에 32 가 없다)
 .padding(.top, 32)
 
 // @ds(color): #FF5858 → Error.e500 — 에러 텍스트, 시안보다 약간 진함

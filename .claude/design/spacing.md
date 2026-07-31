@@ -12,18 +12,21 @@
 | `p8` | 8 | `p20` | 20 |
 | `p10` | 10 | `p22` | 22 |
 | `p12` | 12 | `p24` | 24 |
-| `p14` | 14 | | |
+| `p14` | 14 | `p40` | 40 |
 
 ## Outline (`DSOutline`)
 
-테두리 두께. Figma outline-s/m 은 Swift 식별자 최소 길이 규칙(SwiftLint)에 맞춰 `small`/`medium` 으로 풀어썼다 — 값은 Figma 그대로. 접근: `.strokeBorder(…, lineWidth: .ds(.medium))`.
+테두리 두께. Figma outline-s/m/sb 는 Swift 식별자 최소 길이 규칙(SwiftLint)에 맞춰 `small`/`medium`/`semiBold` 로 풀어썼다 — 값은 Figma 그대로. 접근: `.strokeBorder(…, lineWidth: .ds(.medium))`.
 
 | 토큰 | pt | Figma |
 |---|---|---|
 | `small` | 1 | outline-s |
 | `medium` | 1.2 | outline-m |
-| `large` | 4 | — |
-| `mega` | 6 | — |
+| `semiBold` | 1.5 | outline-sb |
+| `large` | 4 | outline-large |
+| `mega` | 6 | outline-mega |
+
+`semiBold` 는 «카드 판 테두리·선택 밑줄» 두께다 — `ButtonLarge(.outlined)` 테두리, `TabSelector` 선택 밑줄, `FileCard`·`FoldableCard`·`FileUpload` 파일 행 테두리가 쓴다.
 
 ## 규칙
 

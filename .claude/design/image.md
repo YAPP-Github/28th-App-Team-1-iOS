@@ -55,6 +55,8 @@ Image.Img.micError           // 일러스트 — 크기·변형 없이 이름만
 | `Video` | 사각 화면 + 재생 표시 | 영상 |
 | `Img` | 일러스트 — book(책)·feedback(214px)·finish·link(사슬)·micError(다크 타일+마이크+빨간 배지)·networkError(다크 타일+네트워크)·oppO/oppX/oppEllipsis(74px o·X·…)·person·reportEmpty·success(100px)·talk·tooltipTail(말풍선 꼬리 97×11) | 빈 상태·에러 화면·말풍선 |
 
+**주의 — `Img` 안에 일러스트가 아닌 것**: `person`·`talk` 은 일러스트가 아니라 **완성형 40×40 아이콘 타일**이다 — b800 판 + 초록 24pt 글리프가 에셋에 구워져 있고 모서리 0. Figma `person/40px`(435:656)·`talk/40px`(435:652), 게스트 온보딩 가이드 행 그래픽이다. **다른 타일로 감싸거나 틴트하지 말 것** — 판이 이미 에셋 안에 있다. 이름으로 아이콘 패밀리를 뒤지면 못 찾는다(`Img` 로 분류돼 있다).
+
 **주의 — Figma 와 이름이 다른 곳**: `Img.tooltipTail` 은 Figma «icon» 시트에 없는 별도 에셋이다. `Check` 도 시트에 없다 — «Checkbox» 컴포넌트(3768:16630) 내부 벡터를 떼어 온 것. `Info.error` 도 시트에 없다 — 디자이너가 «info-field/red» 안에서 인스턴스에 e500 을 덮어썼을 뿐이라, 틴트 금지 규칙상 같은 도형을 e500 으로 칠한 에셋으로 넣었다.
 
 **주의 — 2026-07-29 전량 재수출에서 드러난 것** (변형 이름이 `dark`→`white`, `grey`→`gray` 로 바뀐 판):

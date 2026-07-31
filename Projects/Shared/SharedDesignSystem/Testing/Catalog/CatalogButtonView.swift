@@ -12,10 +12,14 @@ import SwiftUI
 /// 상태(pressed·disabled)는 넘기는 축이 아니라 SwiftUI 가 주는 것이라, disabled 는 `.disabled(true)` 로만 보여준다.
 /// `mini`·`tag` 는 판(light/dark)에 따라 팔레트가 바뀌어 어두운 판 묶음을 따로 둔다.
 struct CatalogButtonView: View {
+    /// 페이지가 주는 좌우 여백 — 풀블리드(반반) 버튼은 이만큼 되돌려 화면 폭 그대로 눕힌다.
+    private static let pageInset: CGFloat = .ds(.p20)
+
     var body: some View {
         CatalogPage("버튼") {
             largeSingle
             largePair
+            largeLogin
             medium
             mini
             miniSub
@@ -36,7 +40,7 @@ struct CatalogButtonView: View {
     }
 
     private var largePair: some View {
-        CatalogGroup("ButtonLarge 2버튼 — tone .dark / .gray / .twoColor") {
+        CatalogGroup("ButtonLarge 2버튼 — tone .dark / .gray / .twoColor(풀블리드 — 페이지 여백을 되돌린다)") {
             VStack(spacing: .ds(.p8)) {
                 ButtonLarge(.bottom, tone: .dark) {
                     Button("아니오") {}
@@ -48,16 +52,36 @@ struct CatalogButtonView: View {
                 } trailing: {
                     Button("확인") {}
                 }
+                // 반반은 컨테이너 여백이 0 이라 좌우 끝까지 붙어야 반쪽 경계가 화면 중앙에 온다.
                 ButtonLarge(.bottom, tone: .twoColor) {
                     Button("나중에") {}
                 } trailing: {
                     Button("계속하기") {}
                 }
+                .padding(.horizontal, -Self.pageInset)
+                ButtonLarge(.modal, tone: .twoColor) {
+                    Button("취소") {}
+                } trailing: {
+                    Button("삭제") {}
+                }
+                .padding(.horizontal, -Self.pageInset)
                 ButtonLarge(.modal, tone: .dark) {
                     Button("닫기") {}
                 } trailing: {
                     Button("저장") {}.disabled(true)   // 한쪽만 비활성 = 그 자식에 .disabled
                 }
+            }
+        }
+    }
+
+    private var largeLogin: some View {
+        CatalogGroup("ButtonLarge 로그인 — login: .kakao / .apple · showsLogo") {
+            VStack(spacing: .ds(.p8)) {
+                ButtonLarge("카카오로 시작하기", login: .kakao) {}
+                ButtonLarge("Apple로 시작하기", login: .apple) {}
+                ButtonLarge("로고 없이", login: .kakao, showsLogo: false) {}
+                ButtonLarge("비활성", login: .kakao) {}.disabled(true)
+                ButtonLarge("로그인 중", login: .apple) {}.hilitButtonLoading(true)
             }
         }
     }

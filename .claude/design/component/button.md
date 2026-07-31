@@ -3,23 +3,24 @@
 `ButtonLarge`(View) + ButtonStyle 4종 + 환경 모디파이어. 값을 바인딩으로 주고받는 위젯은 여기 아니라 `input.md`.
 **경계 규칙: 레이아웃·슬롯을 소유하면 View, `Button` 하나를 스킨하면 ButtonStyle.**
 
-전 티어 공통 — 모서리 0(캡슐 아님) · 색은 팔레트 23색 안 · 아이콘은 축이 아니라 **라벨 구성**(호출부가 조립).
+전 티어 공통 — 모서리 0(캡슐 아님) · 색은 팔레트 23색 안(**로그인 버튼의 브랜드 색만 예외** — `Color.Brand`, `design/color.md`) · 아이콘은 축이 아니라 **라벨 구성**(호출부가 조립).
 **상태는 넘기지 않는다** — pressed·disabled 는 `configuration.isPressed`/`@Environment(\.isEnabled)` 가 자동 처리하고, disabled 는 어떤 색이든 같은 룩으로 수렴한다.
 
 ## 티어 카탈로그
 
-Figma 버튼 6종을 옮긴 체계. (이 표만 알파벳순이 아니다 — 크기 티어 순서(large→medium→mini→sub→tag)가 정보라서. 닫힌 카탈로그라 행이 늘 일도 거의 없다.)
+Figma 버튼 7종을 옮긴 체계. (이 표만 알파벳순이 아니다 — 크기 티어 순서(large→medium→mini→sub→tag)가 정보라서. 닫힌 카탈로그라 행이 늘 일도 거의 없다.)
 
 | 대상 | Figma | API | 비고 |
 |---|---|---|---|
-| `ButtonLarge` 단일 | ButtonLarge_bottom 1941:3256 · _modal 2302:5987 | `ButtonLarge(_ title:, _ kind: .bottom/.modal, style: .filled/.outlined, action:)` | h55·sub7. bottom = px24·pt22/pb10·배경이 안전영역까지 / modal = px8·py16. `.outlined` 는 bottom 전용(DEBUG assert) |
-| `ButtonLarge` 2버튼 | bottom/filled-2 · modal/dubble | `ButtonLarge(_ kind:, tone: .dark/.gray/.twoColor) { } trailing: { }` | divider 1×25. **한쪽만 비활성은 그 자식에 `.disabled(true)`** — 별도 변형 없음. `.gray` 는 bottom 전용 |
+| `ButtonLarge` 단일 | button-large/bottom 435:691 · /modal 435:711 | `ButtonLarge(_ title:, _ kind: .bottom/.modal, style: .filled/.outlined, action:)` | h55·sub7. bottom = px24·pt22/pb10·배경이 안전영역까지 / modal = px8·py16. `.outlined` 는 bottom 전용(DEBUG assert), 테두리 `outline-sb` |
+| `ButtonLarge` 2버튼 | bottom/filled-2 · modal/dubble | `ButtonLarge(_ kind:, tone: .dark/.gray/.twoColor) { } trailing: { }` | divider 1×25. **한쪽만 비활성은 그 자식에 `.disabled(true)`** — 별도 변형 없음. `.gray` 는 bottom 전용. **`.twoColor` 는 full-bleed** — 컨테이너 패딩 0 이고 반쪽이 각자 배경+여백(bottom pt22/pb10)을 가져 375 폭에서 반쪽이 정확히 187.5. 공유 배경 톤(`filled-2`·`2button-1disabled`)만 컨테이너가 pt20/pb10 을 갖는다(단일 22 와 다르다) |
+| `ButtonLarge` 로그인 | button-large/login 435:812(kakao) · 435:809(apple) | `ButtonLarge(_ title:, login: .kakao/.apple, showsLogo: Bool = true, action:)` | h56·px8/py16·gap8·로고 24(높이를 56 으로 잡는 값). kakao = `Color.Brand.kakao` 바탕 + b900 라벨 / apple = b900 바탕 + 흰 라벨 — 배경·라벨색·로고가 제공자 한 벌. `showsLogo` 가 Figma `icon` 축. 시안엔 default 만 있어 pressed(불투명도)·disabled(g50+g300)·loading 은 가족 규칙으로 수렴. `.login` kind 는 이 init 이 알아서 넣는다(직접 넘기면 DEBUG assert — 단일·2버튼 시안이 없다) |
 | `.medium(_:layout:)` | ButtonMedium 1941:3261 | `.buttonStyle(.medium(.green))` · `.medium(.blue, layout: .fill)` | h45·py12. 색 6종 default/black/gray/green/blue/red. `layout` — `.hug` px24(기본) / `.fill` 등폭(가로패딩 0, 넘치면 축소) → HStack 에 나란히 놓아 **N지선다 척도 칩** |
-| `.mini(_:layout:)` | ButtonMini 1941:6780 · with-icon 2227:4441 | `.buttonStyle(.mini(.gray, layout: .withIcon))` | h34·py8·hug. 색 5종. 가로 여백은 `layout` — textOnly px12 / withIcon px8 |
+| `.mini(_:layout:)` | ButtonMini 1941:6780 · with-icon 439:10204(light)·439:10205(dark) | `.buttonStyle(.mini(.gray, layout: .withIcon))` | h34·py8·hug. 색 5종. 가로 여백은 `layout` — textOnly px12 / withIcon px8. **다크 판 `.gray` 라벨색이 `layout` 에 걸린다** — with-icon dark(439:10205) 시안이 **흰 라벨**이고, 텍스트 전용 다크 회색은 확정 시안이 없어 기존 g300 을 유지했다 |
 | `.miniSub(_:)` | ButtonMini status=sub | `.buttonStyle(.miniSub(.white))` | h26·px8/py4·테두리 1.0. 색 3종 white/black/none |
 | `.tag(_:)` | ButtonTag 1941:6762 | `.buttonStyle(.tag(.selected))` | h29·px12/py4. 3상태 default/selected/completed — selected 는 Bold, completed 는 opacity 20% |
 | `.hilitSurface(_:)` | `light/dark` 축 | `VStack { … }.hilitSurface(.dark)` | 화면이 한 번 선언 → 하위 `.mini` 팔레트 전환. 버튼 속성이 아니라 화면 속성이라 Environment |
-| `.hilitButtonLoading(_:)` | **시안에 없음** | `ButtonLarge(…).hilitButtonLoading(true)` | 라벨을 감추고 스피너를 얹어 폭 유지 + 탭 차단. 앱 사정이라 Figma 에서 찾지 말 것 — 화면에서 만들 수 없어(밖에서 `.opacity` 를 걸면 배경까지 사라짐) DS 에 둔다 |
+| `.hilitButtonLoading(_:)` | **시안에 없음** | `ButtonLarge(…).hilitButtonLoading(true)` | 라벨을 감추고 스피너를 얹어 폭 유지 + 탭 차단. 앱 사정이라 Figma 에서 찾지 말 것 — 화면에서 만들 수 없어(밖에서 `.opacity` 를 걸면 배경까지 사라짐) DS 에 둔다. **`LoadingModal`(435:1543)과 혼동 금지** — 그쪽은 시안에 실재하는 화면 전체 로딩 모달이고, 이건 버튼 스코프 오버레이다 (`component/display.md`) |
 
 ## 규칙을 가진 래퍼
 
@@ -30,6 +31,15 @@ Figma 버튼 6종을 옮긴 체계. (이 표만 알파벳순이 아니다 — �
 | 컴포넌트 | Figma | API | 갖는 규칙 |
 |---|---|---|---|
 | `ChoiceChip` | button-medium 2150:7297 | `(_ label:, isSelected:, tone: .positive/.negative, action:)` | N지선다 등폭 척도 칩 — HStack 에 나란히. 외형은 `.medium(layout: .fill)` 이 그리고, 이 타입은 **«선택 상태 → 톤»** 규칙만 갖는다 |
+| `VideoControl` | video-control 435:830(play) · 435:837(pause) | `(isPlaying:, onSkipBackward:, onPlayPauseToggle:, onSkipForward:)` | 영상 컨트롤 한 줄 254×74 — 스킵은 44 히트박스 안 34 글리프, gap 46, 중앙은 74 정사각 g500 판(34 글리프 + p20, 모서리 0). **«상태 → 글리프»** 규칙을 갖는다: `isPlaying` 이면 ⏸(누르면 멈춤). 시안 변형 이름과 글리프가 뒤집혀 있어 이름이 아니라 글리프로 매핑했다(사고 사례 8·17번). 시안 backdrop blur 11.563 은 판이 불투명해 뺐다. 폭·위치는 호출부 몫 |
+
+## 아직 DS 아님 — 인라인 유지
+
+Figma 에 이름이 붙어 있지만 사용처가 하나뿐이라 승격하지 않은 버튼. 두 번째 사용처가 생기면 `component.md` 승격 규칙대로 올린다.
+
+| Figma | 지금 사는 곳 | 값 |
+|---|---|---|
+| button-optional 439:10206 (라벨 2227:4460) | `GuestEvaluationView.emptyCommentLabel` (FeatureGuestFeedback) | p12 균일 · gap8 · `plus/16px/default` · `body6` g900 라벨 · 회색 `TagLabel` · dashed g100 `outline-m` · 모서리 0 |
 
 ## Figma 원본 불일치 — 디자이너 확인 대기
 
