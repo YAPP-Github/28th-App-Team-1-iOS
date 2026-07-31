@@ -7,9 +7,13 @@
 
 import SwiftUI
 
-// Figma «Navigationbar» 컴포넌트 세트 3029:11188 — icon 2446:7485 · text 3029:11189 · logo 3632:13967
-/// 내비바 네임스페이스 — 시안 높이가 44(슬롯 26 + 상하 9, 시스템 표준)로 닫히면서
-/// 커스텀 바를 걷어내고 **시스템 내비바에 내용만 꽂는다**. 부착 모디파이어 3종:
+// Figma «Navigationbar» — [0729 H/O] Hilit_Component_Guide (JL9YPbqBqmaC9Z0I3SzDZS)
+// «Component System 3» 439:10241 의 3행 브랜치 매트릭스를 전수 대조했다:
+//   icon  439:10394(max) · 439:10395(오른쪽 아이콘 미노출) · 439:10396(왼쪽 아이콘 미노출) · 439:10397(텍스트 미노출)
+//   text  439:10398(max) · 439:10399(왼쪽 아이콘 미노출) · 439:10400(텍스트 미노출)
+//   logo  439:10401(로고+프로필) · 439:10402(로고 단독)
+// (text 행엔 «오른쪽 아이콘 미노출» 칸이 없다 — 그 조합은 icon 행 439:10395 와 같은 그림이라 안 그린 것.)
+/// 내비바 네임스페이스 — **시스템 내비바에 내용만 꽂는다**. 부착 모디파이어 3종:
 /// - push 화면(NavigationStack 안): `.hilitNavigationBar` — 시스템 바
 /// - 루트 브랜드 바: `.hilitLogoNavigationBar` — 시스템 바
 /// - present 화면(스택 밖 cover/sheet): `.hilitPresentedNavigationBar` — 시스템 바가
@@ -22,15 +26,22 @@ import SwiftUI
 /// - **X | 타이틀 | 텍스트** — `trailing: .text("버튼") { … }`
 /// - **로고 | 프로필** — `.hilitLogoNavigationBar(onProfile:)` (루트 전용)
 ///
-/// leading X 는 상수라 슬롯이 아니라 필수 액션(`onClose`)이다. 시안의 show 토글은
-/// `trailing: nil`(기본). 아이콘 색변형(`default24`/`white24`)·타이틀색은 `theme` 이 파생하므로
+/// 시안의 «미노출» 열은 전부 파라미터로 닫힌다 — 텍스트 미노출 `title: nil`(기본) ·
+/// 오른쪽 아이콘 미노출 `trailing: nil`(기본) · **왼쪽 아이콘 미노출 `showsClose: false`**.
+/// leading X 도 상수가 아니라 끌 수 있는 슬롯이다(옛 주석의 «X 는 상수»는 439:10396/10399 로 뒤집혔다).
+/// 다만 껐을 때 «안 그리기»가 아니라 **폭 40 을 비운 채 유지한다** — 시안이 빈 박스를
+/// 그려두는 이유가 그것이고, 중앙 타이틀이 빈 쪽으로 밀리지 않게 하는 장치다.
+/// `showsClose: false` 는 닫기 X 가 없는 화면(나가기가 하단 CTA·스와이프백뿐)용 — `onClose` 는 그동안 안 불린다.
+///
+/// 아이콘 색변형(`default24`/`white24`)·타이틀색은 `theme` 이 파생하므로
 /// 화면이 고르지 않는다 — 다크 배경에 검정 X 같은 조합이 표현 불가능하다.
 ///
 /// `theme` 은 mini 버튼의 `.hilitSurface(.light/.dark)` 와 같은 «판 톤» 축이다.
 /// 내비바는 Environment 가 아니라 파라미터로 받는다 — 빼먹으면 조용히 틀리는 물건이라 명시가 안전.
 ///
-/// 좌우 여백은 시스템 바 마진을 그대로 쓴다 — 시안 px20 과 수 pt 차이가 있지만
-/// «기본 UI 를 토대로 쓴다»는 결정(2026-07-31)에 따라 시스템 값을 받아들인다.
+/// 높이는 44(시스템 표준)로 간다 — 이 시안은 py14 로 52~54 를 재지만 «기본 UI 를 토대로 쓴다»는
+/// 사용자 결정(2026-07-31)에 따라 시스템 바 높이를 받아들이고 커스텀 바를 되살리지 않는다.
+/// 좌우 여백도 같은 결정으로 시스템 바 마진을 그대로 쓴다(시안 px20 과 수 pt 차이).
 public enum HilitNavigationBar {
     /// 바가 놓이는 판의 톤 — 아이콘 색변형·타이틀색·`.filled` 배경색을 전부 파생한다.
     public enum Theme: Sendable {
@@ -106,12 +117,18 @@ public extension View {
     ///
     /// `onClose` 생략 = X 기본 동작(pop, 없으면 dismiss — `@Environment(\.dismiss)`).
     /// 클로저 전달 = override — 확인 팝업·플로우 종료 등 화면 리듀서가 닫기를 소유한다.
+    ///
+    /// `showsClose: false` — 시안 «왼쪽 아이콘 미노출»(439:10396/10399). X 를 지우되
+    /// 슬롯 폭 40 은 남겨 타이틀 중앙을 지킨다(빼면 타이틀이 왼쪽으로 밀린다).
+    /// 껐을 땐 `onClose` 가 불릴 일이 없다 — 상태 파생 값(`store.canClose`)을 넘기면서
+    /// `onClose` 를 늘 같이 주는 건 정상이고, 꺼진 동안만 죽은 클로저가 된다.
     func hilitNavigationBar(
         _ title: String? = nil,
         trailing: HilitNavigationBar.Trailing? = nil,
         theme: HilitNavigationBar.Theme = .light,
         background: HilitNavigationBar.Background = .transparent,
         allowsSwipeBack: Bool = true,
+        showsClose: Bool = true,
         onClose: (() -> Void)? = nil
     ) -> some View {
         #if DEBUG
@@ -119,7 +136,7 @@ public extension View {
                "HilitNavigationBar: 다크 바의 trailing 시안이 없다 — 필요하면 디자이너 확인 후 추가.")
         #endif
         return modifier(HilitNavigationBarModifier(
-            bar: .standard(title: title, trailing: trailing, onClose: onClose),
+            bar: .standard(title: title, trailing: trailing, showsClose: showsClose, onClose: onClose),
             theme: theme,
             background: background,
             allowsSwipeBack: allowsSwipeBack
@@ -150,11 +167,13 @@ public extension View {
     /// - 상태바 글자색(colorScheme)은 화면이 소유 — 다크 화면이면 화면에서 처리
     ///
     /// `onClose` 생략 = X 기본 동작(dismiss). 클로저 전달 = override — 리듀서가 닫기를 소유.
+    /// `showsClose: false` — 시스템 경로와 같은 의미(X 없음, 슬롯 폭 40 유지).
     func hilitPresentedNavigationBar(
         _ title: String? = nil,
         trailing: HilitNavigationBar.Trailing? = nil,
         theme: HilitNavigationBar.Theme = .light,
         background: HilitNavigationBar.Background = .transparent,
+        showsClose: Bool = true,
         onClose: (() -> Void)? = nil
     ) -> some View {
         #if DEBUG
@@ -162,7 +181,7 @@ public extension View {
                "HilitNavigationBar: 다크 바의 trailing 시안이 없다 — 필요하면 디자이너 확인 후 추가.")
         #endif
         return safeAreaInset(edge: .top, spacing: 0) {
-            PresentedNavigationBar(title: title, trailing: trailing, theme: theme, onClose: onClose)
+            PresentedNavigationBar(title: title, trailing: trailing, theme: theme, showsClose: showsClose, onClose: onClose)
                 .background {
                     if background == .filled {
                         theme.fillColor
@@ -174,7 +193,7 @@ public extension View {
 
 private struct HilitNavigationBarModifier: ViewModifier {
     enum Bar {
-        case standard(title: String?, trailing: HilitNavigationBar.Trailing?, onClose: (() -> Void)?)
+        case standard(title: String?, trailing: HilitNavigationBar.Trailing?, showsClose: Bool, onClose: (() -> Void)?)
         case logo(onProfile: (() -> Void)?)
     }
 
@@ -203,9 +222,17 @@ private struct HilitNavigationBarModifier: ViewModifier {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         switch bar {
-        case let .standard(title, trailing, onClose):
+        case let .standard(title, trailing, showsClose, onClose):
+            // X 를 껐어도 `ToolbarItem` 자체는 남기고 빈 슬롯을 넣는다 — `.principal` 은 바 전체가
+            // 아니라 **leading/trailing 아이템 그룹이 남긴 공간** 안에서 중앙을 잡기 때문에,
+            // 아이템을 아예 빼면 양쪽 폭이 어긋나 타이틀이 빈 쪽으로 끌려간다.
+            // 시안이 «왼쪽 아이콘 미노출»(439:10396)에 빈 40×26 박스를 그려둔 것과 같은 이유.
             ToolbarItem(placement: .topBarLeading) {
-                HilitNavigationBarSlot.icon(theme.closeIcon, action: onClose ?? { dismiss() })
+                if showsClose {
+                    HilitNavigationBarSlot.icon(theme.closeIcon, action: onClose ?? { dismiss() })
+                } else {
+                    HilitNavigationBarSlot.emptyIconSlot
+                }
             }
             if let title {
                 ToolbarItem(placement: .principal) {
@@ -238,12 +265,13 @@ private struct HilitNavigationBarModifier: ViewModifier {
 
 // MARK: - present 화면용 수동 바
 
-/// 스택 밖에서 시스템 바를 흉내 내는 44pt 바 — 레이아웃은 시안 실측
-/// (총 44 = 슬롯 26 + 상하 9 · px20 · gap 6 · 아이콘 슬롯 폭 40 고정).
+/// 스택 밖에서 시스템 바를 흉내 내는 44pt 바 — 높이 44 는 시스템 표준(사용자 결정 2026-07-31,
+/// 시안 py14 는 52~54), 안쪽 레이아웃은 시안 실측(px20 · gap 6 · 아이콘 슬롯 폭 40 고정).
 private struct PresentedNavigationBar: View {
     let title: String?
     let trailing: HilitNavigationBar.Trailing?
     let theme: HilitNavigationBar.Theme
+    let showsClose: Bool
     let onClose: (() -> Void)?
 
     /// `onClose` 기본값용 — present 된 화면이므로 dismiss.
@@ -251,13 +279,24 @@ private struct PresentedNavigationBar: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            HilitNavigationBarSlot.icon(theme.closeIcon, action: onClose ?? { dismiss() })
-                .frame(width: 40, alignment: .leading)
+            leadingSlot
             centerTitle
             trailingSlot
         }
         .frame(height: 44)
         .padding(.horizontal, .ds(.p20))
+    }
+
+    /// X 를 껐어도 빈 슬롯으로 폭 40 을 잡는다 — 시안 «왼쪽 아이콘 미노출»(439:10396/10399)의 빈 박스.
+    /// 여기선 HStack 이 직접 재므로 슬롯을 빼면 타이틀이 그만큼 왼쪽으로 밀린다.
+    @ViewBuilder
+    private var leadingSlot: some View {
+        if showsClose {
+            HilitNavigationBarSlot.icon(theme.closeIcon, action: onClose ?? { dismiss() })
+                .frame(width: HilitNavigationBarSlot.iconSlotWidth, alignment: .leading)
+        } else {
+            HilitNavigationBarSlot.emptyIconSlot
+        }
     }
 
     @ViewBuilder
@@ -273,17 +312,18 @@ private struct PresentedNavigationBar: View {
         }
     }
 
-    /// 아이콘 슬롯은 폭 40 고정(비어도 유지 — 타이틀 중앙 보존), 텍스트 버튼만 내용 폭(시안 hug).
+    /// 아이콘 슬롯은 폭 40 고정(비어도 유지 — 타이틀 중앙 보존, 시안 439:10395 의 빈 40×26 박스),
+    /// 텍스트 버튼만 내용 폭(시안 hug).
     @ViewBuilder
     private var trailingSlot: some View {
         switch trailing {
         case let .plus(action):
             HilitNavigationBarSlot.icon(Image.Plus.default24, action: action)
-                .frame(width: 40, alignment: .trailing)
+                .frame(width: HilitNavigationBarSlot.iconSlotWidth, alignment: .trailing)
         case let .text(label, action):
             HilitNavigationBarSlot.text(label, action: action)
         case nil:
-            Color.clear.frame(width: 40)
+            HilitNavigationBarSlot.emptyIconSlot
         }
     }
 }
@@ -293,6 +333,20 @@ private struct PresentedNavigationBar: View {
 /// 시스템 toolbar 경로(push)와 수동 바 경로(present)가 같은 룩을 공유하는 지점 —
 /// 슬롯 스타일을 바꿀 땐 여기만 고친다.
 private enum HilitNavigationBarSlot {
+    /// 아이콘 슬롯 폭 — 시안은 «아이콘 24 + 안쪽 여백 16» 을 묶어 40 으로 그린다(439:10394 leading).
+    static let iconSlotWidth: CGFloat = 40
+
+    /// 빈 아이콘 슬롯 — 시안 «왼쪽/오른쪽 아이콘 미노출» 이 그리는 빈 박스(439:10395/10396).
+    /// 슬롯을 지우는 대신 폭만 남겨 중앙 타이틀이 빈 쪽으로 밀리는 걸 막는다.
+    /// 높이는 아이콘 실측 24 — 시안이 26/24 로 갈리지만(439:10396 vs 439:10399)
+    /// 44pt 바에서 슬롯의 역할은 폭이라 아이콘과 같은 값으로 맞춘다.
+    static var emptyIconSlot: some View {
+        Color.clear
+            .frame(width: iconSlotWidth, height: 24)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
     static func icon(_ image: Image, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             image
@@ -303,7 +357,8 @@ private enum HilitNavigationBarSlot {
         .buttonStyle(.plain)
     }
 
-    /// 텍스트 버튼은 시안의 button-mini 그대로(body5·g400·p8/p4 히트 영역).
+    /// 텍스트 버튼은 시안의 button-mini 그대로(body5 sb14 · g400 #8A8D9C · p8/p4 히트 영역) —
+    /// text 행 3칸(439:10398/10399/10400)에서 같은 값으로 확인.
     static func text(_ label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(label)
@@ -343,6 +398,36 @@ private enum HilitNavigationBarSlot {
     }
 }
 
+#Preview("왼쪽 아이콘 미노출 — showsClose: false (439:10396 / 439:10399)") {
+    VStack(spacing: 0) {
+        // icon 행 439:10396 — 빈 40 슬롯 + 타이틀 + plus
+        NavigationStack {
+            Color.clear.hilitNavigationBar("타이틀", trailing: .plus {}, background: .filled, showsClose: false)
+        }
+        // text 행 439:10399 — 빈 40 슬롯 + 타이틀 + 텍스트 버튼
+        NavigationStack {
+            Color.clear.hilitNavigationBar("타이틀", trailing: .text("버튼") {}, background: .filled, showsClose: false)
+        }
+        // 대조군: X 를 켠 같은 바 — 타이틀 x 위치가 위 둘과 같아야 한다(슬롯 폭 보존 확인)
+        NavigationStack {
+            Color.clear.hilitNavigationBar("타이틀", trailing: .plus {}, background: .filled, onClose: {})
+        }
+    }
+}
+
+#Preview("presented — 왼쪽 아이콘 미노출 (수동 바)") {
+    VStack(spacing: 0) {
+        Text("showsClose: false")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .hilitPresentedNavigationBar("타이틀", trailing: .plus {}, background: .filled, showsClose: false)
+        Divider()
+        // 대조군 — 타이틀 중앙이 위와 같은 자리여야 한다
+        Text("showsClose: true (기본)")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .hilitPresentedNavigationBar("타이틀", trailing: .plus {}, background: .filled, onClose: {})
+    }
+}
+
 #Preview("X 기본 동작 — onClose 생략 = pop") {
     NavigationStack {
         NavigationLink("다음 화면으로 push") {
@@ -360,9 +445,30 @@ private enum HilitNavigationBarSlot {
     }
 }
 
-#Preview("logo — 워드마크·프로필") {
-    NavigationStack {
-        Color.clear.hilitLogoNavigationBar(background: .filled, onProfile: {})
+#Preview("텍스트 미노출 — title 생략 (439:10397 / 439:10400)") {
+    VStack(spacing: 0) {
+        NavigationStack {
+            Color.clear.hilitNavigationBar(trailing: .plus {}, background: .filled, onClose: {})
+        }
+        NavigationStack {
+            Color.clear.hilitNavigationBar(trailing: .text("버튼") {}, background: .filled, onClose: {})
+        }
+        // 오른쪽 아이콘 미노출(439:10395) — trailing: nil 도 슬롯 폭 40 을 남긴다
+        NavigationStack {
+            Color.clear.hilitNavigationBar("타이틀", background: .filled, onClose: {})
+        }
+    }
+}
+
+#Preview("logo — 워드마크+프로필 / 워드마크 단독 (439:10401 / 439:10402)") {
+    VStack(spacing: 0) {
+        NavigationStack {
+            Color.clear.hilitLogoNavigationBar(background: .filled, onProfile: {})
+        }
+        // 오른쪽 아이콘 미노출 — onProfile 생략
+        NavigationStack {
+            Color.clear.hilitLogoNavigationBar(background: .filled)
+        }
     }
 }
 

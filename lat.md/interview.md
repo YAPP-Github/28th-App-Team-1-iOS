@@ -54,7 +54,7 @@ Figma 2479:7569 · 2514:12754 · 2514:12799 · 2529:458.
 - 준비 중(preparing)엔 시작 버튼 비활성 — 리듀서도 `questionPrep == .ready` 를 재확인해 레이스를 무시한다. FAILED → delegate(.prepFailed) → 실패 화면(questionPrep).
 - 시작하기 탭에 권한 미허용 → 설정 유도 alert: [설정으로 이동]=`openSettings` / [닫기]=alert 만 닫고 화면 유지 — 시작 버튼 재탭이 재시도 지점(막다른 길 없음). 설정에서 권한을 바꾸면 iOS 가 앱을 종료시켜 onAppear 부터 재진입하므로 별도 복귀 재확인은 두지 않는다. 탭 시점엔 권한이 전부 결정된 상태(진입 다이얼로그가 모달)라 status 동기 확인으로 판정한다.
 - aligning→ready 는 «최소 유지 시간(3초) + 프리뷰 해소» 이중 게이트 — 실패(권한 거부·시뮬레이터)도 해소로 치고 placeholder 로 진행한다(화면을 막지 않음, 게이트는 시작 탭). ready 이후는 시간 연출.
-- 브래킷 프레임(`CameraGuideFrame`)·하단 티커는 에셋 없이 코드 드로잉 — 블렌드 미결은 [[interview#프리뷰]].
+- 브래킷 프레임은 DS 로 승격됐다 — `SharedDesignSystem` 의 `CameraGuideFrame`(`Interface/Component/CameraGuideFrame.swift`), 화면은 문구만 넘긴다. 이것과 하단 티커는 에셋 없이 코드 드로잉이고, 블렌드 스위치는 [[interview#프리뷰]].
 
 ## 프리뷰
 
@@ -66,7 +66,7 @@ Figma 2479:7569 · 2514:12754 · 2514:12799 · 2529:458.
 - 정지 지점: 준비→실패, 세션→리포트 대기, 세션→실패, 세션 중도 이탈. 재진입은 Readiness onAppear 가 다시 켠다.
 - Scope-on-enum 코디네이터는 화면 교체 시 자식 effect 를 취소하지 않는다 — readiness 의 프리뷰 시작 effect 가 화면 교체를 넘겨 살아남을 수 있어, 흐름 이탈(aborted·closeRequested)은 정지 완료 후 상위 통보로 순서를 보장한다(`stopCaptureDevicesThenNotifyClosed` — 마이크 캡처도 함께 정지, [[interview#음성 캡처]]).
 - 백그라운드 전환은 iOS 의 AVCaptureSession 인터럽션 자동 복구(비디오 전용 세션)에 맡긴다.
-- 브래킷 프레임 Figma color-burn 블렌드는 실기기 프리뷰 육안 확인 후 재검토(미결).
+- 브래킷 프레임 Figma color-burn 블렌드는 `CameraGuideFrame(blendsColorBurn:)` 로 구현돼 있고 **기본 꺼짐** — 프리뷰가 UIKit 호스팅 레이어(`AVCaptureVideoPreviewLayer`)라 SwiftUI 블렌드가 그걸 backdrop 으로 합성하지 못한다(투명 배경에 걸려 새까매질 수 있다). 실기기 육안 확인이 끝나면 켠다.
 
 ## 음성 캡처
 

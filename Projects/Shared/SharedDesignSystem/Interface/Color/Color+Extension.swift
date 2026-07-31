@@ -15,6 +15,7 @@ private typealias Asset = SharedDesignSystemInterfaceAsset
 // HILIT 색상 팔레트 23색 — Figma «Hilit_Color_Guide»(node 366-173) 확정본과 1:1.
 // 에셋명은 HEX(Color636777) 라 그대로 쓰면 의미가 사라진다 — 이 패밀리 enum 이 의미를 입히는 층이다.
 // 카탈로그도 같은 6개 그룹으로 묶여 있다(HilitBlack·HilitGreen·Error·Positive·GrayScale·BlackWhite).
+// `Brand` 는 팔레트가 아니라 외부 제공자 색이라 이 23색 밖에 따로 있다.
 // 폴더는 정리용이라 namespace 를 잡지 않는다 — 그래서 생성 접근자 이름은 평평한 `colorXXXXXX` 그대로다.
 public extension Color {
 
@@ -58,5 +59,12 @@ public extension Color {
 
     enum BlackWhite {
         public static var white: Color { Asset.Colors.colorFFFFFF.swiftUIColor }
+    }
+
+    /// 팔레트 밖 — 외부 제공자 브랜드 색. HILIT 스케일에 자리가 없고 상대 가이드라인이 값을 고정하므로
+    /// 팔레트 23색과 섞지 않고 따로 묶는다(카탈로그·`ColorPaletteTests` 의 23색 표와 별개).
+    enum Brand {
+        /// 카카오 로그인 버튼 배경 — Figma 변수 `kakao` #FEE500 (`button-large/login` 435:812)
+        public static var kakao: Color { Asset.Colors.colorFEE500.swiftUIColor }
     }
 }

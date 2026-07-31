@@ -5,12 +5,13 @@
 //  Created by EunseoKim on 26/07/31.
 //
 
-// Figma: «modal» 딤 — https://figma.com/design/ZG7FUxWCvITmnvzZi7fpTS/?node-id=2302-6098
+// Figma: «modal» 딤 — https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=2302-6080
 
 import SwiftUI
 
 public extension View {
-    /// 모달 오버레이 — 딤(블랙 60%) 위에 카드를 중앙 표출한다. 카드는 `Modal` 등 아무 뷰.
+    /// 모달 오버레이 — 딤(블랙 60%) 위에 카드를 중앙 표출한다.
+    /// 카드는 아무 뷰 — 시안의 세 모달 계열 `Modal`·`HomeModal`·`LoadingModal` 이 전부 이걸로 올라온다.
     ///
     /// ```swift
     /// .hilitModal(isPresented: store.isExitConfirmPresented) {
@@ -91,6 +92,27 @@ private struct HilitModalLayer<Card: View>: View {
                     Button("나가기") { isPresented = false }
                 }
             }
+        }
+}
+
+#Preview("Bool — HomeModal 카드") {
+    Color.GrayScale.g50
+        .ignoresSafeArea()
+        .hilitModal(isPresented: true) {
+            HomeModal(
+                "title",
+                subTitle: "sub-title",
+                icon: Image.Img.oppO,
+                info: "텍스트를 입력해주세요"
+            )
+        }
+}
+
+#Preview("Bool — LoadingModal 카드") {
+    Color.GrayScale.g50
+        .ignoresSafeArea()
+        .hilitModal(isPresented: true) {
+            LoadingModal()
         }
 }
 

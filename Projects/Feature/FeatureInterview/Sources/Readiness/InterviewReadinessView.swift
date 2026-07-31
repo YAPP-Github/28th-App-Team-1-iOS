@@ -28,7 +28,8 @@ public struct InterviewReadinessView: View {
     // 카메라 backdrop 은 InterviewView(코디네이터 뷰) 상주 — 화면 교체 시 프리뷰 레이어 재생성 방지.
     public var body: some View {
         ZStack {
-            CameraGuideFrame(showsCenterText: !isGuidePhase)
+            // 가이드 단계에선 문구를 빼고 브래킷만 — 문구 자체는 화면 카피라 DS 가 아니라 여기 있다.
+            CameraGuideFrame(text: isGuidePhase ? nil : "얼굴을 여기에 맞춰주세요")
 
             VStack(spacing: 0) {
                 titleBox

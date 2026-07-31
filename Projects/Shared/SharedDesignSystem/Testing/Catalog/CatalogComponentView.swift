@@ -24,25 +24,38 @@ struct CatalogComponentView: View {
     var body: some View {
         CatalogPage("컴포넌트") {
             bubbleField
+            cameraGuideFrame
             choiceChip
             countdownCard
             dashIndicator
+            feedbackCard
             fieldSubText
+            fileCard
+            fileUpload
+            foldableCard
             highlightedText
             hilitCheckbox
+            hilitDivider
             hilitNavigationBar
             hilitTextEditor
             hilitTextField
             hilitToggle
+            homeModal
             infoField
+            loadingModal
+            loadingText
+            messageCard
             modal
             nameField
             parallelogram
             quoteField
+            reportCard
             saveIndicator
             tabSelector
             tagLabel
             titleBox
+            videoControl
+            videoOverlay
         }
     }
 
@@ -77,10 +90,10 @@ struct CatalogComponentView: View {
     }
 
     private var dashIndicator: some View {
-        CatalogGroup("DashIndicator — (count:current:)") {
+        CatalogGroup("DashIndicator — (count:current:) · 조각 폭은 균등 분할") {
             VStack(alignment: .leading, spacing: .ds(.p8)) {
                 DashIndicator(count: 4, current: 1)
-                DashIndicator(count: 4, current: 3)
+                DashIndicator(count: 5, current: 3)   // 시안 케이스 — 「5 step」 435:1575
                 DashIndicator(count: 4, current: 4)
             }
         }
@@ -116,35 +129,6 @@ struct CatalogComponentView: View {
             }
             .toggleStyle(.hilitCheckbox)
         }
-    }
-
-    private var hilitNavigationBar: some View {
-        CatalogGroup("HilitNavigationBar — push=시스템 바 / present=수동 바. 표준(X 고정) / 다크 / logo") {
-            // 시스템 내비바는 NavigationStack 이 그린다 — 카탈로그에선 변형마다 미니 스택으로 시연.
-            VStack(spacing: 0) {
-                navigationBarDemo {
-                    Color.clear.hilitNavigationBar("타이틀", trailing: .plus {}, background: .filled, onClose: {})
-                }
-                navigationBarDemo {
-                    Color.clear.hilitNavigationBar("타이틀", trailing: .text("버튼") {}, background: .filled, onClose: {})
-                }
-                navigationBarDemo {
-                    Color.clear.hilitNavigationBar("타이틀", theme: .dark, background: .filled, onClose: {})
-                }
-                navigationBarDemo {
-                    Color.clear.hilitLogoNavigationBar(background: .filled, onProfile: {})
-                }
-                // present 화면용 수동 바 — 스택 불필요, 좌우 여백만 시안값(px20)이라 위와 수 pt 다름.
-                Color.clear.frame(height: 0)
-                    .hilitPresentedNavigationBar("타이틀 (presented)", trailing: .plus {}, background: .filled, onClose: {})
-            }
-        }
-    }
-
-    /// 내비바 44pt 만 보이게 잘라낸 미니 NavigationStack.
-    private func navigationBarDemo(@ViewBuilder content: () -> some View) -> some View {
-        NavigationStack { content() }
-            .frame(height: 44)
     }
 
     private var hilitToggle: some View {
@@ -268,7 +252,7 @@ struct CatalogComponentView: View {
     }
 }
 
-// 본체가 type_body_length(250줄) 를 넘어 입력 필드 3종 데모는 extension 으로 뺐다.
+// 본체가 type_body_length(250줄) 를 넘어 데모를 extension 으로 나눠 뺐다.
 // 표시 순서는 body 목록이 정하므로 여기 위치는 무관 — 새 데모도 본체가 차면 여기로.
 private extension CatalogComponentView {
     var fieldSubText: some View {
@@ -313,6 +297,269 @@ private extension CatalogComponentView {
                     .padding(.ds(.p16))
                     .background(Color.HilitBlack.b900)   // 흰 글자라 어두운 판에서만 보인다
                     .hilitSurface(.dark)
+            }
+        }
+    }
+}
+
+// 내비바 데모 — 시스템 바를 그리려면 미니 NavigationStack 이 필요해 헬퍼와 같이 묶었다.
+private extension CatalogComponentView {
+    var hilitNavigationBar: some View {
+        CatalogGroup("HilitNavigationBar — push=시스템 바 / present=수동 바. 표준 / showsClose: false / 다크 / logo") {
+            // 시스템 내비바는 NavigationStack 이 그린다 — 카탈로그에선 변형마다 미니 스택으로 시연.
+            VStack(spacing: 0) {
+                navigationBarDemo {
+                    Color.clear.hilitNavigationBar("타이틀", trailing: .plus {}, background: .filled, onClose: {})
+                }
+                navigationBarDemo {
+                    Color.clear.hilitNavigationBar("타이틀", trailing: .text("버튼") {}, background: .filled, onClose: {})
+                }
+                // 왼쪽 아이콘 미노출 — X 만 사라지고 슬롯 폭은 남는다(439:10396 / 439:10399).
+                navigationBarDemo {
+                    Color.clear.hilitNavigationBar("타이틀", trailing: .plus {}, background: .filled, showsClose: false)
+                }
+                navigationBarDemo {
+                    Color.clear.hilitNavigationBar("타이틀", theme: .dark, background: .filled, onClose: {})
+                }
+                navigationBarDemo {
+                    Color.clear.hilitLogoNavigationBar(background: .filled, onProfile: {})
+                }
+                // present 화면용 수동 바 — 스택 불필요, 좌우 여백만 시안값(px20)이라 위와 수 pt 다름.
+                Color.clear.frame(height: 0)
+                    .hilitPresentedNavigationBar("타이틀 (presented)", trailing: .plus {}, background: .filled, onClose: {})
+            }
+        }
+    }
+
+    /// 내비바 44pt 만 보이게 잘라낸 미니 NavigationStack.
+    func navigationBarDemo(@ViewBuilder content: () -> some View) -> some View {
+        NavigationStack { content() }
+            .frame(height: 44)
+    }
+}
+
+// 카드·모달 계열 — 폭을 스스로 고정하지 않는 것들이라 페이지 콘텐츠 폭(375 − 좌우 20 = 335)에 그대로 눕는다.
+private extension CatalogComponentView {
+    /// 페이지가 주는 좌우 여백 — 판 안에 여백을 가진 풀블리드 줄은 이만큼 되돌린다.
+    private static let pageInset: CGFloat = .ds(.p20)
+
+    private static let foldableRows: [FoldableCardDetail.Row] = [
+        .init("직군 · 연차", "{직군명} · {n}년"),
+        .init("포트폴리오", "{파일명}.pdf"),
+        .init("JD", "{Link}")
+    ]
+
+    var feedbackCard: some View {
+        CatalogGroup("FeedbackCard — max / quote nil(서술형 미평가)") {
+            VStack(spacing: .ds(.p12)) {
+                FeedbackCard(
+                    "평가 항목",
+                    evaluation: "텍스트(이)라고 평가했어요",
+                    highlight: "텍스트",
+                    quote: "코멘트란입니다 코멘트란입니다",
+                    onEdit: {}
+                )
+                FeedbackCard("평가 항목", evaluation: "텍스트(이)라고 평가했어요", highlight: "텍스트", onEdit: {})
+            }
+        }
+    }
+
+    var fileCard: some View {
+        CatalogGroup("FileCard — max(accessory·x·툴팁) / tone .white / 파일명만") {
+            VStack(spacing: .ds(.p12)) {
+                FileCard(
+                    "{파일명}.pdf",
+                    date: "{20xx.xx.xx}",
+                    size: "{0}mb",
+                    note: "서브 텍스트",
+                    showsTooltip: true,
+                    onRemove: {}
+                ) {
+                    Button {} label: {
+                        HStack(spacing: .ds(.p8)) {
+                            Image.Video.default16
+                            Text("버튼")
+                        }
+                    }
+                    .buttonStyle(.mini(.gray, layout: .withIcon))
+                }
+                FileCard("{파일명}.pdf", date: "{20xx.xx.xx}", size: "{0}mb", tone: .white, onRemove: {})
+                FileCard("{파일명}.pdf")
+            }
+        }
+    }
+
+    var fileUpload: some View {
+        CatalogGroup("FileUpload — status 4종(before / empty / progressing / completed)") {
+            VStack(spacing: .ds(.p12)) {
+                FileUpload(.before(title: "파일을 업로드해주세요", guidance: "1개 파일, 최대 20Mb까지 가능합니다"))
+                FileUpload(.empty(message: "아직 첨부된 포트폴리오가 없어요"))
+                FileUpload(
+                    .progressing(.init(name: "{파일명}.pdf", statusText: "Processing...", actionTitle: "버튼"), progress: 0.16),
+                    onCancel: {},
+                    onAction: {}
+                )
+                FileUpload(
+                    .completed(.init(name: "{파일명}.pdf", statusText: "Completed!", actionTitle: "버튼")),
+                    onCancel: {},
+                    onAction: {}
+                )
+            }
+        }
+    }
+
+    var foldableCard: some View {
+        CatalogGroup("FoldableCard(+Detail) — 접힘 / 태그 2종 / 펼친 한 장(둘을 간격 0 으로 붙인다)") {
+            VStack(spacing: .ds(.p12)) {
+                FoldableCard("직군명 · n년차 면접", date: "{20xx.xx.xx}", time: "{xx:xx}")
+                FoldableCard(
+                    "직군명 · n년차 면접",
+                    date: "{20xx.xx.xx}",
+                    time: "{xx:xx}",
+                    note: "삭제된 포트폴리오",
+                    error: "생성 실패"
+                )
+                VStack(spacing: 0) {
+                    FoldableCard("직군명 · n년차 면접", date: "{20xx.xx.xx}", time: "{xx:xx}", isExpanded: true)
+                    FoldableCardDetail(
+                        Self.foldableRows,
+                        leadingAction: .init("레포트 보기") {},
+                        trailingAction: .init("지인 피드백 받기") {},
+                        error: "오류 문구를 노출해주세요"
+                    )
+                }
+            }
+        }
+    }
+
+    var homeModal: some View {
+        CatalogGroup("HomeModal — opp(일러스트 + info) / port(content 슬롯에 FileCard)") {
+            VStack(spacing: .ds(.p20)) {
+                HomeModal(
+                    "title",
+                    subTitle: "sub-title",
+                    icon: Image.Img.oppO,
+                    info: "텍스트를 입력해주세요"
+                )
+                HomeModal("등록한 포트폴리오") {
+                    FileCard("{파일명}.pdf", date: "{20xx.xx.xx}", size: "{0}mb")
+                }
+            }
+            .padding(.ds(.p16))
+            .background(Color.HilitBlack.b900.opacity(0.5))   // 실제 딤은 .hilitModal 오버레이 몫
+        }
+    }
+
+    var loadingModal: some View {
+        CatalogGroup("LoadingModal — 170 정사각 판 + 74 스피너(회전은 코드가 준다)") {
+            LoadingModal()
+                .padding(.ds(.p16))
+                .frame(maxWidth: .infinity)
+                .background(Color.HilitBlack.b900.opacity(0.5))
+        }
+    }
+
+    var reportCard: some View {
+        CatalogGroup("ReportCard — .open(b800) / .close(그린 띠). 여백이 판 안이라 화면 폭을 다 쓴다") {
+            VStack(spacing: .ds(.p12)) {
+                ReportCard(date: "0월 0일 월", status: .open(title: "title"))
+                ReportCard(date: "0월 0일 월", status: .close)
+            }
+            .padding(.horizontal, -Self.pageInset)
+        }
+    }
+}
+
+// 판 색을 컴포넌트가 갖지 않는(또는 어두운 판 전제인) 것들 — 카탈로그가 판을 대신 깔아준다.
+private extension CatalogComponentView {
+    /// 시안 높이(523·229·76)는 카탈로그 한 페이지에 너무 길어 스크림 높이를 이 값으로 줄여 얹는다.
+    private static let overlayHeight: CGFloat = 96
+
+    private static let loadingPhrases: [String] = [
+        "첫 번째 로딩 문구예요",
+        "두 번째 로딩 문구",
+        "세 번째 로딩 문구입니다"
+    ]
+
+    var cameraGuideFrame: some View {
+        CatalogGroup("CameraGuideFrame — 327 정방형 · text 유무(blendsColorBurn 은 기본 off)") {
+            VStack(spacing: .ds(.p12)) {
+                CameraGuideFrame(text: "텍스트를 입력해주세요")
+                CameraGuideFrame()
+            }
+            .frame(maxWidth: .infinity)
+            .background(Color.GrayScale.g900)
+        }
+    }
+
+    var hilitDivider: some View {
+        CatalogGroup("HilitDivider — g800 1pt · 다크 판 전제") {
+            VStack(spacing: .ds(.p12)) {
+                HilitDivider()
+                Text("두 줄 사이")
+                    .dsTypography(.body6)
+                    .foregroundStyle(Color.BlackWhite.white)
+                HilitDivider()
+            }
+            .padding(.ds(.p16))
+            .frame(maxWidth: .infinity)
+            .background(Color.HilitBlack.b900)
+        }
+    }
+
+    var loadingText: some View {
+        CatalogGroup("LoadingText — .rolling / .settled(샤이닝). 활성 문구가 컨테이너 중앙") {
+            VStack(spacing: .ds(.p16)) {
+                LoadingText(Self.loadingPhrases, activeIndex: 1)
+                LoadingText(Self.loadingPhrases, activeIndex: 2, phase: .settled)
+            }
+            .padding(.vertical, .ds(.p16))
+            .frame(maxWidth: .infinity)
+            .background(Color.GrayScale.g800)
+        }
+    }
+
+    var messageCard: some View {
+        CatalogGroup("MessageCard — .detail(b800 판 · 줄 유무) / .mini(g800 판)") {
+            VStack(spacing: .ds(.p12)) {
+                MessageCard(.detail(subtitle: "sub-title", title: "title", contents: "contents"))
+                MessageCard(
+                    .detail(subtitle: nil, title: "타이틀만 있는 경우", contents: "본문은 남는다"),
+                    icon: Image.HilitAnalyze.success
+                )
+                MessageCard(.mini("contents"))
+            }
+        }
+    }
+
+    var videoControl: some View {
+        CatalogGroup("VideoControl — isPlaying true(⏸ 글리프) / false(▷)") {
+            VStack(spacing: .ds(.p20)) {
+                VideoControl(isPlaying: true, onSkipBackward: {}, onPlayPauseToggle: {}, onSkipForward: {})
+                VideoControl(isPlaying: false, onSkipBackward: {}, onPlayPauseToggle: {}, onSkipForward: {})
+            }
+            .padding(.ds(.p16))
+            .frame(maxWidth: .infinity)
+            .background(Color.HilitBlack.b900)
+        }
+    }
+
+    var videoOverlay: some View {
+        CatalogGroup("VideoOverlay — 실재하는 3조합. 높이는 카탈로그용으로 줄였다(램프 비율은 유지)") {
+            VStack(spacing: .ds(.p12)) {
+                ForEach(VideoOverlay.Variant.allCases, id: \.self) { variant in
+                    ZStack(alignment: .bottom) {
+                        Color.GrayScale.g600
+                        VideoOverlay(variant, height: Self.overlayHeight)
+                    }
+                    .frame(height: Self.overlayHeight)
+                    .overlay(alignment: .topLeading) {
+                        Text(String(describing: variant))
+                            .dsTypography(.body9)
+                            .foregroundStyle(Color.BlackWhite.white)
+                            .padding(.ds(.p4))
+                    }
+                }
             }
         }
     }
