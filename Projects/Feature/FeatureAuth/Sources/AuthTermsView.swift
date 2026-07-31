@@ -80,7 +80,7 @@ public struct AuthTermsView: View {
             }
         }
         .padding(.horizontal, .ds(.p20))
-        // @ds(spacing): 26 — 내비바 아래 첫 콘텐츠 (시안 top-bar 는 py9/h44, DS 내비바는 h54 라 10 더 내려간다)
+        // @ds(spacing): 26 — 내비바 아래 첫 콘텐츠 (spacing 토큰은 4~24 뿐)
         .padding(.top, Metric.contentTop)
     }
 
@@ -146,8 +146,9 @@ public struct AuthTermsView: View {
             .padding(.top, .ds(.p16))
             .frame(maxHeight: .infinity)
 
-            // 시안(3768:17215)이 시트 안에 화면 CTA 를 그대로 넣었다 — 라벨·색이 같아 같은 액션으로 본다.
-            // 활성 조건도 화면 CTA 와 묶는다(시안은 5종 전부 체크된 상태라 color=default 룩).
+            // 시안(3768:17215)이 시트 안에 화면 CTA 를 그대로 넣었고, 동작도 같다 —
+            // 필수 5종 전부 체크 시 활성, 누르면 다음 화면(이름 입력)으로 (사용자 확인 2026-07-31).
+            // «이 항목만 동의하고 시트 닫기» 가 아니므로 별도 액션을 두지 않는다.
             ButtonLarge("동의하고 시작하기", .bottom) { send(.userTappedAgree) }
                 .disabled(!store.isSubmitEnabled)
         }

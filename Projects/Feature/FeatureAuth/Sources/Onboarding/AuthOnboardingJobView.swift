@@ -42,23 +42,13 @@ public struct AuthOnboardingJobView: View {
 
     // MARK: - progress bar
 
-    /// 시안 «progress bar» 3877:11580 — 단계 수만큼 등폭으로 늘어나는 대시.
-    // @ds(component): 등폭 stretch 대시 — DS `DashIndicator` 는 조각 20 고정폭·간격 4 라 이 시안을 못 그린다
-    // @ds(spacing): 2 — 대시 사이 간격 (DSSpacing 은 4 부터)
-    // @ds(spacing): 4 — 대시 두께
+    /// 시안 «progress bar» 3877:11580 — 단계 수만큼 등폭으로 늘어나는 대시라 `layout: .fill`.
     private var progressBar: some View {
-        HStack(spacing: 2) {
-            ForEach(1...max(store.totalSteps, 1), id: \.self) { step in
-                Rectangle()
-                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.GrayScale.g50)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 4)
-            }
-        }
-        .padding(.horizontal, .ds(.p20))
-        .padding(.vertical, .ds(.p4))
-        // 시안의 top-bar ↔ progress bar 간격 8 (내비바는 모디파이어가 얹는다)
-        .padding(.top, .ds(.p8))
+        DashIndicator(count: store.totalSteps, current: store.step, layout: .fill)
+            .padding(.horizontal, .ds(.p20))
+            .padding(.vertical, .ds(.p4))
+            // 시안의 top-bar ↔ progress bar 간격 8 (내비바는 모디파이어가 얹는다)
+            .padding(.top, .ds(.p8))
     }
 
     // MARK: - title-box

@@ -16,10 +16,11 @@ import SwiftUI
 /// 시안의 상태 바(9:41·안테나·배터리)와 홈 인디케이터는 iOS 시스템 크롬이라 그리지 않는다 —
 /// 배경이 전면 흰색이라 `ignoresSafeArea` 만으로 시안과 같은 결과가 된다.
 ///
-/// **CreateAccount 전환 시작 상태** — 이 화면의 로고가 위로 올라가고 소셜 로그인 버튼이 따라 올라온다.
-/// 로고는 `logoMark` 한 곳에만 있고 위치·크기는 `logoSize`/`logoCenterOffsetY` 로 노출해 뒀다 —
-/// 전환을 붙일 때 이 두 값을 시작 프레임으로 쓰거나, `logoMark` 에 `matchedGeometryEffect` 를 달면 된다
-/// (namespace 를 받으려면 `init` 에 파라미터가 하나 늘어난다). 전환 코드 자체는 CreateAccount 쪽 몫.
+/// **CreateAccount 전환 시작 상태** — 로고는 움직이지 않는다. 시안 대조 결과 두 화면의 로고가
+/// 같은 좌표·크기(x102 y320 · 171×72)라 소셜 로그인 버튼만 아래에서 올라온다.
+/// 그래서 `matchedGeometryEffect` 도, `init` 에 namespace 파라미터도 필요 없다.
+/// `logoSize`/`logoCenterOffsetY` 는 `AuthCreateAccountView` 가 실제로 읽어 픽셀 일치를 보장한다 —
+/// **이름·값을 바꾸면 그쪽 로고가 함께 움직인다**(의도된 결합). 전환 코드는 CreateAccount 쪽 몫.
 public struct SplashView: View {
     /// 시안 로고 크기 — 전환 시작 프레임.
     // @ds(icon): 171×72 → Image.Logo.hilit — 스플래시 워드마크. 토큰은 57×24 내비바 판이지만

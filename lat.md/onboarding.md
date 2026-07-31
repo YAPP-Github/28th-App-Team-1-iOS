@@ -20,7 +20,7 @@ STEP 1 (필수). 진입 시 JobClient.jobs 로 선택지를 로드해 칩으로 
 
 ## 연차 입력
 
-STEP 2 (필수). 문장형 휠 피커 «내 경력은 [휠] 이다.» — 정수 연차 0~10년(`CareerOption { years: Int }`, 10="10년 이상", 라벨 신입/N년차/10년 이상). 휠은 native Picker 가 아니라 iOS 17 ScrollView(viewAligned + scrollPosition) 커스텀. 항상 값이 있어 CTA 상시 활성.
+STEP 2 (필수). 문장형 휠 피커 «내 경력은 [휠] 이다.» — 정수 연차 0~10년(`CareerOption { years: Int }`, 라벨 신입/N년 이상 — 최종 시안 3632:14460 표기, 10 은 "10년 이상"). 휠은 native Picker 가 아니라 iOS 17 ScrollView(viewAligned + scrollPosition) 커스텀. 항상 값이 있어 CTA 상시 활성.
 
 delegate 는 `continueRequested(careerYears: Int)` — 페이로드(`OnboardingData.careerYears`)·세션 입력(`InterviewConfig.careerYears`)에 정수 그대로 직결한다(잠정 매핑 없음). 레벨(주니어/미들/시니어)은 서버가 0-2/3-7/8+ 파생 — 클라 미관여.
 
