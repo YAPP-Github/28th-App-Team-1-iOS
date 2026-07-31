@@ -108,13 +108,8 @@ public struct InterviewSessionView: View {
     }
 
     private func toastView(_ toast: InterviewSessionFeature.State.Toast) -> some View {
-        VStack(alignment: .trailing, spacing: 0) {
-            BubbleToast(toast.message)
-            if toast.hasTail {
-                // 꼬리가 아래 «면접 종료하기» 버튼을 가리킨다 (Figma BubbleField status=bottom).
-                Image.Img.tooltipTail
-            }
-        }
+        // 꼬리가 아래 «면접 종료하기» 버튼을 가리킨다 (Figma BubbleField status=bottom).
+        BubbleField(toast.message, .wide(tail: toast.hasTail ? .bottom : .none))
     }
 
     private var miniButtonRow: some View {
