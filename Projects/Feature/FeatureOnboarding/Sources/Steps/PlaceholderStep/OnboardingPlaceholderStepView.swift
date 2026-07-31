@@ -29,7 +29,7 @@ public struct OnboardingPlaceholderStepView: View {
             Text("STEP \(store.step) — 디자인 연결 예정")
                 .dsTypography(.body3)
                 .foregroundStyle(Color.GrayScale.g500)
-                .padding(.top, 8)
+                .padding(.top, .ds(.p8))
             Spacer()
             continueButton
         }
@@ -46,8 +46,8 @@ public struct OnboardingPlaceholderStepView: View {
                     .frame(height: 4)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 4)
+        .padding(.horizontal, .ds(.p20))
+        .padding(.vertical, .ds(.p4))
     }
 
     private var continueButton: some View {

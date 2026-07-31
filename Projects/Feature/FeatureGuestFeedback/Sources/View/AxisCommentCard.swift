@@ -62,9 +62,8 @@ struct AxisCommentCard: View {
             TagLabel("선택")
             Spacer()
             Button(action: onDismiss) {
-                Image(systemName: "xmark")
-                    .font(.ds(.body5))
-                    .foregroundStyle(Color.GrayScale.g600)
+                // 시안(1984:6994)의 닫기 = «cancel mini/16px/gray» — 색은 에셋에 구워진 원본색.
+                Image.CancelMini.gray16
             }
             .buttonStyle(.plain)
         }

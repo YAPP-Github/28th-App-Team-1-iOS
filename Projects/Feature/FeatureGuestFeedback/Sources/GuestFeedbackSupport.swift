@@ -99,16 +99,3 @@ extension AlertState where Action == GuestFeedbackFeature.Alert {
         AlertState { TextState(message) }
     }
 }
-
-extension ConfirmationDialogState where Action == GuestFeedbackFeature.ConfirmDialog {
-    static var submitConfirm: Self {
-        ConfirmationDialogState(titleVisibility: .visible) {
-            TextState("제출하면 다시 고칠 수 없어요")
-        } actions: {
-            ButtonState(action: .confirmSubmit) { TextState("제출하기") }
-            ButtonState(role: .cancel) { TextState("취소") }
-        } message: {
-            TextState("제출 후에는 내용을 수정할 수 없어요.")
-        }
-    }
-}

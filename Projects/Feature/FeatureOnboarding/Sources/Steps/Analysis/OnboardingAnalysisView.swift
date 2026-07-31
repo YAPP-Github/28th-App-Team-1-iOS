@@ -79,7 +79,7 @@ public struct OnboardingAnalysisView: View {
 
     /// 순차 진행 체크리스트 — completedStages 앞은 체크, 그 자리는 스피너, 뒤는 대기 링.
     private var checklist: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: .ds(.p10)) {
             analysisRow("기본정보 분석 중", index: 0)
             analysisRow("채용 정보 분석 중", index: 1)
             analysisRow("나의 포폴 분석 중", index: 2)
@@ -138,7 +138,7 @@ public struct OnboardingAnalysisView: View {
     // MARK: - 공통
 
     private func header(title: String, subtitle: String, subtitleColor: Color) -> some View {
-        VStack(spacing: 12) {
+        VStack(spacing: .ds(.p12)) {
             Text(title)
                 .dsTypography(.head3)
                 .foregroundStyle(Color.BlackWhite.white)
