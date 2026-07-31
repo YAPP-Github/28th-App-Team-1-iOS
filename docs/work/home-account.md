@@ -125,7 +125,7 @@ AuthTerms 제출 후 이어지는 4화면. AuthFeature 도메인 내부 내비(�
 |---|---|
 | `HomeDefault` | 기본 상태 |
 | `HomeReport` | 면접 기록(레포트) 표시 상태 — 구현은 «오랜만이에요 OO님!» 인사말 표시 여부 2변형(`returning`/`recent`) |
-| `HomeStartInterview` | 시작 CTA 변형 — 처음 / 등록 포폴 있음 / 무료 횟수 모두 사용. **phase 아니라 present** (홈 탭에 NavigationStack 없음) |
+| `HomeStartInterview` | 시작 CTA 변형 — 처음 / 등록 포폴 있음 / 무료 횟수 모두 사용. **phase 아니라 present** (홈 위 전체화면 cover — 홈 스택 push 아님) |
 | `HomeDuringInterview` | 진행 중 면접 있음 / 레포트 제작 시점 — **MVP 제외 (2026-07-31 삭제)** |
 
 구성(위→아래): **잔여 "N회 남음" → 위젯① 면접 연습 진행(주 CTA) → 위젯② 면접 기록 → 위젯③ 마이페이지**. 위계: 핵심 행동(연습 시작) 최대, 동기(기록·잔여) 곁에, 관리(마이페이지)는 진입점만.
