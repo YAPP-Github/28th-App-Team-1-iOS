@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import Foundation
 
 // @lat: [[home]]
 /// 면접 시작 — 홈에서 present 되는 한 장짜리 화면. 시안 3장을 `Variant` 로 분기한다.
@@ -21,13 +22,39 @@ public struct StartInterviewFeature {
         case exhausted
     }
 
+    /// 등록된 포트폴리오 표시값 — 카드 한 줄에 들어가는 원값만 담는다.
+    /// **포맷팅은 뷰 몫**이다(«2026.07.31»·«3.2mb» 같은 표기는 시안 소유).
+    public struct Portfolio: Equatable, Sendable {
+        public var fileName: String
+        public var uploadedAt: Date
+        public var byteCount: Int
+
+        public init(fileName: String, uploadedAt: Date, byteCount: Int) {
+            self.fileName = fileName
+            self.uploadedAt = uploadedAt
+            self.byteCount = byteCount
+        }
+    }
+
     @ObservableState
     public struct State: Equatable {
         /// 표시할 시안 변형 — present 시점에 홈이 정해서 넘긴다.
         public var variant: Variant
+        /// 남은 무료 면접 횟수 — 서버 값 표시만(«진실은 서버에만», docs/work/home-account.md §3).
+        public var remainingChances: Int
+        /// 등록된 포트폴리오 — 없으면 nil(«이전 정보 재사용» 시안에서만 카드에 쓴다).
+        public var portfolio: Portfolio?
 
-        public init(variant: Variant) {
+        // TODO: 잔여·포트폴리오는 홈 진입 로드가 넘겨야 한다 — 지금 기본값은 시안 값이다(미결 6-1 서버 협의).
+        public init(
+            variant: Variant,
+            remainingChances: Int? = nil,
+            portfolio: Portfolio? = nil
+        ) {
             self.variant = variant
+            // 값이 안 넘어오면 시안 값에서 파생한다 — 프리뷰가 시안 3장과 같게 보이도록.
+            self.remainingChances = remainingChances ?? (variant == .exhausted ? 0 : 3)
+            self.portfolio = portfolio ?? (variant == .hasPortfolio ? Portfolio.placeholder : nil)
         }
     }
 
@@ -82,4 +109,17 @@ public struct StartInterviewFeature {
             }
         }
     }
+}
+
+// MARK: - 시안 값
+
+extension StartInterviewFeature.Portfolio {
+    /// 시안(3632:13730)의 파일 한 줄 — **프리뷰·시안 확인 전용** 픽스처다.
+    /// 파일명은 시안 표기 그대로, 날짜·용량은 형이 붙어 표본값이다(포맷은 뷰가 만든다).
+    public static let placeholder = Self(
+        fileName: "{파일명}.pdf",
+        // 2026-07-31 00:00 UTC — 프리뷰가 흔들리지 않게 고정값을 쓴다.
+        uploadedAt: Date(timeIntervalSince1970: 1_785_456_000),
+        byteCount: 3_355_443
+    )
 }

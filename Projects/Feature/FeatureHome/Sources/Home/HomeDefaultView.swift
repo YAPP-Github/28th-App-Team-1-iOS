@@ -13,8 +13,10 @@ import SwiftUI
 
 /// 홈 기본 상태 — 커튼 그린 배경 위 인사말 + 스크롤 유도 문구, 하단은 «면접 리포트» 시트(빈 상태).
 ///
-/// 시트는 아직 **정적 판**이다. 시안 문구가 말하는 «밑으로 스크롤»(시트를 끌어올려 면접 시작으로 넘어가는
-/// 전환)은 phase 를 바꾸는 제스처라 리듀서 액션이 생긴 뒤 배선한다 — 그래버도 지금은 표시용이다.
+/// 시안 문구가 말하는 «밑으로 스크롤»(면접 시작 화면으로 넘어가는 전환)은 시트 하향 드래그와
+/// 안내 문구 탭 두 경로로 배선했다 — 임계값·연출은 `HomeStartInterviewGesture` 참조(모션 시안 없음).
+///
+/// 로고 내비바는 `HomeView` 가 한 번만 붙인다 — `HomeReportView` 와 같은 바다(E1).
 ///
 /// dev 임시 버튼 2개는 위젯①(면접 시작)·마이페이지 로그아웃이 정식 배선되면 제거한다.
 @ViewAction(for: HomeFeature.self)
@@ -34,9 +36,6 @@ struct HomeDefaultView: View {
         }
         // 인사말의 colorBurn 이 «배경 커튼까지만» 섞이도록 합성 경계를 여기서 닫는다.
         .compositingGroup()
-        .hilitLogoNavigationBar(background: .filled, onProfile: {
-            // TODO: 마이페이지 진입 — 리듀서에 userTappedProfile 이 생기면 send 로 교체.
-        })
     }
 
     // MARK: - 그린 영역 (내비바 ~ 시트 위)
@@ -56,8 +55,7 @@ struct HomeDefaultView: View {
     }
 
     private var greeting: some View {
-        // TODO: 이름은 서버 프로필(nickname) — State 에 값이 생기면 교체 (필요한 State: userName).
-        Text("오랜만이에요\n재원님!")
+        Text("오랜만이에요\n\(store.userName)님!")
             .dsTypography(.head1)
             .foregroundStyle(Color.HilitBlack.b800)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -66,6 +64,7 @@ struct HomeDefaultView: View {
             .blendMode(.colorBurn)
     }
 
+    /// 스크롤 안내 — 문구가 약속한 «면접 시작» 을 이 영역 탭으로도 연다.
     private var scrollHint: some View {
         // @ds(typography): Pretendard Medium 16 / 행간 140% / 자간 -2% → body3 — 스크롤 유도 문구 (토큰 행간은 130%)
         Text("밑으로 스크롤해서 면접을 시작해 보세요!")
@@ -76,6 +75,8 @@ struct HomeDefaultView: View {
             .padding(.horizontal, .ds(.p10))
             .padding(.vertical, .ds(.p16))
             .padding(.horizontal, .ds(.p20))
+            .contentShape(Rectangle())
+            .onTapGesture { send(.userTappedStartInterview) }
     }
 
     // MARK: - 리포트 시트
@@ -94,6 +95,9 @@ struct HomeDefaultView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // 판 색만 홈 인디케이터 영역까지 내리고, 내용은 safe area 안에 둔다 — 시안의 중앙 정렬이 그 기준이다.
         .background(Color.BlackWhite.white.ignoresSafeArea(edges: .bottom))
+        // 시트를 아래로 끌면 면접 시작 — 이 phase 의 시트엔 스크롤이 없어 판 전체에 걸 수 있다.
+        .contentShape(Rectangle())
+        .gesture(HomeStartInterviewGesture.dragDown { send(.userTappedStartInterview) })
     }
 
     // @ds(component): 60×5 바 (모서리 없음) — 시트 그래버. DS 에 시트 컴포넌트 없음(`.hilitBottomSheet` 는 모달 딤 전용)
@@ -105,10 +109,9 @@ struct HomeDefaultView: View {
     }
 
     private var sheetHeader: some View {
-        // TODO: 개수는 홈 진입 로드의 리포트 목록 — State 에 값이 생기면 교체 (필요한 State: reportCount).
         (
             Text("면접 리포트 ").foregroundStyle(Color.HilitBlack.b800)
-                + Text("0개").foregroundStyle(Color.GrayScale.g500)
+                + Text("\(store.reports.count)개").foregroundStyle(Color.GrayScale.g500)
         )
         .dsTypography(.sub7)
         .frame(maxWidth: .infinity, alignment: .leading)

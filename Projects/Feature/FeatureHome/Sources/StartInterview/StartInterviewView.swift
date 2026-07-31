@@ -10,6 +10,7 @@
 //        «Home_StartInterview_TrialEnded»  https://www.figma.com/design/ZG7FUxWCvITmnvzZi7fpTS/?node-id=3632-9566
 
 import ComposableArchitecture
+import Foundation
 import SharedDesignSystemInterface
 import SwiftUI
 
@@ -21,8 +22,8 @@ import SwiftUI
 ///
 /// 홈이 cover 로 올리는 **스택 없는 한 장짜리**라 내비바는 present 경로(`.hilitPresentedNavigationBar`)다.
 ///
-/// 카드 안 값(잔여 횟수·포트폴리오 파일 정보)은 아직 자리만 잡아 뒀다 —
-/// 리듀서에 State 가 생기면 `TODO` 자리를 교체한다.
+/// 카드 안 값(잔여 횟수·포트폴리오 파일 정보)은 `StartInterviewFeature.State` 소유고,
+/// 표기(«2026.07.31»·«3.2mb»)만 이 뷰가 만든다.
 @ViewAction(for: StartInterviewFeature.self)
 public struct StartInterviewView: View {
     @Bindable public var store: StoreOf<StartInterviewFeature>
@@ -101,25 +102,24 @@ public struct StartInterviewView: View {
     @ViewBuilder private var card: some View {
         switch store.variant {
         case .first:
-            // TODO: «3회» 는 서버 잔여 횟수 — State 에 값이 생기면 교체 (필요한 State: remainingChances).
-            remainingChancesCard(icon: Image.Img.oppO, count: "3회")
+            remainingChancesCard(icon: Image.Img.oppO)
         case .hasPortfolio:
             portfolioCard
         case .exhausted:
-            remainingChancesCard(icon: Image.Img.oppX, count: "0회")
+            remainingChancesCard(icon: Image.Img.oppX)
         }
     }
 
     /// 잔여 횟수 카드 — Figma «home modal» property1=opp (3632:10988). 일러스트 + 보조문구 + 값.
     /// 시안의 `showInfoField` 축은 두 시안 모두 false 라 안내줄을 두지 않았다.
-    private func remainingChancesCard(icon: Image, count: String) -> some View {
+    private func remainingChancesCard(icon: Image) -> some View {
         modalCard {
             icon
             VStack(spacing: .ds(.p4)) {
                 Text("남은 면접 기회")
                     .dsTypography(.body6)
                     .foregroundStyle(Color.GrayScale.g500)
-                Text(count)
+                Text("\(store.remainingChances)회")
                     .dsTypography(.sub4)
                     .foregroundStyle(Color.HilitBlack.b800)
             }
@@ -129,37 +129,38 @@ public struct StartInterviewView: View {
     }
 
     /// 등록 포트폴리오 카드 — Figma «home modal» property1=port (3632:13862). 제목 + 파일 한 줄.
-    private var portfolioCard: some View {
+    @ViewBuilder private var portfolioCard: some View {
         modalCard {
             Text("등록한 포트폴리오")
                 .dsTypography(.sub4)
                 .foregroundStyle(Color.HilitBlack.b800)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
-            portfolioFileRow
+            if let portfolio = store.portfolio {
+                portfolioFileRow(portfolio)
+            }
         }
     }
 
     /// 파일 한 줄 — Figma «card» 3632:13817. 36 파일 아이콘 + 파일명 + «날짜 | 용량».
-    private var portfolioFileRow: some View {
+    /// 날짜·용량 표기는 여기서 만든다 — State 는 원값(`Date`·바이트)만 든다.
+    private func portfolioFileRow(_ portfolio: StartInterviewFeature.Portfolio) -> some View {
         HStack(spacing: .ds(.p12)) {
             Image.File.green36
             VStack(alignment: .leading, spacing: .ds(.p4)) {
-                // TODO: 파일명·업로드일·용량은 등록된 포트폴리오 값 — State 에 값이 생기면 교체
-                //       (필요한 State: portfolioFileName / portfolioUploadedAt / portfolioSize).
-                Text("{파일명}.pdf")
+                Text(portfolio.fileName)
                     .dsTypography(.body2)
                     .foregroundStyle(Color.GrayScale.g700)
                     .lineLimit(1)
                     .truncationMode(.tail)
                 HStack(spacing: .ds(.p4)) {
-                    Text("{20xx.xx.xx}")
+                    Text(Self.uploadedAtText(portfolio.uploadedAt))
                         .dsTypography(.body10)
                         .foregroundStyle(Color.GrayScale.g400)
                     Rectangle()
                         .fill(Color.GrayScale.g200)
                         .frame(width: .ds(.medium), height: .ds(.p10))
-                    Text("{0}mb")
+                    Text(Self.sizeText(portfolio.byteCount))
                         .dsTypography(.body10)
                         .foregroundStyle(Color.GrayScale.g400)
                 }
@@ -174,6 +175,24 @@ public struct StartInterviewView: View {
             Rectangle()
                 .strokeBorder(Color.GrayScale.g100, lineWidth: 1.5)
         }
+    }
+
+    /// 업로드일 표기 «2026.07.31» — 시안 표기(`{20xx.xx.xx}`)를 그대로 옮긴 고정 포맷이라 로케일에 흔들리지 않게 둔다.
+    private static let uploadedAtFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy.MM.dd"
+        return formatter
+    }()
+
+    private static func uploadedAtText(_ date: Date) -> String {
+        uploadedAtFormatter.string(from: date)
+    }
+
+    /// 용량 표기 «3.2mb» — 시안 표기(`{0}mb`)의 소문자 단위·MB 기준을 따른다.
+    private static func sizeText(_ byteCount: Int) -> String {
+        let megabytes = Double(byteCount) / 1_048_576
+        return String(format: "%.1fmb", megabytes)
     }
 
     /// 흰 카드 판 — Figma «home modal» (p24 · gap12 · 모서리 0 · 폭 327 = 375 − 24×2).
