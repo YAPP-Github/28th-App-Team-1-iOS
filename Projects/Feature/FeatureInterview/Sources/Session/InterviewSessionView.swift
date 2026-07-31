@@ -147,12 +147,12 @@ public struct InterviewSessionView: View {
         }
     }
 
-    /// 면접 종료 확인 — Figma «modal»(2555:7739) 1:1, 문구는 부록 C 확정.
+    /// 면접 종료 확인 — Figma «modal»(2555:7739) 1:1, 아이콘은 «finish/74px»(3951:210), 문구는 부록 C 확정.
     private var exitConfirmModal: some View {
         Modal(
             "면접을 마칠까요?",
             subText: "마치기를 클릭하는 즉시 면접이 종료됩니다.\n지금까지 답변으로 분석을 시작해요.",
-            icon: Image.Img.book
+            icon: Image.Img.finish
         ) {
             ButtonLarge(.modal, tone: .twoColor) {
                 Button("계속하기") { send(.userTappedContinueInterview) }
@@ -162,13 +162,17 @@ public struct InterviewSessionView: View {
         }
     }
 
-    /// 8분 전 중도 이탈 경고 (Interview_EarlyExitWarning) — 차감 사실만, 리포트 언급 금지 (PRD §3.7).
+    /// 8분 전 중도 이탈 경고 — Figma «modal»(3907:890): 아이콘 없음, «면접 계속하기»가 강조(검정) 쪽.
+    /// 차감 사실만, 리포트 언급 금지 (PRD §3.7).
     private var earlyExitWarningModal: some View {
-        Modal("지금 나가면 이용권 1회가 차감돼요", icon: Image.Img.book) {
+        Modal(
+            "다음에 면접을 다시 진행할까요?",
+            subText: "지금 나가면 방금 쓴 이용권 한장이 사라져요."
+        ) {
             ButtonLarge(.modal, tone: .twoColor) {
-                Button("계속하기") { send(.userTappedContinueInterview) }
+                Button("그대로 나가기") { send(.userTappedLeaveInterview) }
             } trailing: {
-                Button("나가기") { send(.userTappedLeaveInterview) }
+                Button("면접 계속하기") { send(.userTappedContinueInterview) }
             }
         }
     }

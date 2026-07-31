@@ -46,55 +46,31 @@ public struct InterviewReadinessView: View {
 
     /// Figma title-box: 상태바 아래 51pt 지점부터. 2줄(68pt) 밴드를 고정해 1줄 타이틀(guide2)도
     /// 같은 시각 중심(y≈128)에 온다 (Figma top 94 vs 110 보정).
+    /// DS `TitleBox` 소비 — 다크 판 글자색·마커는 `.hilitSurface(.dark)` 가 파생한다.
     private var titleBox: some View {
-        VStack(spacing: 0) {
-            switch store.phase {
-            case .aligning, .ready:
-                titleLine {
-                    titleText("면접을 준비하고 있어요")
-                }
-                titleLine {
-                    titleText("화면 속")
-                    titleHighlight("내 모습")
-                    titleText("을 확인해주세요")
-                }
-            case .guide1:
-                titleLine {
-                    titleText("질문은")
-                    titleHighlight("소리")
-                    titleText("로만 나와요")
-                }
-                titleLine {
-                    titleText("실제 면접처럼 잘 듣고 대답하면 돼요")
-                }
-            case .guide2:
-                titleLine {
-                    titleText("면접은 총")
-                    titleHighlight("10분")
-                    titleText("으로 진행돼요")
-                }
-            }
+        TitleBox(titleLines, alignment: .center)
+            .hilitSurface(.dark)
+            .frame(minHeight: 68)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, .ds(.p20))
+            .padding(.top, 51)
+    }
+
+    private var titleLines: [TitleBox.Line] {
+        switch store.phase {
+        case .aligning, .ready:
+            [
+                "면접을 준비하고 있어요",
+                .init("화면 속 내 모습을 확인해주세요", highlight: "내 모습")
+            ]
+        case .guide1:
+            [
+                .init("질문은 소리로만 나와요", highlight: "소리"),
+                "실제 면접처럼 잘 듣고 대답하면 돼요"
+            ]
+        case .guide2:
+            [.init("면접은 총 10분으로 진행돼요", highlight: "10분")]
         }
-        .frame(minHeight: 68)
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, .ds(.p20))
-        .padding(.top, 51)
-    }
-
-    private func titleLine(@ViewBuilder content: () -> some View) -> some View {
-        HStack(spacing: 0) { content() }
-    }
-
-    private func titleText(_ text: String) -> some View {
-        Text(text)
-            .dsTypography(.head3)
-            .foregroundStyle(Color.BlackWhite.white)
-    }
-
-    /// 한 낱말만 마커 처리 — 문장 조립은 호출부(`titleLine`)가 하므로 낱말 전체가 강조 구간이다.
-    private func titleHighlight(_ text: String) -> some View {
-        HighlightedText(text, typography: .head3)
-            .hilightColor(.green)
     }
 
     // MARK: - 하단 (티커 ↔ 시작 버튼)

@@ -13,7 +13,7 @@ Figma 버튼 6종을 옮긴 체계. (이 표만 알파벳순이 아니다 — �
 | 대상 | Figma | API | 비고 |
 |---|---|---|---|
 | `ButtonLarge` 단일 | ButtonLarge_bottom 1941:3256 · _modal 2302:5987 | `ButtonLarge(_ title:, _ kind: .bottom/.modal, style: .filled/.outlined, action:)` | h55·sub7. bottom = px24·pt22/pb10·배경이 안전영역까지 / modal = px8·py16. `.outlined` 는 bottom 전용(DEBUG assert) |
-| `ButtonLarge` 2버튼 | bottom/filled-2 · modal/dubble | `ButtonLarge(_ kind:, tone: .dark/.gray/.twoColor) { } trailing: { }` | divider 1×25. **한쪽만 비활성은 그 자식에 `.disabled(true)`** — 별도 변형 없음. `.gray` 는 bottom 전용 |
+| `ButtonLarge` 2버튼 | bottom/filled-2 · modal/dubble | `ButtonLarge(_ kind:, tone: .dark/.gray/.twoColor) { } trailing: { }` | divider 1×25. **한쪽만 비활성은 그 자식에 `.disabled(true)`** — 별도 변형 없음. `.gray` 는 bottom 전용. **modal+twoColor 는 패딩 0 풀블리드** — 좌 g50·우 b800 반반이 카드 바닥을 꽉 채운다(«modal» 2555:7739), 세로 여백 16 은 세그먼트 배경 안 |
 | `.medium(_:layout:)` | ButtonMedium 1941:3261 | `.buttonStyle(.medium(.green))` · `.medium(.blue, layout: .fill)` | h45·py12. 색 6종 default/black/gray/green/blue/red. `layout` — `.hug` px24(기본) / `.fill` 등폭(가로패딩 0, 넘치면 축소) → HStack 에 나란히 놓아 **N지선다 척도 칩** |
 | `.mini(_:layout:)` | ButtonMini 1941:6780 · with-icon 2227:4441 | `.buttonStyle(.mini(.gray, layout: .withIcon))` | h34·py8·hug. 색 5종. 가로 여백은 `layout` — textOnly px12 / withIcon px8 |
 | `.miniSub(_:)` | ButtonMini status=sub | `.buttonStyle(.miniSub(.white))` | h26·px8/py4·테두리 1.0. 색 3종 white/black/none |
