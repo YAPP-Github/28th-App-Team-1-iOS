@@ -30,8 +30,10 @@
 | `.hilitBottomSheet` | 바텀시트 딤 오버레이 표출 — 껍데기만, 시트 판은 호출부 (모디파이어) | 표시 |
 | `.hilitButtonLoading` | 버튼 로딩 오버레이 (시안에 없음) | 버튼 |
 | `HilitCheckboxStyle` | 체크박스 (`ToggleStyle`) | 입력 |
+| `.hilitLogoNavigationBar` | 내비바 — 루트 브랜드 판(로고·프로필) | 내비게이션 |
 | `.hilitModal` | 모달 딤 오버레이 표출 (모디파이어) | 표시 |
-| `HilitNavigationBar` | 커스텀 내비바 (부착은 모디파이어) | 내비게이션 |
+| `.hilitNavigationBar` | 내비바 — push 화면(스택 안) | 내비게이션 |
+| `.hilitPresentedNavigationBar` | 내비바 — present 단독 화면(스택 밖) | 내비게이션 |
 | `.hilitSurface` | 화면 판 톤 선언 → 하위 팔레트 전환 | 버튼 |
 | `HilitTextEditor` | 여러 줄 입력 박스 | 입력 |
 | `HilitTextField` | 한 줄 입력 필드 | 입력 |
