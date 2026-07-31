@@ -51,6 +51,19 @@ struct GuestFeedbackSubmitTests {
         #expect(ready.state.isSubmitEnabled == true)
     }
 
+    @Test("확인 모달에서 취소하면 모달만 닫히고 summary 에 머문다")
+    func submitConfirmDismissKeepsSummary() async {
+        let store = makeReadyStore()
+
+        await store.send(.view(.submitTapped)) {
+            $0.isSubmitConfirmPresented = true
+        }
+        await store.send(.view(.submitConfirmDismissed)) {
+            $0.isSubmitConfirmPresented = false
+        }
+        #expect(store.state.isSubmitting == false)
+    }
+
     @Test("제출 확인 후 성공하면 완료 화면으로 가고 임시저장을 지운다")
     func submitSuccessCompletesAndClearsDraft() async {
         let localStore = GuestFeedbackLocalStore.inMemory()
@@ -58,10 +71,10 @@ struct GuestFeedbackSubmitTests {
         let store = makeReadyStore(localStore: localStore)
 
         await store.send(.view(.submitTapped)) {
-            $0.confirmDialog = .submitConfirm
+            $0.isSubmitConfirmPresented = true
         }
-        await store.send(.confirmDialog(.presented(.confirmSubmit))) {
-            $0.confirmDialog = nil
+        await store.send(.view(.submitConfirmTapped)) {
+            $0.isSubmitConfirmPresented = false
             $0.isSubmitting = true
         }
         await store.receive(\.inner.submitFinished) {
@@ -86,10 +99,10 @@ struct GuestFeedbackSubmitTests {
         let store = makeReadyStore(client: client, ratings: ratings)
 
         await store.send(.view(.submitTapped)) {
-            $0.confirmDialog = .submitConfirm
+            $0.isSubmitConfirmPresented = true
         }
-        await store.send(.confirmDialog(.presented(.confirmSubmit))) {
-            $0.confirmDialog = nil
+        await store.send(.view(.submitConfirmTapped)) {
+            $0.isSubmitConfirmPresented = false
             $0.isSubmitting = true
         }
         await store.receive(\.inner.submitFinished) {
@@ -110,10 +123,10 @@ struct GuestFeedbackSubmitTests {
         let store = makeReadyStore(client: .mock(submitError: .capacityFull))
 
         await store.send(.view(.submitTapped)) {
-            $0.confirmDialog = .submitConfirm
+            $0.isSubmitConfirmPresented = true
         }
-        await store.send(.confirmDialog(.presented(.confirmSubmit))) {
-            $0.confirmDialog = nil
+        await store.send(.view(.submitConfirmTapped)) {
+            $0.isSubmitConfirmPresented = false
             $0.isSubmitting = true
         }
         await store.receive(\.inner.submitFinished) {
@@ -134,10 +147,10 @@ struct GuestFeedbackSubmitTests {
         let store = makeReadyStore(client: .mock(submitError: error))
 
         await store.send(.view(.submitTapped)) {
-            $0.confirmDialog = .submitConfirm
+            $0.isSubmitConfirmPresented = true
         }
-        await store.send(.confirmDialog(.presented(.confirmSubmit))) {
-            $0.confirmDialog = nil
+        await store.send(.view(.submitConfirmTapped)) {
+            $0.isSubmitConfirmPresented = false
             $0.isSubmitting = true
         }
         await store.receive(\.inner.submitFinished) {
@@ -152,10 +165,10 @@ struct GuestFeedbackSubmitTests {
         let store = makeReadyStore(client: .mock(submitError: .invalid(message: "지정된 항목을 모두 평가해 주세요.")))
 
         await store.send(.view(.submitTapped)) {
-            $0.confirmDialog = .submitConfirm
+            $0.isSubmitConfirmPresented = true
         }
-        await store.send(.confirmDialog(.presented(.confirmSubmit))) {
-            $0.confirmDialog = nil
+        await store.send(.view(.submitConfirmTapped)) {
+            $0.isSubmitConfirmPresented = false
             $0.isSubmitting = true
         }
         await store.receive(\.inner.submitFinished) {

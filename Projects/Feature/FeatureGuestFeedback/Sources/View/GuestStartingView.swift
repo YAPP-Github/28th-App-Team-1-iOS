@@ -34,13 +34,17 @@ struct GuestStartingView: View {
 
     // MARK: - Guidance copy (중앙 정렬 · 2행 · 그린 마커) — Figma head3_b_24, 시안에 스피너는 없다.
 
+    private var requesterName: String { store.entry?.requesterName ?? "지원자" }
+
+    /// 1행은 Figma(1855:8702) 확정 — "{요청자}님의 [태도]에 집중해서". 2행은 시안이 템플릿
+    /// 플레이스홀더("두 번째 줄은 이렇게 입력해주세요")라 문장이 이어지는 "시청해 주세요"로 둔다.
     private var guidanceCopy: some View {
         VStack(spacing: 0) {
             // 그린 형광펜 마커 — DS HighlightedText(Figma highlighted-text), 온보딩과 동일.
             // 다크 배경이라 강조 밖 글자만 흰색으로 올린다.
-            HighlightedText("평가를 위해 태도에", plainForeground: Color.BlackWhite.white)
+            HighlightedText("\(requesterName)님의 태도에 집중해서", plainForeground: Color.BlackWhite.white)
                 .hilight("태도")
-            Text("집중해서 시청해 주세요")
+            Text("시청해 주세요")
                 .dsTypography(.head3)
                 .foregroundStyle(Color.BlackWhite.white)
         }
