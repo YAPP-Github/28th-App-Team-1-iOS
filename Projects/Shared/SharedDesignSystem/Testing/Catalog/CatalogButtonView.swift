@@ -28,10 +28,10 @@ struct CatalogButtonView: View {
     }
 
     private var largeSingle: some View {
-        CatalogGroup("ButtonLarge 단일 — .bottom / .modal · .filled / .outlined") {
+        CatalogGroup("ButtonLarge 단일 — .bottom / .modal · tone .dark / .light") {
             VStack(spacing: .ds(.p8)) {
                 ButtonLarge("피드백 시작하기", .bottom) {}
-                ButtonLarge("다시 연습하기", .bottom, style: .outlined) {}
+                ButtonLarge("다시 연습하기", .bottom, tone: .light) {}
                 ButtonLarge("확인", .modal) {}
                 ButtonLarge("비활성", .bottom) {}.disabled(true)
                 ButtonLarge("전송 중", .bottom) {}.hilitButtonLoading(true)

@@ -23,16 +23,19 @@ public enum ButtonLargeKind: Sendable {
     case login
 }
 
-/// 대형 단일 버튼 형태.
-public enum ButtonLargeStyle: Sendable {
-    case filled
+/// 대형 단일 버튼 배색 — Figma `button-large` 시트의 **행 축**(`dark`/`light`).
+/// 열 축(default·pressed·disabled)은 파라미터가 아니다 — 아래 `SingleStyle` 이 자동 처리한다.
+public enum ButtonLargeTone: Sendable, CaseIterable {
+    /// 검정 채움 + 흰 라벨
+    case dark
     /// 흰 바탕 + 검정 테두리. **`.bottom` 전용** (모달엔 시안이 없다).
-    case outlined
+    case light
 }
 
-/// 대형 2버튼 배색.
-public enum ButtonLargePairTone: Sendable {
-    /// 검정 공유 배경 + 흰 라벨
+/// 대형 2버튼 배색 — 시트의 `2 button` 행 열 축(`default`/`gray`/`2 color`).
+/// 시트의 `1 disabled` 칸은 배색이 아니라 상태라 여기 없다 — 해당 자식에 `.disabled(true)`.
+public enum ButtonLargePairTone: Sendable, CaseIterable {
+    /// 검정 공유 배경 + 흰 라벨 (시트 `default`)
     case dark
     /// 회색 공유 배경 + 검정 라벨. **`.bottom` 전용**
     case gray
@@ -53,7 +56,7 @@ public enum ButtonLargeLoginProvider: Sendable, CaseIterable {
 ///
 /// ```swift
 /// ButtonLarge("피드백 시작하기", .bottom) { }
-/// ButtonLarge("다시 연습하기", .bottom, style: .outlined) { }
+/// ButtonLarge("다시 연습하기", .bottom, tone: .light) { }
 /// ButtonLarge(.modal, tone: .twoColor) {
 ///     Button("취소") { }
 /// } trailing: {
@@ -70,12 +73,12 @@ public enum ButtonLargeLoginProvider: Sendable, CaseIterable {
 public struct ButtonLarge<Leading: View, Trailing: View>: View {
     // 제네릭 안에 중첩하면 특수화마다 다른 타입이 돼 내부 스타일과 안 맞물린다 — 파일 스코프에 두고 별칭만.
     public typealias Kind = ButtonLargeKind
-    public typealias Style = ButtonLargeStyle
+    public typealias Tone = ButtonLargeTone
     public typealias PairTone = ButtonLargePairTone
     public typealias LoginProvider = ButtonLargeLoginProvider
 
     private enum Content {
-        case single(title: String, style: Style, action: () -> Void)
+        case single(title: String, tone: Tone, action: () -> Void)
         case pair(tone: PairTone)
         case login(title: String, provider: LoginProvider, showsLogo: Bool, action: () -> Void)
     }
@@ -91,8 +94,8 @@ public struct ButtonLarge<Leading: View, Trailing: View>: View {
     public var body: some View {
         Group {
             switch content {
-            case let .single(title, style, action):
-                single(title: title, style: style, action: action)
+            case let .single(title, tone, action):
+                single(title: title, tone: tone, action: action)
             case let .pair(tone):
                 pair(tone: tone)
             case let .login(title, provider, showsLogo, action):
@@ -104,9 +107,9 @@ public struct ButtonLarge<Leading: View, Trailing: View>: View {
 
     // MARK: - 단일
 
-    private func single(title: String, style: Style, action: @escaping () -> Void) -> some View {
+    private func single(title: String, tone: Tone, action: @escaping () -> Void) -> some View {
         Button(title, action: action)
-            .buttonStyle(SingleStyle(kind: kind, style: style, isEnabled: isEnabled, isLoading: isLoading))
+            .buttonStyle(SingleStyle(kind: kind, tone: tone, isEnabled: isEnabled, isLoading: isLoading))
     }
 
     // MARK: - 2버튼
@@ -159,14 +162,14 @@ public struct ButtonLarge<Leading: View, Trailing: View>: View {
 // MARK: - init
 
 public extension ButtonLarge where Leading == EmptyView, Trailing == EmptyView {
-    /// 단일 버튼.
-    init(_ title: String, _ kind: Kind, style: Style = .filled, action: @escaping () -> Void) {
+    /// 단일 버튼. `tone` 은 시트 행(`dark`/`light`) — pressed·disabled 는 넘기지 않는다(자동).
+    init(_ title: String, _ kind: Kind, tone: Tone = .dark, action: @escaping () -> Void) {
         #if DEBUG
-        assert(!(kind == .modal && style == .outlined), "모달에는 outlined 시안이 없다 — .bottom 을 쓰거나 .filled 로.")
+        assert(!(kind == .modal && tone == .light), "모달에는 light 시안이 없다 — .bottom 을 쓰거나 .dark 로.")
         assert(kind != .login, "로그인 버튼은 배색·로고가 제공자에 묶여 있다 — ButtonLarge(_:login:) 을 쓴다.")
         #endif
         self.kind = kind
-        self.content = .single(title: title, style: style, action: action)
+        self.content = .single(title: title, tone: tone, action: action)
         self.leading = EmptyView()
         self.trailing = EmptyView()
     }
@@ -291,9 +294,10 @@ private extension ButtonLargeLoginProvider {
 // MARK: - 내부 스타일
 
 /// 단일 버튼 — 배경·테두리·눌림·비활성·로딩을 전부 여기서 굴린다.
+/// 시트의 한 칸을 고르는 순서: **열(disabled → pressed)이 행(tone)을 이긴다.**
 private struct SingleStyle: ButtonStyle {
     let kind: ButtonLargeKind
-    let style: ButtonLargeStyle
+    let tone: ButtonLargeTone
     let isEnabled: Bool
     let isLoading: Bool
 
@@ -307,7 +311,7 @@ private struct SingleStyle: ButtonStyle {
             .foregroundStyle(foreground)
             .background(background(pressed: configuration.isPressed).ignoresSafeArea(edges: kind.safeAreaEdges))
             .overlay {
-                if style == .outlined {
+                if tone == .light {
                     Rectangle().strokeBorder(
                         isEnabled ? Color.HilitBlack.b800 : Color.GrayScale.g300,
                         lineWidth: .ds(.semiBold)
@@ -318,18 +322,19 @@ private struct SingleStyle: ButtonStyle {
             .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
     }
 
+    /// disabled 칸은 행과 무관하게 g300 하나로 수렴한다(시트 dark·light disabled 라벨이 같은 회색).
     private var foreground: Color {
         guard isEnabled else { return Color.GrayScale.g300 }
-        return style == .filled ? Color.BlackWhite.white : Color.HilitBlack.b800
+        return tone == .dark ? Color.BlackWhite.white : Color.HilitBlack.b800
     }
 
     private func background(pressed: Bool) -> Color {
         guard isEnabled else {
-            return style == .filled ? Color.GrayScale.g50 : Color.BlackWhite.white
+            return tone == .dark ? Color.GrayScale.g50 : Color.BlackWhite.white
         }
-        switch style {
-        case .filled: return pressed ? Color.GrayScale.g900 : Color.HilitBlack.b800
-        case .outlined: return pressed ? Color.GrayScale.g100 : Color.BlackWhite.white
+        switch tone {
+        case .dark: return pressed ? Color.GrayScale.g900 : Color.HilitBlack.b800
+        case .light: return pressed ? Color.GrayScale.g100 : Color.BlackWhite.white
         }
     }
 }
@@ -415,58 +420,71 @@ private struct LoginStyle: ButtonStyle {
     }
 }
 
-#Preview("bottom — 단일") {
+#Preview("bottom 단일 — 시트 매트릭스(tone × status)") {
+    // Figma button-large 시트 그대로: 행 = tone(dark·light), 열 = default / disabled.
+    // pressed 열은 파라미터가 없어 프리뷰로 못 만든다 — 실기기에서 눌러 확인한다.
     VStack(spacing: .ds(.p16)) {
-        ButtonLarge("피드백 시작하기", .bottom) {}
-        ButtonLarge("다시 연습하기", .bottom, style: .outlined) {}
-        ButtonLarge("비활성", .bottom) {}.disabled(true)
+        ForEach(ButtonLargeTone.allCases, id: \.self) { tone in
+            VStack(alignment: .leading, spacing: .ds(.p8)) {
+                Text(String(describing: tone)).dsTypography(.body6)
+                ButtonLarge("버튼", .bottom, tone: tone) {}
+                ButtonLarge("버튼", .bottom, tone: tone) {}.disabled(true)
+            }
+        }
         ButtonLarge("전송 중", .bottom) {}.hilitButtonLoading(true)
     }
+    .frame(width: 375)
     .background(Color.BlackWhite.white)
 }
 
-#Preview("bottom — 2버튼") {
+#Preview("bottom 2버튼 — 시트 순서(default·gray·2color·1disabled)") {
     VStack(spacing: .ds(.p16)) {
         ButtonLarge(.bottom, tone: .dark) {
-            Button("아니오") {}
+            Button("버튼") {}
         } trailing: {
-            Button("네") {}
-        }
-        ButtonLarge(.bottom, tone: .dark) {
-            Button("아니오") {}
-        } trailing: {
-            Button("네") {}.disabled(true)
+            Button("버튼2") {}
         }
         ButtonLarge(.bottom, tone: .gray) {
-            Button("취소") {}
+            Button("버튼") {}
         } trailing: {
-            Button("확인") {}
+            Button("버튼2") {}
         }
         // 반반은 컨테이너 여백이 0 — 375 폭에서 반쪽이 정확히 187.5 여야 한다.
         ButtonLarge(.bottom, tone: .twoColor) {
-            Button("취소") {}
+            Button("버튼") {}
         } trailing: {
-            Button("삭제") {}
+            Button("버튼2") {}
+        }
+        // 시트 `1 disabled` — 배색 변형이 아니라 한쪽 자식의 상태다.
+        ButtonLarge(.bottom, tone: .dark) {
+            Button("버튼") {}
+        } trailing: {
+            Button("버튼2") {}.disabled(true)
         }
         ButtonLarge(.bottom, tone: .twoColor) {
-            Button("취소") {}
+            Button("버튼") {}
         } trailing: {
-            Button("삭제") {}.disabled(true)
+            Button("버튼2") {}.disabled(true)
         }
     }
     .frame(width: 375)
     .background(Color.BlackWhite.white)
 }
 
-#Preview("modal") {
+#Preview("modal — 1버튼(default·disabled) · 2버튼(1color·2color)") {
     VStack(spacing: 0) {
         Color.BlackWhite.white.frame(height: 80)
-        ButtonLarge("다음", .modal) {}
-        ButtonLarge("비활성", .modal) {}.disabled(true)
-        ButtonLarge(.modal, tone: .twoColor) {
-            Button("취소") {}
+        ButtonLarge("버튼1", .modal) {}
+        ButtonLarge("버튼1", .modal) {}.disabled(true)
+        ButtonLarge(.modal, tone: .dark) {
+            Button("버튼1") {}
         } trailing: {
-            Button("삭제") {}
+            Button("버튼2") {}
+        }
+        ButtonLarge(.modal, tone: .twoColor) {
+            Button("버튼1") {}
+        } trailing: {
+            Button("버튼2") {}
         }
     }
     .frame(width: 335)

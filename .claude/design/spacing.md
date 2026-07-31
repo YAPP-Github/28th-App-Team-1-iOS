@@ -26,7 +26,7 @@
 | `large` | 4 | outline-large |
 | `mega` | 6 | outline-mega |
 
-`semiBold` 는 «카드 판 테두리·선택 밑줄» 두께다 — `ButtonLarge(.outlined)` 테두리, `TabSelector` 선택 밑줄, `FileCard`·`FoldableCard`·`FileUpload` 파일 행 테두리가 쓴다.
+`semiBold` 는 «카드 판 테두리·선택 밑줄» 두께다 — `ButtonLarge(tone: .light)` 테두리, `TabSelector` 선택 밑줄, `FileCard`·`FoldableCard`·`FileUpload` 파일 행 테두리가 쓴다.
 
 ## 규칙
 
