@@ -36,18 +36,21 @@ import SwiftUI
 /// 그려두는 이유가 그것이고, 중앙 타이틀이 빈 쪽으로 밀리지 않게 하는 장치다.
 /// `.hidden` 인 동안 `onClose` 는 불릴 일이 없다(죽은 클로저로 남아도 정상).
 ///
-/// 아이콘 색변형(`default24`/`white24`)·타이틀색은 `theme` 이 파생하므로
-/// 화면이 고르지 않는다 — 다크 배경에 검정 X 같은 조합이 표현 불가능하다.
+/// `surface` 는 **바가 앉은 바닥의 톤**이다 — `.filled` 면 바가 직접 칠하는 바닥(fillColor),
+/// `.transparent` 면 뒤 화면이 바닥(어두운 영상 풀블리드 = `.dark`). 아이콘 색변형
+/// (`default24`/`white24`)·타이틀색·`.filled` 배경색·상태바 글자색 네 값이 전부 이 한 축에서
+/// 파생되므로 화면이 낱개로 고르지 않는다 — 다크 바닥에 검정 X 같은 조합이 표현 불가능하다.
 ///
-/// `theme` 은 mini 버튼의 `.hilitSurface(.light/.dark)` 와 같은 «판 톤» 축이다.
-/// 내비바는 Environment 가 아니라 파라미터로 받는다 — 빼먹으면 조용히 틀리는 물건이라 명시가 안전.
+/// mini 버튼의 `.hilitSurface(.light/.dark)` 와 같은 축·같은 이름이지만, 내비바는
+/// Environment 가 아니라 파라미터로 받는다 — 빼먹으면 조용히 틀리는 물건이라 명시가 안전.
 ///
 /// 높이는 44(시스템 표준)로 간다 — 이 시안은 py14 로 52~54 를 재지만 «기본 UI 를 토대로 쓴다»는
 /// 사용자 결정(2026-07-31)에 따라 시스템 바 높이를 받아들이고 커스텀 바를 되살리지 않는다.
 /// 좌우 여백도 같은 결정으로 시스템 바 마진을 그대로 쓴다(시안 px20 과 수 pt 차이).
 public enum HilitNavigationBar {
-    /// 바가 놓이는 판의 톤 — 아이콘 색변형·타이틀색·`.filled` 배경색을 전부 파생한다.
-    public enum Theme: Sendable {
+    /// 바가 앉은 바닥의 톤 — 아이콘 색변형·타이틀색·`.filled` 배경색·상태바 글자색을 전부 파생한다.
+    /// `.transparent` 바에서는 뒤 화면이 바닥이다 — 어두운 영상 위 흰 아이콘 = `.dark`.
+    public enum Surface: Sendable {
         case light
         case dark
     }
@@ -70,7 +73,7 @@ public enum HilitNavigationBar {
     }
 
     /// 바 배경 — 기본은 투명(영상 풀블리드처럼 뒤 화면이 비쳐야 하는 케이스).
-    /// 스크롤 화면은 콘텐츠가 바 밑으로 지나가므로 `.filled`(theme 색) 로 칠한다.
+    /// 스크롤 화면은 콘텐츠가 바 밑으로 지나가므로 `.filled`(surface 색) 로 칠한다.
     /// 스크림(그라데이션) 시안이 생기면 case 추가로 확장한다.
     public enum Background: Sendable {
         case transparent
@@ -78,9 +81,9 @@ public enum HilitNavigationBar {
     }
 }
 
-// MARK: - theme 파생 값
+// MARK: - surface 파생 값
 
-extension HilitNavigationBar.Theme {
+extension HilitNavigationBar.Surface {
     var closeIcon: Image {
         switch self {
         case .light: Image.Cancel.default24
@@ -156,19 +159,19 @@ public extension View {
     func hilitNavigationBar(
         _ title: String? = nil,
         trailing: HilitNavigationBar.Trailing? = nil,
-        theme: HilitNavigationBar.Theme = .light,
+        surface: HilitNavigationBar.Surface = .light,
         background: HilitNavigationBar.Background = .transparent,
         allowsSwipeBack: Bool = true,
         leading: HilitNavigationBar.Leading = .close,
         onClose: (() -> Void)? = nil
     ) -> some View {
         #if DEBUG
-        assert(!(theme == .dark && trailing != nil),
+        assert(!(surface == .dark && trailing != nil),
                "HilitNavigationBar: 다크 바의 trailing 시안이 없다 — 필요하면 디자이너 확인 후 추가.")
         #endif
         return modifier(HilitNavigationBarModifier(
             bar: .standard(title: title, trailing: trailing, leading: leading, onClose: onClose),
-            theme: theme,
+            surface: surface,
             background: background,
             allowsSwipeBack: allowsSwipeBack
         ))
@@ -182,7 +185,7 @@ public extension View {
         // logo 변형은 루트 전용 — 루트는 pop 대상이 없어 스와이프백 스위치가 무의미.
         modifier(HilitNavigationBarModifier(
             bar: .logo(onProfile: onProfile),
-            theme: .light,
+            surface: .light,
             background: background,
             allowsSwipeBack: true
         ))
@@ -202,20 +205,20 @@ public extension View {
     func hilitPresentedNavigationBar(
         _ title: String? = nil,
         trailing: HilitNavigationBar.Trailing? = nil,
-        theme: HilitNavigationBar.Theme = .light,
+        surface: HilitNavigationBar.Surface = .light,
         background: HilitNavigationBar.Background = .transparent,
         leading: HilitNavigationBar.Leading = .close,
         onClose: (() -> Void)? = nil
     ) -> some View {
         #if DEBUG
-        assert(!(theme == .dark && trailing != nil),
+        assert(!(surface == .dark && trailing != nil),
                "HilitNavigationBar: 다크 바의 trailing 시안이 없다 — 필요하면 디자이너 확인 후 추가.")
         #endif
         return safeAreaInset(edge: .top, spacing: 0) {
-            PresentedNavigationBar(title: title, trailing: trailing, theme: theme, leading: leading, onClose: onClose)
+            PresentedNavigationBar(title: title, trailing: trailing, surface: surface, leading: leading, onClose: onClose)
                 .background {
                     if background == .filled {
-                        theme.fillColor
+                        surface.fillColor
                     }
                 }
         }
@@ -234,7 +237,7 @@ private struct HilitNavigationBarModifier: ViewModifier {
     }
 
     let bar: Bar
-    let theme: HilitNavigationBar.Theme
+    let surface: HilitNavigationBar.Surface
     let background: HilitNavigationBar.Background
     let allowsSwipeBack: Bool
 
@@ -248,8 +251,8 @@ private struct HilitNavigationBarModifier: ViewModifier {
             .navigationBarBackButtonHidden(true)
             .toolbar { toolbarContent }
             .toolbarBackground(background == .filled ? .visible : .hidden, for: .navigationBar)
-            .toolbarBackground(theme.fillColor, for: .navigationBar)
-            .toolbarColorScheme(theme.colorScheme, for: .navigationBar)
+            .toolbarBackground(surface.fillColor, for: .navigationBar)
+            .toolbarColorScheme(surface.colorScheme, for: .navigationBar)
             .background {
                 SwipeBackPolicy(allows: allowsSwipeBack)
             }
@@ -264,7 +267,7 @@ private struct HilitNavigationBarModifier: ViewModifier {
             // 아이템을 아예 빼면 양쪽 폭이 어긋나 타이틀이 빈 쪽으로 끌려간다.
             // 시안이 «왼쪽 아이콘 미노출»(439:10396)에 빈 40×26 박스를 그려둔 것과 같은 이유.
             ToolbarItem(placement: .topBarLeading) {
-                if let icon = theme.leadingIcon(for: leading) {
+                if let icon = surface.leadingIcon(for: leading) {
                     HilitNavigationBarSlot.icon(icon, action: onClose ?? { dismiss() })
                 } else {
                     HilitNavigationBarSlot.emptyIconSlot
@@ -274,7 +277,7 @@ private struct HilitNavigationBarModifier: ViewModifier {
                 ToolbarItem(placement: .principal) {
                     Text(title)
                         .dsTypography(.sub7)
-                        .foregroundStyle(theme.titleColor)
+                        .foregroundStyle(surface.titleColor)
                         .lineLimit(1)
                 }
             }
@@ -306,7 +309,7 @@ private struct HilitNavigationBarModifier: ViewModifier {
 private struct PresentedNavigationBar: View {
     let title: String?
     let trailing: HilitNavigationBar.Trailing?
-    let theme: HilitNavigationBar.Theme
+    let surface: HilitNavigationBar.Surface
     let leading: HilitNavigationBar.Leading
     let onClose: (() -> Void)?
 
@@ -327,7 +330,7 @@ private struct PresentedNavigationBar: View {
     /// 여기선 HStack 이 직접 재므로 슬롯을 빼면 타이틀이 그만큼 왼쪽으로 밀린다.
     @ViewBuilder
     private var leadingSlot: some View {
-        if let icon = theme.leadingIcon(for: leading) {
+        if let icon = surface.leadingIcon(for: leading) {
             HilitNavigationBarSlot.icon(icon, action: onClose ?? { dismiss() })
                 .frame(width: HilitNavigationBarSlot.iconSlotWidth, alignment: .leading)
         } else {
@@ -340,7 +343,7 @@ private struct PresentedNavigationBar: View {
         if let title {
             Text(title)
                 .dsTypography(.sub7)
-                .foregroundStyle(theme.titleColor)
+                .foregroundStyle(surface.titleColor)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity)
         } else {
@@ -485,7 +488,7 @@ private enum HilitNavigationBarSlot {
     NavigationStack {
         Color.HilitBlack.b800
             .ignoresSafeArea()
-            .hilitNavigationBar("타이틀", theme: .dark, background: .filled, onClose: {})
+            .hilitNavigationBar("타이틀", surface: .dark, background: .filled, onClose: {})
     }
 }
 
