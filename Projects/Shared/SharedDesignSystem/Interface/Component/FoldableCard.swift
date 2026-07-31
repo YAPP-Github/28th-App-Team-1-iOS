@@ -152,7 +152,7 @@ public struct FoldableCard: View {
 /// ```
 ///
 /// Figma 의 «버튼 미노출 / 오류 문구 미노출 / 오류 문구만 노출» 축은 값의 유무로 표현한다.
-/// 버튼 배색은 시안대로 닫았다 — 왼쪽 흰 판(`.mini(.white)`), 오른쪽 검정(`.mini(.black)`).
+/// 버튼 배색은 시안대로 닫았다 — 왼쪽 흰 판(`.mini(.filled)`), 오른쪽 검정(`.mini(.black)`).
 public struct FoldableCardDetail: View {
     /// 라벨/값 한 줄. 라벨 열 폭은 70 고정이라 값이 어느 줄에서든 같은 x 에서 시작한다.
     public struct Row: Sendable, Hashable {
@@ -239,7 +239,7 @@ public struct FoldableCardDetail: View {
     private var actionRow: some View {
         HStack(spacing: .ds(.p8)) {
             if let leadingAction {
-                actionButton(leadingAction, tone: .white)
+                actionButton(leadingAction, tone: .filled)
             }
             if let trailingAction {
                 actionButton(trailingAction, tone: .black)

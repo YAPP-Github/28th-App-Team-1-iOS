@@ -123,7 +123,7 @@ public struct InterviewSessionView: View {
                 Button("면접 종료하기") {
                     send(.userTappedExit)
                 }
-                .buttonStyle(.mini(.white))
+                .buttonStyle(.mini(.filled))
             }
         }
         .frame(minHeight: 34)
