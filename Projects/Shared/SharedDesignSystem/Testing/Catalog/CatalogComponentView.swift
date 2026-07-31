@@ -310,11 +310,11 @@ private extension CatalogComponentView {
     }
 }
 
-// 내비바 데모 — 시스템 바를 그리려면 미니 NavigationStack 이 필요해 헬퍼와 같이 묶었다.
+// 네비바 데모 — 시스템 바를 그리려면 미니 NavigationStack 이 필요해 헬퍼와 같이 묶었다.
 private extension CatalogComponentView {
     var hilitNavigationBar: some View {
         CatalogGroup("HilitNavigationBar — push=시스템 바 / present=수동 바. leading .close/.back/.hidden · 다크 · logo") {
-            // 시스템 내비바는 NavigationStack 이 그린다 — 카탈로그에선 변형마다 미니 스택으로 시연.
+            // 시스템 네비바는 NavigationStack 이 그린다 — 카탈로그에선 변형마다 미니 스택으로 시연.
             VStack(spacing: 0) {
                 navigationBarDemo {
                     Color.clear.hilitNavigationBar("타이틀", trailing: .plus {}, background: .filled, onClose: {})
@@ -343,7 +343,7 @@ private extension CatalogComponentView {
         }
     }
 
-    /// 내비바 44pt 만 보이게 잘라낸 미니 NavigationStack.
+    /// 네비바 44pt 만 보이게 잘라낸 미니 NavigationStack.
     func navigationBarDemo(@ViewBuilder content: () -> some View) -> some View {
         NavigationStack { content() }
             .frame(height: 44)

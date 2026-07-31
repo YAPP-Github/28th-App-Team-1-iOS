@@ -309,7 +309,7 @@ public struct OnboardingJDLinkView: View {
 
     // MARK: - 하단 CTA (이전으로 | 계속하기)
 
-    /// 분할 CTA 바 — 뒤로가기가 내비바가 아니라 여기에 있다 (Figma 1609:9659).
+    /// 분할 CTA 바 — 뒤로가기가 네비바가 아니라 여기에 있다 (Figma 1609:9659).
     /// 한쪽만 비활성은 그 자식의 `.disabled` 로 표현한다 (DS 2버튼 규약).
     private var bottomBar: some View {
         ButtonLarge(.bottom, tone: .dark) {
