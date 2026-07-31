@@ -163,7 +163,8 @@ public extension Image {
         public static var appleNoBg: Image { Asset.Assets.logoAppleNoBg.swiftUIImage }
         public static var appleWithBg: Image { Asset.Assets.logoAppleWithBg.swiftUIImage }
         public static var appleWithBg24: Image { Asset.Assets.logoAppleWithBg24.swiftUIImage }
-        /// Hilit 워드마크 57×24 — 내비바 logo 변형 (Figma 3768:5296)
+        /// Hilit 워드마크 57×24 — 내비바 logo 변형 (Figma 3768:5296).
+        /// 스플래시·CreateAccount 는 같은 벡터의 3배(171×72)라 이 에셋을 확대해 쓴다 — 재드로잉 아님.
         public static var hilit: Image { Asset.Assets.logoHilit.swiftUIImage }
         public static var kakaoNoBg: Image { Asset.Assets.logoKakaoNoBg.swiftUIImage }
         public static var kakaoWithBg: Image { Asset.Assets.logoKakaoWithBg.swiftUIImage }

@@ -41,6 +41,14 @@ Rectangle().fill(Color.GrayScale.g50)
 
 **생김새로 찾을 때**: 「형광 연두」→ `HilitGreen.g500`, 「연한 하늘 배경」→ `Positive.p200`, 「disabled 회색 글자」→ `GrayScale.g300` 처럼 위 표의 생김새 열을 훑는다. HEX 를 아는 경우 그대로 검색.
 
+## 브랜드 색 (팔레트 밖)
+
+외부 서비스가 지정한 색. 제품 팔레트와 **섞지 않는다** — 단계 번호 없이 서비스명이 멤버명이고, 값의 진실은 그 서비스의 브랜드 가이드다(디자이너가 바꿀 수 있는 색이 아니다). 위 23색 카운트에도 들어가지 않는다.
+
+| enum | 토큰 | HEX | 용도 |
+|---|---|---|---|
+| `Brand` | `kakao` | #FEE500 | 카카오 옐로 — 카카오 로그인 버튼 판 |
+
 ## 구현 노트
 
 - **에셋 로드**: 값은 `Interface/Resources/Colors.xcassets`(에셋명 = `Color<HEX>`), 로드는 Tuist 생성 접근자 `SharedDesignSystemInterfaceAsset.Colors.<name>.swiftUIColor` ([Color+Extension.swift](../../Projects/Shared/SharedDesignSystem/Interface/Color/Color+Extension.swift) 가 `Asset` 으로 축약해 감싼다). 에셋명이 HEX 라 생성 이름도 `color636777` — 의미를 입히는 게 팔레트 enum 의 일이다. 에셋을 지우거나 이름을 바꾸면 팔레트에서 컴파일 에러가 난다.
