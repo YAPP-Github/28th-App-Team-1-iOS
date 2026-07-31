@@ -130,6 +130,9 @@ public extension Image {
         /// 아이콘 시트에 이름 붙은 변형이 없다. 틴트가 금지라 `default` 와 같은 도형을
         /// e500 으로 다시 칠한 에셋으로 둔다(`Issue.error*` 와 같은 방식).
         public static var error: Image { Asset.Assets.infoError.swiftUIImage }
+        /// 청록 안내 아이콘 — «feedback-card»(2102:9128) 긍정 라벨 칩 안에서 p800 으로 덮어쓴 인스턴스.
+        /// `error` 와 같은 사정으로 p800 으로 다시 칠한 에셋을 둔다.
+        public static var positive: Image { Asset.Assets.infoPositive.swiftUIImage }
     }
 
     enum Issue {

@@ -44,19 +44,15 @@ struct GuestNicknameView: View {
 
     // MARK: - Title
 
+    /// DS TitleBox — Figma «title-box»(2094:7312) 1:1, 그린 마커 "이름".
     private var titleBlock: some View {
-        VStack(alignment: .leading, spacing: .ds(.p8)) {
-            VStack(alignment: .leading, spacing: 0) {
-                Text("레포트에 표시될 당신의")
-                    .dsTypography(.head4)
-                    .foregroundStyle(Color.GrayScale.g900)
-                // 그린 형광펜 마커 — DS HighlightedText(Figma highlighted-text), 온보딩과 동일.
-                HighlightedText("이름을 알려주세요", typography: .head4).hilight("이름")
-            }
-            Text("이름은 피드백 레포트에만 반영이 됩니다")
-                .dsTypography(.body3)
-                .foregroundStyle(Color.GrayScale.g500)
-        }
+        TitleBox(
+            [
+                "레포트에 표시될 당신의",
+                TitleBox.Line("이름을 입력해주세요", highlight: "이름")
+            ],
+            sub: "이름은 피드백 레포트에만 반영이 됩니다"
+        )
     }
 
     // MARK: - Name field (중앙 정렬 · 텍스트 폭 밑줄)
