@@ -6,8 +6,44 @@
 | 컴포넌트 | Figma | API | 용도 |
 |---|---|---|---|
 | `DashIndicator` | dash 2044:4712 | `(count:current:)` | 진행 단계 대시 — 20×4 조각(on b800 / off g50) 나열. 조각 단독 공개 없음, «몇 번째까지 켜는가» 규칙만 갖는다 |
-| `HilitNavigationBar` | Navigationbar — icon 2446:7485 · text 3029:11189 · logo 3632:13967 | **화면 부착은 모디파이어**: `.hilitNavigationBar("타이틀", trailing: .plus{…}/.text("버튼"){…}, theme: .light/.dark, background: .transparent/.filled, allowsSwipeBack:, onClose: {…})` · logo 변형 `.hilitLogoNavigationBar(onProfile:)`. View 직접 배치도 가능(`HilitNavigationBar(…)` / `.logo(onProfile:)`) | 커스텀 내비바 — h54(슬롯 26+py14)·px20. **뒤로 버튼 없음 — leading X 고정**이라 슬롯이 아니라 `onClose` 액션(최종 시안: X 통일, 뒤로는 하단 CTA·스와이프백 몫). `onClose` 생략 = 기본 동작(pop, 없으면 dismiss), 클로저 전달 = override — 아래 «닫기(X) 기본값과 override» 참조. 아이콘 슬롯 폭 40 고정(비어도 유지 — 타이틀 중앙 보존), 텍스트 버튼 hug. 시안 show 토글 = `trailing: nil`. `theme` 이 아이콘 색변형(`default24`/`white24`)·타이틀색·`.filled` 배경색(white/b800)을 전부 파생 — 다크에 검정 X 같은 조합 표현 불가. mini 버튼의 `.hilitSurface` 와 같은 «판 톤» 축이지만 내비바는 파라미터(명시가 안전). 다크 trailing 은 시안 없음(DEBUG assert). `background` 기본 `.transparent`(영상 풀블리드 — 콘텐츠 쪽 `.ignoresSafeArea()` 로 바 밑까지 깔림), 스크롤 화면은 `.filled`. 모디파이어가 배관(safeAreaInset·시스템 바 숨김·backButtonHidden·스와이프백 delegate) 소유 — backButtonHidden 이 끄는 스와이프백은 `Interaction/UINavigationController+SwipeBack.swift` 의 `SwipeBackPolicy` 가 **화면이 보이는 동안만 delegate 점유 후 반환**(전역 아님 — 시스템 피커 오염 방지). pop 전에 되물을 게 있는 화면만 `allowsSwipeBack: false`(상태 파생 값 가능). 스와이프 pop 은 리듀서에 `popFrom(id:)` 로 도착(`backRequested` 아님). View 단독은 배경 안 그림 |
+| `HilitNavigationBar` | Navigationbar 3029:11188 — icon 2446:7485 · text 3029:11189 · logo 3632:13967 | **부착은 모디파이어만** (View 직접 배치 없음 — 타입은 `Theme`/`Trailing`/`Background` 를 담는 enum 네임스페이스): push `.hilitNavigationBar(_:trailing:theme:background:allowsSwipeBack:onClose:)` · 루트 브랜드 `.hilitLogoNavigationBar(background:onProfile:)` · present `.hilitPresentedNavigationBar(_:trailing:theme:background:onClose:)`. **어느 걸 쓰나 → 아래 «부착 — push vs present»** | h44 내비바(시안 슬롯 26+py9 = 시스템 표준이라 커스텀 바 폐기, 2026-07-31). **뒤로 버튼 없음 — leading X 고정**이라 슬롯이 아니라 `onClose` 액션(최종 시안: X 통일, 뒤로는 하단 CTA·스와이프백 몫) → «닫기(X) 기본값과 override». 타이틀 sub7 중앙 · trailing 은 plus 아이콘 또는 텍스트 버튼(body5·g400·p8/p4 hug), 없으면 `trailing: nil`(시안 show 토글). `theme` 이 아이콘 색변형(`default24`/`white24`)·타이틀색·`.filled` 배경색(white/b800)을 전부 파생 — 다크에 검정 X 같은 조합은 표현 불가. mini 버튼의 `.hilitSurface` 와 같은 «판 톤» 축이지만 내비바는 파라미터(빼먹으면 조용히 틀려서 명시가 안전). 다크 trailing 은 시안 없음(DEBUG assert). `background` 기본 `.transparent`(영상 풀블리드 — 콘텐츠 쪽 `.ignoresSafeArea()` 로 바 밑까지 깔림), 콘텐츠가 바 밑을 지나는 스크롤 화면은 `.filled` |
 | `TabSelector` | tab 2044:4765 | `(_ items: [Item], selection: Binding<Tag>, layout: .hug/.fill)` · `Item(tag:title:isEnabled:)` | 밑줄 텍스트 탭 줄 — h38·px14/py8, 선택 시 아래 1.5 밑줄(b800). 상태는 **selection 바인딩에서 파생**(선택된 하나만 밑줄), 비활성은 `isEnabled: false`(글자 g500). 탭 조각 단독 공개 없음. 시안에 줄 배치가 없어 항목 간 간격 0 |
+
+## 부착 — push vs present
+
+내비바 룩은 하나인데 **부착 경로가 둘**이다. 시스템 내비바는 `NavigationStack` 이 그리는 물건이라 스택 밖에서는 아무것도 안 그려지기 때문 — 그래서 스택 없는 present 화면만 같은 룩을 손으로 얹는다.
+
+**판별**: 이 화면이 스택 안에 있나. push 됐거나 스택의 루트면 `.hilitNavigationBar`, cover/sheet 로 올라온 **스택 없는 한 장짜리**면 `.hilitPresentedNavigationBar`. cover 안에 스택을 두는 위저드(온보딩)는 그 안의 모든 스텝이 push 쪽이다. 붙였는데 바가 조용히 안 보이면 스택 밖이라는 신호다.
+
+```swift
+// ① push — 스택은 코디네이터가 소유, 화면은 모디파이어만 붙인다
+public var body: some View {
+    content
+        .hilitNavigationBar(
+            "커리어 입력",                            // 타이틀 없으면 첫 인자 생략
+            trailing: .text("건너뛰기") { send(.userTappedSkip) },
+            background: .filled,                     // 콘텐츠가 바 밑을 지나면 filled
+            allowsSwipeBack: !store.isSubmitting,    // 나가기 전 되물을 화면만 차단
+            onClose: { send(.userTappedClose) }      // 생략 = X 가 자동 pop
+        )
+}
+
+// ② present — 부모가 `.fullScreenCover { SettingsView(store:) }` 로 스택 없이 올린 화면
+public var body: some View {
+    content
+        .hilitPresentedNavigationBar(
+            "설정",
+            background: .filled,
+            onClose: { send(.userTappedClose) }      // 생략 = X 가 자동 dismiss
+        )
+}
+```
+
+present 경로가 push 와 다른 점 셋 — `allowsSwipeBack` 없음(스택 밖은 스와이프백 개념 자체가 없다) · 상태바 글자색은 화면 몫(다크 화면이면 `.preferredColorScheme(.dark)` 를 화면이 직접) · 좌우 여백이 시안값 px20(push 는 시스템 마진이라 수 pt 다르다 — «기본 UI 를 토대로» 결정에 따라 수용).
+
+배관 소유는 모디파이어다. push 는 타이틀 인라인·`navigationBarBackButtonHidden`·`toolbarBackground`·스와이프백 delegate 를, present 는 `safeAreaInset` 배치를 각각 감춘다. 슬롯 룩(아이콘 버튼·텍스트 버튼)은 `HilitNavigationBarSlot` 한 곳에서 공유하므로 스타일 변경은 거기만 고친다 — 두 경로가 갈라지지 않게 하는 지점.
+
+`navigationBarBackButtonHidden` 이 끄는 엣지 스와이프백은 `Interaction/UINavigationController+SwipeBack.swift` 의 `SwipeBackPolicy` 가 **화면이 보이는 동안만 delegate 를 점유하고 반환**해 되살린다(전역 패치 아님 — 시스템 피커 오염 방지). 스와이프 pop 은 리듀서에 `popFrom(id:)` 로 도착한다(`backRequested` 아님).
 
 ## 닫기(X) 기본값과 override
 

@@ -24,6 +24,8 @@ delegate 는 `continueRequested(careerYears: Int)` — 페이로드(`OnboardingD
 
 이 스텝부터 하단 CTA 가 «이전으로 | 계속하기» 2분할 바이고, 내비바에는 닫기(X)만 있다 — 뒤로가기는 하단 바 담당 (STEP 2~5 공통 골격). 바는 DS `ButtonLarge(.bottom, tone: .dark)` 가 그린다(배경·구분선·등폭·비활성 룩 전부 DS 소유) — 화면은 라벨과 액션만 넘긴다. 엣지 스와이프백은 기본 허용 — pop 전에 되물을 게 있는 화면만 차단한다(포트폴리오 업로드 중 `!isUploading`, 분석 화면 상시). 스와이프 pop 은 코디네이터에 `popFrom(id:)` 로 도착하며 `backRequested` 와 결과 동일(popLast 뿐)이라 별도 처리 없음 — back 경로에 로직을 넣게 되면 두 입구를 모두 살필 것.
 
+내비바는 DS `.hilitNavigationBar` = **시스템 내비바**라서 [[onboarding#코디네이터]]의 NavigationStack 에 렌더를 의존한다(2026-07-31 커스텀 바 폐기). 스택을 걷어내면 전 스텝의 바가 컴파일 성공 상태로 조용히 사라지므로, 위저드를 cover 단독 화면으로 재구성할 땐 스택을 유지하거나 `.hilitPresentedNavigationBar` 로 바꿔 단다.
+
 ## JD 링크
 
 STEP 3 (선택 — 스킵 가능). 탭 «JD 붙여넣기 / 직접 입력하기»는 화면 전환이 아니라 State 의 InputMode. 링크 검증은 **1초 디바운스 → 클라이언트 형식 검사 → 통과분만 서버(JDClient.validate)** 2단. 결과는 delegate(.continueRequested(JDSubmission?)) — .link/.text/nil(스킵).

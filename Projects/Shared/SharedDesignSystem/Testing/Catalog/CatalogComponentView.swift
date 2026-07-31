@@ -119,15 +119,32 @@ struct CatalogComponentView: View {
     }
 
     private var hilitNavigationBar: some View {
-        CatalogGroup("HilitNavigationBar — 표준(X 고정) / 다크 / logo") {
+        CatalogGroup("HilitNavigationBar — push=시스템 바 / present=수동 바. 표준(X 고정) / 다크 / logo") {
+            // 시스템 내비바는 NavigationStack 이 그린다 — 카탈로그에선 변형마다 미니 스택으로 시연.
             VStack(spacing: 0) {
-                HilitNavigationBar("타이틀", trailing: .plus {}, onClose: {})
-                HilitNavigationBar("타이틀", trailing: .text("버튼") {}, onClose: {})
-                HilitNavigationBar("타이틀", theme: .dark, onClose: {})
-                    .background(Color.HilitBlack.b800)
-                HilitNavigationBar.logo(onProfile: {})
+                navigationBarDemo {
+                    Color.clear.hilitNavigationBar("타이틀", trailing: .plus {}, background: .filled, onClose: {})
+                }
+                navigationBarDemo {
+                    Color.clear.hilitNavigationBar("타이틀", trailing: .text("버튼") {}, background: .filled, onClose: {})
+                }
+                navigationBarDemo {
+                    Color.clear.hilitNavigationBar("타이틀", theme: .dark, background: .filled, onClose: {})
+                }
+                navigationBarDemo {
+                    Color.clear.hilitLogoNavigationBar(background: .filled, onProfile: {})
+                }
+                // present 화면용 수동 바 — 스택 불필요, 좌우 여백만 시안값(px20)이라 위와 수 pt 다름.
+                Color.clear.frame(height: 0)
+                    .hilitPresentedNavigationBar("타이틀 (presented)", trailing: .plus {}, background: .filled, onClose: {})
             }
         }
+    }
+
+    /// 내비바 44pt 만 보이게 잘라낸 미니 NavigationStack.
+    private func navigationBarDemo(@ViewBuilder content: () -> some View) -> some View {
+        NavigationStack { content() }
+            .frame(height: 44)
     }
 
     private var hilitToggle: some View {
