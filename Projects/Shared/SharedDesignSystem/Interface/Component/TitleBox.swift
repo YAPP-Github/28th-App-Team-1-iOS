@@ -71,7 +71,7 @@ public struct TitleBox: View {
     public var body: some View {
         VStack(alignment: horizontalAlignment, spacing: .ds(.p8)) {
             if let tag {
-                TagLabel(tag, foreground: Color.HilitGreen.g500, background: Color.HilitBlack.b800)
+                TagLabel(tag, style: .blackGreen)
             }
             VStack(alignment: horizontalAlignment, spacing: .ds(.p4)) {
                 // 줄 사이 간격 0 — 행간은 타이포 토큰이 이미 위아래 패딩으로 갖고 있다.

@@ -241,12 +241,20 @@ struct CatalogComponentView: View {
         }
     }
 
+    /// 시트 그대로 — padding 행(compact/regular) × 색조합 열. 행마다 있는 칸이 달라 `size.styles` 로 훑는다.
     private var tagLabel: some View {
-        CatalogGroup("TagLabel — 기본 회색 · 척도 극 라벨") {
-            HStack(spacing: .ds(.p8)) {
-                TagLabel("선택")
-                TagLabel("좋았어요", foreground: Color.Positive.p800, background: Color.Positive.p200)
-                TagLabel("아쉬웠어요", foreground: Color.Error.e500, background: Color.Error.e200)
+        CatalogGroup("TagLabel — padding 행 × 색조합 열") {
+            VStack(alignment: .leading, spacing: .ds(.p12)) {
+                ForEach(TagLabel.Size.allCases, id: \.self) { size in
+                    VStack(alignment: .leading, spacing: .ds(.p8)) {
+                        Text(String(describing: size)).dsTypography(.body9)
+                        HStack(spacing: .ds(.p8)) {
+                            ForEach(size.styles, id: \.self) { style in
+                                TagLabel("텍스트", style: style, size: size)
+                            }
+                        }
+                    }
+                }
             }
         }
     }

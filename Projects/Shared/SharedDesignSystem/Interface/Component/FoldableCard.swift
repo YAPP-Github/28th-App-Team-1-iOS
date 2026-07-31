@@ -79,7 +79,7 @@ public struct FoldableCard: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             if let error {
-                TagLabel(error, foreground: Color.Error.e500, background: Color.Error.e200)
+                TagLabel(error, style: .redRed)
             }
             chevron
                 .resizable()
