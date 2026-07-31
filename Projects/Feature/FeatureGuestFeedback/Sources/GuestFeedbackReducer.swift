@@ -25,7 +25,8 @@ extension GuestFeedbackFeature {
             return reduceOnAppear(&state)
 
         case .startTapped, .nicknameNextTapped, .nicknameSheetDismissed,
-             .reviewTapped, .summaryCardTapped, .rewatchTapped, .submitTapped:
+             .reviewTapped, .summaryCardTapped, .rewatchTapped,
+             .submitTapped, .submitConfirmTapped, .submitConfirmDismissed:
             return reduceStep(&state, action)
 
         case .axisSelected, .expandVideoTapped, .levelSelected,
@@ -103,7 +104,16 @@ extension GuestFeedbackFeature {
 
         case .submitTapped:
             guard state.isSubmitEnabled else { return .none }
-            state.confirmDialog = .submitConfirm
+            state.isSubmitConfirmPresented = true
+            return .none
+
+        case .submitConfirmTapped:
+            guard state.isSubmitConfirmPresented else { return .none }
+            state.isSubmitConfirmPresented = false
+            return submit(&state)
+
+        case .submitConfirmDismissed:
+            state.isSubmitConfirmPresented = false
             return .none
 
         default:
