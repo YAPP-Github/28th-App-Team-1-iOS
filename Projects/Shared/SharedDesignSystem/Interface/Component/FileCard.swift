@@ -184,16 +184,21 @@ public struct FileCard<Accessory: View>: View {
         }
     }
 
-    private enum Metric {
-        /// 파일 아이콘 한 변 36 — Figma `file/36px`.
-        static let fileSide: CGFloat = 36
-        /// x·안내 아이콘 한 변 16 — Figma `cancel mini/16px` · `info/16px`.
-        static let iconSide: CGFloat = 16
-        /// 날짜–용량 구분선 높이 10. 두께는 `outline-m`(시안 stroke 1.2).
-        static let dividerHeight: CGFloat = 10
-        /// 서브 텍스트–안내 아이콘 간격. Figma raw 6 — spacing 스케일이 4 다음 8 이라 토큰화 보류.
-        static let noteSpacing: CGFloat = 6
-    }
+}
+
+/// 치수 — `FileCard` 가 제네릭(`Accessory`)이라 **타입 밖**에 둔다.
+/// 제네릭 타입 안에는 static 저장 프로퍼티를 넣을 수 없다(«Static stored properties not supported
+/// in generic types»). 다른 컴포넌트처럼 중첩 `Metric` 으로 돌리려면 값마다 계산 프로퍼티가 돼야 해서
+/// 파일 스코프가 더 싸다.
+private enum Metric {
+    /// 파일 아이콘 한 변 36 — Figma `file/36px`.
+    static let fileSide: CGFloat = 36
+    /// x·안내 아이콘 한 변 16 — Figma `cancel mini/16px` · `info/16px`.
+    static let iconSide: CGFloat = 16
+    /// 날짜–용량 구분선 높이 10. 두께는 `outline-m`(시안 stroke 1.2).
+    static let dividerHeight: CGFloat = 10
+    /// 서브 텍스트–안내 아이콘 간격. Figma raw 6 — spacing 스케일이 4 다음 8 이라 토큰화 보류.
+    static let noteSpacing: CGFloat = 6
 }
 
 public extension FileCard where Accessory == EmptyView {
