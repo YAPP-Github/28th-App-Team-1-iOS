@@ -156,9 +156,9 @@ struct GuestEvaluationView: View {
     private func scaleBlock(_ axis: AttitudeAxis) -> some View {
         VStack(alignment: .leading, spacing: .ds(.p8)) {
             HStack(spacing: 0) {
-                TagLabel("좋았어요", foreground: Color.Positive.p800, background: Color.Positive.p200)
+                TagLabel("좋았어요", style: .blueBlue)
                 Spacer()
-                TagLabel("아쉬웠어요", foreground: Color.Error.e500, background: Color.Error.e200)
+                TagLabel("아쉬웠어요", style: .redRed)
             }
             HStack(spacing: .ds(.p8)) {
                 let labels = AxisScaleCopy.labels(for: axis.code)
