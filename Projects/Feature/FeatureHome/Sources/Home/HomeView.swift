@@ -8,8 +8,8 @@
 import ComposableArchitecture
 import SwiftUI
 
-/// 홈 진입점 — 화면은 1개, `phase` 스위치로 서브뷰를 연결한다(GuestFeedbackView 패턴).
-/// 서브뷰 4개는 Figma 프레임과 1:1 스텁 — 시안 수령 시 각 파일에서 UI 를 채운다.
+/// 홈 진입점 — 홈 화면은 1개, `phase` 스위치로 서브뷰를 연결한다(GuestFeedbackView 패턴).
+/// 면접 시작은 phase 가 아니라 cover 로 올라온다 — 홈 탭엔 NavigationStack 이 없어 push 경로가 없다.
 @ViewAction(for: HomeFeature.self)
 public struct HomeView: View {
     @Bindable public var store: StoreOf<HomeFeature>
@@ -23,17 +23,20 @@ public struct HomeView: View {
             switch store.phase {
             case .default:
                 HomeDefaultView(store: store)
-            case .report:
-                HomeReportView()
-            case let .startInterview(variant):
-                HomeStartInterviewView(variant: variant)
-            case let .duringInterview(variant):
-                HomeDuringInterviewView(variant: variant)
+            case let .report(variant):
+                HomeReportView(isGreetingVisible: variant == .returning)
             }
         }
         .onAppear { send(.onAppear) }
+        .fullScreenCover(
+            item: $store.scope(state: \.startInterview, action: \.startInterview)
+        ) { startInterviewStore in
+            StartInterviewView(store: startInterviewStore)
+        }
     }
 }
+
+// MARK: - Previews
 
 #Preview("HomeDefault") {
     HomeView(
@@ -43,17 +46,17 @@ public struct HomeView: View {
     )
 }
 
-#Preview("HomeStartInterview — 소진") {
+#Preview("HomeReport — 인사말 표시") {
     HomeView(
-        store: Store(initialState: HomeFeature.State(phase: .startInterview(.exhausted))) {
+        store: Store(initialState: HomeFeature.State(phase: .report(.returning))) {
             HomeFeature()
         }
     )
 }
 
-#Preview("HomeDuringInterview — 진행 중") {
+#Preview("HomeReport — 인사말 숨김") {
     HomeView(
-        store: Store(initialState: HomeFeature.State(phase: .duringInterview(.inProgress))) {
+        store: Store(initialState: HomeFeature.State(phase: .report(.recent))) {
             HomeFeature()
         }
     )

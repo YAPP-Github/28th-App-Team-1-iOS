@@ -1,5 +1,5 @@
 //
-//  HomeStartInterviewView.swift
+//  StartInterviewView.swift
 //  FeatureHomeImplementation
 //
 //  Created by EunSeo on 26/07/31.
@@ -9,26 +9,32 @@
 //        «Home_StartInterview_SameContext» https://www.figma.com/design/ZG7FUxWCvITmnvzZi7fpTS/?node-id=3632-13730
 //        «Home_StartInterview_TrialEnded»  https://www.figma.com/design/ZG7FUxWCvITmnvzZi7fpTS/?node-id=3632-9566
 
+import ComposableArchitecture
 import SharedDesignSystemInterface
 import SwiftUI
 
-/// 면접 시작 — 시안 3장을 `HomeFeature.StartVariant` 로 분기한다.
+/// 면접 시작 — 시안 3장을 `StartInterviewFeature.Variant` 로 분기한다.
 ///
 /// 세 시안의 골격은 같다: 커튼 그린 배경 + 좌상단 인사말(color-burn) + 중앙 흰 카드 + 하단 CTA.
 /// 갈리는 건 **인사말 문구 · 카드 내용 · CTA** 셋이고, 닫기(X) 내비바는 소진 시안에만 없다
 /// (그 화면의 나가기는 하단 «홈으로» 가 맡는다).
 ///
-/// 카드 안 값(잔여 횟수·포트폴리오 파일 정보)과 버튼 액션은 아직 자리만 잡아 뒀다 —
-/// 리듀서에 State·Action 이 생기면 `TODO` 자리를 교체한다.
-struct HomeStartInterviewView: View {
-    let variant: HomeFeature.StartVariant
+/// 홈이 cover 로 올리는 **스택 없는 한 장짜리**라 내비바는 present 경로(`.hilitPresentedNavigationBar`)다.
+///
+/// 카드 안 값(잔여 횟수·포트폴리오 파일 정보)은 아직 자리만 잡아 뒀다 —
+/// 리듀서에 State 가 생기면 `TODO` 자리를 교체한다.
+@ViewAction(for: StartInterviewFeature.self)
+public struct StartInterviewView: View {
+    @Bindable public var store: StoreOf<StartInterviewFeature>
 
-    var body: some View {
+    public init(store: StoreOf<StartInterviewFeature>) {
+        self.store = store
+    }
+
+    public var body: some View {
         if showsCloseBar {
             screen
-                // TODO: X = «면접 시작 취소 → 홈 기본» — 리듀서에 userTappedClose 가 생기면 onClose 로 넘긴다.
-                //       그때까지는 내비바 기본 동작(dismiss)에 맡긴다.
-                .hilitNavigationBar(background: .filled)
+                .hilitPresentedNavigationBar(background: .filled, onClose: { send(.userTappedClose) })
         } else {
             screen
         }
@@ -36,7 +42,7 @@ struct HomeStartInterviewView: View {
 
     private var screen: some View {
         ZStack {
-            curtainBackground
+            HomeGreenBackdrop()
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -70,21 +76,21 @@ struct HomeStartInterviewView: View {
 
     /// 시안의 줄바꿈을 그대로 옮긴다 — 세 시안 모두 3줄 고정 폭에 맞춰 끊어져 있다.
     private var greetingText: String {
-        switch variant {
+        switch store.variant {
         case .first: "재원님,\n지금부터 면접을\n시작해 볼까요?"
         case .hasPortfolio: "이전과\n동일한 정보로\n시작할까요?"
         case .exhausted: "재원님,\n무료 횟수를 모두\n사용했어요"
         }
     }
 
-    /// 인사말 top — 시안은 세 장 모두 프레임 top 141 이다. 닫기 바가 있는 시안은 그 높이(DS 54)만큼
-    /// 콘텐츠가 이미 내려와 있고, 없는 시안은 상태바(시안 43)만 빠진다.
-    // @ds(spacing): 141 → 44 / 98 — 인사말 top (spacing 토큰은 4~24)
-    private var greetingTopPadding: CGFloat { showsCloseBar ? 44 : 98 }
+    /// 인사말 top — 시안은 세 장 모두 프레임 top 141 이다. 닫기 바가 있는 시안은
+    /// 상태바(43) + 내비바(44)만큼 이미 내려와 있고(141−87), 없는 시안은 상태바만 빠진다(141−43).
+    // @ds(spacing): 141 → 54 / 98 — 인사말 top (spacing 토큰은 4~24)
+    private var greetingTopPadding: CGFloat { showsCloseBar ? 54 : 98 }
 
     /// 닫기(X) 내비바 유무 — 소진 시안(3632:9566)엔 top-bar 자체가 없다.
     private var showsCloseBar: Bool {
-        switch variant {
+        switch store.variant {
         case .first, .hasPortfolio: true
         case .exhausted: false
         }
@@ -93,7 +99,7 @@ struct HomeStartInterviewView: View {
     // MARK: - 카드
 
     @ViewBuilder private var card: some View {
-        switch variant {
+        switch store.variant {
         case .first:
             // TODO: «3회» 는 서버 잔여 횟수 — State 에 값이 생기면 교체 (필요한 State: remainingChances).
             remainingChancesCard(icon: Image.Img.oppO, count: "3회")
@@ -185,68 +191,37 @@ struct HomeStartInterviewView: View {
     // MARK: - 하단 CTA
 
     @ViewBuilder private var callToAction: some View {
-        switch variant {
+        switch store.variant {
         case .first:
-            // TODO: 리듀서에 userTappedStartInterview 가 생기면 send 로 교체 (여기서 정보 입력 플로우로 넘어간다).
-            ButtonLarge("시작하기", .bottom) {}
+            ButtonLarge("시작하기", .bottom) { send(.userTappedStart) }
         case .hasPortfolio:
             ButtonLarge(.bottom, tone: .dark) {
-                // TODO: userTappedEditInterviewInfo
-                Button("수정하기") {}
+                Button("수정하기") { send(.userTappedEditInfo) }
             } trailing: {
-                // TODO: userTappedStartInterview
-                Button("시작하기") {}
+                Button("시작하기") { send(.userTappedStart) }
             }
         case .exhausted:
-            // TODO: userTappedBackToHome — phase 를 .default 로 되돌린다.
-            ButtonLarge("홈으로", .bottom) {}
+            ButtonLarge("홈으로", .bottom) { send(.userTappedBackToHome) }
         }
     }
+}
 
-    // MARK: - 배경 커튼
+// MARK: - Previews
 
-    /// 그린 판 위에 세로 밴드 8개(흰 그라데이션)를 겹친 장식 배경 — 위·아래는 흰색으로 덮이고
-    /// 가운데 띠만 그린이 비쳐 커튼 주름처럼 보인다. 상단이 흰색이라 내비바(흰 판)와 이음새가 없다.
-    // @ds(component): 세로 밴드 8개 × 흰 그라데이션 정지점 — 홈 전용 장식 배경, DS 에 없음
-    private var curtainBackground: some View {
-        HStack(spacing: 0) {
-            ForEach(Self.curtainBands.indices, id: \.self) { index in
-                LinearGradient(
-                    stops: Self.curtainBands[index].map {
-                        Gradient.Stop(color: Color.BlackWhite.white.opacity($0.opacity), location: $0.location)
-                    },
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                // @ds(spacing): 0.2 — 밴드 경계선 두께 (DSOutline 최소가 1)
-                .border(Color.BlackWhite.white, width: 0.2)
-            }
-        }
-        .background(Color.HilitGreen.g500)
+private func previewStore(_ variant: StartInterviewFeature.Variant) -> StoreOf<StartInterviewFeature> {
+    Store(initialState: StartInterviewFeature.State(variant: variant)) {
+        StartInterviewFeature()
     }
-
-    /// 밴드별 흰색 정지점 — `location` 은 화면 전체 높이 비율(시안 812pt 기준의 % 를 그대로 옮긴 값)이라
-    /// 기기 높이가 달라도 같은 비율로 늘어난다. 밴드마다 정지점이 달라 주름이 불규칙해 보인다.
-    private static let curtainBands: [[(opacity: Double, location: CGFloat)]] = [
-        [(1, 0.136), (0.4, 0.325), (1, 1)],
-        [(1, 0.115), (0.4, 0.257), (0.3, 0.475), (0.4, 0.589), (1, 1)],
-        [(1, 0.118), (0.4, 0.231), (0.2, 0.394), (0.1, 0.504), (0.4, 0.684), (1, 1)],
-        [(1, 0.117), (0.3, 0.234), (0.1, 0.317), (0.1, 0.397), (0.3, 0.688), (1, 1)],
-        [(1, 0.133), (0.3, 0.244), (0.1, 0.393), (0.1, 0.508), (0.3, 0.626), (1, 1)],
-        [(1, 0.122), (0.4, 0.274), (0.2, 0.375), (0.1, 0.512), (0.4, 0.690), (1, 1)],
-        [(1, 0.142), (0.4, 0.328), (0.3, 0.429), (0.4, 0.590), (1, 1)],
-        [(1, 0.140), (0.4, 0.513), (1, 1)]
-    ]
 }
 
 #Preview("처음 — 정보 입력 전") {
-    HomeStartInterviewView(variant: .first)
+    StartInterviewView(store: previewStore(.first))
 }
 
 #Preview("이전 정보 재사용") {
-    HomeStartInterviewView(variant: .hasPortfolio)
+    StartInterviewView(store: previewStore(.hasPortfolio))
 }
 
 #Preview("무료 횟수 소진") {
-    HomeStartInterviewView(variant: .exhausted)
+    StartInterviewView(store: previewStore(.exhausted))
 }

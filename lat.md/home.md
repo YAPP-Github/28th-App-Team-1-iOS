@@ -7,7 +7,11 @@
 ## 흐름
 `HomeFeature`(Reducer) + `HomeView`. Action 은 3분류(view/inner/delegate, [[architecture#핵심 결정 (Trade-off 기록)#D5. Reducer Action 3분류]]). 조립은 모두 AppFeature → [[app#Cross-feature Routing]].
 
-**화면 1개 + `State.phase`** (GuestFeedback 패턴) — Figma 프레임 4종과 1:1 인 `Phase` enum(`default`/`report`/`startInterview(StartVariant)`/`duringInterview(DuringVariant)`)을 `HomeView` 가 스위치해 `Sources/View/` 서브뷰 4개로 연결한다. 현재 서브뷰는 시안 수령 전 스텁이고, phase 를 정하는 홈 진입 로드(잔여·기록·세션·포폴)는 미배선(서버 협의 대기) — phase 는 서버 판정의 표시일 뿐, 진실은 탭 시점 게이트 재검증([home-account](../docs/work/home-account.md) §3·§5).
+**두 덩어리 — Reducer 2개 + 폴더 2개** (한 모듈 안). `Sources/Home/` 은 `HomeFeature` + `HomeView`(+ `HomeDefaultView`·`HomeReportView`), `Sources/StartInterview/` 은 `StartInterviewFeature` + `StartInterviewView`, 공용 배경은 `Sources/Components/`.
+
+«홈» 3화면은 `State.phase`(GuestFeedback 패턴) — `default` / `report(ReportVariant)` 이고 report 의 변형 축은 «오랜만이에요 OO님!» 인사말 표시 여부(`returning`/`recent`) 하나다. 「면접 시작」 3화면(처음/동일 정보/이용권 소진)은 phase 가 아니라 `@Presents var startInterview` 로 **cover present** — 홈 탭엔 NavigationStack 이 없어 push 경로가 없다(`.claude/design/component/navigation.md` «부착 — push vs present»). `HomeDuringInterview` 는 MVP 제외로 삭제했다(커밋 `c3e14ee` 에 남음).
+
+phase 를 정하는 홈 진입 로드(잔여·기록·포폴)는 미배선(서버 협의 대기) — phase 는 서버 판정의 표시일 뿐, 진실은 탭 시점 게이트 재검증([home-account](../docs/work/home-account.md) §3·§5). StartInterview 의 `startRequested`·`editInfoRequested` 는 cross-feature 라 AppFeature 배선과 함께 `HomeFeature.Action.Delegate` 케이스를 신설해야 한다(현재 TODO).
 
 dev 계 임시 버튼 2개(HomeDefaultView 소속)는 `showsOnboardingEntry`·`showsDebugLogout` 플래그로 게이팅 — `delegate(.onboardingRequested)`(온보딩 진입)·`delegate(.logoutRequested)`(세션·토큰·draft 전체 삭제).
 
