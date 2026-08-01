@@ -28,7 +28,9 @@ final class UserClientLiveTests: XCTestCase {
     func test_profile_envelope을_벗겨_디코딩한다() async throws {
         let json = """
         {"success": true, "data": {
-            "name": "히릿", "jobRole": "BACKEND", "jobRoleLabel": "백엔드",
+            "userId": "550e8400-e29b-41d4-a716-446655440000",
+            "name": "히릿", "email": "hilit@kakao.com", "provider": "KAKAO",
+            "jobRole": "BACKEND", "jobRoleLabel": "백엔드",
             "careerYears": 3, "remainingTicketCount": 2
         }}
         """
@@ -41,33 +43,40 @@ final class UserClientLiveTests: XCTestCase {
         let profile = try await client.profile()
 
         XCTAssertEqual(profile.name, "히릿")
+        XCTAssertEqual(profile.email, "hilit@kakao.com")
+        XCTAssertEqual(profile.provider, "KAKAO")
         XCTAssertEqual(profile.remainingTicketCount, 2)
     }
 
-    func test_checkName_query로_이름을_싣고_available을_돌려준다() async throws {
+    func test_updateProfile_세_필드를_body에_실어_PATCH한다() async throws {
         let client = makeClient { request in
-            XCTAssertEqual(request.path, "/api/v1/users/name/check")
-            XCTAssertEqual(request.queryItems, [URLQueryItem(name: "name", value: "히릿")])
-            return Data(#"{"success": true, "data": {"available": false}}"#.utf8)
+            XCTAssertEqual(request.path, "/api/v1/users/me/profile")
+            XCTAssertEqual(request.method, .patch)
+            let body = try XCTUnwrap(request.body)
+            let decoded = try JSONSerialization.jsonObject(with: body) as? [String: Any]
+            XCTAssertEqual(decoded?["name"] as? String, "히릿")
+            XCTAssertEqual(decoded?["jobRole"] as? String, "BACKEND")
+            XCTAssertEqual(decoded?["careerYears"] as? Int, 3)
+            return Data(#"{"success": true}"#.utf8)
         }
 
-        let available = try await client.checkName("히릿")
-
-        XCTAssertFalse(available)
+        try await client.updateProfile(UserProfileUpdate(name: "히릿", jobRole: "BACKEND", careerYears: 3))
     }
 
-    func test_registerName_이름중복409를_nameAlreadyTaken으로_매핑한다() async throws {
-        let client = makeClient { _ in
+    func test_withdraw_소셜연동정보없음409를_socialReconnectRequired로_매핑한다() async throws {
+        let client = makeClient { request in
+            XCTAssertEqual(request.path, "/api/v1/users/me")
+            XCTAssertEqual(request.method, .delete)
             throw NetworkError.statusCode(409, Data(
-                #"{"success": false, "code": "NAME_ALREADY_TAKEN", "message": "이미 사용 중인 이름이에요."}"#.utf8
+                #"{"success": false, "code": "SOCIAL_RECONNECT_REQUIRED", "message": "소셜 연동 정보가 없어 탈퇴할 수 없습니다."}"#.utf8
             ))
         }
 
         do {
-            try await client.registerName("히릿")
+            try await client.withdraw()
             XCTFail("에러가 던져져야 한다")
         } catch {
-            XCTAssertEqual(error as? UserError, .nameAlreadyTaken)
+            XCTAssertEqual(error as? UserError, .socialReconnectRequired)
         }
     }
 }

@@ -19,7 +19,7 @@
 | `AuthCreateAccount` | A0 로그인 | FeatureAuth — 기존 AuthFeature 를 `AuthCreateAccountFeature` 로 개명(D5 3분류 정리), 코디네이터 `AuthFeature` 신설 | 골격 ✅ / 🔴 신규·기존 분기(S-1)·실패 토스트 |
 | `AuthTerms` | A1 약관 동의(5종) | FeatureAuth — 5종 체크·전체 동의·전문 바텀시트(DS `.hilitBottomSheet`) 동작 | 골격 ✅ / 🔴 제출 API(S-1)·전문(S-2) |
 | `AuthSuspension` | A4 정지(블랙리스트) 안내 | FeatureAuth — 진입은 홈 게이트 `ACCOUNT_SUSPENDED` → cross-feature 제시 (§4) | 골격 ✅ / 🔴 게이트 배선·CS 주소 |
-| `AuthOnboardingNaming` | (PRD Part7 밖 — 디자인 확정) 이름 입력 | FeatureAuth/Onboarding — DS `NameField` | 골격 ✅ / 🔴 `registerName`·`checkName` 배선 |
+| `AuthOnboardingNaming` | (PRD Part7 밖 — 디자인 확정) 이름 입력 | FeatureAuth/Onboarding — DS `NameField` | 골격 ✅ / 🔴 `updateProfile` 일괄 배선(이름 단독 API 삭제 예정) |
 | `AuthOnboardingJob` | Part1 S0a 직군 선택 | FeatureAuth/Onboarding — FeatureOnboarding STEP1 **복사**(원본은 위저드 정리 시 제거) | 골격 ✅ |
 | `AuthOnboardingExperience` | Part1 S0b 연차 선택 | FeatureAuth/Onboarding — FeatureOnboarding STEP2 **복사** | 골격 ✅ |
 | `AuthOnboardingRegister` | 등록 완료 (PRD «가입 완료 화면 없음» 을 디자인이 뒤집음) | FeatureAuth/Onboarding — 완료 후 `delegate(.signedIn)` | 골격 ✅ / 🔴 프로필 제출 시점 미결 |
@@ -96,7 +96,7 @@ AuthTerms 제출 후 이어지는 4화면. AuthFeature 도메인 내부 내비(�
 
 | 화면 | 내용 | 구현 재료 |
 |---|---|---|
-| `AuthOnboardingNaming` | 이름 입력 | `UserClient.registerName`(1~20자)·`checkName`(중복 확인) ✅ — [[api#User]] |
+| `AuthOnboardingNaming` | 이름 입력 | `UserClient.updateProfile`(이름·직군·연차 일괄 PATCH, 이름 한글·영문 최대 5자) — [[api#User]] |
 | `AuthOnboardingJob` | 직군 선택 | 기존 FeatureOnboarding STEP1(JobSelection — `JobClient.jobs` 칩) 이관 |
 | `AuthOnboardingExperience` | 연차 선택 | 기존 FeatureOnboarding STEP2(CareerInput — 문장형 휠 0~10년) 이관 |
 | `AuthOnboardingRegister` | 등록 완료 | 신규 — 완료 후 홈 진입 (`delegate` → AppFeature) |
