@@ -66,7 +66,7 @@ AuthSuspension — 정지 계정이 면접 시작 시도 시 (게이트 ACCOUNT_
 
 ### Splash (SP)
 
-앱 실행 시 항상. 자동 로그인 판정 중 표시 — `AppFeature` 루트 게이트(`State.isAuthenticated`)를 `authClient.isAuthenticated()` 초기값으로 배선([[auth]] 다음 작업과 동일 항목). 토큰 유효 → 홈, 없음·무효 → AuthCreateAccount. 만료 세션은 기존 `LOGIN_EXPIRED` 전파(→ [[api#토큰 수명주기]])가 재로그인 라우팅 신호.
+앱 실행 시 항상. 세션 복구 판정 중 표시 — 토큰 유무 → `refresh` → `pending` 으로 게이트 2단을 통과시켜 목적지(약관·온보딩·홈·로그인)를 정한다. 흐름·실패 정책의 단일 소스는 [launch-routing](launch-routing.md). 판정 불가(네트워크·5xx)면 토큰을 살린 채 이 화면에서 «다시 시도» 를 받는다.
 
 ### AuthCreateAccount (A0 로그인)
 
@@ -179,9 +179,9 @@ AuthTerms 제출 후 이어지는 4화면. AuthFeature 도메인 내부 내비(�
 ## 4. Cross-feature 라우팅 (delegate → AppFeature)
 
 ```
-Splash 판정(AppFeature 자체) ──isAuthenticated──▶ 홈 | AuthCreateAccount 루트 게이트
-Auth --delegate(.signedIn)-------------------▶ AppFeature → 홈 (기존 ✅ — 가입 플로우 완성 후엔
-                                               발원지가 AuthOnboardingRegister 완료 / 기존 회원은 login 분기)
+Splash 판정(AppFeature 자체) ──게이트 2단──▶ 홈 | Auth(약관·온보딩·로그인) — launch-routing.md
+Auth --delegate(.signedIn)-------------------▶ AppFeature → 홈 ✅ (발원지: 두 게이트 통과 즉시 /
+                                               약관 통과 + 프로필 등록됨 / 온보딩 등록 완료)
 Home --delegate(.startInterviewRequested)----▶ AppFeature — 게이트 결과별: 면접 위저드 fullScreenCover /
                                                S2 강제 / AuthSuspension 제시 / 홈 내부 안내
 Home --delegate(.resumeInterviewRequested(sessionId))▶ AppFeature → InterviewFeature(sessionId) fullScreenCover
@@ -205,8 +205,8 @@ Onboarding --delegate(.finished(sessionId:))-▶ AppFeature → 면접 시작 (�
 | 진행 중(held) 세션 유무 | 신규 — `InterviewClient` 확장. held 세션 존재 시 신규 POST /sessions 처리도 미결 #3 | 🔴 서버 협의 |
 | 포폴 상태 (위젯③·빈 상태) | `PortfolioClient.list` | ✅ |
 | 시작 게이트 | 신규 — `checkStartEligibility`(사전확인·선택)· 사유 코드 `ACCOUNT_SUSPENDED`·`NO_REMAINING`·`PORTFOLIO_NOT_READY`·`CONSENT_VERSION_STALE`·`RATE_LIMITED`. 기존 `createSession` 에러(`NO_REMAINING_TICKET` 등 — [[api#Interview]])와 코드 체계 정리 필요 | 🔴 서버 협의 |
-| A1 동의 제출 | `DomainAuth` 확장 — 계정 생성 확정+3회 부여+이력 저장. login 응답의 신규/기존·동의 버전 판별 포함 | 🔴 서버 협의 (S-1) |
-| 자동 로그인 판정 | `AuthClient.isAuthenticated` | ✅ — AppFeature 배선만 |
+| A1 동의 제출 | `ConsentClient.pending`·`document`·`submit` (3회 부여는 서버가 첫 제출 시) | ✅ 2026-08-01 |
+| 자동 로그인 판정 | `AuthClient.isAuthenticated`·`refresh` + `ConsentClient.pending` (게이트 2단) | ✅ 2026-08-01 — [launch-routing](launch-routing.md) |
 
 HomeFeature 는 «외부 IO 없는 Feature 예시»([[home]])에서 벗어난다 — `.domain(interface:)` 의존이 생기는 첫 확장. 화면 상태는 서버 판정의 표시일 뿐(탭 시점 게이트가 진실 — TTL 레이스 미결 #4 도 «탭 시 재검증»으로 흡수 제안):
 
@@ -277,8 +277,8 @@ enum ReportRow { case first; case final(lastUpdatedAt:); case generationFailed }
 
 UI 는 전 단계 공통으로 **Figma 시안 수령 후 연결**(figma-screen) — 그 전엔 리듀서·Path·phase 골격과 mock 데이터까지.
 
-1. ~~**AppFeature 루트 게이트 확장**~~ ✅ 2026-07-31 — Splash + `isAuthenticated` 초기 판정 배선.
-2. **FeatureAuth 가입 플로우** — 골격 ✅ 2026-07-31 (코디네이터 `AuthFeature` + 화면 6종 + Example 완주 데모, STEP1·2 는 복사). 잔여 🔴: 동의 제출·신규/기존 분기(S-1), 프로필 제출 시점, 실패 토스트, Figma UI.
+1. ~~**AppFeature 루트 게이트 확장**~~ ✅ 2026-08-01 — Splash 세션 복구(refresh + pending) + `State.root` enum + 재시도. [launch-routing](launch-routing.md).
+2. **FeatureAuth 가입 플로우** — 골격 ✅ 2026-07-31 (코디네이터 `AuthFeature` + 화면 6종 + Example 완주 데모, STEP1·2 는 복사), 동의 제출·게이트 2단 분기 ✅ 2026-08-01. 잔여 🔴: 프로필 제출 시점, 실패 토스트, Figma UI.
 3. **FeatureHome 개편** — phase 골격 ✅ 2026-07-31 (`Phase` 4종 + 서브뷰 스텁). 잔여 🔴: 진입 로드 4종·위젯 3종 UI·행 foldable·빈 상태 (리스트/게이트 API 전엔 mock + `UserClient.profile` 잔여만 실값).
 4. **Domain 신규 계약** — 게이트·기록 리스트·held 세션 (미결 6-1·6-3·S-1 서버 협의 후).
 5. **라우팅 배선** — 위젯①→면접 위저드/면접(작업 D 합류)·AuthSuspension, 위젯②→리포트, 위젯③→마이페이지(Part 5 대기). dev 임시 버튼 제거. 면접 위저드 S0 정리(§7 신규 미결 — 원본 STEP1·2 제거 포함).

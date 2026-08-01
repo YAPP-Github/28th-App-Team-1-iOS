@@ -139,16 +139,18 @@ stateDiagram-v2
     Home --> SocialLogin: 로그아웃 · 세션 만료
 ```
 
-## 7. 구현 영향 (현행 코드 기준)
+## 7. 구현 (2026-08-01 배선 완료)
 
-| 지점 | 현행 | 필요 변경 |
-|---|---|---|
-| `AuthClient.login` | `async throws -> Void` | 응답 반환 — `LoginResult(consentStatus, profileRegistered)` |
-| `ConsentPending` | `status` + `items` | `profileRegistered` 추가 |
-| `AuthClient.refresh` | 존재하나 Splash 에서 미호출 (만료를 첫 인증 요청에 위임) | Splash 판정에서 호출 + 실패 3분류 처리 |
-| `AppFeature.State` | `isCheckingSession` · `isAuthenticated` Bool 2개 | 루트 목적지 enum(splash·refreshFailed·login·terms·onboarding·home)으로 승격 — Bool 조합으로는 약관·온보딩·재시도 상태를 표현 못 한다 |
-| `AuthFeature` | 인증 시 전원 신규 취급 → terms 진입 (TODO) | 게이트 2단 분기로 교체 |
-| `AuthTermsFeature` | 필수 5종 하드코딩 골격 | 진입 시 `pending()` items·version 렌더 + `submit()` 배선 |
-| `SplashView` | 상태 없는 정적 뷰 | 실패 상태 + «다시 시도» 필요 |
+| 지점 | 결과 |
+|---|---|
+| `AuthClient.login` | `-> LoginResult(consentStatus, profileRegistered)`. 응답의 `newUser`·`userInfo` 는 소비자가 없어 디코딩하지 않는다 |
+| `ConsentPending` | `profileRegistered` 추가. **서버 배포 전 과도기** — 필드가 없으면 `false`(미등록)로 읽는다: 온보딩을 한 번 더 보는 쪽이 프로필 없이 홈에 앉는 쪽보다 안전한 실패 |
+| `AuthClient.refresh` | `AppFeature` 판정 effect 에서 호출. 실패 2분류(`sessionExpired` → 재로그인 / 그 외 → 토큰 유지·재시도) |
+| `AppFeature.State.root` | enum `splash`·`splashFailed`·`auth`·`home`. Bool 2개(`isCheckingSession`·`isAuthenticated`) 폐기 |
+| `AuthFeature` | 게이트 2단(`enterGate` → `passProfileGate`). 세션 복구는 `State(resuming: Destination)` 으로 같은 체인에 합류 |
+| `AuthTermsFeature` | 하드코딩 5종 enum 제거 — `pending()` 항목 렌더 + `document()` 전문 + `submit()` 제출. `CONSENT_VERSION_MISMATCH` 면 체크를 비우고 재조회 |
+| `SplashView` | `onRetry` 를 받으면 실패 상태(재시도 노출), nil 이면 판정 중 |
 
-미결: ① 재시도 백오프 횟수·간격과 Splash 최소·최대 노출 연출 ② 온보딩 중도 이탈 재진입이 이름부터 다시인지 이어받기인지 ③ `LOGIN_EXPIRED` 외 4xx 처리 확정(서버 협의) ④ 약관 «나중에» 선택지 존재 여부 — `STALE` 재동의에서 거부 시 홈 진입 허용 정책(면접 시작만 차단 안은 [home-account](home-account.md) §3).
+목적지 표 6행과 복구 진입 2종은 `AuthFeatureGateTests` 가 검증한다. App 타겟엔 테스트 타겟이 없어 `AppFeature` 의 판정 effect(§4)는 미검증이다.
+
+미결: ① 재시도는 수동(«다시 시도») — 자동 백오프 횟수·간격과 Splash 최소·최대 노출 연출 미정 ② 온보딩 중도 이탈 재진입이 이름부터 다시인지 이어받기인지 ③ `LOGIN_EXPIRED` 외 4xx 처리 확정(서버 협의) ④ 약관 «나중에» 선택지 존재 여부 — `STALE` 재동의에서 거부 시 홈 진입 허용 정책(면접 시작만 차단 안은 [home-account](home-account.md) §3) ⑤ Refresh 7일이 rotation 마다 리셋되는 슬라이딩인지 절대 7일인지(서버 확인) — 후자면 일주일 미접속 시 무조건 재로그인.

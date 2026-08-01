@@ -15,15 +15,25 @@
 2. 앱 레벨 sheet 로 Profile 제시: `state.editProfile = ProfileFeature.State(profileId: id)` (`@Presents` + `.ifLet`)
 3. 저장 완료 `editProfile(.presented(.delegate(.profileSaved(profile))))` → sheet 닫고 `users(.profileUpdated(profile))` 로 결과 통보
 
-대표 흐름 — **Splash 판정 + 로그인 루트 게이트**:
-1. `AppFeature.onAppear` 가 `authClient.isAuthenticated()`(Keychain 토큰 유무)로 자동 로그인을 판정 — 판정 동안 `SplashView`(`isCheckingSession`), 토큰 있으면 홈 직행, 없으면 `AuthView`(가입 플로우 스택)
-2. `AuthFeature`(가입 플로우 코디네이터)가 기존 회원 로그인 또는 가입 온보딩 완료 시 `delegate(.signedIn)` 방출 (→ [[auth#가입 플로우]])
-3. AppFeature가 수신해 `state = State()`로 초기화 후 `isAuthenticated = true` — 새 로그인은 새 세션이므로 이전 사용자의 in-memory State(화면·선택값)를 버린다. 리셋 시 `isCheckingSession` 은 내린 채 유지(재판정·Splash 재노출 없음)
+대표 흐름 — **로그인 완료 → 홈 전환**:
+1. `AuthFeature`(가입 플로우 코디네이터)가 기존 회원 로그인 또는 가입 온보딩 완료 시 `delegate(.signedIn)` 방출 (→ [[auth#가입 플로우]])
+2. AppFeature가 수신해 `state = State()`로 초기화 후 `root = .home` — 새 로그인은 새 세션이므로 이전 사용자의 in-memory State(화면·선택값)를 버린다
+
+## Splash 세션 복구
+
+앱 진입 판정은 `onAppear` 의 effect 하나다 — 토큰 유무 → `refresh` → `pending` 순으로 `State.root` 를 정한다. 목적지 표·시퀀스는 [launch-routing](../docs/work/launch-routing.md), 게이트 규칙은 [[auth#게이트 2단 체인]].
+
+`root` 가 Bool 2개가 아니라 **enum**(`splash`·`splashFailed`·`auth`·`home`)인 이유: 「판정 실패라 재시도해야 하는 상태」를 Bool 조합으로는 못 만든다.
+
+- **refresh 실패는 두 갈래** — `AuthError.sessionExpired`(서버가 세션을 부정, 토큰은 `AuthClient.refresh` 가 이미 폐기)는 재로그인, 네트워크·5xx 는 **판정 불가**라 토큰을 살린 채 `splashFailed`. 뭉뚱그리면 오프라인에서 앱을 켠 사용자가 로그아웃당한다.
+- **`splashFailed` 에서 로그인 화면으로 내보내지 않는다** — 토큰이 살아 있으므로 `SplashView(onRetry:)` 자리에 머문다.
+- **판정 결과는 `AuthFeature.State(resuming:)` 로 넘긴다** — 게이트 분기 코드는 코디네이터 한 곳에만 있고, AppFeature 는 목적지(login·resume·home·failed)만 고른다. 조회한 약관 항목도 함께 넘겨 화면이 `pending` 을 다시 부르지 않는다.
+- 판정은 `consentClient` 도 쓴다 — cross-feature 조립 자리라 Domain 의존이 여기 모인다(authClient 와 같은 이유).
 
 대표 흐름 — **dev 디버그 로그아웃** (Home 임시 버튼):
 1. dev 계에서만 `AppFeature.onAppear` 가 `home.showsDebugLogout` 을 켜고, Home 로그아웃 버튼이 `delegate(.logoutRequested)` 방출
 2. AppFeature 수신 → effect 에서 `authClient.logout()`(서버 로그아웃+토큰 Keychain 삭제)·`onboardingDraftStore.clear()`(온보딩 draft/UserDefaults 삭제). 서버 실패해도 로컬 정리는 진행(`try?`)
-3. `sessionCleared`(inner)로 `state = State()` 리셋 → `isAuthenticated=false` → 첫 소셜 로그인 화면 복귀. cross-feature 조립이라 authClient 의존은 코디네이터인 여기서만 가진다 → [[home]]
+3. `sessionCleared` 로 `state = State()` 리셋 → `root = .auth` → 첫 소셜 로그인 화면 복귀. Splash 로 되돌리지 않는다(로그아웃 복귀는 판정이 아니라 확정 상태). cross-feature 조립이라 authClient 의존은 코디네이터인 여기서만 가진다 → [[home]]
 
 대표 흐름 — **온보딩 dev 진입** (본체 통합 전 임시):
 1. dev 계에서만 `AppFeature.onAppear` 가 `home.showsOnboardingEntry` 를 켜고, Home 진입 버튼이 `delegate(.onboardingRequested)` 방출
