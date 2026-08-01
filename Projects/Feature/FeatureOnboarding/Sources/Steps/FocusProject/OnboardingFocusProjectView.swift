@@ -29,12 +29,12 @@ public struct OnboardingFocusProjectView: View {
                     inputSection
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
+                .padding(.horizontal, .ds(.p20))
+                .padding(.top, .ds(.p16))
             }
             if store.showsSkipTooltip {
                 skipTooltip
-                    .padding(.bottom, 20)
+                    .padding(.bottom, .ds(.p20))
             }
             bottomBar
         }
@@ -55,20 +55,20 @@ public struct OnboardingFocusProjectView: View {
                     .frame(height: 4)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 4)
+        .padding(.horizontal, .ds(.p20))
+        .padding(.vertical, .ds(.p4))
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: .ds(.p10)) {
             Text("선택")
                 .dsTypography(.body7)
                 .foregroundStyle(Color.GrayScale.g800)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 4)
+                .padding(.horizontal, .ds(.p12))
+                .padding(.vertical, .ds(.p4))
                 .background(Color.GrayScale.g50, in: RoundedRectangle(cornerRadius: 2))
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: .ds(.p8)) {
                 Text("집중적으로 보고싶은\n프로젝트 내용을 알려주세요.")
                     .dsTypography(.head3)
                     .foregroundStyle(Color.GrayScale.g800)
@@ -86,13 +86,13 @@ public struct OnboardingFocusProjectView: View {
                 .dsTypography(.body1)
                 .foregroundStyle(Color.HilitBlack.b800)
 
-            HStack(spacing: 4) {
+            HStack(spacing: .ds(.p4)) {
                 projectTextField
                 if store.isClearButtonVisible {
                     clearButton
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, .ds(.p16))
             .padding(.vertical, 18)
             .overlay {
                 Rectangle()
@@ -154,7 +154,7 @@ public struct OnboardingFocusProjectView: View {
             Text("나중에 등록해도 괜찮아요!")
                 .dsTypography(.body4)
                 .foregroundStyle(Color.BlackWhite.white)
-                .padding(.horizontal, 16)
+                .padding(.horizontal, .ds(.p16))
                 .padding(.vertical, 11)
                 .frame(maxWidth: .infinity)
                 .background(Color.HilitBlack.b800)

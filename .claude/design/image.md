@@ -36,7 +36,7 @@ Image.Img.micError           // 일러스트 — 크기·변형 없이 이름만
 | `Feedback` | 태도 픽토그램 5종 — body(자세)·eyes(시선)·face(표정)·hand(손동작)·voice(목소리) | 태도 평가 축 |
 | `File` | 문서 낱장 (모서리 접힘) | 첨부·포트폴리오 |
 | `HilitAnalyze` | 36px 원형 배지 3종 — aiSparkle·problem·success | 분석 결과 항목 머리 |
-| `Info` | 원 안 i (빨강 = error 변형) | 안내 |
+| `Info` | 원 안 i (빨강 = error·청록 = positive 변형) | 안내 |
 | `Issue` | 원 안 느낌표 (빨강 = error 변형) | 오류·경고 |
 | `Left` / `Right` | 쉐브론 ‹ / › | 뒤로·앞으로 |
 | `Loading` | 진행 링(ing)·대기 링(wait)·기본 링(접두사 없음) | 단계 진행 표시 |
