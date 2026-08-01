@@ -20,10 +20,16 @@ import SwiftUI
 /// 인사 문구는 조건부 표시다 — `phase` 가 `.report(.recent)` 면 블록 자체가 레이아웃에서 빠지고
 /// 스크롤 안내만 남는다(시안에 hidden 변형이 없어 안내 문구 위치는 바텀시트 기준으로 유지).
 ///
-/// 로고 내비바는 `HomeView` 가 한 번만 붙인다 — `HomeDefaultView` 와 같은 바다(E1).
+/// 그린 배경·면접 시작 레이어·내비바·시트 높이는 전부 `HomeView` 가 소유한다 — 여기는 받은 높이에
+/// 맞춰 그리고, 손잡이를 어디에 둘지만 정한다.
 @ViewAction(for: HomeFeature.self)
 struct HomeReportView: View {
     @Bindable var store: StoreOf<HomeFeature>
+    /// 지금 시트가 차지할 높이 — 확정된 자리 + 진행 중인 드래그.
+    let sheetHeight: CGFloat
+    /// 면접 시작이 드러난 정도(0…1) — 그린 판은 그만큼 사라진다.
+    let startProgress: Double
+    let dragHandle: HomeSheetDragHandle
 
     /// 인사 문구 표시 여부 — report 변형이 결정한다(`returning` 만 띄운다).
     private var isGreetingVisible: Bool {
@@ -33,14 +39,16 @@ struct HomeReportView: View {
     var body: some View {
         VStack(spacing: 0) {
             greenPanel
+                .opacity(1 - startProgress)
             reportSheet
+                .frame(height: sheetHeight)
         }
-        .background { HomeGreenBackdrop() }
-        .ignoresSafeArea(edges: .bottom)
     }
 
     // MARK: - 상단 그린 판
 
+    /// 시트가 먹고 남은 높이를 그대로 쓴다 — 확장 자리에선 0 까지 줄어 잘려 나간다.
+    /// 위쪽에 붙여 두면 올라오는 시트가 안내 문구부터 차례로 덮는다(가운데 정렬이면 내용이 떠다닌다).
     private var greenPanel: some View {
         VStack(spacing: 0) {
             if isGreetingVisible {
@@ -49,7 +57,8 @@ struct HomeReportView: View {
             Spacer(minLength: .ds(.p20))
             scrollHint
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .clipped()
     }
 
     /// 인사 문구 — 시안은 내비바 아래 54 지점에서 시작한다.
@@ -66,7 +75,7 @@ struct HomeReportView: View {
     }
 
     /// 스크롤 안내 — 바텀시트 바로 위. 시안 프레임은 x20·w335 안에 px10·py16.
-    /// 문구가 말하는 «면접 시작» 경로를 이 영역 탭으로도 연다(→ `HomeStartInterviewGesture`).
+    /// 문구가 말하는 «면접 시작» 경로를 이 영역 탭으로도 연다(끌지 않는 지름길 — `HomeSheetDrag`).
     private var scrollHint: some View {
         // @ds(typography): Pretendard m16 / lh 1.4 / tracking -2% → body3 — 안내 문구 (토큰은 lh 1.3 · tracking -2.5%)
         Text("밑으로 스크롤해서 면접을 시작해 보세요!")
@@ -78,11 +87,12 @@ struct HomeReportView: View {
             .padding(.vertical, .ds(.p16))
             .padding(.horizontal, .ds(.p20))
             .contentShape(Rectangle())
-            .onTapGesture { send(.userTappedStartInterview) }
+            .onTapGesture { send(.userTappedStartInterview, animation: HomeSheetDrag.settleAnimation) }
     }
 
     // MARK: - 바텀시트
 
+    /// 높이는 부모가 준다 — 내려가면 면접 시작이 드러나고, 올라가면 목록만 남는다.
     private var reportSheet: some View {
         VStack(spacing: 0) {
             grabber
@@ -90,14 +100,20 @@ struct HomeReportView: View {
             reportList
         }
         .frame(maxWidth: .infinity, alignment: .top)
-        // @ds(layout): 481 — 바텀시트 판 높이 (시안 812 중 하단 481, 드래그 확장 시안 없음)
-        .frame(height: 481)
-        .background(Color.BlackWhite.white)
+        .background { sheetBackground }
         .clipped()
         .overlay(alignment: .bottom) { bottomFade }
     }
 
-    /// 손잡이 — 시안은 라운드 없는 막대다. 아래로 끌면 면접 시작 화면이 올라온다.
+    /// 판 색만 홈 인디케이터 영역까지 내린다 — 시트가 완전히 내려가면 그 띠도 같이 사라져야
+    /// 아래 겹(면접 시작 CTA)이 안 가려진다.
+    private var sheetBackground: some View {
+        Color.BlackWhite.white
+            .opacity(sheetHeight > 0 ? 1 : 0)
+            .ignoresSafeArea(edges: .bottom)
+    }
+
+    /// 손잡이 — 시안은 라운드 없는 막대다. 위아래로 끌어 시트 자리를 바꾼다.
     /// 제스처를 손잡이·헤더에만 두는 이유: 목록은 `ScrollView` 라 같은 축의 드래그가 겹친다.
     // @ds(component): 그래버 60×5 (컨테이너 h20) — 바텀시트 손잡이, 공용 컴포넌트 없음
     private var grabber: some View {
@@ -106,7 +122,7 @@ struct HomeReportView: View {
             .frame(maxWidth: .infinity)
             .frame(height: 20)
             .contentShape(Rectangle())
-            .gesture(HomeStartInterviewGesture.dragDown { send(.userTappedStartInterview) })
+            .gesture(dragHandle.gesture)
     }
 
     private var sheetHeader: some View {
@@ -123,7 +139,7 @@ struct HomeReportView: View {
         .padding(.top, .ds(.p10))
         .padding(.bottom, .ds(.p20))
         .contentShape(Rectangle())
-        .gesture(HomeStartInterviewGesture.dragDown { send(.userTappedStartInterview) })
+        .gesture(dragHandle.gesture)
     }
 
     /// 목록 — 행 사이 1pt 흰 틈이 그대로 구분선이 된다(시안 gap 1).
@@ -211,9 +227,11 @@ struct HomeReportView: View {
 
 // MARK: - Previews
 
+// 배경·면접 시작 레이어·내비바는 `HomeView` 소유라 프리뷰도 거기서 띄운다 — 자리별 모습은
+// `sheetDetent` 를 바꿔 본다(`onAppear` 가 기본 자리로 되돌리므로 확장 자리는 손으로 끌어 확인).
 #Preview("HomeReport — 인사 문구 표시") {
     NavigationStack {
-        HomeReportView(
+        HomeView(
             store: Store(
                 initialState: HomeFeature.State(
                     phase: .report(.returning),
@@ -228,7 +246,7 @@ struct HomeReportView: View {
 
 #Preview("HomeReport — 인사 문구 숨김") {
     NavigationStack {
-        HomeReportView(
+        HomeView(
             store: Store(
                 initialState: HomeFeature.State(
                     phase: .report(.recent),
