@@ -9,10 +9,13 @@ import ComposableArchitecture
 import Foundation
 
 // @lat: [[home]]
-/// 면접 시작 — 홈에서 present 되는 한 장짜리 화면. 시안 3장을 `Variant` 로 분기한다.
+/// 면접 시작 — 홈 씬에서 리포트 시트 뒤에 깔리는 한 겹. 시안 3장을 `Variant` 로 분기한다.
 ///
 /// 홈의 phase 가 아니라 별도 Reducer 인 이유: 홈 상태의 표시가 아니라 «면접을 시작할까» 를 묻는
 /// 별도 화면이고, 응답(시작·수정)은 홈이 처리할 수 없는 cross-feature 전환이라 delegate 로 올라간다.
+///
+/// 나가기는 여기 없다 — 이 겹을 덮는 건 «시트를 도로 올린다» 라서 홈의 자리(`SheetDetent`) 몫이다.
+/// 하단 «홈으로» 만 delegate 로 올린다(CTA 는 이 화면 소유라서).
 @Reducer
 public struct StartInterviewFeature {
     /// 시안 3종 — 처음 / 등록 포폴 있음 / 무료 횟수 모두 사용.
@@ -71,8 +74,6 @@ public struct StartInterviewFeature {
             case userTappedEditInfo
             /// [홈으로] 탭 — 무료 횟수 소진 시안의 나가기 경로.
             case userTappedBackToHome
-            /// 내비바 X 탭.
-            case userTappedClose
         }
 
         /// effect 결과·리듀서 내부 신호. 리듀서만 방출한다.
@@ -84,9 +85,7 @@ public struct StartInterviewFeature {
             case startRequested
             /// 면접 정보 수정 요청 — 전환은 AppFeature.
             case editInfoRequested
-            /// 닫기 요청 — 홈으로 되돌린다.
-            case closeRequested
-            /// 홈으로 요청 — 소진 시안의 나가기. 닫기와 같은 결과지만 발원지가 다르다.
+            /// 홈으로 요청 — 소진 시안의 나가기(하단 CTA). 홈은 시트를 도로 올린다.
             case backToHomeRequested
         }
     }
@@ -102,8 +101,6 @@ public struct StartInterviewFeature {
                 return .send(.delegate(.editInfoRequested))
             case .view(.userTappedBackToHome):
                 return .send(.delegate(.backToHomeRequested))
-            case .view(.userTappedClose):
-                return .send(.delegate(.closeRequested))
             case .inner, .delegate:
                 return .none
             }

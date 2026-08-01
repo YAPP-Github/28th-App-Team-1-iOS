@@ -13,29 +13,30 @@ import SwiftUI
 
 /// 홈 기본 상태 — 커튼 그린 배경 위 인사말 + 스크롤 유도 문구, 하단은 «면접 리포트» 시트(빈 상태).
 ///
-/// 시안 문구가 말하는 «밑으로 스크롤»(면접 시작 화면으로 넘어가는 전환)은 시트 하향 드래그와
-/// 안내 문구 탭 두 경로로 배선했다 — 임계값·연출은 `HomeStartInterviewGesture` 참조(모션 시안 없음).
+/// 시안 문구가 말하는 «밑으로 스크롤»(면접 시작으로 넘어가는 전환)은 시트 하향 드래그와
+/// 안내 문구 탭 두 경로로 배선했다 — 자리·임계값은 `HomeSheetDrag` 참조(모션 시안 없음).
+/// 리포트 자리와 달리 **확장 자리는 없다** — 펼칠 목록이 없어서다.
 ///
-/// 로고 내비바는 `HomeView` 가 한 번만 붙인다 — `HomeReportView` 와 같은 바다(E1).
+/// 그린 배경·면접 시작 레이어·내비바·시트 높이는 전부 `HomeView` 가 소유한다.
 ///
 /// dev 임시 버튼 2개는 위젯①(면접 시작)·마이페이지 로그아웃이 정식 배선되면 제거한다.
 @ViewAction(for: HomeFeature.self)
 struct HomeDefaultView: View {
     @Bindable var store: StoreOf<HomeFeature>
+    /// 지금 시트가 차지할 높이 — 확정된 자리 + 진행 중인 드래그.
+    let sheetHeight: CGFloat
+    /// 면접 시작이 드러난 정도(0…1) — 그린 영역은 그만큼 사라진다.
+    let startProgress: Double
+    let dragHandle: HomeSheetDragHandle
 
     var body: some View {
-        ZStack {
-            HomeGreenBackdrop()
-                .ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                greenHeader
-                reportSheet
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        VStack(spacing: 0) {
+            greenHeader
+                .opacity(1 - startProgress)
+            reportSheet
+                .frame(height: sheetHeight)
         }
-        // 인사말의 colorBurn 이 «배경 커튼까지만» 섞이도록 합성 경계를 여기서 닫는다.
-        .compositingGroup()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - 그린 영역 (내비바 ~ 시트 위)
@@ -50,8 +51,10 @@ struct HomeDefaultView: View {
             scrollHint
                 // @ds(spacing): 60 — 인사말 ~ 스크롤 안내 (spacing 토큰은 4~24)
                 .padding(.top, 60)
+            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .clipped()
     }
 
     private var greeting: some View {
@@ -76,12 +79,13 @@ struct HomeDefaultView: View {
             .padding(.vertical, .ds(.p16))
             .padding(.horizontal, .ds(.p20))
             .contentShape(Rectangle())
-            .onTapGesture { send(.userTappedStartInterview) }
+            .onTapGesture { send(.userTappedStartInterview, animation: HomeSheetDrag.settleAnimation) }
     }
 
     // MARK: - 리포트 시트
 
     /// 하단 흰 판 — 그래버 + 개수 헤더 + 빈 상태. 빈 상태는 헤더와 무관하게 **판 중앙**에 놓인다(시안 기준).
+    /// 높이는 부모가 준다 — 내려가면 면접 시작이 드러난다.
     private var reportSheet: some View {
         ZStack {
             VStack(spacing: 0) {
@@ -94,10 +98,16 @@ struct HomeDefaultView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // 판 색만 홈 인디케이터 영역까지 내리고, 내용은 safe area 안에 둔다 — 시안의 중앙 정렬이 그 기준이다.
-        .background(Color.BlackWhite.white.ignoresSafeArea(edges: .bottom))
-        // 시트를 아래로 끌면 면접 시작 — 이 phase 의 시트엔 스크롤이 없어 판 전체에 걸 수 있다.
+        // 시트가 완전히 내려가면 그 띠도 사라져야 아래 겹(면접 시작 CTA)이 안 가려진다.
+        .background {
+            Color.BlackWhite.white
+                .opacity(sheetHeight > 0 ? 1 : 0)
+                .ignoresSafeArea(edges: .bottom)
+        }
+        .clipped()
+        // 이 phase 의 시트엔 스크롤이 없어 판 전체를 손잡이로 쓸 수 있다.
         .contentShape(Rectangle())
-        .gesture(HomeStartInterviewGesture.dragDown { send(.userTappedStartInterview) })
+        .gesture(dragHandle.gesture)
     }
 
     // @ds(component): 60×5 바 (모서리 없음) — 시트 그래버. DS 에 시트 컴포넌트 없음(`.hilitBottomSheet` 는 모달 딤 전용)
@@ -159,18 +169,23 @@ struct HomeDefaultView: View {
     }
 }
 
+// 배경·면접 시작 레이어·내비바는 `HomeView` 소유라 프리뷰도 거기서 띄운다.
 #Preview("HomeDefault — 시안") {
-    HomeDefaultView(
-        store: Store(initialState: HomeFeature.State()) {
-            HomeFeature()
-        }
-    )
+    NavigationStack {
+        HomeView(
+            store: Store(initialState: HomeFeature.State()) {
+                HomeFeature()
+            }
+        )
+    }
 }
 
 #Preview("HomeDefault — dev 버튼") {
-    HomeDefaultView(
-        store: Store(initialState: HomeFeature.State(showsOnboardingEntry: true, showsDebugLogout: true)) {
-            HomeFeature()
-        }
-    )
+    NavigationStack {
+        HomeView(
+            store: Store(initialState: HomeFeature.State(showsOnboardingEntry: true, showsDebugLogout: true)) {
+                HomeFeature()
+            }
+        )
+    }
 }

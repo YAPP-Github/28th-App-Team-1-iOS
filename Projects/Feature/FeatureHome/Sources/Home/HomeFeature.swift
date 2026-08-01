@@ -32,6 +32,20 @@ public struct HomeFeature {
         case recent
     }
 
+    /// 리포트 시트가 앉는 세 자리 — 그래버를 끌어 오간다. `phase`(서버 상태의 표시)와 직교하는
+    /// **시트 높이** 축이고, 시안 프레임이 아니라 사용자가 지금 뭘 보고 있는지를 뜻한다.
+    ///
+    /// 시트가 다 내려가면 뒤에 깔린 면접 시작 화면이 그대로 드러난다 — 그래서 «면접 시작» 은
+    /// 별도 present 가 아니라 이 축의 한 자리다(끌던 손을 놓기 전까진 되돌릴 수 있어야 해서).
+    public enum SheetDetent: Equatable, Sendable {
+        /// 시트가 완전히 내려가 면접 시작 화면이 드러난 자리.
+        case startInterview
+        /// 기본 — 인사말 그린 판 + 시트(시안 Home_Default·Home_Report).
+        case report
+        /// 시트가 내비바 밑까지 올라와 리포트 목록만 남은 자리.
+        case expanded
+    }
+
     /// 리포트 행 표시 모델 — 위젯② 면접 기록 한 줄.
     /// `dateText` 는 이미 포맷된 문자열이다(«7월 11일 월» 포맷은 목록을 만드는 쪽 몫).
     // TODO: `DomainInterviewReport` 의 목록 모델로 이관 — 지금 `.domain(interface: .interviewReport)` 를
@@ -59,12 +73,12 @@ public struct HomeFeature {
         public var reports: IdentifiedArrayOf<Report>
         /// 펼친 행 — 시안은 최신 1개가 펼쳐진 상태다. nil 이면 전부 접힘.
         public var expandedReportID: Report.ID?
-        /// present 된 면접 시작 화면 — 홈 탭에 NavigationStack 이 없어 push 가 아니라 cover 다.
-        @Presents public var startInterview: StartInterviewFeature.State?
-        // TODO: 홈 진입 로드(잔여·포폴)가 정해야 하고, 진실은 탭 시점 게이트 `checkStartEligibility` 재검증
-        //       (미결 6-1 서버 협의 대기).
-        /// 다음에 열 면접 시작 화면의 변형.
-        public var nextStartVariant: StartInterviewFeature.Variant = .first
+        /// 시트가 지금 앉아 있는 자리. 홈에 다시 들어오면 기본으로 돌아온다(`onAppear`).
+        public var sheetDetent: SheetDetent = .report
+        // TODO: 잔여·포트폴리오(=variant)는 홈 진입 로드가 정해야 하고, 진실은 탭 시점 게이트
+        //       `checkStartEligibility` 재검증 (미결 6-1 서버 협의 대기).
+        /// 면접 시작 화면 — 시트 **뒤에 늘 깔려 있다**. present 가 아닌 이유는 `SheetDetent` 주석 참조.
+        public var startInterview: StartInterviewFeature.State
         /// dev 진입점 노출 여부 — AppFeature 가 dev 빌드에서만 켠다 (온보딩 본체 통합 전 임시 진입).
         public var showsOnboardingEntry: Bool
         /// dev 디버그 로그아웃 버튼 노출 여부 — AppFeature 가 dev 빌드에서만 켠다.
@@ -74,6 +88,7 @@ public struct HomeFeature {
             phase: Phase = .default,
             userName: String = "재원",
             reports: [Report] = [],
+            startVariant: StartInterviewFeature.Variant = .first,
             showsOnboardingEntry: Bool = false,
             showsDebugLogout: Bool = false
         ) {
@@ -81,6 +96,7 @@ public struct HomeFeature {
             self.userName = userName
             self.reports = IdentifiedArray(uniqueElements: reports)
             self.expandedReportID = reports.first?.id
+            self.startInterview = StartInterviewFeature.State(variant: startVariant)
             self.showsOnboardingEntry = showsOnboardingEntry
             self.showsDebugLogout = showsDebugLogout
         }
@@ -90,14 +106,16 @@ public struct HomeFeature {
         case view(View)
         case inner(Inner)
         case delegate(Delegate)
-        case startInterview(PresentationAction<StartInterviewFeature.Action>)
+        case startInterview(StartInterviewFeature.Action)
 
         /// 사용자 입력·생명주기. View 의 send(...) 로만 방출된다.
         public enum View: Sendable {
             // TODO: 홈 진입 4종 로드(잔여·기록 리스트·진행 중 세션·포폴 상태) — 묶음 API 여부 서버 협의(미결 6-1) 후 배선.
             //       기록 리스트 응답은 `inner(.reportsLoaded)` 로 돌아온다.
             case onAppear
-            /// 면접 시작 요청 — 면접 시작 화면을 present 한다.
+            /// 시트 드래그가 끝나 자리가 정해졌다 — 판정은 뷰(`HomeSheetDrag`), 확정은 여기.
+            case userSettledSheet(SheetDetent)
+            /// 스크롤 안내 문구 탭 — 끌지 않고 바로 면접 시작 자리로 보낸다.
             case userTappedStartInterview
             /// 내비바 프로필 탭 — 마이페이지 진입 요청.
             case userTappedProfile
@@ -140,9 +158,15 @@ public struct HomeFeature {
         Reduce { state, action in
             switch action {
             case .view(.onAppear):
+                // 홈 밖에 다녀오면 시트는 기본 자리로 — 남의 화면에서 돌아왔는데 면접 시작이
+                // 떠 있거나 목록이 펼쳐진 채면 «홈에 왔다» 는 신호가 사라진다.
+                state.sheetDetent = .report
+                return .none
+            case let .view(.userSettledSheet(detent)):
+                state.sheetDetent = detent
                 return .none
             case .view(.userTappedStartInterview):
-                state.startInterview = StartInterviewFeature.State(variant: state.nextStartVariant)
+                state.sheetDetent = .startInterview
                 return .none
             case .view(.userTappedProfile):
                 return .send(.delegate(.profileRequested))
@@ -164,6 +188,8 @@ public struct HomeFeature {
                 switch (reports.isEmpty, state.phase) {
                 case (true, _):
                     state.phase = .default
+                    // 펼칠 목록이 사라졌으면 확장 자리도 성립하지 않는다.
+                    if state.sheetDetent == .expanded { state.sheetDetent = .report }
                 case (false, .report):
                     break
                 case (false, .default):
@@ -171,14 +197,13 @@ public struct HomeFeature {
                 }
                 return .none
 
-            case .startInterview(.presented(.delegate(.closeRequested))),
-                 .startInterview(.presented(.delegate(.backToHomeRequested))):
-                state.startInterview = nil
+            case .startInterview(.delegate(.backToHomeRequested)):
+                state.sheetDetent = .report
                 return .none
-            case .startInterview(.presented(.delegate(.startRequested))):
+            case .startInterview(.delegate(.startRequested)):
                 // 면접 플로우는 다른 Feature 라 AppFeature 가 조립한다(Feature→Feature 금지).
                 return .send(.delegate(.interviewStartRequested))
-            case .startInterview(.presented(.delegate(.editInfoRequested))):
+            case .startInterview(.delegate(.editInfoRequested)):
                 return .send(.delegate(.interviewInfoEditRequested))
             case .startInterview:
                 return .none
@@ -187,7 +212,7 @@ public struct HomeFeature {
                 return .none
             }
         }
-        .ifLet(\.$startInterview, action: \.startInterview) {
+        Scope(state: \.startInterview, action: \.startInterview) {
             StartInterviewFeature()
         }
     }

@@ -17,10 +17,12 @@ import SwiftUI
 /// 면접 시작 — 시안 3장을 `StartInterviewFeature.Variant` 로 분기한다.
 ///
 /// 세 시안의 골격은 같다: 커튼 그린 배경 + 좌상단 인사말(color-burn) + 중앙 흰 카드 + 하단 CTA.
-/// 갈리는 건 **인사말 문구 · 카드 내용 · CTA** 셋이고, 닫기(X) 내비바는 소진 시안에만 없다
-/// (그 화면의 나가기는 하단 «홈으로» 가 맡는다).
+/// 갈리는 건 **인사말 문구 · 카드 내용 · CTA** 셋이다.
 ///
-/// 홈이 cover 로 올리는 **스택 없는 한 장짜리**라 내비바는 present 경로(`.hilitPresentedNavigationBar`)다.
+/// **화면이 아니라 홈 씬의 한 겹**이다 — 리포트 시트 뒤에 늘 깔려 있고 시트가 내려간 만큼 드러난다
+/// (`HomeView`). 그래서 그린 배경·내비바를 여기서 갖지 않는다. 나가기(X)는 홈 내비바가 «시트를 도로
+/// 올린다» 로 처리한다 — 소진 시안엔 시안상 바가 없지만, 씬에 늘 바가 있어 X 도 함께 뜬다
+/// (하단 «홈으로» 와 결과가 같아 해롭지 않다).
 ///
 /// 카드 안 값(잔여 횟수·포트폴리오 파일 정보)은 `StartInterviewFeature.State` 소유고,
 /// 표기(«2026.07.31»·«3.2mb»)만 이 뷰가 만든다.
@@ -33,32 +35,17 @@ public struct StartInterviewView: View {
     }
 
     public var body: some View {
-        if showsCloseBar {
-            screen
-                .hilitPresentedNavigationBar(background: .filled, onClose: { send(.userTappedClose) })
-        } else {
-            screen
+        VStack(spacing: 0) {
+            greeting
+                // @ds(spacing): 54 — 내비바 아래 ~ 인사말 (시안 프레임 top 141 − 상태바 43 − 내비바 44)
+                .padding(.top, 54)
+                // @ds(spacing): 80 — 인사말 아래 ~ 카드 위 (시안 텍스트 bottom 255 → 카드 top 335). spacing 토큰은 4~24
+                .padding(.bottom, 80)
+            card
+            Spacer(minLength: 0)
+            callToAction
         }
-    }
-
-    private var screen: some View {
-        ZStack {
-            HomeGreenBackdrop()
-                .ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                greeting
-                    .padding(.top, greetingTopPadding)
-                    // @ds(spacing): 80 — 인사말 아래 ~ 카드 위 (시안 텍스트 bottom 255 → 카드 top 335). spacing 토큰은 4~24
-                    .padding(.bottom, 80)
-                card
-                Spacer(minLength: 0)
-                callToAction
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        // 인사말의 colorBurn 이 «배경 커튼까지만» 섞이도록 합성 경계를 여기서 닫는다.
-        .compositingGroup()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - 인사말
@@ -81,19 +68,6 @@ public struct StartInterviewView: View {
         case .first: "재원님,\n지금부터 면접을\n시작해 볼까요?"
         case .hasPortfolio: "이전과\n동일한 정보로\n시작할까요?"
         case .exhausted: "재원님,\n무료 횟수를 모두\n사용했어요"
-        }
-    }
-
-    /// 인사말 top — 시안은 세 장 모두 프레임 top 141 이다. 닫기 바가 있는 시안은
-    /// 상태바(43) + 내비바(44)만큼 이미 내려와 있고(141−87), 없는 시안은 상태바만 빠진다(141−43).
-    // @ds(spacing): 141 → 54 / 98 — 인사말 top (spacing 토큰은 4~24)
-    private var greetingTopPadding: CGFloat { showsCloseBar ? 54 : 98 }
-
-    /// 닫기(X) 내비바 유무 — 소진 시안(3632:9566)엔 top-bar 자체가 없다.
-    private var showsCloseBar: Bool {
-        switch store.variant {
-        case .first, .hasPortfolio: true
-        case .exhausted: false
         }
     }
 
@@ -227,20 +201,28 @@ public struct StartInterviewView: View {
 
 // MARK: - Previews
 
-private func previewStore(_ variant: StartInterviewFeature.Variant) -> StoreOf<StartInterviewFeature> {
-    Store(initialState: StartInterviewFeature.State(variant: variant)) {
-        StartInterviewFeature()
+/// 씬의 한 겹이라 단독으로는 배경이 없다 — 프리뷰에서만 홈이 깔아 주는 배경을 흉내 낸다.
+private func previewLayer(_ variant: StartInterviewFeature.Variant) -> some View {
+    ZStack {
+        HomeGreenBackdrop()
+            .ignoresSafeArea()
+        StartInterviewView(
+            store: Store(initialState: StartInterviewFeature.State(variant: variant)) {
+                StartInterviewFeature()
+            }
+        )
     }
+    .compositingGroup()
 }
 
 #Preview("처음 — 정보 입력 전") {
-    StartInterviewView(store: previewStore(.first))
+    previewLayer(.first)
 }
 
 #Preview("이전 정보 재사용") {
-    StartInterviewView(store: previewStore(.hasPortfolio))
+    previewLayer(.hasPortfolio)
 }
 
 #Preview("무료 횟수 소진") {
-    StartInterviewView(store: previewStore(.exhausted))
+    previewLayer(.exhausted)
 }
