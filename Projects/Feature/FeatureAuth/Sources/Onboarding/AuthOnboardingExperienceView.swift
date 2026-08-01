@@ -95,17 +95,22 @@ public struct AuthOnboardingExperienceView: View {
         .overlay { wheelFade.allowsHitTesting(false) }
     }
 
-    /// 휠 한 행 — 중앙(선택) 행만 그린 마커가 깔리고, 나머지는 회색 평문이다.
+    /// 휠 한 행 — 중앙 행만 그린 마커가 깔리고, 나머지는 회색 평문이다. 선택 상태(`selectedExperience`)가
+    /// 아니라 **기하**로 판정한다 — 스냅 확정은 스크롤이 멈춰야 오므로, 그걸 기준 삼으면 드래그 내내
+    /// 직전 선택만 강조된 채로 남는다. 두 표기를 겹쳐 두고 `visualEffect` 로 반대 불투명도를 줘
+    /// 스크롤 중 상태 갱신 없이 하이라이트가 중앙 행을 따라간다.
     private func wheelRow(_ option: ExperienceOption) -> some View {
-        let isSelected = option == store.selectedExperience
-        return Group {
-            if isSelected {
-                HighlightedText(option.label, typography: .sub4, alignment: .center)
-            } else {
-                Text(option.label)
-                    .dsTypography(.sub4)
-                    .foregroundStyle(Color.GrayScale.g400)
-            }
+        ZStack {
+            Text(option.label)
+                .dsTypography(.sub4)
+                .foregroundStyle(Color.GrayScale.g400)
+                .visualEffect { content, proxy in
+                    content.opacity(1 - WheelMetric.centeredness(proxy))
+                }
+            HighlightedText(option.label, typography: .sub4, alignment: .center)
+                .visualEffect { content, proxy in
+                    content.opacity(WheelMetric.centeredness(proxy))
+                }
         }
         .frame(width: WheelMetric.width, height: WheelMetric.rowHeight)
     }
@@ -161,6 +166,12 @@ private enum WheelMetric {
     static let verticalInset: CGFloat = (height - rowHeight) / 2
     /// 페이드가 투명해지는 지점 (프레임 높이 비율).
     static let fadeRatio: CGFloat = fadeHeight / height
+
+    /// 이 행이 뷰포트 중앙 밴드(±행높이/2)에 들어왔는지 — 1 이면 선택 행이다.
+    /// 경계에서 딱 끊는다 — 사이 값을 주면 두 표기가 반투명하게 겹쳐 글자가 굵어 보인다.
+    static func centeredness(_ proxy: GeometryProxy) -> Double {
+        abs(proxy.frame(in: .scrollView).midY - height / 2) < rowHeight / 2 ? 1 : 0
+    }
 }
 
 // MARK: - Previews
