@@ -44,6 +44,18 @@ public enum HilitNavigationBar {
         case text(String, action: () -> Void)
     }
 
+    /// 시스템 바에 꽂을 변형 — **한 화면이 상태에 따라 변형을 갈아끼울 때만** 쓴다
+    /// (`.hilitNavigationBar(_ kind:)`). 변형이 고정인 화면은 이걸 만지지 말고
+    /// `.hilitNavigationBar(_:trailing:…)` / `.hilitLogoNavigationBar(…)` 를 그대로 쓴다.
+    ///
+    /// 갈아끼우기를 `if/else` 로 하지 않는 이유: 모디파이어가 갈리면 SwiftUI 가 화면을
+    /// 다른 뷰로 보고 통째로 새로 만들어 — 붙어 있던 `@State` 와 진행 중 애니메이션이 끊긴다.
+    /// 값만 바뀌면 툴바 내용만 갱신된다.
+    public enum Kind {
+        case standard(title: String? = nil, trailing: Trailing? = nil, onClose: (() -> Void)? = nil)
+        case logo(onProfile: (() -> Void)? = nil)
+    }
+
     /// 바 배경 — 기본은 투명(영상 풀블리드처럼 뒤 화면이 비쳐야 하는 케이스).
     /// 스크롤 화면은 콘텐츠가 바 밑으로 지나가므로 `.filled`(theme 색) 로 칠한다.
     /// 스크림(그라데이션) 시안이 생기면 case 추가로 확장한다.
@@ -118,12 +130,12 @@ public extension View {
         assert(!(theme == .dark && trailing != nil),
                "HilitNavigationBar: 다크 바의 trailing 시안이 없다 — 필요하면 디자이너 확인 후 추가.")
         #endif
-        return modifier(HilitNavigationBarModifier(
-            bar: .standard(title: title, trailing: trailing, onClose: onClose),
+        return hilitNavigationBar(
+            .standard(title: title, trailing: trailing, onClose: onClose),
             theme: theme,
             background: background,
             allowsSwipeBack: allowsSwipeBack
-        ))
+        )
     }
 
     /// logo 변형(Hilit 워드마크 + 프로필) 부착 — 홈처럼 브랜드 바를 쓰는 루트 화면용.
@@ -132,11 +144,23 @@ public extension View {
         onProfile: (() -> Void)? = nil
     ) -> some View {
         // logo 변형은 루트 전용 — 루트는 pop 대상이 없어 스와이프백 스위치가 무의미.
+        hilitNavigationBar(.logo(onProfile: onProfile), background: background)
+    }
+
+    /// 변형을 **값으로** 받는 부착 — 한 화면이 상태에 따라 바를 갈아끼울 때 쓴다
+    /// (홈: 리포트 자리 = 로고 바 / 면접 시작 자리 = X 바). 고정 변형이면 위 두 함수를 쓴다.
+    /// 갈아끼우기를 모디파이어 분기로 하면 안 되는 이유는 `HilitNavigationBar.Kind` 주석 참조.
+    func hilitNavigationBar(
+        _ kind: HilitNavigationBar.Kind,
+        theme: HilitNavigationBar.Theme = .light,
+        background: HilitNavigationBar.Background = .transparent,
+        allowsSwipeBack: Bool = true
+    ) -> some View {
         modifier(HilitNavigationBarModifier(
-            bar: .logo(onProfile: onProfile),
-            theme: .light,
+            kind: kind,
+            theme: theme,
             background: background,
-            allowsSwipeBack: true
+            allowsSwipeBack: allowsSwipeBack
         ))
     }
 
@@ -173,12 +197,7 @@ public extension View {
 }
 
 private struct HilitNavigationBarModifier: ViewModifier {
-    enum Bar {
-        case standard(title: String?, trailing: HilitNavigationBar.Trailing?, onClose: (() -> Void)?)
-        case logo(onProfile: (() -> Void)?)
-    }
-
-    let bar: Bar
+    let kind: HilitNavigationBar.Kind
     let theme: HilitNavigationBar.Theme
     let background: HilitNavigationBar.Background
     let allowsSwipeBack: Bool
@@ -202,7 +221,7 @@ private struct HilitNavigationBarModifier: ViewModifier {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        switch bar {
+        switch kind {
         case let .standard(title, trailing, onClose):
             ToolbarItem(placement: .topBarLeading) {
                 HilitNavigationBarSlot.icon(theme.closeIcon, action: onClose ?? { dismiss() })
