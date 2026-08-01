@@ -23,9 +23,9 @@ public struct AuthClient: Sendable {
     /// 소셜 로그인 → provider가 발급한 자격증명(SocialCredential) 반환.
     /// 이 반환값이 `login`(서버 세션 교환)의 입력이 된다.
     public var signIn: @Sendable (SocialProvider) async throws -> SocialCredential
-    /// 자격증명을 서버 세션으로 교환 (POST /auth/social/login) — 성공 시 토큰 페어를 TokenStore 에 저장.
-    /// 실패는 `AuthError` 로 매핑된다.
-    public var login: @Sendable (SocialCredential) async throws -> Void
+    /// 자격증명을 서버 세션으로 교환 (POST /auth/social/login) — 성공 시 토큰 페어를 TokenStore 에 저장하고
+    /// 라우팅 판정값(동의 상태·프로필 등록 여부)을 돌려준다. 실패는 `AuthError` 로 매핑된다.
+    public var login: @Sendable (SocialCredential) async throws -> LoginResult
     /// 명시적 토큰 재발급 (POST /auth/token/refresh) — 만료 시 자동 재발급은 AuthorizedNetworkClient 가 수행.
     public var refresh: @Sendable () async throws -> Void
     /// 로그아웃 (DELETE /auth/logout) — 서버 Refresh Token 삭제. 로컬 토큰은 성공 여부와 무관하게 삭제한다.
@@ -39,7 +39,7 @@ public struct AuthClient: Sendable {
         configure: @escaping @MainActor @Sendable (_ appKey: String) -> Void,
         handleOpenURL: @escaping @MainActor @Sendable (URL) -> Void,
         signIn: @escaping @Sendable (SocialProvider) async throws -> SocialCredential,
-        login: @escaping @Sendable (SocialCredential) async throws -> Void,
+        login: @escaping @Sendable (SocialCredential) async throws -> LoginResult,
         refresh: @escaping @Sendable () async throws -> Void,
         logout: @escaping @Sendable () async throws -> Void,
         check: @escaping @Sendable () async throws -> AuthCheck,
