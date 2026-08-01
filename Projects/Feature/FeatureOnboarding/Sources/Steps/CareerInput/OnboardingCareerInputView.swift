@@ -10,7 +10,7 @@ import SharedDesignSystemInterface
 import SwiftUI
 
 // Figma «STEP 2_연차» (node 1609:8561) 구현.
-// 구성: 내비바(X만) · 프로그레스(2/5) · 헤더(필수 뱃지+타이틀+설명) · 문장형 연차 휠 · 하단 «이전으로|계속하기» 바.
+// 구성: 네비바(X만) · 프로그레스(2/5) · 헤더(필수 뱃지+타이틀+설명) · 문장형 연차 휠 · 하단 «이전으로|계속하기» 바.
 // @ViewAction 매크로가 send(_:) 를 제공한다 — View 는 store.send(.view(...)) 대신 send(.userTappedBack) 로만 방출.
 @ViewAction(for: OnboardingCareerInputFeature.self)
 public struct OnboardingCareerInputView: View {
@@ -22,11 +22,11 @@ public struct OnboardingCareerInputView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            progressBar
+            DashIndicator(count: store.totalSteps, current: store.step)
             header
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, .ds(.p20))
-                .padding(.top, .ds(.p16))
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
             Spacer(minLength: 0)
             careerSentence
             Spacer(minLength: 0)
@@ -39,28 +39,16 @@ public struct OnboardingCareerInputView: View {
         )
     }
 
-    private var progressBar: some View {
-        HStack(spacing: 2) {
-            ForEach(1...store.totalSteps, id: \.self) { step in
-                Rectangle()
-                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.GrayScale.g50)
-                    .frame(height: 4)
-            }
-        }
-        .padding(.horizontal, .ds(.p20))
-        .padding(.vertical, .ds(.p4))
-    }
-
     private var header: some View {
-        VStack(alignment: .leading, spacing: .ds(.p10)) {
+        VStack(alignment: .leading, spacing: 10) {
             Text("필수")
                 .dsTypography(.body7)
                 .foregroundStyle(Color.HilitGreen.g500)
-                .padding(.horizontal, .ds(.p12))
-                .padding(.vertical, .ds(.p4))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
                 .background(Color.HilitBlack.b800, in: RoundedRectangle(cornerRadius: 2))
 
-            VStack(alignment: .leading, spacing: .ds(.p8)) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text("연차를 입력해 주세요.")
                     .dsTypography(.head3)
                     .foregroundStyle(Color.GrayScale.g800)
@@ -75,7 +63,7 @@ public struct OnboardingCareerInputView: View {
 
     /// "내 경력은 [휠] 이다." — 앞뒤 텍스트가 휠의 선택 행(중앙)과 같은 줄에 놓인다.
     private var careerSentence: some View {
-        HStack(spacing: .ds(.p12)) {
+        HStack(spacing: 12) {
             Text("내 경력은")
                 .dsTypography(.sub4)
                 .foregroundStyle(Color.HilitBlack.b800)

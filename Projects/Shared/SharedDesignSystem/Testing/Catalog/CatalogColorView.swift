@@ -8,8 +8,9 @@
 import SharedDesignSystemInterface
 import SwiftUI
 
-/// 팔레트 23색 — 패밀리 enum 은 `static var` 묶음이라 순회가 안 돼 손으로 열거한다.
+/// 팔레트 — 패밀리 enum 은 `static var` 묶음이라 순회가 안 돼 손으로 열거한다.
 /// 색이 늘면 이 목록에 한 줄 추가한다(HEX 는 에셋명에만 있고 공개 API 로 못 읽어 이름만 보여준다).
+/// `Brand` 는 팔레트가 아니라 외부 제공자 색이라 맨 아래 따로 둔다.
 struct CatalogColorView: View {
     private typealias Swatch = (name: String, color: Color)
 
@@ -48,6 +49,9 @@ struct CatalogColorView: View {
         ]),
         ("BlackWhite", [
             ("white", Color.BlackWhite.white)
+        ]),
+        ("Brand", [
+            ("kakao", Color.Brand.kakao)
         ])
     ]
 

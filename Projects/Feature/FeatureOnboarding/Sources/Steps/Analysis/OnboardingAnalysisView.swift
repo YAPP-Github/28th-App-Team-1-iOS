@@ -26,7 +26,7 @@ public struct OnboardingAnalysisView: View {
         }
         .background(Color.HilitBlack.b800.ignoresSafeArea())
         .hilitNavigationBar(
-            theme: .dark,
+            surface: .dark,
             background: .filled,
             allowsSwipeBack: false,   // 제출 중 이탈 = 세션 생성 버림
             onClose: { send(.userTappedClose) }

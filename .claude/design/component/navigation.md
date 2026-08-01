@@ -1,17 +1,17 @@
-# 내비게이션 — 화면 전환·진행 위치를 다루는 컴포넌트
+# 네비게이션 — 화면 전환·진행 위치를 다루는 컴포넌트
 
-내비바·탭 줄·단계 인디케이터. 값을 바인딩으로 받아도(예: `TabSelector` 의 `selection`) **화면·영역 전환이 목적이면 여기**다.
+네비바·탭 줄·단계 인디케이터. 값을 바인딩으로 받아도(예: `TabSelector` 의 `selection`) **화면·영역 전환이 목적이면 여기**다.
 **표는 이름 알파벳순으로 유지한다** — 새 행을 끝에 붙이지 말고 제자리에 끼워 넣는다(동시 추가 시 git 자동 병합).
 
 | 컴포넌트 | Figma | API | 용도 |
 |---|---|---|---|
-| `DashIndicator` | dash 2044:4712 | `(count:current:)` | 진행 단계 대시 — 20×4 조각(on b800 / off g50) 나열. 조각 단독 공개 없음, «몇 번째까지 켜는가» 규칙만 갖는다 |
-| `HilitNavigationBar` | Navigationbar 3029:11188 — icon 2446:7485 · text 3029:11189 · logo 3632:13967 | **부착은 모디파이어만** (View 직접 배치 없음 — 타입은 `Theme`/`Trailing`/`Background` 를 담는 enum 네임스페이스): push `.hilitNavigationBar(_:trailing:theme:background:allowsSwipeBack:onClose:)` · 루트 브랜드 `.hilitLogoNavigationBar(background:onProfile:)` · present `.hilitPresentedNavigationBar(_:trailing:theme:background:onClose:)`. **어느 걸 쓰나 → 아래 «부착 — push vs present»** | h44 내비바(시안 슬롯 26+py9 = 시스템 표준이라 커스텀 바 폐기, 2026-07-31). **뒤로 버튼 없음 — leading X 고정**이라 슬롯이 아니라 `onClose` 액션(최종 시안: X 통일, 뒤로는 하단 CTA·스와이프백 몫) → «닫기(X) 기본값과 override». 타이틀 sub7 중앙 · trailing 은 plus 아이콘 또는 텍스트 버튼(body5·g400·p8/p4 hug), 없으면 `trailing: nil`(시안 show 토글). `theme` 이 아이콘 색변형(`default24`/`white24`)·타이틀색·`.filled` 배경색(white/b800)을 전부 파생 — 다크에 검정 X 같은 조합은 표현 불가. mini 버튼의 `.hilitSurface` 와 같은 «판 톤» 축이지만 내비바는 파라미터(빼먹으면 조용히 틀려서 명시가 안전). 다크 trailing 은 시안 없음(DEBUG assert). `background` 기본 `.transparent`(영상 풀블리드 — 콘텐츠 쪽 `.ignoresSafeArea()` 로 바 밑까지 깔림), 콘텐츠가 바 밑을 지나는 스크롤 화면은 `.filled` |
+| `DashIndicator` | progress bar 435:1575 · dash 435:1572 — on 435:1573 / off 435:1574 | `(count:current:)` | 진행 단계 대시 — **컨테이너가 px20/py4·gap2·h12 를 소유**하고 대시는 **등분(flex-1)** h4(on b800 / off g50). 조각에 그려진 20×4 는 컴포넌트 기본 폭일 뿐 렌더 폭이 아니다(375 폭·5단계에서 65.4). 조각 단독 공개 없음, «몇 번째까지 켜는가» 규칙만 갖는다 |
+| `HilitNavigationBar` | Navigationbar — «Component System 3» 439:10241 — icon 439:10394~10397 · text 439:10398~10400 · logo 439:10401/10402 | **부착은 모디파이어만** (View 직접 배치 없음 — 타입은 `Surface`/`Trailing`/`Background` 를 담는 enum 네임스페이스): push `.hilitNavigationBar(_:trailing:surface:background:allowsSwipeBack:leading:onClose:)` · 루트 브랜드 `.hilitLogoNavigationBar(background:onProfile:)` · present `.hilitPresentedNavigationBar(_:trailing:surface:background:leading:onClose:)`. **어느 걸 쓰나 → 아래 «부착 — push vs present»** | h44 네비바(0729 시안은 py14 로 52~54 지만 «기본 UI 를 토대로» 사용자 결정에 따라 시스템 표준 44 유지, 2026-07-31). **leading 은 3값 슬롯** — `.close`(기본 X) / `.back`(뒤로가기 화살표 `Image.Left`) / `.hidden`(시안 «왼쪽 아이콘 미노출»). 「X 통일, 뒤로는 하단 CTA·스와이프백 몫」이던 규칙은 2026-07-31 사용자 결정으로 뒤집혔다(화살표 필요한 화면 발생) — 기본값은 그대로 X, 액션은 둘 다 `onClose` → «닫기(X) 기본값과 override». 시안 «미노출» 3열은 전부 파라미터다 — 텍스트 `title: nil` · 오른쪽 `trailing: nil` · 왼쪽 `leading: .hidden`. **꺼도 슬롯 폭 40 은 비운 채 유지한다**(타이틀 중앙 보존 — 시안이 빈 박스를 그려둔 이유). 타이틀 sub7 중앙 · trailing 은 plus 아이콘 또는 텍스트 버튼(body5·g400·p8/p4 hug), 없으면 `trailing: nil`(시안 show 토글). `surface` = **바가 앉은 바닥의 톤** — `.filled` 면 바가 칠하는 바닥, `.transparent` 면 뒤 화면이 바닥(어두운 영상 위 흰 아이콘·흰 뒤로가기 = `.dark`). 아이콘 색변형(`default24`/`white24`)·타이틀색·`.filled` 배경색(white/b800)·상태바 글자색 네 값을 전부 파생 — 다크 바닥에 검정 X 같은 조합은 표현 불가(«아이콘 색을 축으로» 안 한 이유 — 갈리는 값이 넷인데 원인은 바닥 하나, 2026-08-01). mini 버튼의 `.hilitSurface` 와 같은 축·같은 이름이지만 네비바는 파라미터(빼먹으면 조용히 틀려서 명시가 안전). 다크 trailing 은 시안 없음(DEBUG assert). `background` 기본 `.transparent`(영상 풀블리드 — 콘텐츠 쪽 `.ignoresSafeArea()` 로 바 밑까지 깔림), 콘텐츠가 바 밑을 지나는 스크롤 화면은 `.filled` |
 | `TabSelector` | tab 2044:4765 | `(_ items: [Item], selection: Binding<Tag>, layout: .hug/.fill)` · `Item(tag:title:isEnabled:)` | 밑줄 텍스트 탭 줄 — h38·px14/py8, 선택 시 아래 1.5 밑줄(b800). 상태는 **selection 바인딩에서 파생**(선택된 하나만 밑줄), 비활성은 `isEnabled: false`(글자 g500). 탭 조각 단독 공개 없음. 시안에 줄 배치가 없어 항목 간 간격 0 |
 
 ## 부착 — push vs present
 
-내비바 룩은 하나인데 **부착 경로가 둘**이다. 시스템 내비바는 `NavigationStack` 이 그리는 물건이라 스택 밖에서는 아무것도 안 그려지기 때문 — 그래서 스택 없는 present 화면만 같은 룩을 손으로 얹는다.
+네비바 룩은 하나인데 **부착 경로가 둘**이다. 시스템 네비바는 `NavigationStack` 이 그리는 물건이라 스택 밖에서는 아무것도 안 그려지기 때문 — 그래서 스택 없는 present 화면만 같은 룩을 손으로 얹는다.
 
 **판별**: 이 화면이 스택 안에 있나. push 됐거나 스택의 루트면 `.hilitNavigationBar`, cover/sheet 로 올라온 **스택 없는 한 장짜리**면 `.hilitPresentedNavigationBar`. cover 안에 스택을 두는 위저드(온보딩)는 그 안의 모든 스텝이 push 쪽이다. 붙였는데 바가 조용히 안 보이면 스택 밖이라는 신호다.
 
@@ -47,7 +47,9 @@ present 경로가 push 와 다른 점 셋 — `allowsSwipeBack` 없음(스택 �
 
 ## 닫기(X) 기본값과 override
 
-X 의 기본 동작은 «이 화면 나가기» — `onClose` 를 생략하면 내비바가 `@Environment(\.dismiss)` 를 부른다(스택에 있으면 pop, present 됐으면 dismiss — SwiftUI 가 자동 분기). 어느 쪽이든 리듀서에는 `popFrom(id:)`/`PresentationAction.dismiss` 액션으로 도착하므로 상태를 우회하지 않는다.
+`onClose` 는 **leading 슬롯의 액션**이다 — `.close`(X)든 `.back`(←)이든 같은 자리, 같은 클로저를 쓴다(이름은 기본값 X 에서 왔다). 기본 동작은 «이 화면 나가기» — 생략하면 네비바가 `@Environment(\.dismiss)` 를 부른다(스택에 있으면 pop, present 됐으면 dismiss — SwiftUI 가 자동 분기). 어느 쪽이든 리듀서에는 `popFrom(id:)`/`PresentationAction.dismiss` 액션으로 도착하므로 상태를 우회하지 않는다.
+
+**X 냐 ← 냐**: 플로우를 벗어나면 `.close`, 한 단계 되돌아가면 `.back`. 글리프만 다르고 배관은 같다.
 
 **override** — 닫기 의미가 다르거나(플로우 전체 종료) 닫기 전에 되물어야 하는 화면은 클로저를 넘겨 리듀서가 소유한다. TCA 에서 가로채기 지점은 메서드 재정의가 아니라 리듀서 switch 다:
 
