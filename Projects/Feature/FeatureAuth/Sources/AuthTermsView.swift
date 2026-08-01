@@ -11,6 +11,7 @@
 //        껍데기 위에 판만 그린다(딤·바닥 정렬·슬라이드는 DS 몫).
 
 import ComposableArchitecture
+import DomainConsentInterface
 import SharedDesignSystemInterface
 import SwiftUI
 
@@ -55,6 +56,8 @@ public struct AuthTermsView: View {
             onDimTap: { send(.userDismissedDocument) },
             content: { item in documentSheet(item) }
         )
+        .alert($store.scope(state: \.alert, action: \.alert))
+        .onAppear { send(.onAppear) }
     }
 
     // MARK: - 본문 (node 3768:16905)
@@ -72,10 +75,15 @@ public struct AuthTermsView: View {
                 allConsentRow
                 divider
 
-                VStack(spacing: .ds(.p20)) {
-                    ForEach(AuthTermsFeature.ConsentItem.allCases) { item in
-                        consentRow(item)
+                // 항목은 서버(`pending`)가 준다 — 최초는 필수 5종 전체, 재동의는 바뀐 항목만.
+                if let items = store.items {
+                    VStack(spacing: .ds(.p20)) {
+                        ForEach(items, id: \.code) { item in
+                            consentRow(item)
+                        }
                     }
+                } else if store.loadFailed {
+                    loadFailure
                 }
             }
         }
@@ -103,10 +111,22 @@ public struct AuthTermsView: View {
             .frame(height: .ds(.small))
     }
 
-    private func consentRow(_ item: AuthTermsFeature.ConsentItem) -> some View {
+    /// 항목 조회 실패 — 목록 자리에 재시도만 둔다(약관 없이 진행시킬 수는 없어서).
+    private var loadFailure: some View {
+        VStack(spacing: .ds(.p12)) {
+            Text("약관을 불러오지 못했어요.")
+                .dsTypography(.body3)
+                .foregroundStyle(Color.GrayScale.g500)
+            Button("다시 시도") { send(.userTappedRetryLoad) }
+                .buttonStyle(.miniSub(.none))
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func consentRow(_ item: ConsentItem) -> some View {
         HStack(spacing: .ds(.p8)) {
             Toggle(isOn: consentBinding(item)) {
-                Text(item.title)
+                Text(item.rowTitle)
                     .dsTypography(.body3)
                     .foregroundStyle(Color.GrayScale.g900)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -124,8 +144,8 @@ public struct AuthTermsView: View {
 
     /// 전문 시트 판 — `.hilitBottomSheet` 가 딤·바닥 정렬·전환만 주는 껍데기라 판은 호출부 몫.
     /// 시안 판은 **상단 코너 0**(DS 전반의 «모서리 0» 과 같은 결) + 흰 배경 + 높이 662.
-    /// TODO(S-2): 전문 텍스트 — 국외 이전은 벤더 답변 대기, 나머지 4종도 법무 확정본으로 교체.
-    private func documentSheet(_ item: AuthTermsFeature.ConsentItem) -> some View {
+    /// 본문은 서버 마크다운(`ConsentClient.document`) — 조회 중엔 빈 화면이다.
+    private func documentSheet(_ item: ConsentItem) -> some View {
         VStack(spacing: 0) {
             grabber
 
@@ -137,7 +157,8 @@ public struct AuthTermsView: View {
                 .padding(.vertical, .ds(.p10))
 
             ScrollView {
-                Text("전문 준비 중입니다.")
+                // 서버가 마크다운으로 준다 — SwiftUI `Text` 의 기본 마크다운 파싱에 맡긴다.
+                Text(LocalizedStringKey(store.documentContent ?? ""))
                     .dsTypography(.body4)
                     .foregroundStyle(Color.GrayScale.g800)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -180,25 +201,36 @@ public struct AuthTermsView: View {
         )
     }
 
-    private func consentBinding(_ item: AuthTermsFeature.ConsentItem) -> Binding<Bool> {
+    private func consentBinding(_ item: ConsentItem) -> Binding<Bool> {
         Binding(
-            get: { store.checked.contains(item) },
+            get: { store.checked.contains(item.code) },
             set: { _ in send(.userToggledConsent(item)) }
         )
     }
 }
 
+// MARK: - Previews
+
+/// 프리뷰 항목 — 실제 목록은 서버(`pending`)가 준다. previewValue 와 같은 필수 5종.
+private let previewItems = [
+    ConsentItem(code: "AGE_OVER_14", label: "만 14세 이상", isRequired: true, version: 1, hasDocument: false),
+    ConsentItem(code: "TERMS_OF_SERVICE", label: "서비스 이용약관", isRequired: true, version: 1, hasDocument: true),
+    ConsentItem(code: "PERSONAL_INFO_COLLECTION", label: "개인정보 수집·이용", isRequired: true, version: 1, hasDocument: true),
+    ConsentItem(code: "INTERVIEW_RECORDING", label: "면접 영상·음성 촬영·저장", isRequired: true, version: 1, hasDocument: true),
+    ConsentItem(code: "OVERSEAS_TRANSFER", label: "개인정보 국외 이전", isRequired: true, version: 1, hasDocument: true)
+]
+
 #Preview("약관 동의 — 기본(버튼 비활성)") {
     AuthTermsView(
-        store: Store(initialState: AuthTermsFeature.State()) {
+        store: Store(initialState: AuthTermsFeature.State(items: previewItems)) {
             AuthTermsFeature()
         }
     )
 }
 
 #Preview("약관 동의 — 필수 충족(버튼 활성)") {
-    var state = AuthTermsFeature.State()
-    state.checked = Set(AuthTermsFeature.ConsentItem.allCases)
+    var state = AuthTermsFeature.State(items: previewItems)
+    state.checked = Set(previewItems.map(\.code))
     return AuthTermsView(
         store: Store(initialState: state) {
             AuthTermsFeature()
@@ -207,9 +239,20 @@ public struct AuthTermsView: View {
 }
 
 #Preview("약관 동의 — 전문 바텀시트") {
+    var state = AuthTermsFeature.State(items: previewItems)
+    state.checked = Set(previewItems.map(\.code))
+    state.presentedDocument = previewItems[1]
+    state.documentContent = "제1조 (목적)\n이 약관은 프리뷰용 본문입니다."
+    return AuthTermsView(
+        store: Store(initialState: state) {
+            AuthTermsFeature()
+        }
+    )
+}
+
+#Preview("약관 동의 — 조회 실패") {
     var state = AuthTermsFeature.State()
-    state.checked = Set(AuthTermsFeature.ConsentItem.allCases)
-    state.presentedDocument = .termsOfService
+    state.loadFailed = true
     return AuthTermsView(
         store: Store(initialState: state) {
             AuthTermsFeature()

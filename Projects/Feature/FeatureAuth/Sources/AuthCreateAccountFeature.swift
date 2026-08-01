@@ -36,8 +36,9 @@ public struct AuthCreateAccountFeature {
         @CasePathable
         public enum Inner: Sendable {
             /// signIn(자격증명 획득) → login(서버 세션 교환·토큰 저장)까지 마친 결과.
-            /// credential 은 같은 effect 안에서 login 에 즉시 소비되고, payload 로만 흐른다 — State 에 보관하지 않는다.
-            case signInFinished(Result<SocialCredential, AuthError>)
+            /// credential 은 같은 effect 안에서 login 에 즉시 소비되고 payload 로도 남기지 않는다 —
+            /// 이후 분기에 필요한 건 로그인 응답의 판정값(`LoginResult`)뿐이다.
+            case signInFinished(Result<LoginResult, AuthError>)
         }
 
         public enum Alert: Equatable {}
@@ -45,8 +46,9 @@ public struct AuthCreateAccountFeature {
         /// 코디네이터(AuthFeature) 통보. 부모는 이것만 매칭한다 (D1).
         @CasePathable
         public enum Delegate: Equatable {
-            /// 소셜 인증 + 서버 세션 교환(토큰 Keychain 저장) 성공. 신규/기존·동의 버전 분기는 코디네이터가 한다.
-            case authenticated
+            /// 소셜 인증 + 서버 세션 교환(토큰 Keychain 저장) 성공.
+            /// 게이트 2단(동의 → 프로필) 분기는 판정값을 받은 코디네이터가 한다.
+            case authenticated(LoginResult)
         }
     }
 
@@ -65,16 +67,16 @@ public struct AuthCreateAccountFeature {
                         let credential = try await authClient.signIn(provider)
                         // 서버 세션 교환 — 성공 시 토큰 페어가 Keychain(TokenStore)에 저장된다.
                         // 이게 없으면 인증 필요 API 가 전부 NotAuthenticatedError 로 끊긴다.
-                        try await authClient.login(credential)
-                        await send(.inner(.signInFinished(.success(credential))))
+                        let result = try await authClient.login(credential)
+                        await send(.inner(.signInFinished(.success(result))))
                     } catch {
                         await send(.inner(.signInFinished(.failure(error as? AuthError ?? .unexpected))))
                     }
                 }
 
-            case .inner(.signInFinished(.success)):
+            case let .inner(.signInFinished(.success(result))):
                 state.isLoading = false
-                return .send(.delegate(.authenticated))
+                return .send(.delegate(.authenticated(result)))
 
             case .inner(.signInFinished(.failure(.cancelled))):
                 state.isLoading = false

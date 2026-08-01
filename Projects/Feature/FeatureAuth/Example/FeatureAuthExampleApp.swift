@@ -7,6 +7,7 @@
 
 import ComposableArchitecture
 import DomainAuthInterface
+import DomainConsentInterface
 import DomainJobInterface
 import FeatureAuthImplementation
 import SwiftUI
@@ -91,6 +92,8 @@ struct FeatureAuthExampleApp: App {
                         }
                     }
                     $0.authClient = authClient
+                    // 약관 화면(A1)이 진입 시 항목을 조회하고 제출까지 한다 — 네트워크 없이 도는 스텁.
+                    $0.consentClient = .previewValue
                     // 가입 온보딩 직군 선택 — 네트워크 없이 도는 고정 목록.
                     $0.jobClient = JobClient(jobs: {
                         [
