@@ -38,8 +38,8 @@ PRD Part 6·7 확정(2026-07-31)으로 FeatureAuth 가 로그인 단일 화면�
 
 `AuthFeature` 가 플로우 코디네이터다 — 루트 `AuthCreateAccountFeature`(A0 소셜 로그인, 구 AuthFeature 개명) + `path`(StackState)로 가입 경로(terms → naming → job → experience → register)를 push 한다. 수집값(이름·직군·연차)은 코디네이터가 누적만 한다 — 서버 제출 시점(화면별 즉시 vs 일괄)이 미결이라서.
 
-- `AuthTermsFeature`(A1) — 필수 5종 체크·전체 동의·전문 바텀시트(DS `.hilitBottomSheet`). 제출 API(=계정 생성 확정)는 S-1 협의 후 DomainAuth 확장.
-- `AuthOnboarding{Naming·Job·Experience·Register}` — `Sources/Onboarding/` 폴더. Job·Experience 는 FeatureOnboarding STEP1·2 의 **복사본**(Feature 간 공유 금지 — 원본은 위저드 정리 시 제거, [[onboarding]]). Naming 은 `UserClient.registerName`·`checkName` 배선 대기.
+- `AuthTermsFeature`(A1) — 필수 5종 체크·전체 동의·전문 바텀시트(DS `.hilitBottomSheet`). 제출 API 는 `ConsentClient`(DomainConsent, [[api#Consent]]) 로 착지 — 항목·버전은 `pending` 조회값을 그대로 제출. 배선 대기.
+- `AuthOnboarding{Naming·Job·Experience·Register}` — `Sources/Onboarding/` 폴더. Job·Experience 는 FeatureOnboarding STEP1·2 의 **복사본**(Feature 간 공유 금지 — 원본은 위저드 정리 시 제거, [[onboarding]]). Naming 은 수집만 — 제출은 `UserClient.updateProfile`(이름·직군·연차 일괄, 이름 최대 5자) 배선 대기 (이름 단독 API 는 서버 삭제 예정, [[api#User]]).
 - `AuthSuspensionFeature`(A4) — 정지 안내. Path 밖 — 진입이 홈 게이트(`ACCOUNT_SUSPENDED`)라 제시는 AppFeature(cross-feature). CS 메일 주소는 placeholder.
 - `SplashView` — 상태 없는 정적 뷰. 자동 로그인 판정은 AppFeature 몫.
 - 신규/기존 회원 분기는 login 응답 계약(S-1) 대기 — 지금은 authenticated 시 전원 신규 취급으로 terms 진입(코디네이터 TODO).
@@ -54,7 +54,7 @@ Splash 판정 → 로그인 전/후 루트 게이트로 분기한다. 판정 동
 
 세션 교환(`login`)·자동 재발급·AuthFeature signIn→login 배선·자동 로그인(Splash)·가입 플로우 화면 골격은 완료([[auth#가입 플로우]]). 남은 것:
 
-- **동의 제출·신규/기존 분기 API(S-1)**: DomainAuth 확장 + 코디네이터 분기 교체 — 서버 협의 후.
-- **프로필 제출 시점**: 이름·직군·연차를 화면별 즉시 vs 등록 완료 일괄 — 확정 시 `UserClient.registerName`·`updateProfile` 배선.
+- **동의 제출·신규/기존 분기**: API 는 `ConsentClient` 로 착지([[api#Consent]]) — `pending.status`(NOT_SUBMITTED = 신규)로 분기 가능. AuthTerms 배선 + 코디네이터 분기 교체 남음.
+- **프로필 제출 시점**: 이름·직군·연차를 화면별 즉시 vs 등록 완료 일괄 — 확정 시 `UserClient.updateProfile`(일괄 PATCH, 이름 매 호출 필수) 배선.
 - **Figma UI 연결**: 가입 플로우 8화면(Splash·CreateAccount·Terms+전문시트·Suspension·이름·직군·연차·등록완료)은 시안 교체 완료(2026-07-31, figma-screen). 남은 것은 A0 실패 alert → 토스트 교체.
 - **로그아웃 UX**: 설정 화면(Part 5)에서 `authClient.logout()` 호출 + 게이트 복귀.

@@ -20,7 +20,7 @@ AppFeature  --.users(.profileUpdated)-->       Users   (list/detail 갱신)
 - **검색**: import 추적으론 안 잡히는 이 의존을 `make lat q=profile` 로 한 번에 찾는다.
 
 ## Feature ↔ Domain
-각 Feature 가 의존하는 Domain(Interface) 매핑. Repository(Client)는 Domain 레이어 모듈이 보유한다. 서버 API Domain 9종(Auth·Interview·InterviewReport·JD·Job·Portfolio·User·FeedbackShare·GuestFeedback)의 엔드포인트·규약은 [[api]].
+각 Feature 가 의존하는 Domain(Interface) 매핑. Repository(Client)는 Domain 레이어 모듈이 보유한다. 서버 API Domain 11종(AppVersion·Auth·Consent·Interview·InterviewReport·JD·Job·Portfolio·User·FeedbackShare·GuestFeedback)의 엔드포인트·규약은 [[api]].
 
 | Feature | 의존 Domain (Interface) | Client |
 |---|---|---|
@@ -32,6 +32,8 @@ AppFeature  --.users(.profileUpdated)-->       Users   (list/detail 갱신)
 | Interview (Part 2 면접 흐름 — [[interview#면접 흐름]]) | DomainInterview · DomainPermission | InterviewClient → [[interview]] · PermissionClient → [[interview#권한]] |
 | Portfolio 관리 (예정) | DomainPortfolio | PortfolioClient → [[api#Portfolio]] |
 | Users (예정 — 데모 패턴) | DomainUser | UserClient → [[api#User]] |
+| App 스플래시 (예정 — 버전 게이트) | DomainAppVersion | AppVersionClient → [[api#AppVersion]] |
+| Auth 약관 동의 (예정 — A1 배선) | DomainConsent | ConsentClient → [[api#Consent]] |
 | InterviewReport (예정 — [ai-interview-report](../docs/work/ai-interview-report.md)) | DomainInterviewReport · DomainFeedbackShare | InterviewReportClient · FeedbackShareClient → [[api#Interview Report]] |
 | GuestFeedback (예정 — 지인 웹/딥링크 진입) | DomainGuestFeedback | GuestFeedbackClient → [[api#Guest Feedback]] |
 | Profile (예정 — 데모 패턴) | DomainProfile | ProfileClient |

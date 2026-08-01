@@ -10,7 +10,7 @@ import ComposableArchitecture
 // @lat: [[auth#가입 플로우]]
 /// 가입 온보딩 4 — 등록 완료. 수집(이름·직군·연차)이 끝났음을 알리고 홈 진입으로 잇는 종결 화면(프로그레스 밖).
 /// TODO: 프로필 제출(이름·직군·연차) 시점이 «각 화면 즉시 vs 여기 일괄»로 미결 — 일괄로 확정되면
-/// 이 화면 진입 시 `UserClient.registerName`·`updateProfile` effect 가 붙는다.
+/// 이 화면 진입 시 `UserClient.updateProfile`(이름 포함 일괄 PATCH) effect 가 붙는다.
 @Reducer
 public struct AuthOnboardingRegisterFeature {
     @ObservableState

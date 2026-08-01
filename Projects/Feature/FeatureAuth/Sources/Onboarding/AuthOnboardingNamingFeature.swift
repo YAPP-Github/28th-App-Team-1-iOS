@@ -9,12 +9,12 @@ import ComposableArchitecture
 
 // @lat: [[auth#가입 플로우]]
 /// 가입 온보딩 1 — 이름 입력. 약관 동의 직후 진입.
-/// 입력값은 delegate 로 코디네이터(AuthFeature)에 올린다 — 서버 제출 시점(화면별 즉시 vs 일괄)은 미결이라
-/// 여기선 수집만 한다. TODO: `UserClient.registerName`(1~20자)·`checkName`(중복 확인) 배선.
+/// 입력값은 delegate 로 코디네이터(AuthFeature)에 올린다 — 여기선 수집만 하고,
+/// 제출은 `UserClient.updateProfile`(이름·직군·연차 일괄 PATCH) 배선 시점에 붙는다. TODO: 배선.
 @Reducer
 public struct AuthOnboardingNamingFeature {
-    /// 이름 최대 길이 — UserClient.registerName 계약(1~20자).
-    public static let maxLength = 20
+    /// 이름 최대 길이 — PATCH /users/me/profile 계약(한글·영문만, 최대 5자).
+    public static let maxLength = 5
 
     @ObservableState
     public struct State: Equatable {

@@ -1,6 +1,6 @@
 # API — D14 서버 연동
 
-YAPP APP 1팀 백엔드(D14 API v1)와의 연동 지식. 서버 태그(Auth·Interview·Interview Report·JD·Job·Portfolio·User·Feedback Share·Guest Feedback)를 Domain 모듈로 1:1 미러링하고, 공통 규약(envelope·토큰)은 CoreNetwork 가 흡수한다. 인프라 계약은 [[domain.map#네트워킹 인프라]], 레이어 규칙은 [[architecture]].
+YAPP APP 1팀 백엔드(D14 API v1)와의 연동 지식. 서버 태그(AppVersion·Auth·Consent·Interview·Interview Report·JD·Job·Portfolio·User·Feedback Share·Guest Feedback)를 Domain 모듈로 1:1 미러링하고, 공통 규약(envelope·토큰)은 CoreNetwork 가 흡수한다. 인프라 계약은 [[domain.map#네트워킹 인프라]], 레이어 규칙은 [[architecture]].
 
 - Swagger: `http://43.202.34.84:8080/swagger-ui/index.html`
 - 스펙 원문: `GET /v3/api-docs` (OpenAPI 3.1)
@@ -17,7 +17,7 @@ YAPP APP 1팀 백엔드(D14 API v1)와의 연동 지식. 서버 태그(Auth·Int
 
 - Swagger 스키마 일부는 envelope 없이 표기돼 있다(annotation 누락) → `ServerEnvelope.unwrap` 이 직접 디코드 폴백을 가진다.
 - 날짜는 ISO8601 과 LocalDateTime(타임존 표기 없음)이 혼재 → `JSONDecoder.api` 가 KST 가정으로 파싱. 백엔드와 타임존 계약 확정 필요.
-- Domain 은 `ServerError.code` 로 도메인 에러를 매핑한다 — 서버 정의 에러 코드가 있는 모든 도메인이 자체 에러 enum 을 갖는다(AuthError·InterviewError·InterviewReportError·JDError·PortfolioError·UserError·FeedbackShareError·GuestFeedbackError). 케이스는 State 가 다르게 반응할 경우의 수만큼만. 매핑 공통부(토큰 만료 3코드 → sessionExpired, 미인식 5xx → serverUnavailable, transport → networkFailure, 취소 통과)는 `DomainCommonInterface` 의 `DomainAPIError` 프로토콜이 수행하고, 각 도메인 enum 은 고유 코드 매핑 `init?(serverCode:message:)` 만 구현한다 (Interview 만 미승격 4xx 폴백을 `server(code:message:)` 로 재정의, 무인증 GuestFeedback 은 `sessionExpired` 를 unexpected 별칭으로 충족). Implementation 은 `XxxError.mapping { }` 래퍼로 감싼다. 에러 코드가 없는 도메인(Job)만 ServerError/NetworkError 를 그대로 던진다.
+- Domain 은 `ServerError.code` 로 도메인 에러를 매핑한다 — 서버 정의 에러 코드가 있는 모든 도메인이 자체 에러 enum 을 갖는다(AppVersionError·AuthError·ConsentError·InterviewError·InterviewReportError·JDError·PortfolioError·UserError·FeedbackShareError·GuestFeedbackError). 케이스는 State 가 다르게 반응할 경우의 수만큼만. 매핑 공통부(토큰 만료 3코드 → sessionExpired, 미인식 5xx → serverUnavailable, transport → networkFailure, 취소 통과)는 `DomainCommonInterface` 의 `DomainAPIError` 프로토콜이 수행하고, 각 도메인 enum 은 고유 코드 매핑 `init?(serverCode:message:)` 만 구현한다 (Interview 만 미승격 4xx 폴백을 `server(code:message:)` 로 재정의, 무인증 GuestFeedback·AppVersion 은 `sessionExpired` 를 unexpected 별칭으로 충족). Implementation 은 `XxxError.mapping { }` 래퍼로 감싼다. 에러 코드가 없는 도메인(Job)만 ServerError/NetworkError 를 그대로 던진다.
 - multipart(파일 업로드)는 `NetworkRequest.multipart(...)` 빌더 — 기존 NetworkRequest 계약(헤더+body) 위의 편의일 뿐이다.
 
 ## 토큰 수명주기
@@ -28,6 +28,16 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 - `LOGIN_EXPIRED` = Refresh 도 만료 → 토큰 폐기 후 전파. 앱 레벨 재로그인 라우팅 신호.
 - 로컬 토큰이 아예 없으면 요청 전에 `NotAuthenticatedError` — 로그인 화면 유도.
 - 저장(로그인)·삭제(로그아웃)는 [[api#Auth]] 의 AuthClient 책임.
+
+## AppVersion
+
+`DomainAppVersion` — `AppVersionClient.check`. 스플래시에서 현재 마케팅 버전을 보내 강제(FORCE)/권장(OPTIONAL)/최신(NONE) 판정을 받는다. 버전 비교 규칙은 전부 서버 책임 — 클라이언트는 `updateType` 만 따르고, 응답의 `storeUrl` 로 스토어를 연다. 무인증(로그인 전 호출)이라 `NetworkClient` 를 직접 쓴다.
+
+| 메서드 | 엔드포인트 | 비고 |
+|---|---|---|
+| `check` | GET `/api/v1/app-versions/check` | query `platform=IOS`·`version=x.x.x` (마케팅 버전) |
+
+에러는 `AppVersionError` — 고유 코드(INVALID_PLATFORM·INVALID_VERSION_FORMAT·APP_VERSION_POLICY_NOT_FOUND)는 정상 클라이언트에서 나올 수 없어 케이스 승격 없이 unexpected 폴백. 스플래시는 실패 시 fail-open(게이트 없이 진입)이 기본이라 공통 3케이스(networkFailure·serverUnavailable·unexpected)만 둔다.
 
 ## Auth
 
@@ -41,6 +51,18 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 | `check` | GET `/api/v1/auth/check` | 인증 동작 확인(테스트용) |
 
 실패는 `AuthError` 로 매핑된다 — INVALID_CREDENTIAL/SOCIAL_LOGIN_FAILED → invalidCredential, LOGIN_EXPIRED·TOKEN_EXPIRED·INVALID_TOKEN → sessionExpired, transport → networkFailure, 5xx → serverUnavailable.
+
+## Consent
+
+`DomainConsent` — `ConsentClient`. 온보딩 최초 동의와 약관 개정 재동의를 한 흐름으로 처리한다. `pending` 의 `status` 하나로 최초(NOT_SUBMITTED)/재동의(STALE)/최신(UP_TO_DATE)을 구분하고, 제출은 pending 이 내려준 `version` 을 그대로 보낸다. 첫 성공 제출 시 서버가 무료 이용권 3회를 부여한다.
+
+| 메서드 | 엔드포인트 | 비고 |
+|---|---|---|
+| `pending` | GET `/api/v1/consents/pending` | 신규 유저는 필수 5종 전체, 구버전 동의 유저는 바뀐 항목만 |
+| `document` | GET `/api/v1/consents/{item}/versions/{version}` | 본문(마크다운) — 항목 탭 시 바텀시트. `hasDocument: false` 면 숨김 |
+| `submit` | POST `/api/v1/consents` | 필수 항목은 agreed: true 만, 선택 항목은 거부도 정상 제출 |
+
+에러는 `ConsentError` 로 매핑된다 — CONSENT_VERSION_MISMATCH → versionMismatch(400, 제출 중 개정 → pending 재조회 후 재시도), VALIDATION_ERROR 는 서버 문구를 실은 invalid(message:). REQUIRED_CONSENT_MISSING·INVALID_CONSENT_ITEM 은 UI 가 막는 클라이언트 결함이라 unexpected 폴백.
 
 ## Interview
 
@@ -101,16 +123,17 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 
 ## User
 
-`DomainUser` — `UserClient`. 회원 프로필 조회/수정과 이름 등록/중복 확인. 수정값은 이후 새로 생성하는 면접 세션부터 반영된다(과거 세션 스냅샷 불변) — 클라이언트가 이 조회값으로 세션 설정을 프리필한다. 로그인 응답의 `userInfo` 와 같은 형태다([[api#Auth]]).
+`DomainUser` — `UserClient`. 회원 프로필 조회/등록·수정과 회원 탈퇴. 조회(profile)와 수정(updateProfile)은 서로 다른 화면(마이페이지 표시 vs 온보딩·프로필 편집)에서 따로 쓰는 전제로 읽기/쓰기 모델을 분리했다(UserProfile vs UserProfileUpdate). 수정값은 이후 새로 생성하는 면접 세션부터 반영된다(과거 세션 스냅샷 불변) — 클라이언트가 이 조회값으로 세션 설정을 프리필한다.
 
 | 메서드 | 엔드포인트 | 비고 |
 |---|---|---|
-| `profile` | GET `/api/v1/users/me/profile` | 이름·직무·연차·잔여 이용권 |
-| `updateProfile` | PATCH `/api/v1/users/me/profile` | 이름은 변경할 때만 body 에 포함 |
-| `registerName` | PATCH `/api/v1/users/me/name` | 1~20자, 등록 후 재변경 가능 |
-| `checkName` | GET `/api/v1/users/name/check` | 본인이 등록한 이름은 충돌 아님 |
+| `profile` | GET `/api/v1/users/me/profile` | 이름·이메일·제공자(KAKAO/APPLE)·직무·연차·잔여 이용권 |
+| `updateProfile` | PATCH `/api/v1/users/me/profile` | 온보딩 최초 등록과 재수정 공용. 이름(한글·영문 최대 5자)·직군·연차 매 호출 필수 |
+| `withdraw` | DELETE `/api/v1/users/me` | 204. 서버가 소셜 unlink/revoke 까지 수행, 성공 시 클라이언트 토큰도 삭제 |
 
-에러는 `UserError` 로 매핑된다 — USER_NOT_FOUND → userNotFound(404), NAME_ALREADY_TAKEN → nameAlreadyTaken(409), INVALID_JOB_ROLE → invalidJobRole(400), VALIDATION_ERROR·CONSTRAINT_VIOLATION 은 서버 문구를 실은 invalid(message:).
+이름 단독 등록(PATCH `/users/me/name`)은 서버에서 삭제 예정(프로필 API 로 통일), 이름 중복 확인(GET `/users/name/check`)은 스펙에서 제거됨 — 클라이언트에서 걷어냈다(이름은 더 이상 유일하지 않다).
+
+에러는 `UserError` 로 매핑된다 — USER_NOT_FOUND → userNotFound(404), INVALID_JOB_ROLE → invalidJobRole(400), SOCIAL_RECONNECT_REQUIRED → socialReconnectRequired(409, 재로그인 후 탈퇴 재시도), VALIDATION_ERROR·CONSTRAINT_VIOLATION 은 서버 문구를 실은 invalid(message:). 탈퇴 중 소셜 해제 실패(SOCIAL_UNLINK_FAILED, 502)는 5xx 공통 규칙으로 serverUnavailable.
 
 ## Feedback Share
 
