@@ -45,7 +45,7 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 
 | 메서드 | 엔드포인트 | 비고 |
 |---|---|---|
-| `login` | POST `/api/v1/auth/social/login` | KAKAO=액세스 토큰 / APPLE=authorization code 를 credential 로 전송, 성공 시 토큰 저장 |
+| `login` | POST `/api/v1/auth/social/login` | KAKAO=액세스 토큰 / APPLE=authorization code 를 credential 로 전송. 성공 시 토큰 저장 + `LoginResult`(consentStatus·profileRegistered — 진입 게이트 판정값, [launch-routing](../docs/work/launch-routing.md)) 반환. 응답의 `newUser`·`userInfo` 는 소비자가 없어 디코딩하지 않는다 |
 | `refresh` | POST `/api/v1/auth/token/refresh` | 명시적 재발급 (자동은 AuthorizedNetworkClient) |
 | `logout` | DELETE `/api/v1/auth/logout` | 204. 로컬 토큰은 서버 응답과 무관하게 삭제 |
 | `check` | GET `/api/v1/auth/check` | 인증 동작 확인(테스트용) |
@@ -58,7 +58,7 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 
 | 메서드 | 엔드포인트 | 비고 |
 |---|---|---|
-| `pending` | GET `/api/v1/consents/pending` | 신규 유저는 필수 5종 전체, 구버전 동의 유저는 바뀐 항목만 |
+| `pending` | GET `/api/v1/consents/pending` | 신규 유저는 필수 5종 전체, 구버전 동의 유저는 바뀐 항목만. `profileRegistered`(게이트 ② 판정값)도 내려준다 — 세션 복구(Splash)가 login 응답 없이 분기하기 위함(2026-08-01 합의, 배포 전엔 없으면 false 로 읽음) |
 | `document` | GET `/api/v1/consents/{item}/versions/{version}` | 본문(마크다운) — 항목 탭 시 바텀시트. `hasDocument: false` 면 숨김 |
 | `submit` | POST `/api/v1/consents` | 필수 항목은 agreed: true 만, 선택 항목은 거부도 정상 제출 |
 

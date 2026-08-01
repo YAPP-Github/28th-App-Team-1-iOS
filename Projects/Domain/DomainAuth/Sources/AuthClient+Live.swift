@@ -9,6 +9,7 @@ import ComposableArchitecture
 import CoreNetworkInterface
 import DomainAuthInterface
 import DomainCommonInterface
+import DomainConsentInterface
 import Foundation
 
 // @lat: [[api#Auth]]
@@ -41,8 +42,15 @@ extension AuthClient: @retroactive DependencyKey {
                         path: "/api/v1/auth/social/login",
                         body: credential.loginBody
                     )
-                    let tokens: AuthTokens = try await network.api(request)
-                    try tokenStore.save(tokens)
+                    let response: LoginResponse = try await network.api(request)
+                    try tokenStore.save(AuthTokens(
+                        accessToken: response.accessToken,
+                        refreshToken: response.refreshToken
+                    ))
+                    return LoginResult(
+                        consentStatus: response.consentStatus,
+                        profileRegistered: response.profileRegistered
+                    )
                 }
             },
             refresh: {
@@ -86,6 +94,15 @@ extension AuthClient: @retroactive DependencyKey {
 private struct LoginBody: Encodable {
     let provider: String
     let credential: String
+}
+
+/// 로그인 응답 — 토큰 페어(TokenStore 행)와 라우팅 판정값(LoginResult 행)만 읽는다.
+/// `newUser`·`userInfo` 등 나머지 필드는 소비자가 없어 디코딩하지 않는다 (홈 초기 데이터는 진입 후 조회).
+private struct LoginResponse: Decodable {
+    let accessToken: String
+    let refreshToken: String
+    let consentStatus: ConsentPendingStatus
+    let profileRegistered: Bool
 }
 
 private struct RefreshBody: Encodable {

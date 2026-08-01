@@ -20,14 +20,31 @@ public enum ConsentPendingStatus: String, Decodable, Sendable {
     case upToDate = "UP_TO_DATE"
 }
 
-/// 지금 동의가 필요한 항목 목록.
+/// 지금 동의가 필요한 항목 목록. 앱 진입 게이트 판정값을 겸한다 (docs/work/launch-routing.md).
 public struct ConsentPending: Decodable, Equatable, Sendable {
     public let status: ConsentPendingStatus
+    /// 프로필(이름·직군·연차) 등록 여부 — 게이트 ② 판정값. 세션 복구(Splash) 경로가
+    /// login 응답 없이도 온보딩/홈을 가르도록 서버가 pending 에 함께 내려준다(2026-08-01 합의).
+    public let profileRegistered: Bool
     public let items: [ConsentItem]
 
-    public init(status: ConsentPendingStatus, items: [ConsentItem]) {
+    public init(status: ConsentPendingStatus, profileRegistered: Bool, items: [ConsentItem]) {
         self.status = status
+        self.profileRegistered = profileRegistered
         self.items = items
+    }
+
+    /// 서버 필드 배포 전 과도기 — `profileRegistered` 가 없으면 미등록(false)으로 읽는다.
+    /// 잘못돼도 온보딩을 한 번 더 보는 쪽(안전한 실패)이지 홈에 프로필 없이 앉는 쪽이 아니다.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        status = try container.decode(ConsentPendingStatus.self, forKey: .status)
+        profileRegistered = try container.decodeIfPresent(Bool.self, forKey: .profileRegistered) ?? false
+        items = try container.decode([ConsentItem].self, forKey: .items)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case status, profileRegistered, items
     }
 }
 
@@ -126,6 +143,7 @@ extension ConsentClient: TestDependencyKey {
             pending: {
                 ConsentPending(
                     status: .notSubmitted,
+                    profileRegistered: false,
                     items: [
                         ConsentItem(code: "AGE_OVER_14", label: "만 14세 이상", isRequired: true, version: 1, hasDocument: true),
                         ConsentItem(code: "TERMS_OF_SERVICE", label: "서비스 이용약관", isRequired: true, version: 1, hasDocument: true),
