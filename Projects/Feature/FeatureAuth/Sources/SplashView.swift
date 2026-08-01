@@ -10,8 +10,12 @@
 import SharedDesignSystemInterface
 import SwiftUI
 
-/// Splash(SP) — 앱 실행 시 자동 로그인 판정 동안 표시되는 정적 화면.
-/// 판정 로직은 AppFeature 루트 게이트 몫(`authClient.isAuthenticated`) — 이 뷰는 상태가 없다.
+/// Splash(SP) — 앱 실행 시 세션 복구 판정 동안 표시되는 화면.
+/// 판정 로직은 AppFeature 루트 게이트 몫 — 이 뷰는 결과를 모르고 «재시도» 콜백만 받는다.
+///
+/// `onRetry` 가 있으면 판정이 네트워크·서버 문제로 실패한 상태다. 이때 소셜 로그인으로 내보내지
+/// **않는다** — 토큰은 살아 있고 세션 유효성만 미판정이라, 내보내면 멀쩡한 세션이 로그아웃된다
+/// (docs/work/launch-routing.md §3).
 ///
 /// 시안의 상태 바(9:41·안테나·배터리)와 홈 인디케이터는 iOS 시스템 크롬이라 그리지 않는다 —
 /// 배경이 전면 흰색이라 `ignoresSafeArea` 만으로 시안과 같은 결과가 된다.
@@ -31,14 +35,36 @@ public struct SplashView: View {
     // @ds(layout): -50 — 로고를 화면 중심보다 위로 띄운 값 (시안 375×812 기준 중심 y 356)
     static let logoCenterOffsetY: CGFloat = -50
 
-    public init() {}
+    /// 판정 실패 시의 재시도 — nil 이면 판정 진행 중(시안 그대로의 정적 화면).
+    private let onRetry: (() -> Void)?
+
+    public init(onRetry: (() -> Void)? = nil) {
+        self.onRetry = onRetry
+    }
 
     public var body: some View {
         ZStack {
             Color.BlackWhite.white
             logoMark
+            if let onRetry {
+                retryPrompt(onRetry)
+            }
         }
         .ignoresSafeArea()
+    }
+
+    /// 실패 안내 — 로고는 그대로 두고 아래쪽에만 얹는다(시안 없음, 전환 프레임을 흔들지 않으려고).
+    // TODO: 실패 상태 시안 수령 시 교체 — 문구·배치는 구현자 판단.
+    private func retryPrompt(_ onRetry: @escaping () -> Void) -> some View {
+        VStack(spacing: .ds(.p12)) {
+            Text("연결이 불안정해요.")
+                .dsTypography(.body3)
+                .foregroundStyle(Color.GrayScale.g500)
+            Button("다시 시도", action: onRetry)
+                .buttonStyle(.miniSub(.none))
+        }
+        .frame(maxHeight: .infinity, alignment: .bottom)
+        .padding(.bottom, 80)
     }
 
     /// hilit 워드마크 — 전환에서 움직이는 유일한 요소라 따로 떼어 둔다.
@@ -51,6 +77,10 @@ public struct SplashView: View {
     }
 }
 
-#Preview("스플래시") {
+#Preview("스플래시 — 판정 중") {
     SplashView()
+}
+
+#Preview("스플래시 — 판정 실패(재시도)") {
+    SplashView(onRetry: {})
 }

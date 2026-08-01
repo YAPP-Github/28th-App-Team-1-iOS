@@ -9,6 +9,7 @@ let project = Project.makeModule(
         .feature(implements: "Auth", factory: .init(dependencies: [
             .composableArchitecture,
             .domain(interface: .auth),
+            .domain(interface: .consent),      // A1 약관 — pending 항목 렌더·submit (게이트 ①)
             .domain(interface: .job),          // 가입 온보딩 직군 선택(AuthOnboardingJob)
             .shared(interface: .designSystem)
         ])),
@@ -17,11 +18,13 @@ let project = Project.makeModule(
         // 누락 시 따뜻한 DerivedData에서만 우연히 빌드되는 거짓 성공이 난다.
         .feature(tests: "Auth", factory: .init(dependencies: [
             .composableArchitecture,
-            .domain(interface: .auth)
+            .domain(interface: .auth),
+            .domain(interface: .consent)
         ])),
         .feature(example: "Auth", factory: .init(dependencies: [
             .composableArchitecture,
             .domain(interface: .auth),
+            .domain(interface: .consent),
             .domain(interface: .job)
         ]))
     ]

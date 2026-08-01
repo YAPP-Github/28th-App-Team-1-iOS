@@ -6,12 +6,21 @@
 //
 
 import ComposableArchitecture
+import DomainAuthInterface
+import DomainConsentInterface
 
 // @lat: [[auth#가입 플로우]]
+// depends-on: [[app]] — 진입 판정(Splash 세션 복구)은 AppFeature 가 하고, 이 코디네이터는
+//                       `State(resuming:)` 으로 그 결과를 받아 같은 게이트 체인에 합류한다.
 /// 가입·로그인 플로우 코디네이터. AuthCreateAccount(소셜 로그인)를 루트로 두고,
-/// 신규 가입 경로(약관 동의 → 이름 → 직군 → 연차 → 등록 완료)를 `path`(StackState)로 push 한다.
+/// 가입 경로(약관 동의 → 이름 → 직군 → 연차 → 등록 완료)를 `path`(StackState)로 push 한다.
 /// 각 화면의 delegate 만 매칭해 수집 데이터를 누적하고 다음 화면으로 전환한다 — 조립은 여기서만(D5).
 /// 플로우가 끝나면(가입 완료 or 기존 회원 로그인) `delegate(.signedIn)` 을 AppFeature 에 올린다.
+///
+/// **게이트 2단 체인** — 목적지는 두 값만으로 결정된다(docs/work/launch-routing.md):
+/// ① 동의 게이트 `consentStatus` != `upToDate` → 약관 → ② 프로필 게이트 `profileRegistered` == false
+/// → 온보딩(이름부터), 둘 다 통과면 곧장 `delegate(.signedIn)`. 로그인 경로와 세션 복구 경로가
+/// 판정값 출처만 다르고 같은 체인을 탄다 — 분기 코드는 `enterGate` 한 곳뿐이다.
 @Reducer
 public struct AuthFeature {
     /// 가입 온보딩 수집 단계 수(이름·직군·연차) — 각 화면 프로그레스 바 분모. 등록 완료는 프로그레스 밖.
@@ -36,12 +45,39 @@ public struct AuthFeature {
         public var createAccount = AuthCreateAccountFeature.State()
         /// 가입 경로 네비게이션 스택.
         public var path = StackState<Path.State>()
+        /// 프로필 게이트 판정값 — 약관을 통과한 뒤 온보딩/홈을 가른다. 판정 전에는 nil.
+        /// 약관 화면을 거치는 동안 들고 있어야 해서 State 에 남는다(제출 응답엔 이 값이 없다).
+        public var profileRegistered: Bool?
         /// 가입 온보딩 수집값 — 서버 제출 시점(화면별 즉시 vs 등록 완료 일괄)이 미결이라 코디네이터가 들고만 있다.
         public var name = ""
         public var jobRole: String?
         public var careerYears: Int?
 
         public init() {}
+
+        /// 세션 복구 진입 — AppFeature 가 Splash 에서 이미 받은 판정값·약관 항목을 그대로 넘긴다.
+        /// A0(소셜 로그인)를 거치지 않으므로 스택 첫 화면이 곧 목적지다(약관 또는 온보딩).
+        /// 둘 다 통과한 경우는 AppFeature 가 홈으로 보내므로 여기까지 오지 않는다.
+        public init(resuming destination: Destination) {
+            switch destination {
+            case let .terms(items, profileRegistered):
+                self.profileRegistered = profileRegistered
+                path.append(.terms(AuthTermsFeature.State(items: items)))
+            case .onboarding:
+                profileRegistered = false
+                path.append(.naming(AuthOnboardingNamingFeature.State(
+                    step: 1, totalSteps: AuthFeature.onboardingSteps
+                )))
+            }
+        }
+    }
+
+    /// 세션 복구가 착지할 자리 — 게이트 2단 판정의 결과 중 «로그인 플로우가 이어받는» 둘.
+    public enum Destination: Equatable, Sendable {
+        /// 동의 게이트 미통과 — 조회해 둔 항목으로 약관 화면부터. 통과 후 프로필 게이트를 본다.
+        case terms(items: [ConsentItem], profileRegistered: Bool)
+        /// 동의는 끝났고 프로필만 없음 — 이름 입력부터.
+        case onboarding
     }
 
     public enum Action {
@@ -66,25 +102,20 @@ public struct AuthFeature {
 
         Reduce { state, action in
             switch action {
-            // 소셜 인증 + 세션 교환 성공 — 신규/기존·동의 버전 분기 지점.
-            // TODO(S-1): login 응답에 신규/기존·동의 버전 판별이 아직 없어 전원 신규로 취급해 약관으로 보낸다.
-            //   서버 계약 확정 시: 기존+최신 → 바로 delegate(.signedIn) / 기존+구버전 → 재동의(A3, MVP 자리만).
-            case .createAccount(.delegate(.authenticated)):
-                state.path.append(.terms(AuthTermsFeature.State()))
-                return .none
+            // 소셜 인증 + 세션 교환 성공 — 게이트 2단 체인 진입.
+            case let .createAccount(.delegate(.authenticated(result))):
+                state.profileRegistered = result.profileRegistered
+                return enterGate(&state, consentStatus: result.consentStatus)
 
             case .createAccount:
                 return .none
 
-            // A1 약관 동의 — 완료면 가입 온보딩(이름)으로, 이탈이면 A0 로 되돌린다(계정 미생성 — 서버 판정).
+            // A1 약관 동의 — 제출까지 화면이 마쳤다. 통과했으니 프로필 게이트로 넘긴다.
+            // 이탈이면 A0 로 되돌린다(미제출 상태 유지 — 재진입 시 서버가 다시 약관으로 판정).
             case let .path(.element(id: _, action: .terms(.delegate(action)))):
                 switch action {
                 case .agreed:
-                    // TODO(S-1): 동의 제출 API(계정 생성 확정 + 무료 3회 부여 + 이력 저장) effect 가 여기 붙는다.
-                    state.path.append(.naming(AuthOnboardingNamingFeature.State(
-                        step: 1, totalSteps: Self.onboardingSteps
-                    )))
-                    return .none
+                    return passProfileGate(&state)
                 case .closeRequested:
                     state.path.removeAll()
                     return .none
@@ -149,6 +180,30 @@ public struct AuthFeature {
             }
         }
         .forEach(\.path, action: \.path)
+    }
+
+    // MARK: - 게이트 2단 체인
+
+    /// 게이트 ① 동의 — 최신이면 곧장 프로필 게이트로, 아니면 약관 화면으로 보낸다.
+    /// 약관 항목·버전은 로그인 응답에 없어 화면이 진입 시 `pending` 으로 직접 받는다(items: nil).
+    private func enterGate(_ state: inout State, consentStatus: ConsentPendingStatus) -> Effect<Action> {
+        guard consentStatus == .upToDate else {
+            state.path.append(.terms(AuthTermsFeature.State()))
+            return .none
+        }
+        return passProfileGate(&state)
+    }
+
+    /// 게이트 ② 프로필 — 등록됐으면 홈, 아니면 가입 온보딩(이름부터).
+    /// 판정값이 없으면(계약 위반) 미등록으로 읽는다 — 온보딩을 한 번 더 보는 쪽이 안전한 실패다.
+    private func passProfileGate(_ state: inout State) -> Effect<Action> {
+        guard state.profileRegistered == true else {
+            state.path.append(.naming(AuthOnboardingNamingFeature.State(
+                step: 1, totalSteps: Self.onboardingSteps
+            )))
+            return .none
+        }
+        return .send(.delegate(.signedIn))
     }
 }
 
