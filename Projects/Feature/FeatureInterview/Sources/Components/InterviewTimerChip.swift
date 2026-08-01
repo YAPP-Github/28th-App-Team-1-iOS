@@ -61,7 +61,7 @@ struct InterviewTimerChip: View {
 }
 
 #Preview {
-    VStack(spacing: 12) {
+    VStack(spacing: .ds(.p12)) {
         InterviewTimerChip(variant: .elapsed(seconds: 1))
         InterviewTimerChip(variant: .elapsed(seconds: 80))
         InterviewTimerChip(variant: .elapsed(seconds: 480))

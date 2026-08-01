@@ -49,7 +49,7 @@ Action enum 을 `view(View)` / `inner(Inner)` / `delegate(Delegate)` 로 나눈�
 - **비채택**: 별도 `async` 카테고리 — "async 트리거"와 "async 응답" 중 무엇을 담는지 경계가 애매해 바이크셰딩을 부른다. 응답은 `inner` 로 흡수. binding 은 `View: BindableAction` + `BindingReducer(action: \.view)` 로 view 아래 중첩.
 
 ## 디자인 시스템
-`Shared/SharedDesignSystem` 토큰 우선, 하드코딩 지양. 타이포그래피는 `DSTypography`(25종, Pretendard 4웨이트) + `.dsTypography(_:)` — Figma «[0722 H/O] HILIT_Text_Guide» 1:1. 색·spacing·outline 토큰 구현 완료, 컴포넌트는 `PrimaryButton`·`Parallelogram` 2종.
+`Shared/SharedDesignSystem` 토큰 우선, 하드코딩 지양. 타이포그래피는 `DSTypography`(25종, Pretendard 4웨이트) + `.dsTypography(_:)` — Figma «[0722 H/O] HILIT_Text_Guide» 1:1. 색·spacing·outline 토큰 구현 완료, 공용 컴포넌트 카탈로그는 `.claude/design/component.md` 참조(열거하지 않음 — 자주 늘어난다).
 
 - **토큰 위치**: 전부 Interface — 상수 계약이라 live/test 분리가 없다. 폰트 otf 도 Interface 리소스로 싣고, 등록은 Tuist 생성 폰트 접근자가 첫 사용 시 알아서 한다 — App 배선·수동 부트스트랩 불필요(`Pretendard.registerAll()` 은 미사용 웨이트까지 필요한 검증용).
 - **행간 구현**: SwiftUI 에 line-height 가 없어 `lineSpacing + 상하 패딩` 보정으로 Figma px 값을 재현. Dynamic Type 은 미반영(고정 사이즈) — 도입 결정 시 `relativeTo:` 전환.

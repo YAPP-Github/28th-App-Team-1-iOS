@@ -39,7 +39,6 @@ public struct GuestFeedbackView: View {
         }
         .onAppear { send(.onAppear) }
         .alert($store.scope(state: \.alert, action: \.alert))
-        .confirmationDialog($store.scope(state: \.confirmDialog, action: \.confirmDialog))
     }
 
     // MARK: - Starting overlay + evaluation
