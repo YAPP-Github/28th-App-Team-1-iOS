@@ -5,17 +5,43 @@
 //  Created by EunseoKim on 26/07/26.
 //
 
-// Figma: «ButtonMedium» https://figma.com/design/ZG7FUxWCvITmnvzZi7fpTS/?node-id=1941-3261
+// Figma: «button-medium» — 시트 축: status(행) = outlined · filled / color(열) = default·green·gray·blue·red
+//        + disabled 열. filled 행에는 black 하나뿐이다.
 
 import SwiftUI
 
-/// 중형 버튼 — h45 · px24/py12 · 직각 · hug. 색 축 6종만 갖고,
-/// **disabled 는 어떤 색이든 같은 룩(g50 바탕·g300 테두리·g300 글자)으로 수렴**한다 —
-/// 그래서 disabled 는 색이 아니라 `isEnabled` 가 처리하는 상태다.
+/// 중형 버튼 — h45 · px24/py12 · 직각 · hug. «온보딩 및 지인 피드백 버튼으로 사용».
+///
+/// 시트는 **status 행 × color 열** 두 축이지만 **행이 색에서 결정된다** — outlined 행에 default·green·
+/// gray·blue·red, filled 행에 black 하나. 같은 색이 두 행에 걸치는 칸이 없어서 `Style` 은 파라미터가
+/// 아니라 `Tone` 의 파생값이다(파라미터로 두면 `.medium(.black, style: .filled)` 처럼 되풀이만 늘고
+/// 잘못된 조합을 만들 수 있다). 한 색이 두 행을 갖게 되면 그때 파라미터로 승격한다.
+/// `mini` 는 black 이 default·outlined 두 칸을 다 가져서 거기선 `style` 이 진짜 파라미터다.
+///
+/// disabled 열은 색과 무관하게 한 룩(g50 바탕·g300 테두리·g300 글자)으로 수렴한다 — 색이 아니라
+/// `isEnabled` 가 처리하는 상태다.
 public struct MediumButtonStyle: ButtonStyle {
-    /// Figma `color` 축 (disabled 제외 — 상태라서 뺐다).
+    /// Figma `status` 축(시트 행). `Tone` 에서 파생되며 테두리 유무를 가른다.
+    public enum Style: Sendable, CaseIterable {
+        /// 테두리 있음 — 채움은 색마다 다르다(default·gray 는 흰 판, green·blue·red 는 옅은 색 판).
+        case outlined
+        /// 테두리 없는 채움 — 시트에 black 한 칸뿐.
+        case filled
+
+        /// 이 행에 속한 색 — 시트의 한 줄. 카탈로그·프리뷰가 시트를 그대로 재현할 때 쓴다.
+        public var tones: [Tone] {
+            Tone.allCases.filter { $0.style == self }
+        }
+    }
+
+    /// Figma `color` 축(시트 열). disabled 는 상태라서 여기 없다.
     public enum Tone: Sendable, CaseIterable {
         case `default`, black, gray, green, blue, red
+
+        /// 이 색이 속한 시트 행 — black 만 filled, 나머지는 outlined.
+        public var style: Style {
+            self == .black ? .filled : .outlined
+        }
 
         /// blue·red 만 SemiBold — Figma 원본이 그렇다.
         var typography: DSTypography {
@@ -46,7 +72,7 @@ public struct MediumButtonStyle: ButtonStyle {
             }
         }
 
-        /// black 만 테두리 없음 — Figma `status=outlined` 인데도 스트로크가 없다(시안 그대로).
+        /// filled 행(black)은 테두리가 없다 — 시트가 그렇게 갈라져 있다.
         var border: Color? {
             switch self {
             case .default: Color.GrayScale.g200
@@ -106,6 +132,27 @@ public extension ButtonStyle where Self == MediumButtonStyle {
     ) -> Self {
         MediumButtonStyle(tone: tone, layout: layout)
     }
+}
+
+#Preview("medium — 시트 매트릭스(status 행 × color 열)") {
+    // Figma 시트 그대로: outlined 행 5색 + disabled, filled 행은 black 하나.
+    VStack(alignment: .leading, spacing: .ds(.p16)) {
+        ForEach(MediumButtonStyle.Style.allCases, id: \.self) { style in
+            VStack(alignment: .leading, spacing: .ds(.p8)) {
+                Text(String(describing: style)).dsTypography(.body6)
+                HStack(spacing: .ds(.p8)) {
+                    ForEach(style.tones, id: \.self) { tone in
+                        Button("버튼") {}.buttonStyle(.medium(tone))
+                    }
+                    if style == .outlined {
+                        Button("버튼") {}.buttonStyle(.medium()).disabled(true)
+                    }
+                }
+            }
+        }
+    }
+    .padding(.ds(.p20))
+    .background(Color.BlackWhite.white)
 }
 
 #Preview("medium 6색 + disabled") {

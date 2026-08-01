@@ -91,8 +91,7 @@ private struct TabButtonStyle: ButtonStyle {
                 if isSelected, isEnabled {
                     Rectangle()
                         .fill(Color.HilitBlack.b800)
-                        // @ds(spacing): 1.5 — Figma outline-sb (DSOutline 은 1.2 다음이 4)
-                        .frame(height: 1.5)
+                        .frame(height: .ds(.semiBold))
                 }
             }
             .contentShape(Rectangle())
