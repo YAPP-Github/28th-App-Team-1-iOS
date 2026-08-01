@@ -7,6 +7,7 @@
 
 import ComposableArchitecture
 import DomainAuthInterface
+import DomainConsentInterface
 import Feature
 
 // @lat: [[app]]
@@ -20,13 +21,24 @@ struct AppFeature {
         case home
     }
 
+    /// 루트가 지금 무엇을 띄우는가. Bool 조합으로는 «재시도 가능한 판정 실패» 를 표현할 수 없어 값으로 둔다.
+    /// 전이는 Splash 판정(`onAppear`) → auth 또는 home 단방향이고, 로그아웃·세션 만료만 되돌린다.
+    enum Root: Equatable {
+        /// 세션 복구 판정 중 — SplashView.
+        case splash
+        /// 판정이 네트워크·서버 문제로 실패 — 토큰은 살아 있다. Splash 자리에서 재시도만 받는다.
+        case splashFailed
+        /// 로그인 전 또는 가입 플로우(약관·온보딩) 진행 중.
+        case auth
+        /// 두 게이트 모두 통과 — 탭 화면.
+        case home
+    }
+
     @ObservableState
     struct State: Equatable {
         var auth = AuthFeature.State()
-        /// 자동 로그인 판정 전 — true 동안 Splash 를 보여준다. onAppear 의 토큰 확인이 내린다.
-        var isCheckingSession = true
-        /// 로그인 게이트 — Splash 판정(Keychain 토큰 유무)이 초기값을 정한다.
-        var isAuthenticated = false
+        /// 루트가 무엇을 띄우는지 — 초기값은 Splash(판정 전).
+        var root: Root = .splash
         var home = HomeFeature.State()
         var selectedTab: Tab = .home
         /// dev 전용 온보딩 위저드 — Home 진입 버튼으로 present (온보딩 본체 통합 전 임시).
@@ -35,6 +47,10 @@ struct AppFeature {
 
     enum Action: BindableAction {
         case onAppear
+        /// Splash 판정 실패 후 재시도.
+        case retryLaunchRouting
+        /// 세션 복구 판정 결과 — 목적지 또는 실패 종류.
+        case launchRoutingResolved(LaunchRouting)
         case auth(AuthFeature.Action)
         case home(HomeFeature.Action)
         case onboarding(PresentationAction<OnboardingFeature.Action>)
@@ -43,7 +59,20 @@ struct AppFeature {
         case binding(BindingAction<State>)
     }
 
+    /// Splash 판정의 결과. 게이트 2단 체인의 목적지 + 두 실패 종류다 (docs/work/launch-routing.md).
+    enum LaunchRouting: Equatable, Sendable {
+        /// 토큰 없음 또는 refresh 가 만료로 거부됨(토큰 폐기 완료) — 소셜 로그인부터.
+        case login
+        /// 게이트 미통과 — 가입 플로우가 이어받는다(약관 또는 온보딩).
+        case resume(AuthFeature.Destination)
+        /// 두 게이트 통과 — 홈 직행.
+        case home
+        /// 판정 불가(네트워크·5xx) — 토큰은 유지된다. 재시도 대상.
+        case failed
+    }
+
     @Dependency(\.authClient) var authClient
+    @Dependency(\.consentClient) var consentClient
     @Dependency(\.onboardingDraftStore) var draftStore
 
     var body: some ReducerOf<Self> {
@@ -60,17 +89,19 @@ struct AppFeature {
                 // dev 계에서만 Home 온보딩 진입·디버그 로그아웃 버튼을 노출한다.
                 state.home.showsOnboardingEntry = AppEnvironment.isDev
                 state.home.showsDebugLogout = AppEnvironment.isDev
-                // Splash(SP) 자동 로그인 판정 — Keychain 토큰 유무로 홈 직행/로그인 분기.
-                // 만료 세션은 첫 인증 요청의 LOGIN_EXPIRED 전파가 걷어낸다([[api#토큰 수명주기]]).
-                // TODO: 서버 검증(check)·스플래시 최소 노출 연출은 정책 확정 시.
-                state.isAuthenticated = authClient.isAuthenticated()
-                state.isCheckingSession = false
-                return .none
-            case .auth(.delegate(.signedIn)):
+                return resolveLaunchRouting()
+
+            case .retryLaunchRouting:
+                state.root = .splash
+                return resolveLaunchRouting()
+
+            case let .launchRoutingResolved(routing):
+                return apply(routing, to: &state)
+
+            case let .auth(.delegate(.signedIn)):
                 // 새 로그인 = 새 세션. 이전 사용자가 하던 화면·데이터를 전부 버리고 초기 State 에서 시작한다.
                 state = State()
-                state.isCheckingSession = false
-                state.isAuthenticated = true
+                state.root = .home
                 state.home.showsOnboardingEntry = AppEnvironment.isDev
                 state.home.showsDebugLogout = AppEnvironment.isDev
                 return .none
@@ -111,10 +142,10 @@ struct AppFeature {
             case .onboarding:
                 return .none
             case .sessionCleared:
-                // 로그아웃 정리 완료 — 초기 State 로 리셋(isAuthenticated=false → 첫 소셜 로그인 화면).
-                // isCheckingSession 은 내린다 — 로그아웃 복귀는 판정이 아니라 확정 상태라 Splash 를 다시 띄우지 않는다.
+                // 로그아웃 정리 완료 — 초기 State 로 리셋하고 첫 소셜 로그인 화면으로.
+                // Splash 로 되돌리지 않는다 — 로그아웃 복귀는 판정이 아니라 확정 상태다.
                 state = State()
-                state.isCheckingSession = false
+                state.root = .auth
                 state.home.showsOnboardingEntry = AppEnvironment.isDev
                 state.home.showsDebugLogout = AppEnvironment.isDev
                 return .none
@@ -125,5 +156,61 @@ struct AppFeature {
         .ifLet(\.$onboarding, action: \.onboarding) {
             OnboardingFeature()
         }
+    }
+
+    // MARK: - Splash 세션 복구 판정 → [[auth#가입 플로우]]
+
+    /// 토큰 유무 → refresh → pending 순으로 목적지를 정한다 (docs/work/launch-routing.md §4).
+    ///
+    /// refresh 실패는 **두 종류로 갈라야** 한다 — `sessionExpired`(서버가 세션을 부정, 토큰은
+    /// `AuthClient.refresh` 가 이미 폐기)는 재로그인이고, 네트워크·5xx 는 판정 불가라 토큰을 살려 둔 채
+    /// 재시도한다. 뭉뚱그리면 오프라인에서 앱을 켠 사용자가 로그아웃당한다.
+    private func resolveLaunchRouting() -> Effect<Action> {
+        .run { send in
+            guard authClient.isAuthenticated() else {
+                return await send(.launchRoutingResolved(.login))
+            }
+            do {
+                try await authClient.refresh()
+            } catch AuthError.sessionExpired {
+                return await send(.launchRoutingResolved(.login))
+            } catch {
+                return await send(.launchRoutingResolved(.failed))
+            }
+            do {
+                // 게이트 판정값 2개를 한 번에 받는다 — 약관 항목까지 딸려와 재조회가 없다.
+                let pending = try await consentClient.pending()
+                await send(.launchRoutingResolved(routing(for: pending)))
+            } catch ConsentError.sessionExpired {
+                // refresh 직후인데 거부됐다 — 세션이 죽은 것으로 본다.
+                await send(.launchRoutingResolved(.login))
+            } catch {
+                await send(.launchRoutingResolved(.failed))
+            }
+        }
+    }
+
+    /// 게이트 2단 체인 — ① 동의(`status`) ② 프로필(`profileRegistered`). 순서가 고정이다.
+    private func routing(for pending: ConsentPending) -> LaunchRouting {
+        guard pending.status == .upToDate else {
+            return .resume(.terms(items: pending.items, profileRegistered: pending.profileRegistered))
+        }
+        return pending.profileRegistered ? .home : .resume(.onboarding)
+    }
+
+    private func apply(_ routing: LaunchRouting, to state: inout State) -> Effect<Action> {
+        switch routing {
+        case .login:
+            state.auth = AuthFeature.State()
+            state.root = .auth
+        case let .resume(destination):
+            state.auth = AuthFeature.State(resuming: destination)
+            state.root = .auth
+        case .home:
+            state.root = .home
+        case .failed:
+            state.root = .splashFailed
+        }
+        return .none
     }
 }

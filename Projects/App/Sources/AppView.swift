@@ -14,10 +14,14 @@ struct AppView: View {
 
     var body: some View {
         Group {
-            if store.isCheckingSession {
-                // Splash(SP) — 자동 로그인 판정 동안 표시. 판정은 AppFeature.onAppear.
+            switch store.root {
+            case .splash:
+                // Splash(SP) — 세션 복구 판정 동안 표시. 판정은 AppFeature.onAppear.
                 SplashView()
-            } else if store.isAuthenticated {
+            case .splashFailed:
+                // 판정 불가(네트워크·5xx) — 토큰은 살아 있으므로 로그인으로 내보내지 않고 재시도만 받는다.
+                SplashView(onRetry: { store.send(.retryLaunchRouting) })
+            case .home:
                 TabView(selection: $store.selectedTab) {
                     // 탭 루트마다 자기 NavigationStack — 홈의 내비바(로고 ↔ X 를 값으로 갈아끼움)는
                     // 시스템 바 기반이라 스택 밖에선 조용히 안 그려진다 (navigation.md «부착 — push vs present»).
@@ -34,7 +38,8 @@ struct AppView: View {
                 ) { onboardingStore in
                     OnboardingView(store: onboardingStore)
                 }
-            } else {
+            case .auth:
+                // 로그인 전 + 가입 플로우(약관·온보딩) — 세션 복구가 게이트에 걸린 경우도 여기로 온다.
                 AuthView(store: store.scope(state: \.auth, action: \.auth))
             }
         }

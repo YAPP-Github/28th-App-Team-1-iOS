@@ -9,6 +9,7 @@ let project = Project.makeModule(
         .app(factory: .init(dependencies: [
             .core, .domain, .feature, .shared,
             .domain(interface: .auth),
+            .domain(interface: .consent),   // Splash 세션 복구 판정 — 게이트 2단(pending)
             .composableArchitecture
         ])),
         // 전역 DocC 카탈로그 호스트 (코드 없음). Xcode: 스킴 ArchitectureDocs → Product → Build Documentation
