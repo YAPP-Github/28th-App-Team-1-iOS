@@ -6,7 +6,7 @@
 | 컴포넌트 | Figma | API | 용도 |
 |---|---|---|---|
 | `DashIndicator` | dash 2044:4712 · 가입 온보딩 progress bar 3877:11573·11580·11601 | `(count:current:layout: .hug/.fill)` | 진행 단계 대시 — 높이 4 조각(on b800 / off g50) 나열. 조각 단독 공개 없음, «몇 번째까지 켜는가» 규칙만 갖는다. **폭은 `layout` 축**: `.hug`(기본) 20pt 고정폭·간격 4 = dash 원형 / `.fill` 주어진 폭을 단계 수로 등분·간격 2 = 가입 온보딩 진행 바. 좌우 여백은 호출부 몫 |
-| `HilitNavigationBar` | Navigationbar 3029:11188 — icon 2446:7485 · text 3029:11189 · logo 3632:13967 | **부착은 모디파이어만** (View 직접 배치 없음 — 타입은 `Theme`/`Trailing`/`Background` 를 담는 enum 네임스페이스): push `.hilitNavigationBar(_:trailing:theme:background:allowsSwipeBack:onClose:)` · 루트 브랜드 `.hilitLogoNavigationBar(background:onProfile:)` · present `.hilitPresentedNavigationBar(_:trailing:theme:background:onClose:)`. **어느 걸 쓰나 → 아래 «부착 — push vs present»** | h44 내비바(시안 슬롯 26+py9 = 시스템 표준이라 커스텀 바 폐기, 2026-07-31). **뒤로 버튼 없음 — leading X 고정**이라 슬롯이 아니라 `onClose` 액션(최종 시안: X 통일, 뒤로는 하단 CTA·스와이프백 몫) → «닫기(X) 기본값과 override». 타이틀 sub7 중앙 · trailing 은 plus 아이콘 또는 텍스트 버튼(body5·g400·p8/p4 hug), 없으면 `trailing: nil`(시안 show 토글). `theme` 이 아이콘 색변형(`default24`/`white24`)·타이틀색·`.filled` 배경색(white/b800)을 전부 파생 — 다크에 검정 X 같은 조합은 표현 불가. mini 버튼의 `.hilitSurface` 와 같은 «판 톤» 축이지만 내비바는 파라미터(빼먹으면 조용히 틀려서 명시가 안전). 다크 trailing 은 시안 없음(DEBUG assert). `background` 기본 `.transparent`(영상 풀블리드 — 콘텐츠 쪽 `.ignoresSafeArea()` 로 바 밑까지 깔림), 콘텐츠가 바 밑을 지나는 스크롤 화면은 `.filled` |
+| `HilitNavigationBar` | Navigationbar 3029:11188 — icon 2446:7485 · text 3029:11189 · logo 3632:13967 | **부착은 모디파이어만** (View 직접 배치 없음 — 타입은 `Theme`/`Trailing`/`Background`/`Kind` 를 담는 enum 네임스페이스): push `.hilitNavigationBar(_:trailing:theme:background:allowsSwipeBack:onClose:)` · 루트 브랜드 `.hilitLogoNavigationBar(background:onProfile:)` · present `.hilitPresentedNavigationBar(_:trailing:theme:background:onClose:)` · 변형 교체 `.hilitNavigationBar(_ kind:theme:background:allowsSwipeBack:)`. **어느 걸 쓰나 → 아래 «부착 — push vs present» · «상태 따라 변형 갈아끼우기»** | h44 내비바(시안 슬롯 26+py9 = 시스템 표준이라 커스텀 바 폐기, 2026-07-31). **뒤로 버튼 없음 — leading X 고정**이라 슬롯이 아니라 `onClose` 액션(최종 시안: X 통일, 뒤로는 하단 CTA·스와이프백 몫) → «닫기(X) 기본값과 override». 타이틀 sub7 중앙 · trailing 은 plus 아이콘 또는 텍스트 버튼(body5·g400·p8/p4 hug), 없으면 `trailing: nil`(시안 show 토글). `theme` 이 아이콘 색변형(`default24`/`white24`)·타이틀색·`.filled` 배경색(white/b800)을 전부 파생 — 다크에 검정 X 같은 조합은 표현 불가. mini 버튼의 `.hilitSurface` 와 같은 «판 톤» 축이지만 내비바는 파라미터(빼먹으면 조용히 틀려서 명시가 안전). 다크 trailing 은 시안 없음(DEBUG assert). `background` 기본 `.transparent`(영상 풀블리드 — 콘텐츠 쪽 `.ignoresSafeArea()` 로 바 밑까지 깔림), 콘텐츠가 바 밑을 지나는 스크롤 화면은 `.filled` |
 | `TabSelector` | tab 2044:4765 | `(_ items: [Item], selection: Binding<Tag>, layout: .hug/.fill)` · `Item(tag:title:isEnabled:)` | 밑줄 텍스트 탭 줄 — h38·px14/py8, 선택 시 아래 1.5 밑줄(b800). 상태는 **selection 바인딩에서 파생**(선택된 하나만 밑줄), 비활성은 `isEnabled: false`(글자 g500). 탭 조각 단독 공개 없음. 시안에 줄 배치가 없어 항목 간 간격 0 |
 
 ## 부착 — push vs present
@@ -44,6 +44,22 @@ present 경로가 push 와 다른 점 셋 — `allowsSwipeBack` 없음(스택 �
 배관 소유는 모디파이어다. push 는 타이틀 인라인·`navigationBarBackButtonHidden`·`toolbarBackground`·스와이프백 delegate 를, present 는 `safeAreaInset` 배치를 각각 감춘다. 슬롯 룩(아이콘 버튼·텍스트 버튼)은 `HilitNavigationBarSlot` 한 곳에서 공유하므로 스타일 변경은 거기만 고친다 — 두 경로가 갈라지지 않게 하는 지점.
 
 `navigationBarBackButtonHidden` 이 끄는 엣지 스와이프백은 `Interaction/UINavigationController+SwipeBack.swift` 의 `SwipeBackPolicy` 가 **화면이 보이는 동안만 delegate 를 점유하고 반환**해 되살린다(전역 패치 아님 — 시스템 피커 오염 방지). 스와이프 pop 은 리듀서에 `popFrom(id:)` 로 도착한다(`backRequested` 아님).
+
+## 상태 따라 변형 갈아끼우기
+
+한 화면이 상태에 따라 **로고 바 ↔ X 바**로 갈려야 하면 `if/else` 로 모디파이어를 나누지 말고 변형을 **값**(`HilitNavigationBar.Kind`)으로 넘긴다. 모디파이어가 갈리면 SwiftUI 가 다른 뷰로 보고 화면을 통째로 새로 만들어 — 붙어 있던 `@State` 와 진행 중 애니메이션이 끊긴다.
+
+```swift
+.hilitNavigationBar(barKind, background: .filled)   // barKind: HilitNavigationBar.Kind
+
+private var barKind: HilitNavigationBar.Kind {
+    store.sheetDetent == .startInterview
+        ? .standard(onClose: { send(.userSettledSheet(.report)) })
+        : .logo(onProfile: { send(.userTappedProfile) })
+}
+```
+
+변형이 고정인 화면(대부분)은 이걸 쓰지 말고 `.hilitNavigationBar(_:trailing:…)` / `.hilitLogoNavigationBar(…)` 를 그대로 쓴다 — 읽기 쉽고 인자 기본값이 붙는다. 실사용: `FeatureHome/Sources/Home/HomeView.swift`.
 
 ## 닫기(X) 기본값과 override
 
