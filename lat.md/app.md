@@ -32,6 +32,7 @@
 - **`splashFailed` 에서 로그인 화면으로 내보내지 않는다** — 토큰이 살아 있으므로 `SplashView(onRetry:)` 자리에 머문다.
 - **판정 결과는 `AuthFeature.State(resuming:)` 로 넘긴다** — 게이트 분기 코드는 코디네이터 한 곳에만 있고, AppFeature 는 목적지(login·resume·home·failed)만 고른다. 조회한 약관 항목도 함께 넘겨 화면이 `pending` 을 다시 부르지 않는다.
 - 판정은 `consentClient`·`appVersionClient` 도 쓴다 — cross-feature 조립 자리라 Domain 의존이 여기 모인다(authClient 와 같은 이유).
+- **Splash 계열 루트에서는 전역 로딩(`LoadingModal`)을 얹지 않는다** — 판정 API 가 도는 동안이 곧 Splash 가 떠 있는 이유라 로딩 판을 덮으면 브랜드 화면만 가리고, `.updateRequired` 는 알럿과 딤이 겹친다. `AppView.showsGlobalLoading` 이 `default` 없는 switch 라 루트가 늘면 컴파일이 깨져 판단을 강제한다 → [[domain.map#네트워킹 인프라]].
 
 대표 흐름 — **dev 디버그 로그아웃** (Home 임시 버튼):
 1. dev 계에서만 `AppFeature.onAppear` 가 `home.showsDebugLogout` 을 켜고, Home 로그아웃 버튼이 `delegate(.logoutRequested)` 방출

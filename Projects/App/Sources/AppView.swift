@@ -52,8 +52,19 @@ struct AppView: View {
         .alert($store.scope(state: \.updateAlert, action: \.updateAlert))
         .onAppear { store.send(.onAppear) }
         // 전역 시스템 로딩 — 모든 API in-flight(NetworkActivity) 동안 화면을 잠근다
-        .hilitModal(isPresented: NetworkActivity.shared.isLoading) {
+        .hilitModal(isPresented: showsGlobalLoading && NetworkActivity.shared.isLoading) {
             LoadingModal()
+        }
+    }
+
+    /// 전역 로딩을 얹을 자리인지 — **Splash 계열 루트에서는 끈다**.
+    /// Splash 자체가 «기다리는 중» 표시라 그 위에 로딩 판을 또 덮으면 브랜드 화면만 가린다
+    /// (세션 복구 판정이 곧 그 화면의 존재 이유다). `.updateRequired` 는 알럿이 떠 있어 딤이 겹치면 안 된다.
+    /// `default` 를 두지 않는다 — 루트가 늘면 여기서 컴파일이 깨져 판단을 강제한다.
+    private var showsGlobalLoading: Bool {
+        switch store.root {
+        case .splash, .splashFailed, .updateRequired: false
+        case .auth, .home: true
         }
     }
 }
