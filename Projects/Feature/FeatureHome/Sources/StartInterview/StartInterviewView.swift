@@ -94,9 +94,13 @@ public struct StartInterviewView: View {
                 Text("남은 면접 기회")
                     .dsTypography(.body6)
                     .foregroundStyle(Color.GrayScale.g500)
-                Text("\(store.remainingChances)회")
-                    .dsTypography(.sub4)
-                    .foregroundStyle(Color.HilitBlack.b800)
+                // 잔여를 모르는 동안(프로필 응답 전·실패)엔 숫자 줄을 뺀다 — «0회» 로 떨어뜨리면
+                // 서버가 말하지 않은 소진을 화면이 지어낸다(포폴 날짜·용량과 같은 규칙).
+                if let remainingChances = store.remainingChances {
+                    Text("\(remainingChances)회")
+                        .dsTypography(.sub4)
+                        .foregroundStyle(Color.HilitBlack.b800)
+                }
             }
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
@@ -213,8 +217,11 @@ public struct StartInterviewView: View {
 // MARK: - Previews
 
 /// 씬의 한 겹이라 단독으로는 배경이 없다 — 프리뷰에서만 홈이 깔아 주는 배경을 흉내 낸다.
-/// State 기본값은 중립(이름 없음·0회·포폴 없음)이라 **시안 값은 여기서 명시로 넘긴다**.
-private func previewLayer(_ variant: StartInterviewFeature.Variant) -> some View {
+/// State 기본값은 중립(이름 없음·잔여 미확정·포폴 없음)이라 **시안 값은 여기서 명시로 넘긴다**.
+private func previewLayer(
+    _ variant: StartInterviewFeature.Variant,
+    remainingChances: Int?
+) -> some View {
     ZStack {
         HomeGreenBackdrop()
             .ignoresSafeArea()
@@ -223,7 +230,7 @@ private func previewLayer(_ variant: StartInterviewFeature.Variant) -> some View
                 initialState: StartInterviewFeature.State(
                     variant: variant,
                     userName: "재원",
-                    remainingChances: variant == .exhausted ? 0 : 3,
+                    remainingChances: remainingChances,
                     portfolio: variant == .hasPortfolio ? .placeholder : nil
                 )
             ) {
@@ -235,13 +242,18 @@ private func previewLayer(_ variant: StartInterviewFeature.Variant) -> some View
 }
 
 #Preview("처음 — 정보 입력 전") {
-    previewLayer(.first)
+    previewLayer(.first, remainingChances: 3)
 }
 
 #Preview("이전 정보 재사용") {
-    previewLayer(.hasPortfolio)
+    previewLayer(.hasPortfolio, remainingChances: 3)
 }
 
 #Preview("무료 횟수 소진") {
-    previewLayer(.exhausted)
+    previewLayer(.exhausted, remainingChances: 0)
+}
+
+// 프로필이 죽었거나 아직 안 온 자리 — 숫자 줄만 빠지고 시작 경로는 살아 있다.
+#Preview("처음 — 잔여 미확정") {
+    previewLayer(.first, remainingChances: nil)
 }
