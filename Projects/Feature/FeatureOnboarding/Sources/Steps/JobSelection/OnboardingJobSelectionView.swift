@@ -22,15 +22,15 @@ public struct OnboardingJobSelectionView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            progressBar
+            DashIndicator(count: store.totalSteps, current: store.step)
             ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
                     header
                     jobChips
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, .ds(.p20))
-                .padding(.top, .ds(.p16))
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
             }
             continueButton
         }
@@ -39,28 +39,16 @@ public struct OnboardingJobSelectionView: View {
         .onAppear { send(.onAppear) }
     }
 
-    private var progressBar: some View {
-        HStack(spacing: 2) {
-            ForEach(1...store.totalSteps, id: \.self) { step in
-                Rectangle()
-                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.GrayScale.g50)
-                    .frame(height: 4)
-            }
-        }
-        .padding(.horizontal, .ds(.p20))
-        .padding(.vertical, .ds(.p4))
-    }
-
     private var header: some View {
-        VStack(alignment: .leading, spacing: .ds(.p10)) {
+        VStack(alignment: .leading, spacing: 10) {
             Text("필수")
                 .dsTypography(.body7)
                 .foregroundStyle(Color.HilitGreen.g500)
-                .padding(.horizontal, .ds(.p12))
-                .padding(.vertical, .ds(.p4))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
                 .background(Color.HilitBlack.b800, in: RoundedRectangle(cornerRadius: 2))
 
-            VStack(alignment: .leading, spacing: .ds(.p8)) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text("\(store.userName)님의 직군을\n선택해 주세요.")
                     .dsTypography(.head3)
                     .foregroundStyle(Color.GrayScale.g800)
@@ -77,7 +65,7 @@ public struct OnboardingJobSelectionView: View {
             ProgressView()
                 .frame(maxWidth: .infinity)
         } else {
-            ChipFlowLayout(spacing: .ds(.p8)) {
+            ChipFlowLayout(spacing: 8) {
                 ForEach(store.jobs) { job in
                     jobChip(job)
                 }
@@ -94,12 +82,12 @@ public struct OnboardingJobSelectionView: View {
                 .font(.ds(.body2))
                 .foregroundStyle(Color.HilitBlack.b800)
                 .padding(.horizontal, 32)
-                .padding(.vertical, .ds(.p16))
+                .padding(.vertical, 16)
                 .background(Color.BlackWhite.white)
                 .overlay {
                     // TODO: 선택 상태 Figma 미확인 — 우선 보더 강조. 디자인 확정 시 조정.
                     Rectangle()
-                        .strokeBorder(isSelected ? Color.HilitBlack.b800 : Color.chipBorder, lineWidth: .ds(.medium))
+                        .strokeBorder(isSelected ? Color.HilitBlack.b800 : Color.chipBorder, lineWidth: 1.2)
                 }
         }
         .buttonStyle(.plain)

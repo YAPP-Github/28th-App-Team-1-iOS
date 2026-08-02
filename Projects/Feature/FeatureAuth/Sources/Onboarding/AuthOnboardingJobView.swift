@@ -42,12 +42,10 @@ public struct AuthOnboardingJobView: View {
 
     // MARK: - progress bar
 
-    /// 시안 «progress bar» 3877:11580 — 단계 수만큼 등폭으로 늘어나는 대시라 `layout: .fill`.
+    /// 시안 «progress bar» 3877:11580 — 단계 수만큼 등폭으로 늘어나는 대시. 여백 px20/py4 는 컴포넌트가 갖는다.
     private var progressBar: some View {
-        DashIndicator(count: store.totalSteps, current: store.step, layout: .fill)
-            .padding(.horizontal, .ds(.p20))
-            .padding(.vertical, .ds(.p4))
-            // 시안의 top-bar ↔ progress bar 간격 8 (내비바는 모디파이어가 얹는다)
+        DashIndicator(count: store.totalSteps, current: store.step)
+            // 시안의 top-bar ↔ progress bar 간격 8 (네비바는 모디파이어가 얹는다)
             .padding(.top, .ds(.p8))
     }
 

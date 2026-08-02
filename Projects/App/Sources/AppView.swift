@@ -26,7 +26,7 @@ struct AppView: View {
                 SplashView()
             case .home:
                 TabView(selection: $store.selectedTab) {
-                    // 탭 루트마다 자기 NavigationStack — 홈의 내비바(로고 ↔ X 를 값으로 갈아끼움)는
+                    // 탭 루트마다 자기 NavigationStack — 홈의 네비바(로고 ↔ X 를 값으로 갈아끼움)는
                     // 시스템 바 기반이라 스택 밖에선 조용히 안 그려진다 (navigation.md «부착 — push vs present»).
                     // 홈 내부 push 가 생기면 HomeFeature 의 Path/StackState 로 승격한다.
                     NavigationStack {

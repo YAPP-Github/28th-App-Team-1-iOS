@@ -41,11 +41,9 @@ public struct AuthOnboardingExperienceView: View {
 
     // MARK: - 상단
 
-    /// 진행 대시 — 시안 progress bar 3877:11601 은 화면 폭을 균등 분할하므로 `layout: .fill`.
+    /// 진행 대시 — 시안 progress bar 3877:11601 은 화면 폭을 균등 분할. 여백 px20/py4 는 컴포넌트가 갖는다.
     private var progressBar: some View {
-        DashIndicator(count: store.totalSteps, current: store.step, layout: .fill)
-            .padding(.horizontal, .ds(.p20))
-            .padding(.vertical, .ds(.p4))
+        DashIndicator(count: store.totalSteps, current: store.step)
             .padding(.top, .ds(.p8))
     }
 
