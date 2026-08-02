@@ -11,7 +11,7 @@ Projects/
 ├── App/       composition root — AppFeature(탭 코디네이터) · Config/{Dev,QA,Prod}.xcconfig · DocC
 ├── Core/      Common · Network
 ├── Domain/    AppVersion · Auth · Common · Consent · FeedbackShare · GuestFeedback · Interview · InterviewReport · JD · Job · Permission · Portfolio · Recording · Speech · User    (모델 + Client)
-├── Feature/   Auth · Common · GuestFeedback · Home · Interview · MyPage · Onboarding       (화면 — Interface 없음)
+├── Feature/   Auth · Common · GuestFeedback · Home · Interview · MyPage · Onboarding   (화면 — Interface 없음)
 └── Shared/    Common · DesignSystem (토큰 + 공용 컴포넌트)
 ```
 
@@ -56,7 +56,7 @@ Projects/
 
 ## 컨벤션
 
-- **나열은 알파벳순**: 모듈·컴포넌트·의존성·문서 표 등 **항목을 늘어놓는 자리는 전부** 알파벳순을 유지하고, 새 항목은 끝에 붙이지 말고 **제자리에 끼워 넣는다**. 끝에 붙이면 두 브랜치가 같은 줄을 건드려 머지 충돌이 나고, 제자리면 git 이 자동 병합한다.
+- **나열은 알파벳순**: 항목을 늘어놓는 자리는 **전부** 알파벳순을 유지하고, 새 항목은 끝에 붙이지 말고 **제자리에 끼워 넣는다** (모듈 나열·`Modules.swift` case·`Project.swift` dependencies·문서 표 …). 끝에 붙이면 두 브랜치가 같은 줄을 건드려 머지 충돌이 나고, 제자리면 서로 다른 줄이라 git 이 자동 병합한다.
 - **커밋**: 제목 1 줄 한국어. `type: 설명_부연` 형식. 본문은 필요할 때만 2-3 줄.
 - **네이밍**: Swift API Design Guidelines — 변수·함수 lowerCamelCase, 타입 UpperCamelCase, 식별자 언더스코어·한글 금지. 외부 명칭(Figma `head1_sb_32` 등)은 Swift 식별자로 변환, 원본은 매핑 프로퍼티 보존(`DSTypography.figmaName`). 테스트 함수도 camelCase, 한글 설명은 `@Test("설명")` 표시명.
 - **public 키워드**: 모듈 경계 넘는 타입/함수에 필수.
