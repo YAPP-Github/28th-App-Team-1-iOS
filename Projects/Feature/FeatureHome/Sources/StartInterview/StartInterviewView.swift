@@ -51,7 +51,6 @@ public struct StartInterviewView: View {
     // MARK: - 인사말
 
     private var greeting: some View {
-        // TODO: 이름은 서버 프로필(nickname) — State 에 값이 생기면 교체 (필요한 State: userName).
         Text(greetingText)
             .dsTypography(.head1)
             .foregroundStyle(Color.HilitBlack.b800)
@@ -63,11 +62,13 @@ public struct StartInterviewView: View {
     }
 
     /// 시안의 줄바꿈을 그대로 옮긴다 — 세 시안 모두 3줄 고정 폭에 맞춰 끊어져 있다.
+    /// 이름은 프로필 로드 결과라 응답 전엔 비어 있다 — 그때는 «님,» 만 남지 않게 이름 줄을 뺀다.
     private var greetingText: String {
+        let namePrefix = store.userName.isEmpty ? "" : "\(store.userName)님,\n"
         switch store.variant {
-        case .first: "재원님,\n지금부터 면접을\n시작해 볼까요?"
-        case .hasPortfolio: "이전과\n동일한 정보로\n시작할까요?"
-        case .exhausted: "재원님,\n무료 횟수를 모두\n사용했어요"
+        case .first: return namePrefix + "지금부터 면접을\n시작해 볼까요?"
+        case .hasPortfolio: return "이전과\n동일한 정보로\n시작할까요?"
+        case .exhausted: return namePrefix + "무료 횟수를 모두\n사용했어요"
         }
     }
 
@@ -127,16 +128,19 @@ public struct StartInterviewView: View {
                     .foregroundStyle(Color.GrayScale.g700)
                     .lineLimit(1)
                     .truncationMode(.tail)
+                // 날짜·용량은 서버가 안 줄 수 있다 — 없는 조각과 그 구분선만 빼고 나머지는 그대로 그린다.
                 HStack(spacing: .ds(.p4)) {
-                    Text(Self.uploadedAtText(portfolio.uploadedAt))
-                        .dsTypography(.body10)
-                        .foregroundStyle(Color.GrayScale.g400)
-                    Rectangle()
-                        .fill(Color.GrayScale.g200)
-                        .frame(width: .ds(.medium), height: .ds(.p10))
-                    Text(Self.sizeText(portfolio.byteCount))
-                        .dsTypography(.body10)
-                        .foregroundStyle(Color.GrayScale.g400)
+                    if let uploadedAt = portfolio.uploadedAt {
+                        metaText(Self.uploadedAtText(uploadedAt))
+                    }
+                    if portfolio.uploadedAt != nil, portfolio.byteCount != nil {
+                        Rectangle()
+                            .fill(Color.GrayScale.g200)
+                            .frame(width: .ds(.medium), height: .ds(.p10))
+                    }
+                    if let byteCount = portfolio.byteCount {
+                        metaText(Self.sizeText(byteCount))
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -149,6 +153,13 @@ public struct StartInterviewView: View {
             Rectangle()
                 .strokeBorder(Color.GrayScale.g100, lineWidth: 1.5)
         }
+    }
+
+    /// 파일 한 줄 아래 메타 조각(날짜·용량) — 두 조각이 같은 타이포·색이라 한 자리에 모은다.
+    private func metaText(_ text: String) -> some View {
+        Text(text)
+            .dsTypography(.body10)
+            .foregroundStyle(Color.GrayScale.g400)
     }
 
     /// 업로드일 표기 «2026.07.31» — 시안 표기(`{20xx.xx.xx}`)를 그대로 옮긴 고정 포맷이라 로케일에 흔들리지 않게 둔다.
@@ -202,12 +213,20 @@ public struct StartInterviewView: View {
 // MARK: - Previews
 
 /// 씬의 한 겹이라 단독으로는 배경이 없다 — 프리뷰에서만 홈이 깔아 주는 배경을 흉내 낸다.
+/// State 기본값은 중립(이름 없음·0회·포폴 없음)이라 **시안 값은 여기서 명시로 넘긴다**.
 private func previewLayer(_ variant: StartInterviewFeature.Variant) -> some View {
     ZStack {
         HomeGreenBackdrop()
             .ignoresSafeArea()
         StartInterviewView(
-            store: Store(initialState: StartInterviewFeature.State(variant: variant)) {
+            store: Store(
+                initialState: StartInterviewFeature.State(
+                    variant: variant,
+                    userName: "재원",
+                    remainingChances: variant == .exhausted ? 0 : 3,
+                    portfolio: variant == .hasPortfolio ? .placeholder : nil
+                )
+            ) {
                 StartInterviewFeature()
             }
         )
