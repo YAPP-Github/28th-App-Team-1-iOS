@@ -15,7 +15,10 @@ import DomainAuthInterface
 public struct AuthCreateAccountFeature {
     @ObservableState
     public struct State: Equatable {
-        public var isLoading = false
+        /// 인증 진행 중 — **표시용이 아니라 재탭 차단용**이다. 로딩 표시는 AppView 의 전역
+        /// LoadingModal(NetworkActivity) 몫이지만, 그건 HTTP in-flight 만 센다. 소셜 SDK 구간
+        /// (`authClient.signIn`)은 네트워크 계측 밖이라 이 플래그가 없으면 시트가 뜨기 전 두 번 눌린다.
+        public var isAuthenticating = false
         @Presents public var alert: AlertState<Action.Alert>?
 
         public init() {}
@@ -60,8 +63,8 @@ public struct AuthCreateAccountFeature {
         Reduce { state, action in
             switch action {
             case let .view(.userTappedSignIn(provider)):
-                guard !state.isLoading else { return .none }
-                state.isLoading = true
+                guard !state.isAuthenticating else { return .none }
+                state.isAuthenticating = true
                 return .run { send in
                     do {
                         let credential = try await authClient.signIn(provider)
@@ -75,15 +78,15 @@ public struct AuthCreateAccountFeature {
                 }
 
             case let .inner(.signInFinished(.success(result))):
-                state.isLoading = false
+                state.isAuthenticating = false
                 return .send(.delegate(.authenticated(result)))
 
             case .inner(.signInFinished(.failure(.cancelled))):
-                state.isLoading = false
+                state.isAuthenticating = false
                 return .none
 
             case let .inner(.signInFinished(.failure(error))):
-                state.isLoading = false
+                state.isAuthenticating = false
                 // TODO: PRD Part7 A0 — alert 가 아니라 토스트("로그인에 실패했어요. 다시 시도해주세요")로 교체.
                 // 미승격 서버 에러는 임시 노출 규칙(2026-08-02) — title «CODE(status)», message 원문.
                 if let serverAlert = error.serverAlert {

@@ -63,17 +63,11 @@ public struct AuthOnboardingJobView: View {
 
     // MARK: - 직무 칩
 
+    /// 로딩 자리 표시는 없다 — 목록을 받는 동안은 AppView 의 전역 LoadingModal 이 화면을 덮는다.
     private var jobChips: some View {
-        Group {
-            if store.jobs.isEmpty, store.isLoading {
-                ProgressView()
-                    .frame(maxWidth: .infinity)
-            } else {
-                ChipFlowLayout(spacing: .ds(.p8)) {
-                    ForEach(store.jobs) { job in
-                        jobChip(job)
-                    }
-                }
+        ChipFlowLayout(spacing: .ds(.p8)) {
+            ForEach(store.jobs) { job in
+                jobChip(job)
             }
         }
         .padding(.horizontal, .ds(.p20))
