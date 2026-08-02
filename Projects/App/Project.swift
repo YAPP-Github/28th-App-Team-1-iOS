@@ -8,6 +8,7 @@ let project = Project.makeModule(
     targets: [
         .app(factory: .init(dependencies: [
             .core, .domain, .feature, .shared,
+            .domain(interface: .appVersion),   // Splash 버전 게이트 — 강제·권장 업데이트 판정
             .domain(interface: .auth),
             .domain(interface: .consent),   // Splash 세션 복구 판정 — 게이트 2단(pending)
             .composableArchitecture
