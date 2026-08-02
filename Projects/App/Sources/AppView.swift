@@ -7,7 +7,9 @@
 
 import SwiftUI
 import ComposableArchitecture
+import CoreNetworkInterface
 import Feature
+import SharedDesignSystemInterface
 
 struct AppView: View {
     @Bindable var store: StoreOf<AppFeature>
@@ -49,5 +51,9 @@ struct AppView: View {
         // 강제·권장 업데이트 안내 — 루트가 무엇이든 위에 얹힌다(강제는 root 가 .updateRequired).
         .alert($store.scope(state: \.updateAlert, action: \.updateAlert))
         .onAppear { store.send(.onAppear) }
+        // 전역 시스템 로딩 — 모든 API in-flight(NetworkActivity) 동안 화면을 잠근다
+        .hilitModal(isPresented: NetworkActivity.shared.isLoading) {
+            LoadingModal()
+        }
     }
 }
