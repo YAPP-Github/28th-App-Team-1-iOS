@@ -76,7 +76,8 @@ public struct AuthOnboardingExperienceFeature {
         /// 코디네이터(AuthFeature) 통보. 부모는 이것만 매칭한다 (D1).
         @CasePathable
         public enum Delegate: Equatable, Sendable {
-            /// 연차 선택 완료 — 정수 연차(년)를 올린다. 서버 프로필 제출은 코디네이터 몫(시점 미결).
+            /// 연차 선택 완료 — 정수 연차(년)를 올린다. 이걸 받은 코디네이터가 이름·직군과 묶어
+            /// 프로필을 PATCH 하고, 성공해야 등록 완료로 넘어간다(실패 알럿도 코디네이터 몫).
             case continueRequested(careerYears: Int)
             /// 뒤로(하단 «이전으로») — 코디네이터가 스택을 pop.
             case backRequested

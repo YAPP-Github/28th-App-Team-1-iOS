@@ -8,6 +8,7 @@
 import ComposableArchitecture
 import DomainAuthInterface
 import DomainConsentInterface
+import DomainUserInterface
 
 // @lat: [[auth#가입 플로우]]
 // depends-on: [[app]] — 진입 판정(Splash 세션 복구)은 AppFeature 가 하고, 이 코디네이터는
@@ -15,6 +16,9 @@ import DomainConsentInterface
 /// 가입·로그인 플로우 코디네이터. AuthCreateAccount(소셜 로그인)를 루트로 두고,
 /// 가입 경로(약관 동의 → 이름 → 직군 → 연차 → 등록 완료)를 `path`(StackState)로 push 한다.
 /// 각 화면의 delegate 만 매칭해 수집 데이터를 누적하고 다음 화면으로 전환한다 — 조립은 여기서만(D5).
+/// 프로필 제출(`UserClient.updateProfile`)도 여기 몫이다 — 이름·직군·연차가 세 화면에 흩어져 있어
+/// 셋을 다 쥔 코디네이터만 일괄 PATCH 를 만들 수 있다. 연차 화면의 CTA 가 그 시점이고,
+/// **성공해야** 등록 완료(register)를 push 한다 — 이 호출이 `profileRegistered` 를 true 로 바꾼다.
 /// 플로우가 끝나면(가입 완료 or 기존 회원 로그인) `delegate(.signedIn)` 을 AppFeature 에 올린다.
 ///
 /// **게이트 2단 체인** — 목적지는 두 값만으로 결정된다(docs/work/launch-routing.md):
@@ -48,10 +52,12 @@ public struct AuthFeature {
         /// 프로필 게이트 판정값 — 약관을 통과한 뒤 온보딩/홈을 가른다. 판정 전에는 nil.
         /// 약관 화면을 거치는 동안 들고 있어야 해서 State 에 남는다(제출 응답엔 이 값이 없다).
         public var profileRegistered: Bool?
-        /// 가입 온보딩 수집값 — 서버 제출 시점(화면별 즉시 vs 등록 완료 일괄)이 미결이라 코디네이터가 들고만 있다.
+        /// 가입 온보딩 수집값 — 연차 화면 CTA 에서 셋을 묶어 한 번에 PATCH 한다.
         public var name = ""
         public var jobRole: String?
         public var careerYears: Int?
+        /// 프로필 제출 실패 안내 — 성공 경로엔 알럿이 없다(바로 등록 완료로 넘어간다).
+        @Presents public var alert: AlertState<Action.Alert>?
 
         public init() {}
 
@@ -83,7 +89,18 @@ public struct AuthFeature {
     public enum Action {
         case createAccount(AuthCreateAccountFeature.Action)
         case path(StackActionOf<Path>)
+        case inner(Inner)
         case delegate(Delegate)
+        case alert(PresentationAction<Alert>)
+
+        /// effect 결과. 리듀서만 방출한다.
+        @CasePathable
+        public enum Inner: Sendable {
+            /// PATCH /users/me/profile 결과 — 성공만 등록 완료 화면으로 잇는다.
+            case profileSubmitted(Result<Void, UserError>)
+        }
+
+        public enum Alert: Equatable {}
 
         /// 부모(AppFeature) 통보. 부모는 이것만 매칭한다 (D1).
         @CasePathable
@@ -92,6 +109,8 @@ public struct AuthFeature {
             case signedIn
         }
     }
+
+    @Dependency(\.userClient) var userClient
 
     public init() {}
 
@@ -150,15 +169,12 @@ public struct AuthFeature {
                     return .none
                 }
 
-            // 가입 온보딩 3 연차 → 등록 완료 push.
+            // 가입 온보딩 3 연차 → 프로필 일괄 PATCH. 등록 완료 push 는 성공 응답을 받고서(inner).
             case let .path(.element(id: _, action: .experience(.delegate(action)))):
                 switch action {
                 case let .continueRequested(careerYears):
                     state.careerYears = careerYears
-                    state.path.append(.register(AuthOnboardingRegisterFeature.State(
-                        userName: state.name
-                    )))
-                    return .none
+                    return submitProfile(&state, careerYears: careerYears)
                 case .backRequested:
                     _ = state.path.popLast()
                     return .none
@@ -168,11 +184,24 @@ public struct AuthFeature {
                 }
 
             // 가입 온보딩 4 등록 완료 — 플로우 종료, AppFeature 에 홈 진입을 알린다.
-            // TODO: 프로필 제출(이름·직군·연차) 일괄 확정 시 여기(또는 register 진입 시)에 effect 배선.
             case .path(.element(id: _, action: .register(.delegate(.completed)))):
                 return .send(.delegate(.signedIn))
 
             case .path:
+                return .none
+
+            // 프로필 등록 성공 — 이제 서버의 profileRegistered 가 true 다. 등록 완료로 잇는다.
+            case .inner(.profileSubmitted(.success)):
+                state.profileRegistered = true
+                state.path.append(.register(AuthOnboardingRegisterFeature.State(
+                    userName: state.name
+                )))
+                return .none
+
+            case let .inner(.profileSubmitted(.failure(error))):
+                return handleProfileFailure(&state, error: error)
+
+            case .alert:
                 return .none
 
             case .delegate:
@@ -180,6 +209,55 @@ public struct AuthFeature {
             }
         }
         .forEach(\.path, action: \.path)
+        .ifLet(\.$alert, action: \.alert)
+    }
+
+    // MARK: - 프로필 제출
+
+    /// 이름·직군·연차 일괄 PATCH — 셋 다 매 호출 필수라 하나라도 없으면 보내지 않는다.
+    /// 진행 표시는 전역 로딩(NetworkActivity)이 덮으므로 화면별 스피너·중복 탭 플래그를 두지 않는다.
+    private func submitProfile(_ state: inout State, careerYears: Int) -> Effect<Action> {
+        guard let jobRole = state.jobRole, !state.name.isEmpty else {
+            // 수집 단계를 건너뛴 경우(도달하면 플로우 조립 버그) — 온보딩을 처음부터 다시 태운다.
+            state.alert = Self.alert("가입 정보가 비어 있어요. 처음부터 다시 진행해주세요.")
+            state.path.removeAll()
+            return .none
+        }
+        let update = UserProfileUpdate(name: state.name, jobRole: jobRole, careerYears: careerYears)
+        return .run { send in
+            do {
+                try await userClient.updateProfile(update)
+                await send(.inner(.profileSubmitted(.success(()))))
+            } catch {
+                await send(.inner(.profileSubmitted(.failure(error as? UserError ?? .unexpected))))
+            }
+        }
+    }
+
+    /// 실패는 연차 화면에 머문 채 알럿만 — CTA 재탭이 곧 재시도다(수집값은 State 에 그대로 있다).
+    /// 세션·회원 소실만 예외로 A0 로 되돌린다 — 그 자리에선 재시도해도 계속 실패한다.
+    private func handleProfileFailure(_ state: inout State, error: UserError) -> Effect<Action> {
+        switch error {
+        case .sessionExpired, .userNotFound:
+            state.alert = Self.alert("로그인이 만료되었어요. 다시 로그인해주세요.")
+            state.path.removeAll()
+        case .invalidJobRole:
+            // 직군 선택지가 서버에서 바뀐 경우 — 직군 화면으로 되돌려 다시 고르게 한다.
+            state.alert = Self.alert("직군을 다시 선택해주세요.")
+            _ = state.path.popLast()
+        case let .invalid(message):
+            state.alert = Self.alert(message)
+        case .socialReconnectRequired, .networkFailure, .serverUnavailable, .unexpected:
+            state.alert = Self.alert("가입 정보 저장에 실패했어요. 다시 시도해주세요.")
+        }
+        return .none
+    }
+
+    private static func alert(_ title: String) -> AlertState<Action.Alert> {
+        AlertState(
+            title: { TextState(title) },
+            actions: { ButtonState(role: .cancel) { TextState("확인") } }
+        )
     }
 
     // MARK: - 게이트 2단 체인

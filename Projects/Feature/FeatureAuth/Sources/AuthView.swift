@@ -39,6 +39,8 @@ public struct AuthView: View {
                 AuthOnboardingRegisterView(store: store)
             }
         }
+        // 프로필 제출 실패 안내 — 스택 어느 화면 위에서든 뜬다(실제 발생 지점은 연차 화면 CTA).
+        .alert($store.scope(state: \.alert, action: \.alert))
     }
 }
 
