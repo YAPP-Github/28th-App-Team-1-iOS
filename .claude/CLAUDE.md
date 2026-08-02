@@ -11,7 +11,7 @@ Projects/
 ├── App/       composition root — AppFeature(탭 코디네이터) · Config/{Dev,QA,Prod}.xcconfig · DocC
 ├── Core/      Common · Network
 ├── Domain/    Common · Auth · Interview · InterviewReport · JD · Job · Portfolio · User · FeedbackShare · GuestFeedback · Permission · Recording · Speech    (모델 + Client)
-├── Feature/   Common · Home · Auth · Onboarding · Interview       (화면 — Interface 없음)
+├── Feature/   Common · Home · Auth · Onboarding · Interview · GuestFeedback · MyPage   (화면 — Interface 없음)
 └── Shared/    Common · DesignSystem (토큰 + 공용 컴포넌트)
 ```
 
