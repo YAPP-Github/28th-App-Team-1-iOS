@@ -16,7 +16,9 @@ OnboardingFeature 가 위저드 루트. STEP 1(JD 업로드)을 NavigationStack 
 
 STEP 1 (선택 — 스킵 가능, 위저드 루트). 탭 «링크 붙여넣기 / 직접 입력하기»는 화면 전환이 아니라 State 의 InputMode. 링크 검증은 **1초 디바운스 → 클라이언트 형식 검사 → 통과분만 서버(JDClient.validate)** 2단. 결과는 delegate(.continueRequested(JDSubmission?)) — .link/.text/nil(스킵).
 
-형식 검사는 http/https 스킴+호스트(`isValidLinkFormat`) — 불일치는 서버 왕복 없이 즉시 에러 문구. 로딩/에러/성공은 LinkValidation 하위 상태로 표현한다. 키패드 밖 터치 시 내림(`dismissesKeyboardOnTap` — SharedDS 공통).
+형식 검사는 http/https 스킴+호스트(`isValidLinkFormat`) — 불일치는 서버 왕복 없이 즉시 에러 문구. 에러/성공은 LinkValidation 하위 상태를 필드 변형(`HilitTextField.Status`)으로 그린다. 키패드 밖 터치 시 내림(`dismissesKeyboardOnTap` — SharedDS 공통).
+
+**`.loading` 은 화면에 안 그린다** — 전역 LoadingModal 이 `JDClient.validate` 를 덮으므로 인라인 스피너를 두면 이중 로딩이다([[auth]] 가입 플로우와 같은 방침). 상태 자체는 남아 검증 중 계속하기를 막는 게이트로 쓰인다. 필드 잠금(`.loading` 변형의 `disabled`)도 함께 사라졌는데 안전하다 — 검증 중 타이핑은 `.idle` 로 되돌리며 in-flight 를 취소한다. 200ms 켜기 지연 안에 끝난 검증은 모달조차 안 뜬다(의도 — 그 구간은 «즉시»로 읽힌다).
 
 - 성공 후엔 직접입력 탭 비활성, 검증 중 계속하기 무시. 스킵 시 입력이 있어도 검증·저장 없이 통과(jd=nil).
 - 직접입력 **200~3,000자** 검증 ✅ — 유효 길이만 계속하기 활성(무효 시 카운터·에러 표시, 초과는 클램프 안 함). 빈 입력은 스킵.
@@ -34,7 +36,9 @@ STEP 1 (선택 — 스킵 가능, 위저드 루트). 탭 «링크 붙여넣기 /
 
 STEP 2 (필수). PDF 1개(최대 20Mb)를 fileImporter 로 받아 PortfolioClient.register → PROCESSING 이면 3초 간격 status 폴링 → READY/FAILED. idle/uploading/failed/uploaded 를 UploadState 하위 상태로 표현, uploaded 일 때만 계속하기 활성. 파일 제거(X)는 폴링 취소 + 서버 delete.
 
-- 진행률 이벤트가 없어 스트립은 가짜 진행 · 폴링 상한 없음 (TODO).
+접수~폴링 구간은 **전역 로딩(LoadingModal)에서 뺀다** — 이 화면이 그동안 진행 카드(`FileUpload.progressing`)를 그리고 그 카드에 취소 X 가 달려 있어, 모달로 덮으면 카드도 취소 동선도 가려진다. 억제는 `PortfolioClient.register`·`.status` 의 liveValue 에 `GlobalLoadingSuppression.run` 으로 건다 (Feature 는 Core 를 모른다) → [[domain.map#네트워킹 인프라]]
+
+- 진행 바는 `UploadState.phaseProgress` — register 접수 전/후 두 단계를 가리키는 **단계 마커**다(0.3 → 0.7). View 의 12초 가짜 램프는 폐기 ✅ — 실측 진행률이 없어 지어내면 실제와 어긋난다. 전이만 이징하고 폴링 구간은 정지하므로, 그 구간의 대기 신호는 상태 문구가 진다. 실제 진행률은 업로드 progress 이벤트나 서버 퍼센트가 생겨야 가능 (TODO) · 폴링 상한 없음 (TODO).
 - PRD 검증 분담(클라 선검증 = UX 용 빠른 차단, 최종 판정은 서버 실측): PDF 타입·20MB·**페이지 ≤30**(PDFKit pageCount)·**암호 PDF**(PDFDocument.isEncrypted) 선검증 ✅ — PortfolioFileReader 가 data+pageCount+isEncrypted 반환, register 전 차단. 페이지 수는 PortfolioUpload.pageCount 로 서버에 전달. 글자 수 ≥30 은 서버 전용(Tika) → FAILED_FILE 문구만.
 - **1개 제한 + 409 자동 복구 — 미구현 🔴** (2026-08-02 코드 대조로 정정. 이전 판이 ✅ 로 적어 뒀으나 리듀서엔 없다): register 가 `PORTFOLIO_ALREADY_EXISTS`(409)를 주면 지금은 그냥 failed 로 떨어진다. 설계 의도는 `PortfolioClient.list().first`(계정당 1개라 first 가 곧 그 포폴)로 서버의 기존 포폴을 회수하는 것 — READY 면 uploaded 확정, PROCESSING 이면 폴링 이어받기, FAILED/부재면 삭제 후 재업로드 유도. draft 를 잃었지만(로그아웃·재설치·TTL 만료) 서버 포폴은 남은 경우를 투명 처리하려는 것이고, 원칙은 draft=재개 힌트·서버=진실([[onboarding#프리로드]] JD 복구와 같은 계) — 그쪽은 실제로 구현돼 있다. **폴링 상한**도 미구현.
 
@@ -49,6 +53,8 @@ STEP 3 (선택 — 마지막 수집 스텝, 프로그레스 3/3). 300자 자유 
 ## 프리로드
 
 종결 화면 (프로그레스·뒤로가기 없음, 다크 풀스크린). 코디네이터가 누적 OnboardingData 를 init 으로 주입 — 서버 제출 지점(세션 생성+폴링). 체크리스트 3행은 순차 진행 — 1·2행은 가짜 타이머(1.2s), 3행만 가짜 완료 AND 세션 READY 로 체크. 잠깐 노출 후 완료 화면 → delegate(.completed). X 는 진행 중에도 이탈 가능, pop 시 effect 자동 취소.
+
+이 화면이 곧 대기 표시라 **전역 로딩을 얹지 않는다** — `InterviewClient.createSession`·`.sessionStatus` liveValue 에 `GlobalLoadingSuppression.run` 을 건다. AppView 가 Splash 계열 루트를 제외하는 것과 같은 이유(브랜드 대기 화면을 로딩 판이 가린다) → [[domain.map#네트워킹 인프라]] · [[app#Splash 세션 복구]]
 
 세션 생성 연결 = PRD S3.5+S4. → [[interview#Client 계약]]
 - ① OnboardingData.interviewConfig() → InterviewClient.createSession + sessionStatus 폴링(3초) ✅. `.domain(interface: .interview)` 의존. PROCESSING→폴링, READY→completed(sessionId), 실패→failed 화면(재시도 없음), config 불완전→failed. onAppear 가드로 중복 시작 방지. CancelID.session 으로 pop 시 취소. createSession effect 는 `startSession(config:)` 로 추출해 최초 시도와 JD 재검증 후 재시도가 공유. **config 불완전은 이제 주입 실패도 포함한다** — 직군·연차가 nil 인 채 위저드가 열리면 여기서 failed 로 떨어진다.

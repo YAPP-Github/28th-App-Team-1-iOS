@@ -15,8 +15,9 @@ import SwiftUI
 //        https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=443-9424
 //
 // 두 노드는 같은 화면의 탭 하위 상태다 — 화면 push 없이 State(`mode`)로만 갈라진다.
-// 링크 검증의 로딩·에러·성공은 두 노드에 다시 그려져 있지 않다(둘 다 기본 상태만) —
+// 링크 검증의 에러·성공은 두 노드에 다시 그려져 있지 않다(둘 다 기본 상태만) —
 // DS «text-field» 컴포넌트(`HilitTextField.Status`)의 변형을 그대로 쓴다.
+// 검증 «분석 중» 만 예외로 화면에 안 그린다 — 전역 LoadingModal 이 덮는다(`linkFieldStatus`).
 @ViewAction(for: OnboardingJobDescriptionUploadFeature.self)
 public struct OnboardingJobDescriptionUploadView: View {
     private typealias InputMode = OnboardingJobDescriptionUploadFeature.InputMode
@@ -107,10 +108,10 @@ public struct OnboardingJobDescriptionUploadView: View {
         )
     }
 
-    // MARK: - 링크 필드 (idle · loading · error · success)
+    // MARK: - 링크 필드 (idle · error · success)
 
     /// Figma «text-field» 인스턴스(443:9398). 시안엔 기본 상태만 있고
-    /// 로딩·에러·성공은 컴포넌트 변형이라 `Status` 로 넘긴다(서브 줄도 컴포넌트가 그린다).
+    /// 에러·성공은 컴포넌트 변형이라 `Status` 로 넘긴다(서브 줄도 컴포넌트가 그린다).
     /// 키보드 속성은 환경으로 내부 `TextField` 까지 전파된다.
     private var linkField: some View {
         HilitTextField(
@@ -126,20 +127,22 @@ public struct OnboardingJobDescriptionUploadView: View {
         .onSubmit { send(.userSubmittedLink) }
     }
 
+    /// 검증 중(`.loading`)에도 필드는 평상시(`idle`) 그대로다 — 인라인 로딩 변형은 안 쓴다.
+    /// 대기 표시는 AppView 의 전역 LoadingModal 몫이라(NetworkActivity 가 `validate` in-flight 를 센다)
+    /// 여기에 스피너를 되살리면 모달 위에 겹쳐 «이중 로딩» 이 된다.
     private var linkFieldStatus: HilitTextField.Status {
         switch store.linkValidation {
-        case .idle: .idle
-        case .loading: .loading(Copy.analyzingLabel)
+        case .idle, .loading: .idle
         case .failure: .error
         case .success: .success
         }
     }
 
-    /// 필드 아래 서브 줄 — 스타일(회색·빨강·초록)은 `status` 가 정한다. 로딩 중엔 시안대로 없음.
+    /// 필드 아래 서브 줄 — 스타일(회색·빨강·초록)은 `status` 가 정한다.
+    /// 검증 중에도 안내 문구를 그대로 둔다 — 필드가 idle 로 보이는데 줄만 빠지면 레이아웃이 덜컥거린다.
     private var linkSubText: String? {
         switch store.linkValidation {
-        case .idle: Copy.idleHelper
-        case .loading: nil
+        case .idle, .loading: Copy.idleHelper
         case let .failure(message): message
         case .success: Copy.successHelper
         }
@@ -207,8 +210,6 @@ private enum Copy {
     static let linkPlaceholder = "https://www.hilit.com/"
     /// Figma 리터럴 그대로 (435:1600).
     static let directTextPlaceholder = "텍스트를 입력해주세요"
-    /// «text-field» loading 변형의 오른쪽 라벨 — 도메인 문구라 화면이 넘긴다.
-    static let analyzingLabel = "분석 중"
     /// Figma 는 필러 문구(«서브 텍스트를 입력해주세요») — 임시 초안.
     static let idleHelper = "채용 사이트의 공고 링크를 붙여넣으면 자동으로 분석해요." // TODO: 확정 카피 반영
     /// Figma 는 필러 문구 — 임시 초안.
@@ -243,12 +244,8 @@ private func previewScreen(_ state: OnboardingJobDescriptionUploadFeature.State)
     return previewScreen(state)
 }
 
-#Preview("링크 분석 중") {
-    var state = OnboardingJobDescriptionUploadFeature.State()
-    state.linkText = "https://recruit.hilit.dev/jobs/123"
-    state.linkValidation = .loading
-    return previewScreen(state)
-}
+// «링크 분석 중» 프리뷰는 없다 — `.loading` 은 이제 idle 과 똑같이 그려져 볼 게 없다
+// (대기 표시는 AppView 의 전역 LoadingModal 이고, 그건 이 화면 프리뷰에 안 실린다).
 
 #Preview("링크 에러") {
     var state = OnboardingJobDescriptionUploadFeature.State()
