@@ -1,0 +1,17 @@
+//
+//  FeatureMyPageTesting.swift
+//  FeatureMyPageTesting
+//
+//  Created by 서정원 on 26/08/01.
+//
+
+import ComposableArchitecture
+import FeatureMyPageImplementation
+
+// FeatureMyPage 테스트 공용 지원 — 샘플 State·목 데이터를 두고 Tests 타겟이 가져다 쓴다.
+// (D3: Feature 는 Interface 가 없으므로 Implementation 의 public 타입을 직접 참조한다.)
+//
+// 예시 — 샘플 State:
+//   public extension MyPageFeature.State {
+//       static var preview: Self { .init() }
+//   }

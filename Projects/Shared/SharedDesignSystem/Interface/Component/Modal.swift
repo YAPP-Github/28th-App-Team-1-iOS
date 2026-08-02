@@ -41,25 +41,30 @@ public struct Modal<Buttons: View>: View {
     private let subText: String?
     private let icon: Image?
     private let info: String?
+    private let infoStyle: InfoField.Style
     private let buttons: Buttons
 
     /// - Parameters:
     ///   - text: 제목. 폭이 모자라면 여러 줄 중앙 정렬로 흐른다.
     ///   - subText: 보조 설명. nil 이면 숨김 (Figma `showSubText=false`).
     ///   - icon: 상단 일러스트(`Image.Img.*`). nil 이면 숨김 (Figma `showIcon=false`).
-    ///   - info: 안내줄 문구 — `InfoField(.gray)` 로 그린다. nil 이면 숨김 (Figma `showInfoField=false`).
+    ///   - info: 안내줄 문구 — `InfoField` 로 그린다. nil 이면 숨김 (Figma `showInfoField=false`).
+    ///   - infoStyle: 안내줄 판 색 (Figma 인스턴스의 `color` 축) — 기본 `.gray`,
+    ///     경고 모달은 `.error`(빨간 판). `info` 가 nil 이면 무시된다.
     ///   - buttons: 하단 버튼 — `ButtonLarge(.modal, …)`.
     public init(
         _ text: String,
         subText: String? = nil,
         icon: Image? = nil,
         info: String? = nil,
+        infoStyle: InfoField.Style = .gray,
         @ViewBuilder buttons: () -> Buttons
     ) {
         self.text = text
         self.subText = subText
         self.icon = icon
         self.info = info
+        self.infoStyle = infoStyle
         self.buttons = buttons()
     }
 
@@ -77,7 +82,7 @@ public struct Modal<Buttons: View>: View {
             }
             textBlock
             if let info {
-                InfoField(info)
+                InfoField(info, style: infoStyle)
             }
         }
         .padding(.horizontal, .ds(.p24))
@@ -140,6 +145,22 @@ private let previewCardWidth: CGFloat = 327
         info: "텍스트를 입력해주세요"
     ) {
         ButtonLarge("버튼1", .modal) {}
+    }
+    .frame(width: previewCardWidth)
+}
+
+#Preview("빨간 안내줄 — 435:8895") {
+    Modal(
+        "포트폴리오를\n새로 업로드할 수 없어요.",
+        subText: "한 달에 한 번만 포트폴리오를 업로드할 수 있어요.",
+        info: "이번달 남은 기회 0번",
+        infoStyle: .error
+    ) {
+        ButtonLarge(.modal, tone: .twoColor) {
+            Button("버튼1") {}
+        } trailing: {
+            Button("버튼2") {}
+        }
     }
     .frame(width: previewCardWidth)
 }
