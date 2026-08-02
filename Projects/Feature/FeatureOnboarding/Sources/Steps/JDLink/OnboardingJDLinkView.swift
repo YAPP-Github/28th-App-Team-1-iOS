@@ -21,15 +21,15 @@ public struct OnboardingJDLinkView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            progressBar
+            DashIndicator(count: store.totalSteps, current: store.step)
             ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
                     header
                     inputSection
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, .ds(.p20))
-                .padding(.top, .ds(.p16))
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
             }
             if store.showsSkipTooltip {
                 skipTooltip
@@ -47,31 +47,19 @@ public struct OnboardingJDLinkView: View {
 
     // MARK: - 공통 골격 (STEP 1 과 동일 — 프로그레스 바)
 
-    private var progressBar: some View {
-        HStack(spacing: 2) {
-            ForEach(1...store.totalSteps, id: \.self) { step in
-                Rectangle()
-                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.GrayScale.g50)
-                    .frame(height: 4)
-            }
-        }
-        .padding(.horizontal, .ds(.p20))
-        .padding(.vertical, .ds(.p4))
-    }
-
     // MARK: - 헤더
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: .ds(.p10)) {
+        VStack(alignment: .leading, spacing: 10) {
             // 선택 스텝 뱃지 — STEP 1 «필수»(black/green)와 달리 회색 톤.
             Text("선택")
                 .dsTypography(.body7)
                 .foregroundStyle(Color.GrayScale.g800) // Figma 값 #31333B(grayscale/gray-800) — 토큰 충돌로 근사 (보고 참조)
-                .padding(.horizontal, .ds(.p12))
-                .padding(.vertical, .ds(.p4))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
                 .background(Color.GrayScale.g50, in: RoundedRectangle(cornerRadius: 2))
 
-            VStack(alignment: .leading, spacing: .ds(.p8)) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text("채용공고 링크를\n업로드해 주세요.")
                     .dsTypography(.head3)
                     .foregroundStyle(Color.GrayScale.g800)
@@ -85,7 +73,7 @@ public struct OnboardingJDLinkView: View {
     // MARK: - 입력 영역 (탭 + 필드)
 
     private var inputSection: some View {
-        VStack(alignment: .leading, spacing: .ds(.p20)) {
+        VStack(alignment: .leading, spacing: 20) {
             modeTabs
             switch store.mode {
             case .link:
@@ -113,7 +101,7 @@ public struct OnboardingJDLinkView: View {
                 .font(.ds(.body1))
                 .foregroundStyle(isDisabled ? Color.GrayScale.g200 : Color.HilitBlack.b800)
                 .frame(maxWidth: .infinity)
-                .padding(.ds(.p10))
+                .padding(10)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -130,7 +118,7 @@ public struct OnboardingJDLinkView: View {
     // MARK: - 링크 필드 (idle · loading · failure · success)
 
     private var linkField: some View {
-        VStack(alignment: .leading, spacing: .ds(.p8)) {
+        VStack(alignment: .leading, spacing: 8) {
             linkFieldBox
             linkHelperRow
         }
@@ -138,7 +126,7 @@ public struct OnboardingJDLinkView: View {
 
     private var linkFieldBox: some View {
         VStack(spacing: 0) {
-            HStack(spacing: .ds(.p4)) {
+            HStack(spacing: 4) {
                 TextField(
                     "",
                     text: $store.linkText,
@@ -164,8 +152,8 @@ public struct OnboardingJDLinkView: View {
                     }
                 }
             }
-            .padding(.horizontal, .ds(.p16))
-            .padding(.vertical, .ds(.p14))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
             .background(store.linkValidation == .loading ? Color.GrayScale.g50 : Color.BlackWhite.white)
 
             linkFieldBottomStrip
@@ -192,9 +180,9 @@ public struct OnboardingJDLinkView: View {
     @ViewBuilder
     private var linkFieldBorder: some View {
         if store.linkValidation == .idle {
-            Rectangle().strokeBorder(Color.GrayScale.g100, lineWidth: .ds(.medium))
+            Rectangle().strokeBorder(Color.GrayScale.g100, lineWidth: 1.2)
         } else {
-            OpenBottomBorder().stroke(Color.GrayScale.g100, lineWidth: .ds(.medium))
+            OpenBottomBorder().stroke(Color.GrayScale.g100, lineWidth: 1.2)
         }
     }
 
@@ -228,7 +216,7 @@ public struct OnboardingJDLinkView: View {
     // MARK: - 직접 입력 필드 (멀티라인)
 
     private var directTextField: some View {
-        VStack(alignment: .leading, spacing: .ds(.p8)) {
+        VStack(alignment: .leading, spacing: 8) {
             directTextEditorBox
             directTextFooter
         }
@@ -248,8 +236,8 @@ public struct OnboardingJDLinkView: View {
                 Text(Copy.fieldPlaceholder)
                     .font(.ds(.body3))
                     .foregroundStyle(Color.GrayScale.g600)
-                    .padding(.horizontal, .ds(.p16))
-                    .padding(.vertical, .ds(.p14))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
                     .allowsHitTesting(false)
             }
         }
@@ -257,15 +245,15 @@ public struct OnboardingJDLinkView: View {
         .overlay(alignment: .topTrailing) {
             if !store.directText.isEmpty {
                 clearButton(size: 24) { send(.userTappedClearDirectText) }
-                    .padding(.top, .ds(.p14))
-                    .padding(.trailing, .ds(.p16))
+                    .padding(.top, 14)
+                    .padding(.trailing, 16)
             }
         }
         .overlay {
             // 무효(짧음/초과) 입력이면 링크 에러와 같은 red 보더로 강조한다.
             Rectangle().strokeBorder(
                 store.directTextValidationMessage == nil ? Color.GrayScale.g100 : Color.Error.e500,
-                lineWidth: .ds(.medium)
+                lineWidth: 1.2
             )
         }
     }
@@ -308,7 +296,7 @@ public struct OnboardingJDLinkView: View {
             Text("링크 입력을 원하지 않으면 넘어가도 괜찮아요.")
                 .dsTypography(.body4)
                 .foregroundStyle(Color.BlackWhite.white)
-                .padding(.horizontal, .ds(.p16))
+                .padding(.horizontal, 16)
                 .padding(.vertical, 11)
                 .background(Color.HilitBlack.b800)
             Image.Img.tooltipTail
@@ -316,12 +304,12 @@ public struct OnboardingJDLinkView: View {
                 .scaledToFit()
                 .frame(width: 97)
         }
-        .padding(.bottom, .ds(.p22))
+        .padding(.bottom, 22)
     }
 
     // MARK: - 하단 CTA (이전으로 | 계속하기)
 
-    /// 분할 CTA 바 — 뒤로가기가 내비바가 아니라 여기에 있다 (Figma 1609:9659).
+    /// 분할 CTA 바 — 뒤로가기가 네비바가 아니라 여기에 있다 (Figma 1609:9659).
     /// 한쪽만 비활성은 그 자식의 `.disabled` 로 표현한다 (DS 2버튼 규약).
     private var bottomBar: some View {
         ButtonLarge(.bottom, tone: .dark) {

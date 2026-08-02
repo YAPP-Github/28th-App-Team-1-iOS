@@ -46,11 +46,9 @@ public struct AuthOnboardingNamingView: View {
     }
 
     /// 가입 온보딩 진행 위치 — 조각 수는 `totalSteps`, 켜지는 범위는 `step` 에서 파생.
-    /// 시안 progress bar 3877:11573 = 폭 등분 변형이라 `layout: .fill`.
+    /// 시안 progress bar 3877:11573 = 폭 등분 — 여백 px20/py4 는 컴포넌트가 갖는다.
     private var progressBar: some View {
-        DashIndicator(count: store.totalSteps, current: store.step, layout: .fill)
-            .padding(.horizontal, .ds(.p20))
-            .padding(.vertical, .ds(.p4))
+        DashIndicator(count: store.totalSteps, current: store.step)
     }
 
     /// 이름 입력란 — 폭은 내용 hug 라 가운데 정렬은 호출부(`frame(maxWidth:)`) 몫.

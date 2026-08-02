@@ -24,9 +24,9 @@ STEP 2 (필수). 문장형 휠 피커 «내 경력은 [휠] 이다.» — 정수
 
 delegate 는 `continueRequested(careerYears: Int)` — 페이로드(`OnboardingData.careerYears`)·세션 입력(`InterviewConfig.careerYears`)에 정수 그대로 직결한다(잠정 매핑 없음). 레벨(주니어/미들/시니어)은 서버가 0-2/3-7/8+ 파생 — 클라 미관여.
 
-이 스텝부터 하단 CTA 가 «이전으로 | 계속하기» 2분할 바이고, 내비바에는 닫기(X)만 있다 — 뒤로가기는 하단 바 담당 (STEP 2~5 공통 골격). 바는 DS `ButtonLarge(.bottom, tone: .dark)` 가 그린다(배경·구분선·등폭·비활성 룩 전부 DS 소유) — 화면은 라벨과 액션만 넘긴다. 엣지 스와이프백은 기본 허용 — pop 전에 되물을 게 있는 화면만 차단한다(포트폴리오 업로드 중 `!isUploading`, 분석 화면 상시). 스와이프 pop 은 코디네이터에 `popFrom(id:)` 로 도착하며 `backRequested` 와 결과 동일(popLast 뿐)이라 별도 처리 없음 — back 경로에 로직을 넣게 되면 두 입구를 모두 살필 것.
+이 스텝부터 하단 CTA 가 «이전으로 | 계속하기» 2분할 바이고, 네비바에는 닫기(X)만 있다 — 뒤로가기는 하단 바 담당 (STEP 2~5 공통 골격). 바는 DS `ButtonLarge(.bottom, tone: .dark)` 가 그린다(배경·구분선·등폭·비활성 룩 전부 DS 소유) — 화면은 라벨과 액션만 넘긴다. 엣지 스와이프백은 기본 허용 — pop 전에 되물을 게 있는 화면만 차단한다(포트폴리오 업로드 중 `!isUploading`, 분석 화면 상시). 스와이프 pop 은 코디네이터에 `popFrom(id:)` 로 도착하며 `backRequested` 와 결과 동일(popLast 뿐)이라 별도 처리 없음 — back 경로에 로직을 넣게 되면 두 입구를 모두 살필 것.
 
-내비바는 DS `.hilitNavigationBar` = **시스템 내비바**라서 [[onboarding#코디네이터]]의 NavigationStack 에 렌더를 의존한다(2026-07-31 커스텀 바 폐기). 스택을 걷어내면 전 스텝의 바가 컴파일 성공 상태로 조용히 사라지므로, 위저드를 cover 단독 화면으로 재구성할 땐 스택을 유지하거나 `.hilitPresentedNavigationBar` 로 바꿔 단다.
+네비바는 DS `.hilitNavigationBar` = **시스템 네비바**라서 [[onboarding#코디네이터]]의 NavigationStack 에 렌더를 의존한다(2026-07-31 커스텀 바 폐기). 스택을 걷어내면 전 스텝의 바가 컴파일 성공 상태로 조용히 사라지므로, 위저드를 cover 단독 화면으로 재구성할 땐 스택을 유지하거나 `.hilitPresentedNavigationBar` 로 바꿔 단다.
 
 ## JD 링크
 
@@ -84,7 +84,7 @@ PRD §4.4 — S0~S3 입력을 로컬 draft 로 자동 저장해 **앱 진짜 종
 
 ## 스텝 템플릿
 
-OnboardingPlaceholderStepFeature/View — 스텝 골격(내비바·프로그레스 바·CTA) 템플릿. 실제 스텝 6개가 모두 붙으면서 코디네이터 Path 에서는 빠졌고, 새 스텝 추가 시 복사 출발점으로만 남아 있다 (view/inner/delegate 3분류, delegate 로 continue/back/close 만 통보).
+OnboardingPlaceholderStepFeature/View — 스텝 골격(네비바·프로그레스 바·CTA) 템플릿. 실제 스텝 6개가 모두 붙으면서 코디네이터 Path 에서는 빠졌고, 새 스텝 추가 시 복사 출발점으로만 남아 있다 (view/inner/delegate 3분류, delegate 로 continue/back/close 만 통보).
 
 ## 코디네이터 연결
 

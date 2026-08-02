@@ -26,15 +26,15 @@ public struct OnboardingPortfolioUploadView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            progressBar
+            DashIndicator(count: store.totalSteps, current: store.step)
             ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
                     header
                     uploadSection
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, .ds(.p20))
-                .padding(.top, .ds(.p16))
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
             }
             bottomBar
         }
@@ -90,28 +90,16 @@ public struct OnboardingPortfolioUploadView: View {
 
     // MARK: - 공통 골격 (STEP 1 과 동일)
 
-    private var progressBar: some View {
-        HStack(spacing: 2) {
-            ForEach(1...store.totalSteps, id: \.self) { step in
-                Rectangle()
-                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.GrayScale.g50)
-                    .frame(height: 4)
-            }
-        }
-        .padding(.horizontal, .ds(.p20))
-        .padding(.vertical, .ds(.p4))
-    }
-
     private var header: some View {
-        VStack(alignment: .leading, spacing: .ds(.p10)) {
+        VStack(alignment: .leading, spacing: 10) {
             Text("필수")
                 .dsTypography(.body7)
                 .foregroundStyle(Color.HilitGreen.g500)
-                .padding(.horizontal, .ds(.p12))
-                .padding(.vertical, .ds(.p4))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
                 .background(Color.HilitBlack.b800, in: RoundedRectangle(cornerRadius: 2))
 
-            VStack(alignment: .leading, spacing: .ds(.p8)) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text("포트폴리오를\n업로드해 주세요.")
                     .dsTypography(.head3)
                     .foregroundStyle(Color.GrayScale.g800)
@@ -125,7 +113,7 @@ public struct OnboardingPortfolioUploadView: View {
     // MARK: - 업로드 섹션
 
     private var uploadSection: some View {
-        VStack(alignment: .leading, spacing: .ds(.p10)) {
+        VStack(alignment: .leading, spacing: 10) {
             Text("업로드한 포트폴리오")
                 .dsTypography(.body1)
                 .foregroundStyle(Color.HilitBlack.b800)
@@ -152,7 +140,7 @@ public struct OnboardingPortfolioUploadView: View {
                     .scaledToFit()
                     .frame(width: 44, height: 44)
 
-                VStack(spacing: .ds(.p4)) {
+                VStack(spacing: 4) {
                     Text("파일을 업로드해주세요")
                         .dsTypography(.body1)
                         .foregroundStyle(Color.GrayScale.g800)
@@ -165,7 +153,7 @@ public struct OnboardingPortfolioUploadView: View {
             .frame(height: 150)
             .background(Color.GrayScale.g50)
             .overlay {
-                Rectangle().strokeBorder(Color.GrayScale.g100, lineWidth: .ds(.small))
+                Rectangle().strokeBorder(Color.GrayScale.g100, lineWidth: 1)
             }
             .contentShape(Rectangle())
         }
@@ -174,7 +162,7 @@ public struct OnboardingPortfolioUploadView: View {
 
     /// 업로드 실패 배너 (Figma 1716:5517) — failed 하위 상태에서만 노출.
     private func errorBanner(_ message: String) -> some View {
-        HStack(spacing: .ds(.p10)) {
+        HStack(spacing: 10) {
             Image.Issue.error16
                 .resizable()
                 .scaledToFit()
@@ -184,12 +172,12 @@ public struct OnboardingPortfolioUploadView: View {
                 .foregroundStyle(Color.Error.e500)
                 .multilineTextAlignment(.leading)
         }
-        .padding(.horizontal, .ds(.p12))
-        .padding(.vertical, .ds(.p8))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.Error.e200)
         .overlay {
-            Rectangle().strokeBorder(Color.Error.e300, lineWidth: .ds(.small))
+            Rectangle().strokeBorder(Color.Error.e300, lineWidth: 1)
         }
     }
 
@@ -219,7 +207,7 @@ public struct OnboardingPortfolioUploadView: View {
                 // dash 간격은 Figma 수치 미제공 — 스크린샷 근사치.
                 Rectangle().strokeBorder(
                     Color.emptyDashBorder,
-                    style: StrokeStyle(lineWidth: .ds(.small), dash: [4, 4])
+                    style: StrokeStyle(lineWidth: 1, dash: [4, 4])
                 )
             }
     }
@@ -227,14 +215,14 @@ public struct OnboardingPortfolioUploadView: View {
     /// 업로드 중·완료 파일 행 (Figma 1899:5284).
     private func fileRow(fileName: String, statusText: String, showsProgress: Bool) -> some View {
         ZStack(alignment: .bottom) {
-            HStack(spacing: .ds(.p8)) {
+            HStack(spacing: 8) {
                 Text("PDF")
                     .dsTypography(.body7)
                     .foregroundStyle(Color.HilitGreen.g500)
                     .frame(width: 40, height: 40)
                     .background(Color.GrayScale.g800)
 
-                VStack(alignment: .leading, spacing: .ds(.p4)) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(fileName)
                         .dsTypography(.body4)
                         .foregroundStyle(Color.HilitBlack.b800)
@@ -269,7 +257,7 @@ public struct OnboardingPortfolioUploadView: View {
         .frame(height: 72)
         .background(Color.BlackWhite.white)
         .overlay {
-            Rectangle().strokeBorder(Color.GrayScale.g100, lineWidth: .ds(.small))
+            Rectangle().strokeBorder(Color.GrayScale.g100, lineWidth: 1)
         }
     }
 
