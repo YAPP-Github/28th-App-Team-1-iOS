@@ -24,7 +24,6 @@ public struct AuthOnboardingJobFeature {
         public var userName: String
         public var jobs: [Job] = []
         public var selectedJobID: Job.ID?
-        public var isLoading = false
 
         public var isContinueEnabled: Bool { selectedJobID != nil }
 
@@ -67,6 +66,9 @@ public struct AuthOnboardingJobFeature {
 
     @Dependency(\.jobClient) var jobClient
 
+    /// 직군 목록 요청 취소 id — 재진입 시 앞 요청을 접어 중복 발사를 막는다(로딩 플래그 대용).
+    private enum CancelID { case jobs }
+
     public init() {}
 
     public var body: some ReducerOf<Self> {
@@ -84,14 +86,15 @@ public struct AuthOnboardingJobFeature {
 
     private func reduceView(_ state: inout State, _ action: Action.View) -> Effect<Action> {
         switch action {
+        // 로딩 표시는 안 든다 — 전 API in-flight 를 AppView 가 전역 LoadingModal 로 덮는다(NetworkActivity).
         case .onAppear:
-            guard state.jobs.isEmpty, !state.isLoading else { return .none }
-            state.isLoading = true
+            guard state.jobs.isEmpty else { return .none }
             return .run { send in
                 await send(.inner(.jobsLoaded(try await jobClient.jobs())))
             } catch: { _, send in
                 await send(.inner(.jobsLoadFailed))
             }
+            .cancellable(id: CancelID.jobs, cancelInFlight: true)
 
         case .userTappedClose:
             return .send(.delegate(.closeRequested))
@@ -111,13 +114,11 @@ public struct AuthOnboardingJobFeature {
     private func reduceInner(_ state: inout State, _ action: Action.Inner) -> Effect<Action> {
         switch action {
         case let .jobsLoaded(jobs):
-            state.isLoading = false
             state.jobs = jobs
             return .none
 
         case .jobsLoadFailed:
-            // TODO: 실패 UX 디자인 미정 — 우선 로딩만 해제한다.
-            state.isLoading = false
+            // TODO: 실패 UX 디자인 미정 — 빈 목록으로 남는다.
             return .none
         }
     }

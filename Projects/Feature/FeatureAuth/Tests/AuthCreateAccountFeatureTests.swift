@@ -31,10 +31,10 @@ final class AuthCreateAccountFeatureTests: XCTestCase {
         }
 
         await store.send(.view(.userTappedSignIn(.kakao))) {
-            $0.isLoading = true
+            $0.isAuthenticating = true
         }
         await store.receive(\.inner.signInFinished.success, result) {
-            $0.isLoading = false
+            $0.isAuthenticating = false
         }
         await store.receive(\.delegate.authenticated, result)
     }
@@ -51,10 +51,10 @@ final class AuthCreateAccountFeatureTests: XCTestCase {
         }
 
         await store.send(.view(.userTappedSignIn(.kakao))) {
-            $0.isLoading = true
+            $0.isAuthenticating = true
         }
         await store.receive(\.inner.signInFinished.success, result) {
-            $0.isLoading = false
+            $0.isAuthenticating = false
         }
         await store.receive(\.delegate.authenticated, result)
     }
@@ -68,10 +68,10 @@ final class AuthCreateAccountFeatureTests: XCTestCase {
         }
 
         await store.send(.view(.userTappedSignIn(.kakao))) {
-            $0.isLoading = true
+            $0.isAuthenticating = true
         }
         await store.receive(\.inner.signInFinished.failure) {
-            $0.isLoading = false
+            $0.isAuthenticating = false
         }
     }
 
@@ -84,10 +84,10 @@ final class AuthCreateAccountFeatureTests: XCTestCase {
         }
 
         await store.send(.view(.userTappedSignIn(.kakao))) {
-            $0.isLoading = true
+            $0.isAuthenticating = true
         }
         await store.receive(\.inner.signInFinished.failure) {
-            $0.isLoading = false
+            $0.isAuthenticating = false
             $0.alert = AlertState(
                 title: { TextState("알 수 없는 오류가 발생했습니다.") },
                 actions: {
@@ -102,7 +102,7 @@ final class AuthCreateAccountFeatureTests: XCTestCase {
     @MainActor
     func test_로딩중재탭_무시() async {
         var initialState = AuthCreateAccountFeature.State()
-        initialState.isLoading = true
+        initialState.isAuthenticating = true
         let store = TestStore(initialState: initialState) {
             AuthCreateAccountFeature()
         }
@@ -131,10 +131,10 @@ final class AuthCreateAccountFeatureTests: XCTestCase {
         }
 
         await store.send(.view(.userTappedSignIn(.apple))) {
-            $0.isLoading = true
+            $0.isAuthenticating = true
         }
         await store.receive(\.inner.signInFinished.success, result) {
-            $0.isLoading = false
+            $0.isAuthenticating = false
         }
         await store.receive(\.delegate.authenticated, result)
     }

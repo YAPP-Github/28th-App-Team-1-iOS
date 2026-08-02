@@ -23,6 +23,9 @@ public struct OnboardingJobSelectionFeature {
         public var userName: String
         public var jobs: [Job] = []
         public var selectedJobID: Job.ID?
+        // TODO: 면접 위저드 리팩 때 제거 — 전역 로딩(NetworkActivity + AppView LoadingModal)과 중복이다.
+        // 지금은 못 지운다: 이 위저드는 `fullScreenCover` 로 떠서, overlay 기반인 전역 모달이 그 아래 깔린다.
+        // 화면을 인라인 루트로 올리거나 모달을 window 레벨로 올린 뒤 지울 것 (Auth 쪽은 이미 제거됨).
         public var isLoading = false
         /// draft 복원 시 미리 선택할 직군(jobRole) — 목록 로드 후 매칭해 selectedJobID 로 확정한다.
         public var preselectedJobRole: String?

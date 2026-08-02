@@ -95,11 +95,8 @@ public struct AuthCreateAccountView: View {
         // @ds(spacing): 15 — 버튼 블록과 안전영역 사이. 시안 절대좌표(블록 y643 + h120, 프레임 h812)로
         //   화면 하단까지 49pt 이고 거기서 홈 인디케이터 안전영역 34pt 를 뺀 값. 스케일(4~24)에 없다
         .padding(.bottom, 15)
-        .disabled(store.isLoading)
-        // 로딩 표시 — 재탭 차단은 리듀서 guard 가 이미 하고, 여기선 눌린 게 보이게만 한다.
-        // DS `.hilitButtonLoading` 은 `ButtonLarge` 가 읽는 Environment 라 이 커스텀 버튼엔 걸리지 않는다.
-        // State 가 provider 를 안 들고 있어(isLoading: Bool) 어느 쪽을 눌렀는지 구분하지 않는다.
-        .opacity(store.isLoading ? 0.5 : 1)
+        // 로딩 표시는 안 든다 — 서버 세션 교환(login) 동안은 AppView 의 전역 LoadingModal 이 덮고,
+        // 그 앞 소셜 SDK 구간은 제공자 시트가 화면을 가린다. 재탭 차단은 리듀서 guard 몫.
     }
 }
 
@@ -176,16 +173,6 @@ private struct SocialLoginButton: View {
 #Preview("소셜 로그인") {
     AuthCreateAccountView(
         store: Store(initialState: AuthCreateAccountFeature.State()) {
-            AuthCreateAccountFeature()
-        }
-    )
-}
-
-#Preview("소셜 로그인 — 로그인 진행 중") {
-    var state = AuthCreateAccountFeature.State()
-    state.isLoading = true
-    return AuthCreateAccountView(
-        store: Store(initialState: state) {
             AuthCreateAccountFeature()
         }
     )
