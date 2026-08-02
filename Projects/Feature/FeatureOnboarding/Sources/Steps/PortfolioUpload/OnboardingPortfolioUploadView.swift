@@ -12,8 +12,8 @@ import UniformTypeIdentifiers
 
 // Figma «Onboarding_PortfolioUpload» https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=443-9568
 //        실패 443:9624 — 업로드 판과 첨부 목록 사이에 «info-field» 한 줄(443:9641)이 낀다.
-// 업로드 중·완료 프레임은 이번 시안에 없다(대기·실패 두 칸만 그려져 있다) — 첨부 목록 자리에
-// DS «file-upload» 컴포넌트의 progressing(435:1378)·completed(435:1385) 변형을 그대로 끼운다.
+//        업로드 중 443:9662 (첨부 목록 자리가 «file-upload» progressing 443:9679).
+// 완료 프레임만 시안에 없다 — 첨부 목록 자리에 DS «file-upload» 의 completed(435:1385) 를 끼운다.
 // 네 상태는 같은 화면의 하위 상태 변형 — store.upload 로만 분기하고 화면 전환은 없다.
 @ViewAction(for: OnboardingPortfolioUploadFeature.self)
 public struct OnboardingPortfolioUploadView: View {
@@ -107,8 +107,8 @@ public struct OnboardingPortfolioUploadView: View {
     }
 
     /// 판 아래 첨부 목록 — 하위 상태에 따라 빈 판(443:9585) ↔ 파일 행.
-    /// 파일 행의 상태 문구는 이번 시안에 프레임이 없어 기존 문구를 유지한다
-    /// (컴포넌트 시트의 «Processing...»·«Completed!» 는 «{파일명}.pdf» 와 같은 자리표시 텍스트).
+    /// 상태 문구는 시안(443:9679)·컴포넌트 시트의 «Processing...»·«Completed!» 를 그대로 쓴다 —
+    /// «{파일명}.pdf» 와 달리 자리표시가 아니라 확정 문구다(2026-08-02 디자이너 확인).
     ///
     /// 진행 바 값은 리듀서의 `UploadState.phaseProgress` — register/폴링 두 단계를 가리키는
     /// 단계 마커다. 여기서 타이머로 굴리지 않는다(실측 진행률이 없어 View 가 지어내면 실제와 어긋난다).
@@ -128,7 +128,7 @@ public struct OnboardingPortfolioUploadView: View {
             .animation(.easeOut(duration: 0.3), value: store.upload.phaseProgress)
         case let .uploaded(fileName, _):
             FileUpload(
-                .completed(.init(name: fileName, statusText: "업로드 완료")),
+                .completed(.init(name: fileName, statusText: "Completed!")),
                 onCancel: { send(.userTappedRemoveFile) }
             )
         }
