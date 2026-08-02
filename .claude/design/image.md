@@ -40,7 +40,7 @@ Image.Img.micError           // 일러스트 — 크기·변형 없이 이름만
 | `Issue` | 원 안 느낌표 (빨강 = 채운 원 + 흰 글리프인 error 변형) | 오류·경고 · `InfoField(.error)` 아이콘 |
 | `Left` / `Right` | 쉐브론 ‹ / › | 뒤로·앞으로 |
 | `Loading` | 진행 링(ing)·대기 링(wait)·기본 링(접두사 없음) | 단계 진행 표시 |
-| `Logo` | kakao 말풍선(노랑)·apple 사과 — with-bg/no-bg (+`…WithBg24` 는 24px 판) · hilit 워드마크 57×24 | 소셜 로그인 · 네비바 logo 변형 |
+| `Logo` | kakao 말풍선(노랑)·apple 사과 — with-bg/no-bg (+`…WithBg24` 는 24px 판) · hilit 워드마크 57×24 | 소셜 로그인 · 네비바 logo 변형 · 스플래시(같은 벡터 3배 확대 — 위 «예외» 참조) |
 | `Pause` | 세로 막대 2개 ‖ | 일시정지 |
 | `Play` | 왼쪽 세로 막대 + 삼각형 2개 — **순수 ▷ 가 아니다** | 영상 재생 |
 | `Plus` | + | 추가 |
@@ -72,3 +72,4 @@ Image.Img.micError           // 일러스트 — 크기·변형 없이 이름만
 - **에셋 로드**: 값은 `Interface/Resources/Assets.xcassets`(패밀리 폴더 / `<패밀리><변형><크기>.imageset`), 로드는 Tuist 생성 접근자 `SharedDesignSystemInterfaceAsset.Assets.<name>.swiftUIImage` ([Image+Extension.swift](../../Projects/Shared/SharedDesignSystem/Interface/Image/Image+Extension.swift) 가 `Asset` 으로 축약해 감싼다). 에셋을 지우거나 이름을 바꾸면 토큰에서 컴파일 에러가 난다.
 - **SVG 단일 스케일 + `preserves-vector-representation`** — 1x/2x/3x 슬롯에 넣지 않는다(래스터화됨).
 - **크기별 별도 에셋인 이유**: Figma 아이콘이 크기마다 다시 그려져 있다(optical sizing — 예: plus 24px 획비 1/5 vs 16px 1/6). 한 크기를 `.frame` 으로 늘리면 획 두께가 어긋난다. **디자인된 크기 그대로 쓴다.**
+  - **예외 — 벡터가 정수배로 동일할 때**: 시안의 큰 판이 기존 에셋을 그냥 확대한 것(path 좌표가 정수배, 색 동일 = 재드로잉 아님)이면 새 에셋을 만들지 말고 `.resizable().scaledToFit().frame` 으로 확대한다. `preserves-vector-representation` 이 켜져 있어 깨지지 않는다. 판별은 시안 SVG 를 내려받아 좌표를 대조하는 것 — «커 보인다» 로 추정하지 않는다. 사례: `Logo.hilit` 57×24 → 스플래시 171×72(정확히 3배).

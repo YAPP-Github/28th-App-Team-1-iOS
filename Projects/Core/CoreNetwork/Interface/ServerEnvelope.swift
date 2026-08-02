@@ -19,18 +19,57 @@ public struct ServerEnvelope<T: Decodable & Sendable>: Decodable, Sendable {
 
 public extension ServerEnvelope {
     /// envelope 우선 언랩, 실패 시 `T` 직접 디코드 폴백 — Swagger 일부가 envelope 없이 표기돼 있어(annotation 누락) 방어한다.
+    ///
+    /// 둘 다 실패하면 **envelope 쪽 에러를 던진다**. 실제 응답은 거의 항상 envelope 이고 안쪽 `T` 가
+    /// 계약과 어긋난 경우라, 폴백 에러(«바깥이 T 모양이 아님»)를 던지면 진짜 원인이 가려진다.
     static func unwrap(_ type: T.Type = T.self, from data: Data, decoder: JSONDecoder = .api) throws -> T {
-        if let envelope = try? decoder.decode(ServerEnvelope<T>.self, from: data), let payload = envelope.data {
-            return payload
+        let envelopeError: any Error
+        do {
+            // envelope 이 아닌 body 도 여기서 통과한다 — 필드가 전부 옵셔널이라 전원 nil 로 디코딩되고,
+            // `data == nil` 이 되어 아래 직접 디코드로 넘어간다.
+            if let payload = try decoder.decode(ServerEnvelope<T>.self, from: data).data {
+                return payload
+            }
+            envelopeError = DecodingError.valueNotFound(T.self, .init(
+                codingPath: [], debugDescription: "envelope 에 data 가 없다"
+            ))
+        } catch {
+            envelopeError = error
         }
-        return try decoder.decode(T.self, from: data)
+
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            #if DEBUG
+            NetworkDecodeLogger.failure(type: T.self, body: data, envelopeError: envelopeError, fallbackError: error)
+            #endif
+            throw envelopeError
+        }
     }
 }
 
-/// 서버가 정의한 에러 (`{ success: false, code, message }`).
-/// `message` 는 그대로 사용자 노출 가능한 한국어 문구, `code` 로 Domain 이 도메인 에러로 매핑한다.
+#if DEBUG
+/// 디코딩 실패 로깅 — HTTP 는 200 인데 계약이 어긋난 경우를 눈에 보이게 한다.
+/// 이게 없으면 도메인 에러 매핑이 `unexpected` 로 뭉개 «왜 실패했는지» 가 사라진다.
+enum NetworkDecodeLogger {
+    static func failure(type: Any.Type, body: Data, envelopeError: any Error, fallbackError: any Error) {
+        print("🧩 [DECODE-FAIL] \(type)")
+        print("   envelope: \(envelopeError)")
+        print("   직접디코드: \(fallbackError)")
+        if let json = String(data: body, encoding: .utf8) {
+            print("   body: \(json)")
+        }
+    }
+}
+#endif
+
+/// 서버 에러. 두 포맷이 실재한다(2026-08-02 확인):
+/// - **정의된 코드** `{ success: false, code, message }` — `message` 는 그대로 사용자 노출 가능한 한국어 문구,
+///   `code` 로 Domain 이 도메인 에러로 매핑한다.
+/// - **미정의(Spring 기본)** `{ timestamp, status, error, path }` — 서버가 코드로 승격하지 않은 에러.
+///   `code` 는 빈 문자열, `message` 에 `error`("Forbidden" 등)가 들어온다.
 public struct ServerError: Error, Equatable, Sendable {
-    /// 서버 에러 코드 (예: `PORTFOLIO_ALREADY_EXISTS`, `NO_REMAINING_TICKET`)
+    /// 서버 에러 코드 (예: `PORTFOLIO_ALREADY_EXISTS`, `NO_REMAINING_TICKET`). Spring 기본 포맷이면 빈 문자열.
     public let code: String
     public let message: String
     public let statusCode: Int
@@ -41,17 +80,36 @@ public struct ServerError: Error, Equatable, Sendable {
         self.statusCode = statusCode
     }
 
-    /// 비 2xx body(`NetworkError.statusCode` 의 payload)에서 서버 에러를 읽는다. envelope 이 아니면 nil.
+    /// 비 2xx body(`NetworkError.statusCode` 의 payload)에서 서버 에러를 읽는다.
+    /// 정의된 코드 포맷 우선, 아니면 Spring 기본 포맷 — 둘 다 아니면 nil (HTML·평문 등).
     public static func decode(statusCode: Int, body: Data) -> ServerError? {
         struct Failure: Decodable {
             let code: String?
             let message: String?
         }
-        guard let failure = try? JSONDecoder().decode(Failure.self, from: body), let code = failure.code else {
-            return nil
+        if let failure = try? JSONDecoder().decode(Failure.self, from: body), let code = failure.code {
+            return ServerError(code: code, message: failure.message ?? "알 수 없는 오류가 발생했어요.", statusCode: statusCode)
         }
-        return ServerError(code: code, message: failure.message ?? "알 수 없는 오류가 발생했어요.", statusCode: statusCode)
+
+        struct SpringFailure: Decodable {
+            let status: Int?
+            let error: String?
+        }
+        if let failure = try? JSONDecoder().decode(SpringFailure.self, from: body), let error = failure.error {
+            return ServerError(code: "", message: error, statusCode: failure.status ?? statusCode)
+        }
+        return nil
     }
+}
+
+public extension ServerError {
+    /// 도메인이 승격하지 않은 에러의 **임시 노출 규칙**(2026-08-02 합의) — OS 기본 Alert 에 그대로 싣는다.
+    /// 정의된 코드는 «CODE(status)», Spring 기본 포맷은 상태코드만. 도메인별 핸들링이 확정되면 그쪽이 우선.
+    var alertTitle: String {
+        code.isEmpty ? "\(statusCode)" : "\(code)(\(statusCode))"
+    }
+    /// Alert 본문 — 정의된 코드는 서버 한국어 문구, Spring 포맷은 `error` 원문("Forbidden" 등).
+    var alertMessage: String { message }
 }
 
 public extension NetworkClient {

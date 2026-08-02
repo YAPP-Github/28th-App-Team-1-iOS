@@ -40,4 +40,23 @@ struct ColorPaletteTests {
             #expect(actual == hex, "기대 \(hex), 실제 \(actual)")
         }
     }
+
+    /// `Brand` 는 팔레트 23색 밖이라 위 테스트의 `count == 23` 불변식에 넣지 않는다.
+    /// 값의 진실은 각 서비스의 브랜드 가이드 — 디자이너가 바꿀 수 있는 색이 아니다.
+    @Test("브랜드 색상이 서비스 가이드 HEX 와 일치한다")
+    func brandColorsMatchServiceGuideHex() {
+        let cases: [(token: Color, hex: String)] = [
+            (Color.Brand.kakao, "FEE500")
+        ]
+
+        for (token, hex) in cases {
+            var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+            UIColor(token).getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+            let actual = String(
+                format: "%02X%02X%02X",
+                Int((red * 255).rounded()), Int((green * 255).rounded()), Int((blue * 255).rounded())
+            )
+            #expect(actual == hex, "기대 \(hex), 실제 \(actual)")
+        }
+    }
 }

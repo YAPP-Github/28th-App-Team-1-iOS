@@ -33,36 +33,12 @@ extension UserClient: @retroactive DependencyKey {
                     try await network.api(request)
                 }
             },
-            registerName: { name in
+            withdraw: {
                 try await UserError.mapping {
-                    let request = try NetworkRequest.json(
-                        method: .patch,
-                        path: "/api/v1/users/me/name",
-                        body: NameBody(name: name)
-                    )
+                    let request = NetworkRequest(method: .delete, path: "/api/v1/users/me")
                     try await network.api(request)
-                }
-            },
-            checkName: { name in
-                try await UserError.mapping {
-                    let request = NetworkRequest(
-                        path: "/api/v1/users/name/check",
-                        queryItems: [URLQueryItem(name: "name", value: name)]
-                    )
-                    let payload: NameCheckPayload = try await network.api(request)
-                    return payload.available
                 }
             }
         )
     }
-}
-
-// MARK: - 서버 계약 매핑
-
-private struct NameBody: Encodable {
-    let name: String
-}
-
-private struct NameCheckPayload: Decodable, Sendable {
-    let available: Bool
 }
