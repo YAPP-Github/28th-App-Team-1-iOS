@@ -2,6 +2,8 @@
 
 Splash 가 refreshToken 유무로 두 경로(신규 / 세션 복구)를 타고, 두 경로가 모두 **게이트 2단 체인**에 합류한다 — ① 동의 게이트(`consentStatus`) ② 프로필 게이트(`profileRegistered`). 목적지는 이 두 값만으로 결정되고, 판정값 출처만 경로별로 다르다.
 
+세션 복구는 **refresh 를 먼저 부르지 않는다**(2026-08-02 단일화) — Access 는 3시간이라 콜드 스타트 대부분 살아 있고, `pending` 한 콜이 판정과 세션 검증을 겸한다. 만료면 그 403 을 `AuthorizedNetworkClient` 가 잡아 재발급 후 재시도하므로 별도 경로가 없다. 매 실행 무조건 rotation 은 콜 낭비 + 페어 교체 중 앱 킬 = 세션 유실 리스크.
+
 ## 1. 전체 흐름 (activity)
 
 ```mermaid
@@ -13,16 +15,14 @@ flowchart TD
     a0 --> login["signIn → POST /auth/social/login"]
     login --> gate1
 
-    hasRT -- "있음" --> refresh["POST /auth/token/refresh"]
-    refresh -- "LOGIN_EXPIRED" --> clear["TokenStore.clear<br/>재로그인 필요"]
-    clear --> a0
-    refresh -- "네트워크 / 5xx" --> retry["재시도<br/>clear 금지 · 토큰 유지"]
-    retry --> refresh
-    refresh -- "성공" --> gate1
+    hasRT -- "있음" --> pending["GET /consents/pending<br/>(만료 시 403 → 자동 재발급 → 재시도)"]
+    pending -- "LOGIN_EXPIRED<br/>(재발급도 만료 — 토큰 폐기됨)" --> a0
+    pending -- "네트워크 / 5xx" --> retry["Splash 재시도<br/>clear 금지 · 토큰 유지"]
+    retry --> pending
+    pending -- "성공" --> gate1
 
     gate1{"동의 게이트<br/>consentStatus"} -- "UP_TO_DATE" --> gate2
-    gate1 -- "NOT_SUBMITTED · STALE" --> pending["GET /consents/pending<br/>받을 항목 조회"]
-    pending --> terms["약관 화면 A1<br/>pending 항목 렌더"]
+    gate1 -- "NOT_SUBMITTED · STALE" --> terms["약관 화면 A1<br/>pending 항목 렌더"]
     terms --> submit["POST /consents<br/>동의 제출"]
     submit --> gate2
 
@@ -65,26 +65,28 @@ sequenceDiagram
     autonumber
     participant App as AppFeature
     participant AC as AuthClient
-    participant CC as ConsentClient
+    participant ANC as AuthorizedNetworkClient
     participant S as 서버
 
-    App->>AC: isAuthenticated() — refreshToken 유무
+    App->>AC: isAuthenticated() — 토큰 유무
     AC-->>App: true
-    App->>AC: refresh()
-    AC->>S: POST /auth/token/refresh
-    alt 성공
-        S-->>AC: 새 토큰 페어 → TokenStore.save
-        App->>CC: pending()
-        CC->>S: GET /consents/pending
+    App->>ANC: ConsentClient.pending()
+    ANC->>S: GET /consents/pending (Bearer access)
+    alt 200
         S-->>App: consentStatus + items + profileRegistered
         App->>App: 게이트 2단 → 약관 / 온보딩 / 홈
-    else LOGIN_EXPIRED
-        AC->>AC: TokenStore.clear()
-        AC-->>App: 실패 → 소셜 로그인
+    else 403 (access 만료)
+        ANC->>S: POST /auth/token/refresh (단일 비행)
+        alt 재발급 성공
+            S-->>ANC: 새 페어 → TokenStore.save
+            ANC->>S: 원요청 1회 재시도 → 200 → 게이트 2단
+        else LOGIN_EXPIRED
+            ANC->>ANC: TokenStore.clear()
+            ANC-->>App: sessionExpired → 소셜 로그인
+        end
     else 네트워크 · 5xx
-        AC-->>App: 실패 (토큰 유지)
-        App->>AC: 백오프 후 refresh() 재시도
-        Note over App: n회 실패 시 Splash 에 «다시 시도» 노출
+        ANC-->>App: 실패 (토큰 유지)
+        Note over App: Splash 에 «다시 시도» 노출
     end
 ```
 
@@ -145,7 +147,7 @@ stateDiagram-v2
 |---|---|
 | `AuthClient.login` | `-> LoginResult(consentStatus, profileRegistered)`. 응답의 `newUser`·`userInfo` 는 소비자가 없어 디코딩하지 않는다 |
 | `ConsentPending` | `profileRegistered` 추가. **서버 배포 전 과도기** — 필드가 없으면 `false`(미등록)로 읽는다: 온보딩을 한 번 더 보는 쪽이 프로필 없이 홈에 앉는 쪽보다 안전한 실패 |
-| `AuthClient.refresh` | `AppFeature` 판정 effect 에서 호출. 실패 2분류(`sessionExpired` → 재로그인 / 그 외 → 토큰 유지·재시도) |
+| `AuthClient.refresh` | Splash 는 **호출하지 않는다**(2026-08-02 단일화) — 재발급은 pending 403 을 받은 인터셉터 몫. 명시적 refresh 는 남겨 둠 |
 | `AppFeature.State.root` | enum `splash`·`splashFailed`·`auth`·`home`. Bool 2개(`isCheckingSession`·`isAuthenticated`) 폐기 |
 | `AuthFeature` | 게이트 2단(`enterGate` → `passProfileGate`). 세션 복구는 `State(resuming: Destination)` 으로 같은 체인에 합류 |
 | `AuthTermsFeature` | 하드코딩 5종 enum 제거 — `pending()` 항목 렌더 + `document()` 전문 + `submit()` 제출. `CONSENT_VERSION_MISMATCH` 면 체크를 비우고 재조회 |

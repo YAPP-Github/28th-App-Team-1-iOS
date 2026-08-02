@@ -21,11 +21,11 @@
 
 ## Splash 세션 복구
 
-앱 진입 판정은 `onAppear` 의 effect 하나다 — 토큰 유무 → `refresh` → `pending` 순으로 `State.root` 를 정한다. 목적지 표·시퀀스는 [launch-routing](../docs/work/launch-routing.md), 게이트 규칙은 [[auth#게이트 2단 체인]].
+앱 진입 판정은 `onAppear` 의 effect 하나다 — 토큰 유무 → `pending` **한 콜**로 `State.root` 를 정한다. refresh 를 먼저 부르지 않는다 — Access 는 3시간이라 대부분 살아 있고, 만료면 이 콜의 403 을 AuthorizedNetworkClient 가 재발급·재시도로 흡수한다([[api#토큰 수명주기]]). 목적지 표·시퀀스는 [launch-routing](../docs/work/launch-routing.md), 게이트 규칙은 [[auth#게이트 2단 체인]].
 
 `root` 가 Bool 2개가 아니라 **enum**(`splash`·`splashFailed`·`auth`·`home`)인 이유: 「판정 실패라 재시도해야 하는 상태」를 Bool 조합으로는 못 만든다.
 
-- **refresh 실패는 두 갈래** — `AuthError.sessionExpired`(서버가 세션을 부정, 토큰은 `AuthClient.refresh` 가 이미 폐기)는 재로그인, 네트워크·5xx 는 **판정 불가**라 토큰을 살린 채 `splashFailed`. 뭉뚱그리면 오프라인에서 앱을 켠 사용자가 로그아웃당한다.
+- **판정 실패는 두 갈래** — `ConsentError.sessionExpired`(자동 재발급까지 실패, 토큰은 인터셉터가 이미 폐기)는 재로그인, 네트워크·5xx 는 **판정 불가**라 토큰을 살린 채 `splashFailed`. 뭉뚱그리면 오프라인에서 앱을 켠 사용자가 로그아웃당한다.
 - **`splashFailed` 에서 로그인 화면으로 내보내지 않는다** — 토큰이 살아 있으므로 `SplashView(onRetry:)` 자리에 머문다.
 - **판정 결과는 `AuthFeature.State(resuming:)` 로 넘긴다** — 게이트 분기 코드는 코디네이터 한 곳에만 있고, AppFeature 는 목적지(login·resume·home·failed)만 고른다. 조회한 약관 항목도 함께 넘겨 화면이 `pending` 을 다시 부르지 않는다.
 - 판정은 `consentClient` 도 쓴다 — cross-feature 조립 자리라 Domain 의존이 여기 모인다(authClient 와 같은 이유).
