@@ -19,13 +19,49 @@ public struct ServerEnvelope<T: Decodable & Sendable>: Decodable, Sendable {
 
 public extension ServerEnvelope {
     /// envelope 우선 언랩, 실패 시 `T` 직접 디코드 폴백 — Swagger 일부가 envelope 없이 표기돼 있어(annotation 누락) 방어한다.
+    ///
+    /// 둘 다 실패하면 **envelope 쪽 에러를 던진다**. 실제 응답은 거의 항상 envelope 이고 안쪽 `T` 가
+    /// 계약과 어긋난 경우라, 폴백 에러(«바깥이 T 모양이 아님»)를 던지면 진짜 원인이 가려진다.
     static func unwrap(_ type: T.Type = T.self, from data: Data, decoder: JSONDecoder = .api) throws -> T {
-        if let envelope = try? decoder.decode(ServerEnvelope<T>.self, from: data), let payload = envelope.data {
-            return payload
+        let envelopeError: any Error
+        do {
+            // envelope 이 아닌 body 도 여기서 통과한다 — 필드가 전부 옵셔널이라 전원 nil 로 디코딩되고,
+            // `data == nil` 이 되어 아래 직접 디코드로 넘어간다.
+            if let payload = try decoder.decode(ServerEnvelope<T>.self, from: data).data {
+                return payload
+            }
+            envelopeError = DecodingError.valueNotFound(T.self, .init(
+                codingPath: [], debugDescription: "envelope 에 data 가 없다"
+            ))
+        } catch {
+            envelopeError = error
         }
-        return try decoder.decode(T.self, from: data)
+
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            #if DEBUG
+            NetworkDecodeLogger.failure(type: T.self, body: data, envelopeError: envelopeError, fallbackError: error)
+            #endif
+            throw envelopeError
+        }
     }
 }
+
+#if DEBUG
+/// 디코딩 실패 로깅 — HTTP 는 200 인데 계약이 어긋난 경우를 눈에 보이게 한다.
+/// 이게 없으면 도메인 에러 매핑이 `unexpected` 로 뭉개 «왜 실패했는지» 가 사라진다.
+enum NetworkDecodeLogger {
+    static func failure(type: Any.Type, body: Data, envelopeError: any Error, fallbackError: any Error) {
+        print("🧩 [DECODE-FAIL] \(type)")
+        print("   envelope: \(envelopeError)")
+        print("   직접디코드: \(fallbackError)")
+        if let json = String(data: body, encoding: .utf8) {
+            print("   body: \(json)")
+        }
+    }
+}
+#endif
 
 /// 서버가 정의한 에러 (`{ success: false, code, message }`).
 /// `message` 는 그대로 사용자 노출 가능한 한국어 문구, `code` 로 Domain 이 도메인 에러로 매핑한다.

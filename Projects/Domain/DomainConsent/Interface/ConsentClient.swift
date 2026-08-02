@@ -36,11 +36,14 @@ public struct ConsentPending: Decodable, Equatable, Sendable {
 
     /// 서버 필드 배포 전 과도기 — `profileRegistered` 가 없으면 미등록(false)으로 읽는다.
     /// 잘못돼도 온보딩을 한 번 더 보는 쪽(안전한 실패)이지 홈에 프로필 없이 앉는 쪽이 아니다.
+    ///
+    /// `items` 도 없으면 빈 배열로 읽는다 — `UP_TO_DATE` 응답이 키를 생략해도 판정이 실패하지 않게.
+    /// 여기서 던지면 앱 진입 판정 전체가 «판정 불가» 로 떨어져 스플래시에 갇힌다.
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         status = try container.decode(ConsentPendingStatus.self, forKey: .status)
         profileRegistered = try container.decodeIfPresent(Bool.self, forKey: .profileRegistered) ?? false
-        items = try container.decode([ConsentItem].self, forKey: .items)
+        items = try container.decodeIfPresent([ConsentItem].self, forKey: .items) ?? []
     }
 
     private enum CodingKeys: String, CodingKey {
