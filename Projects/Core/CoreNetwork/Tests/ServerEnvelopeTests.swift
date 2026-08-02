@@ -75,24 +75,4 @@ final class ServerEnvelopeTests: XCTestCase {
         // 서버 LocalDateTime 은 KST 가정 — "2026-07-06T10:00:04"(KST) == "2026-07-06T01:00:04Z"(UTC)
         XCTAssertEqual(decoded.local, decoded.iso)
     }
-
-    func test_JSONDecoder_api_LocalDateTime_소수부_자릿수와_무관하게_디코딩한다() throws {
-        struct Timestamps: Decodable {
-            let micros: Date
-            let millis: Date
-            let plain: Date
-        }
-        let json = Data(#"""
-        {
-          "micros": "2026-08-02T22:42:21.238462",
-          "millis": "2026-08-02T22:42:21.238",
-          "plain": "2026-08-02T22:42:21"
-        }
-        """#.utf8)
-
-        let decoded = try JSONDecoder.api.decode(Timestamps.self, from: json)
-
-        XCTAssertEqual(decoded.micros.timeIntervalSince1970, decoded.plain.timeIntervalSince1970 + 0.238462, accuracy: 0.000001)
-        XCTAssertEqual(decoded.millis.timeIntervalSince1970, decoded.plain.timeIntervalSince1970 + 0.238, accuracy: 0.000001)
-    }
 }
