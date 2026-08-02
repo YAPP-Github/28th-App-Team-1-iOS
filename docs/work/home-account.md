@@ -19,10 +19,10 @@
 | `AuthCreateAccount` | A0 로그인 | FeatureAuth — 기존 AuthFeature 를 `AuthCreateAccountFeature` 로 개명(D5 3분류 정리), 코디네이터 `AuthFeature` 신설 | 골격 ✅ / 🔴 신규·기존 분기(S-1)·실패 토스트 |
 | `AuthTerms` | A1 약관 동의(5종) | FeatureAuth — 5종 체크·전체 동의·전문 바텀시트(DS `.hilitDetentSheet` — 시스템 시트 detent) 동작 | 골격 ✅ / 🔴 제출 API(S-1)·전문(S-2) |
 | `AuthSuspension` | A4 정지(블랙리스트) 안내 | FeatureAuth — 진입은 홈 게이트 `ACCOUNT_SUSPENDED` → cross-feature 제시 (§4) | 골격 ✅ / 🔴 게이트 배선·CS 주소 |
-| `AuthOnboardingNaming` | (PRD Part7 밖 — 디자인 확정) 이름 입력 | FeatureAuth/Onboarding — DS `NameField` | 골격 ✅ / 🔴 `updateProfile` 일괄 배선(이름 단독 API 삭제 예정) |
+| `AuthOnboardingNaming` | (PRD Part7 밖 — 디자인 확정) 이름 입력 | FeatureAuth/Onboarding — DS `NameField`, 수집만(제출은 연차 CTA 일괄) | 골격 ✅ |
 | `AuthOnboardingJob` | Part1 S0a 직군 선택 | FeatureAuth/Onboarding — FeatureOnboarding STEP1 **복사**(원본은 위저드 정리 시 제거) | 골격 ✅ |
-| `AuthOnboardingExperience` | Part1 S0b 연차 선택 | FeatureAuth/Onboarding — FeatureOnboarding STEP2 **복사** | 골격 ✅ |
-| `AuthOnboardingRegister` | 등록 완료 (PRD «가입 완료 화면 없음» 을 디자인이 뒤집음) | FeatureAuth/Onboarding — 완료 후 `delegate(.signedIn)` | 골격 ✅ / 🔴 프로필 제출 시점 미결 |
+| `AuthOnboardingExperience` | Part1 S0b 연차 선택 | FeatureAuth/Onboarding — FeatureOnboarding STEP2 **복사**. CTA 에서 코디네이터가 `updateProfile` 일괄 PATCH | 골격 ✅ |
+| `AuthOnboardingRegister` | 등록 완료 (PRD «가입 완료 화면 없음» 을 디자인이 뒤집음) | FeatureAuth/Onboarding — 프로필 PATCH 성공 시에만 push, 완료 후 `delegate(.signedIn)` | 골격 ✅ |
 | 홈 — **두 덩어리(홈 3화면 + 면접 시작 3화면)** (§3) | Part6 전체 | FeatureHome — `Sources/Home/`(`HomeFeature.phase`) + `Sources/StartInterview/`(`StartInterviewFeature`, cover present) | 골격 ✅ / 🔴 로드 4종·위젯 UI |
 | A2 권한 안내 | Part7 | **Out — AOS 전용.** iOS 는 사용 시점 요청 (Part2 준비 화면 게이트 ✅, [[interview#권한]]) | — |
 | A3 재동의 | Part7 | MVP 미도안 — 분기 자리만 예약 | 🟡 |
@@ -52,7 +52,7 @@ AuthSuspension — 정지 계정이 면접 시작 시도 시 (게이트 ACCOUNT_
    └ 위젯③ 마이페이지로 이동 (Part 5)
 ```
 
-⚠ 가입 온보딩 4화면(Naming~Register)의 순서·필수 여부는 Figma 수령 시 확정 — 위 순서는 구두 브리핑 기준. 이름·직군·연차 제출 시점(각 화면 즉시 vs Register 일괄)은 서버 계약과 함께 결정.
+⚠ 가입 온보딩 4화면(Naming~Register)의 순서·필수 여부는 Figma 수령 시 확정 — 위 순서는 구두 브리핑 기준. 이름·직군·연차 제출은 **연차 화면 CTA 에서 일괄 PATCH**로 확정(2026-08-02) — 성공해야 Register 로 넘어간다.
 
 ## 2. 회원가입·계정 상태 (Part 7)
 
@@ -96,12 +96,12 @@ AuthTerms 제출 후 이어지는 4화면. AuthFeature 도메인 내부 내비(�
 
 | 화면 | 내용 | 구현 재료 |
 |---|---|---|
-| `AuthOnboardingNaming` | 이름 입력 | `UserClient.updateProfile`(이름·직군·연차 일괄 PATCH, 이름 한글·영문 최대 5자) — [[api#User]] |
+| `AuthOnboardingNaming` | 이름 입력 | 수집만(이름 한글·영문 최대 5자) — 제출은 연차 CTA 의 일괄 PATCH |
 | `AuthOnboardingJob` | 직군 선택 | 기존 FeatureOnboarding STEP1(JobSelection — `JobClient.jobs` 칩) 이관 |
-| `AuthOnboardingExperience` | 연차 선택 | 기존 FeatureOnboarding STEP2(CareerInput — 문장형 휠 0~10년) 이관 |
-| `AuthOnboardingRegister` | 등록 완료 | 신규 — 완료 후 홈 진입 (`delegate` → AppFeature) |
+| `AuthOnboardingExperience` | 연차 선택 | 기존 FeatureOnboarding STEP2(CareerInput — 문장형 휠 0~10년) 이관 + CTA 에서 `UserClient.updateProfile`(이름·직군·연차 일괄 PATCH) — [[api#User]] |
+| `AuthOnboardingRegister` | 등록 완료 | 신규 — PATCH 성공 시에만 진입, 완료 후 홈 (`delegate` → AppFeature) |
 
-- 직군·연차 제출은 `UserClient.updateProfile` 후보 ✅ — 각 화면 즉시 저장 vs Register 일괄은 서버 계약과 함께 확정(§1 ⚠).
+- 이름·직군·연차 제출은 `UserClient.updateProfile` 일괄 ✅ — 연차 화면 CTA 시점, 성공해야 Register(2026-08-02 확정). 실패는 그 화면에 머물러 재탭 재시도.
 - 이관 시 기존 면접 위저드([[onboarding]])는 S0 두 스텝을 잃고 JD 부터 시작 — 프로필 프리필/스킵 처리 미결(§7).
 
 ### A3 재동의 — MVP 미도안 (서버만 고려)
@@ -253,7 +253,7 @@ enum ReportRow { case first; case final(lastUpdatedAt:); case generationFailed }
 | S-3 | 재동의 변경 요약 | — | 소멸 (2026-07-29 확정 — 첫 개정 시점 이월) |
 | S-4 | 카카오 이메일 필수화(비즈앱) 여부 | PM | 🟠 미제공 시 차단/허용 분기 |
 | S-5 | CS 이메일 주소 | 운영 | ✅ 확보 — AuthSuspension mailto |
-| 신규 | 직군·연차가 가입 플로우로 이동 → 면접 위저드 S0 처리(스킵 vs 프리필) · 이름/직군/연차 제출 시점(화면별 즉시 vs Register 일괄) | PM·서버 | 🟠 위저드 개편 범위·API 계약 |
+| 신규 | 직군·연차가 가입 플로우로 이동 → 면접 위저드 S0 처리(스킵 vs 프리필) | PM | 🟠 위저드 개편 범위 (제출 시점은 연차 CTA 일괄로 해소 2026-08-02) |
 
 측정(위젯 클릭률·전환율·A1 완료율·재동의/정지 카운트)은 애널리틱스 도입 시 이벤트 설계로 이월([ai-interview](ai-interview.md) §5 와 동일 태도).
 
@@ -278,7 +278,7 @@ enum ReportRow { case first; case final(lastUpdatedAt:); case generationFailed }
 UI 는 전 단계 공통으로 **Figma 시안 수령 후 연결**(figma-screen) — 그 전엔 리듀서·Path·phase 골격과 mock 데이터까지.
 
 1. ~~**AppFeature 루트 게이트 확장**~~ ✅ 2026-08-01 — Splash 세션 복구(refresh + pending) + `State.root` enum + 재시도. [launch-routing](launch-routing.md).
-2. **FeatureAuth 가입 플로우** — 골격 ✅ 2026-07-31 (코디네이터 `AuthFeature` + 화면 6종 + Example 완주 데모, STEP1·2 는 복사), 동의 제출·게이트 2단 분기 ✅ 2026-08-01. 잔여 🔴: 프로필 제출 시점, 실패 토스트, Figma UI.
+2. **FeatureAuth 가입 플로우** — 골격 ✅ 2026-07-31 (코디네이터 `AuthFeature` + 화면 6종 + Example 완주 데모, STEP1·2 는 복사), 동의 제출·게이트 2단 분기 ✅ 2026-08-01, 프로필 일괄 PATCH ✅ 2026-08-02. 잔여 🔴: 실패 토스트, Figma UI.
 3. **FeatureHome 개편** — phase 골격 ✅ 2026-07-31 (`Phase` 4종 + 서브뷰 스텁). 잔여 🔴: 진입 로드 4종·위젯 3종 UI·행 foldable·빈 상태 (리스트/게이트 API 전엔 mock + `UserClient.profile` 잔여만 실값).
 4. **Domain 신규 계약** — 게이트·기록 리스트·held 세션 (미결 6-1·6-3·S-1 서버 협의 후).
 5. **라우팅 배선** — 위젯①→면접 위저드/면접(작업 D 합류)·AuthSuspension, 위젯②→리포트, 위젯③→마이페이지(Part 5 대기). dev 임시 버튼 제거. 면접 위저드 S0 정리(§7 신규 미결 — 원본 STEP1·2 제거 포함).

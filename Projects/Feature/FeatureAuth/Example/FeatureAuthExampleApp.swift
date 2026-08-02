@@ -9,6 +9,7 @@ import ComposableArchitecture
 import DomainAuthInterface
 import DomainConsentInterface
 import DomainJobInterface
+import DomainUserInterface
 import FeatureAuthImplementation
 import SwiftUI
 
@@ -105,6 +106,8 @@ struct FeatureAuthExampleApp: App {
                             Job(jobId: 6, jobRole: "INFRA_SRE", label: "인프라 ⋅ SRE")
                         ]
                     })
+                    // 연차 CTA 의 프로필 일괄 PATCH — 항상 성공하는 스텁(등록 완료까지 완주 확인).
+                    $0.userClient = .previewValue
                 }
             )
         }

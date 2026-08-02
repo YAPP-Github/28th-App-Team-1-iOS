@@ -11,6 +11,7 @@ let project = Project.makeModule(
             .domain(interface: .auth),
             .domain(interface: .consent),      // A1 약관 — pending 항목 렌더·submit (게이트 ①)
             .domain(interface: .job),          // 가입 온보딩 직군 선택(AuthOnboardingJob)
+            .domain(interface: .user),         // 가입 온보딩 프로필 일괄 PATCH(AuthFeature)
             .shared(interface: .designSystem)
         ])),
         .feature(testing: "Auth"),
@@ -25,7 +26,8 @@ let project = Project.makeModule(
             .composableArchitecture,
             .domain(interface: .auth),
             .domain(interface: .consent),
-            .domain(interface: .job)
+            .domain(interface: .job),
+            .domain(interface: .user)
         ]))
     ]
 )
