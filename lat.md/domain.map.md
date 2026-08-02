@@ -47,6 +47,8 @@ D14 공통 규약(성공/실패 envelope·토큰 수명주기)은 그 위에 얹
 
 전 API 공통 로딩: in-flight 는 `NetworkActivity`(@MainActor @Observable 카운터, Interface)가 센다 — liveValue 가 `trackingActivity()` 데코레이터 한 겹으로 계측하고(Authorized·재발급도 base 를 지나 전부 잡힘), `AppView` 가 `isLoading` 을 관찰해 `LoadingModal` 을 전역 표출한다. Feature 는 이 신호에 관여하지 않는다.
 
+- `isLoading` 은 카운터를 그대로 노출하지 않는다 — **켜기 200ms 지연 + 끄기 80ms 유예**. 지연 안에 끝난 요청은 로딩을 아예 안 띄우고(빠른 응답 «반짝» 방지), 순차 호출 사이 카운트가 0 을 스치는 틈은 유예가 덮는다(«깜빡» 방지). 두 지연은 체인 전체에서 한 번씩만 든다 — 켜기 예약은 hop 마다 리셋하지 않아 지연이 체인 시작 기준으로 재지고, 끄기 예약은 다음 `begin()` 이 취소한다.
+
 ## 계획 — AI 면접
 YAPP APP 1팀 「AI 면접 연습 앱」을 우리 아키텍처에 녹인 후속 도메인 설계(현재 데모 탭과 별개) — Onboarding(Part1)/Session/Report Feature + Domain 군. Part 1 은 PRD v3 로 `FeatureOnboarding` 구현 중(초안 가칭 InterviewSetup 실현). 서버 연동 Domain 은 [[api]] 미러링으로 실체화됐다.
 
