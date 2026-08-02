@@ -23,7 +23,9 @@ public struct OnboardingPreloadFeature {
     static let pollInterval: Duration = .seconds(3)
     /// 완료 화면 노출 유지 시간 — 지나면 자동으로 delegate(.completed)를 올린다.
     static let completionHoldDuration: Duration = .seconds(2)
-    /// 가짜 진행 스테이지(1·2행) 각각의 유지 시간 — API 진행률이 없어 연출로 채운다 (포폴 업로드 스트립과 같은 패턴).
+    /// 가짜 진행 스테이지(1·2행) 각각의 유지 시간 — API 진행률이 없어 연출로 채운다.
+    /// 포폴 업로드 진행 바는 이제 연출을 걷고 단계 마커(`UploadState.phaseProgress`)를 쓴다 — 다른 계다.
+    /// 여기서 연출이 남는 이유: 이 화면은 «준비 중» 자체가 콘텐츠라 정지하면 화면이 죽는다.
     static let stageDuration: Duration = .milliseconds(1200)
     /// 3행이 체크로 바뀐 상태의 노출 유지 — 지나면 완료 화면으로 전환한다.
     static let finalCheckHold: Duration = .milliseconds(500)

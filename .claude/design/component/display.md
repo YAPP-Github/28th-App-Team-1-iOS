@@ -47,6 +47,8 @@
 | 홈 안내 — 버튼 없음, 서브타이틀이 타이틀 **위**, 파일 카드 슬롯 | `HomeModal` |
 | 처리 중 — 화면 전체 잠금 | `LoadingModal()` (인자 없음) |
 
+> **API 대기에는 직접 띄우지 않는다.** 모든 HTTP in-flight 는 `AppView` 가 이걸로 이미 덮는다(`NetworkActivity`) — 화면이 또 띄우면 두 겹이 되고, 화면별 스피너를 손으로 다는 것도 같은 중복이다. 화면이 자기 대기 UI(진행 카드·프리로드 체크리스트)를 그려야 하는 엔드포인트만 Domain liveValue 에서 `GlobalLoadingSuppression.run` 으로 전역 표출을 끈다. 직접 쓰는 건 네트워크가 아닌 처리(로컬 인코딩 등)뿐 → `lat.md/domain.map.md` «네트워킹 인프라»
+
 **표준 레시피** (TCA):
 
 ```swift

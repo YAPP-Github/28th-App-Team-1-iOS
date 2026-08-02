@@ -19,11 +19,6 @@ import UniformTypeIdentifiers
 public struct OnboardingPortfolioUploadView: View {
     @Bindable public var store: StoreOf<OnboardingPortfolioUploadFeature>
 
-    /// 업로드 진행 바 비율(0~1) — 실제 진행률 이벤트가 없어(register 단일 호출) 시각적 가짜 진행이다.
-    /// uploading 이면 0→0.9 로 천천히 차오르다 멈춘다(폴링 대기). 완료 판은 `FileUpload(.completed)`
-    /// 가 스스로 꽉 채우므로 이 값이 1.0 이 되는 경로는 없다.
-    @State private var uploadProgress: Double = 0
-
     public init(store: StoreOf<OnboardingPortfolioUploadFeature>) {
         self.store = store
     }
@@ -59,21 +54,6 @@ public struct OnboardingPortfolioUploadView: View {
                 send(.fileSelectionFailed)
             }
         }
-        .onAppear { syncUploadProgress(store.upload.isUploading) }
-        .onChange(of: store.upload.isUploading) { _, isUploading in
-            syncUploadProgress(isUploading)
-        }
-    }
-
-    /// 가짜 진행 바를 업로드 중에만 굴린다 — 0 → 0.9 로 천천히(폴링이 끝날 때까지 90%에서 정지),
-    /// 그 밖의 하위 상태에서는 0 으로 되돌려 재업로드가 처음부터 차오르게 한다.
-    ///
-    /// `UploadState` 대신 `isUploading` 으로 onChange 를 거는 이유: `.uploading` 의 portfolioId 가
-    /// nil→UUID 로 바뀌는(register 접수) 것만으로 애니메이션이 0 부터 재시작하면 안 된다.
-    private func syncUploadProgress(_ isUploading: Bool) {
-        uploadProgress = 0
-        guard isUploading else { return }
-        withAnimation(.easeOut(duration: 12)) { uploadProgress = 0.9 }
     }
 
     // MARK: - 머리글
@@ -129,6 +109,9 @@ public struct OnboardingPortfolioUploadView: View {
     /// 판 아래 첨부 목록 — 하위 상태에 따라 빈 판(443:9585) ↔ 파일 행.
     /// 파일 행의 상태 문구는 이번 시안에 프레임이 없어 기존 문구를 유지한다
     /// (컴포넌트 시트의 «Processing...»·«Completed!» 는 «{파일명}.pdf» 와 같은 자리표시 텍스트).
+    ///
+    /// 진행 바 값은 리듀서의 `UploadState.phaseProgress` — register/폴링 두 단계를 가리키는
+    /// 단계 마커다. 여기서 타이머로 굴리지 않는다(실측 진행률이 없어 View 가 지어내면 실제와 어긋난다).
     @ViewBuilder
     private var attachedFile: some View {
         switch store.upload {
@@ -136,9 +119,13 @@ public struct OnboardingPortfolioUploadView: View {
             FileUpload(.empty(message: "아직 첨부된 포트폴리오가 없어요"))
         case let .uploading(fileName, _):
             FileUpload(
-                .progressing(.init(name: fileName, statusText: "Processing..."), progress: uploadProgress),
+                .progressing(.init(name: fileName, statusText: "Processing..."), progress: store.upload.phaseProgress),
                 onCancel: { send(.userTappedRemoveFile) }
             )
+            // 접수(register 응답)로 단계가 넘어가는 순간을 이징한다 — 값이 두 개뿐이라 그냥 두면
+            // 바가 뚝 끊긴다. 애니메이션이 붙는 대상은 «실제 상태 전이» 하나뿐이고, 폴링 구간은
+            // 여전히 정지해 있다(진행률 이벤트가 없다 — `phaseProgress` TODO).
+            .animation(.easeOut(duration: 0.3), value: store.upload.phaseProgress)
         case let .uploaded(fileName, _):
             FileUpload(
                 .completed(.init(name: fileName, statusText: "업로드 완료")),
@@ -172,11 +159,27 @@ private let previewFileName = "홍길동 자기소개서_SK프롭티어 기업 �
     )
 }
 
-#Preview("업로드 중") {
+// 업로드 중은 진행 바가 두 단계로 갈린다(`UploadState.phaseProgress`) — 두 칸을 다 걸어 둔다.
+#Preview("업로드 중 — 등록 요청") {
     OnboardingPortfolioUploadView(
         store: Store(
             initialState: OnboardingPortfolioUploadFeature.State(
                 upload: .uploading(fileName: previewFileName, portfolioId: nil)
+            )
+        ) {
+            OnboardingPortfolioUploadFeature()
+        }
+    )
+}
+
+#Preview("업로드 중 — 서버 처리 폴링") {
+    OnboardingPortfolioUploadView(
+        store: Store(
+            initialState: OnboardingPortfolioUploadFeature.State(
+                upload: .uploading(
+                    fileName: previewFileName,
+                    portfolioId: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+                )
             )
         ) {
             OnboardingPortfolioUploadFeature()

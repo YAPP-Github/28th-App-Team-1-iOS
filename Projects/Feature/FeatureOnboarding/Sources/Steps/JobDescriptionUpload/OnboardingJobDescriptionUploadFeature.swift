@@ -24,12 +24,14 @@ public struct OnboardingJobDescriptionUploadFeature {
         case directText
     }
 
-    /// 링크 검증(서버 크롤링+정제) 하위 상태 — DS «text-field»(`HilitTextField.Status`)의
-    /// loading/error/success 변형으로 렌더된다. 새 시안 두 노드엔 기본 상태만 그려져 있어
+    /// 링크 검증(서버 크롤링+정제) 하위 상태 — 실패·성공은 DS «text-field»(`HilitTextField.Status`)의
+    /// error/success 변형으로 렌더된다. 새 시안 두 노드엔 기본 상태만 그려져 있어
     /// 상태 변형의 생김새는 컴포넌트가 소유한다.
     public enum LinkValidation: Equatable, Sendable {
         case idle
-        /// 분석 중 — 필드 잠금 + «분석 중» 라벨 + 무한 진행 바.
+        /// 분석 중 — **화면엔 안 그린다**(필드는 idle 그대로). 대기 표시는 `validate` in-flight 를
+        /// 세는 AppView 의 전역 LoadingModal 몫이라 인라인 스피너를 달면 이중 로딩이 된다.
+        /// 이 값은 «계속하기» 무시·재검증 취소를 가르는 게이트로만 산다.
         case loading
         /// 실패 — 빨간 바 + 서버 message(또는 기본 문구) 서브 줄.
         case failure(message: String)
@@ -62,7 +64,8 @@ public struct OnboardingJobDescriptionUploadFeature {
         public var isTooltipExpired: Bool = false
 
         /// 검증 성공 후에는 «직접 입력하기» 탭을 잠근다 — `TabSelector.Item(isEnabled:)` 로 내려간다.
-        /// (분석 중 필드 잠금은 `HilitTextField(.loading)` 이 스스로 갖는다.)
+        /// (분석 중 인라인 필드 잠금은 없앴다 — 화면은 전역 LoadingModal 이 덮고, 그 사이 입력이
+        /// 들어와도 `binding(\.linkText)` 가 in-flight 검증을 취소하고 다시 예약한다.)
         public var isDirectTextDisabled: Bool { linkValidation == .success }
 
         /// 직접입력 글자 수 — 카운터 분자(카운터 자체는 `HilitTextEditor` 가 그린다).
@@ -270,7 +273,8 @@ public struct OnboardingJobDescriptionUploadFeature {
         case .link:
             switch state.linkValidation {
             case .loading:
-                // 분석 중 탭은 무시 — 결과 확인 후 진행. TODO: 디자인 확정 시 재검토 (CTA 비활성 표기 없음).
+                // 분석 중 탭은 무시 — 결과 확인 후 진행. 보통은 전역 LoadingModal 이 덮어 탭이 안 닿지만,
+                // showDelay(200ms) 안에 끝나는 검증은 모달 없이 지나가므로 여기로 들어올 수 있다.
                 return .none
             case .success:
                 return .send(.delegate(.continueRequested(.link(trimmedLink(state)))))

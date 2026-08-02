@@ -34,6 +34,25 @@ public struct OnboardingPortfolioUploadFeature {
         public var isUploading: Bool {
             if case .uploading = self { true } else { false }
         }
+
+        /// `FileUpload(.progressing)` 진행 바 비율(0~1) — **측정된 진행률이 아니라 단계 마커**다.
+        /// `.uploading` 이 구분할 수 있는 단계는 둘뿐이라 값도 둘이다: register 응답 전
+        /// (portfolioId == nil) `registeringProgress`, 접수돼 status 폴링 중(portfolioId != nil)
+        /// `pollingProgress`. 그 사이를 한 번 건너뛰고 폴링이 끝날 때까지 그 자리에 머문다.
+        /// 완료 판은 `FileUpload(.completed)` 가 스스로 꽉 채우므로 여기서 1.0 이 되는 경로는 없고,
+        /// 진행 바를 그리지 않는 하위 상태는 0 이다.
+        ///
+        /// TODO: 실측 진행률은 업로드 progress 이벤트나 서버가 주는 처리 퍼센트가 있어야 가능하다 —
+        /// 지금은 둘 다 없다(register 는 단일 호출, status 는 상태 enum 만 준다). 생기면 이 값을 갈아끼운다.
+        public var phaseProgress: Double {
+            guard case let .uploading(_, portfolioId) = self else { return 0 }
+            return portfolioId == nil ? Self.registeringProgress : Self.pollingProgress
+        }
+
+        /// register 요청이 떠 있는 동안의 채움 — 0 이 아니라 «시작은 됐다» 로 읽히게 한다.
+        static let registeringProgress: Double = 0.3
+        /// 접수 후 status 폴링 구간의 채움 — 한 칸 나아갔지만 아직 안 끝났음을 보인다.
+        static let pollingProgress: Double = 0.7
     }
 
     @ObservableState
