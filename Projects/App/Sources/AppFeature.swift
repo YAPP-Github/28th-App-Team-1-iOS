@@ -164,29 +164,26 @@ struct AppFeature {
 
     // MARK: - Splash 세션 복구 판정 → [[auth#가입 플로우]]
 
-    /// 토큰 유무 → refresh → pending 순으로 목적지를 정한다 (docs/work/launch-routing.md §4).
+    /// 토큰 유무 → pending 한 콜로 목적지를 정한다 (docs/work/launch-routing.md §4).
     ///
-    /// refresh 실패는 **두 종류로 갈라야** 한다 — `sessionExpired`(서버가 세션을 부정, 토큰은
-    /// `AuthClient.refresh` 가 이미 폐기)는 재로그인이고, 네트워크·5xx 는 판정 불가라 토큰을 살려 둔 채
-    /// 재시도한다. 뭉뚱그리면 오프라인에서 앱을 켠 사용자가 로그아웃당한다.
+    /// refresh 를 **먼저 때리지 않는다** — Access 는 3시간이라 콜드 스타트 대부분 살아 있고,
+    /// 만료면 이 호출의 403 을 AuthorizedNetworkClient 가 잡아 재발급 후 재시도한다([[api#토큰 수명주기]]).
+    /// 매 실행 무조건 rotation 은 콜 낭비 + 페어 교체 중 앱 킬 = 세션 유실 리스크만 키운다.
+    ///
+    /// 실패는 **두 종류로 갈라야** 한다 — `sessionExpired`(재발급까지 실패, 토큰은 인터셉터가 이미 폐기)는
+    /// 재로그인이고, 네트워크·5xx 는 판정 불가라 토큰을 살려 둔 채 재시도한다.
+    /// 뭉뚱그리면 오프라인에서 앱을 켠 사용자가 로그아웃당한다.
     private func resolveLaunchRouting() -> Effect<Action> {
         .run { send in
             guard authClient.isAuthenticated() else {
                 return await send(.launchRoutingResolved(.login))
             }
             do {
-                try await authClient.refresh()
-            } catch AuthError.sessionExpired {
-                return await send(.launchRoutingResolved(.login))
-            } catch {
-                return await send(.launchRoutingResolved(.failed(step: "refresh", reason: "\(error)")))
-            }
-            do {
-                // 게이트 판정값 2개를 한 번에 받는다 — 약관 항목까지 딸려와 재조회가 없다.
+                // 게이트 판정값 2개를 한 번에 받는다 — 약관 항목까지 딸려와 재조회가 없고,
+                // 인증 필요 API 라 세션 유효성 검증을 겸한다.
                 let pending = try await consentClient.pending()
                 await send(.launchRoutingResolved(routing(for: pending)))
             } catch ConsentError.sessionExpired {
-                // refresh 직후인데 거부됐다 — 세션이 죽은 것으로 본다.
                 await send(.launchRoutingResolved(.login))
             } catch {
                 await send(.launchRoutingResolved(.failed(step: "consents/pending", reason: "\(error)")))
