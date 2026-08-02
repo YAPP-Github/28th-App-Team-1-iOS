@@ -132,6 +132,14 @@ struct OnboardingCoordinatorTests {
         await store.receive(\.delegate.dismiss)
     }
 
+    @Test("직군 선택의 [이전으로]는 pop 할 스텝이 없어 온보딩 종료로 수렴한다")
+    func jobSelectionBackDismissesOnboarding() async {
+        let store = makeStore(OnboardingFeature.State(userName: "재원"))
+
+        await store.send(.jobSelection(.delegate(.backRequested)))
+        await store.receive(\.delegate.dismiss)
+    }
+
     @Test("스텝 뒤로가기는 스택을 pop 한다")
     func stepBackPopsStack() async {
         var initialState = OnboardingFeature.State(userName: "재원")

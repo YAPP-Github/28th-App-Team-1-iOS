@@ -117,7 +117,10 @@ public struct OnboardingFeature {
                 state.path.append(.careerInput(.init(step: 2, totalSteps: Self.totalSteps)))
                 return persist(state)
 
-            case .jobSelection(.delegate(.closeRequested)):
+            // 루트라 pop 할 스텝이 없다 — [이전으로]는 X 와 같은 «위저드 나가기» 로 수렴한다.
+            // 앞에 스텝이 생기면 여기만 popLast 로 바뀐다.
+            case .jobSelection(.delegate(.backRequested)),
+                 .jobSelection(.delegate(.closeRequested)):
                 return .send(.delegate(.dismiss))
 
             case .jobSelection:
