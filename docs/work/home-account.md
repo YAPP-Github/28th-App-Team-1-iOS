@@ -17,7 +17,7 @@
 |---|---|---|---|
 | `Splash` | SP — 자동 로그인 판정 | FeatureAuth `SplashView`(정적) + `AppFeature.onAppear` 판정 배선 | 골격 ✅ 판정 ✅ |
 | `AuthCreateAccount` | A0 로그인 | FeatureAuth — 기존 AuthFeature 를 `AuthCreateAccountFeature` 로 개명(D5 3분류 정리), 코디네이터 `AuthFeature` 신설 | 골격 ✅ / 🔴 신규·기존 분기(S-1)·실패 토스트 |
-| `AuthTerms` | A1 약관 동의(5종) | FeatureAuth — 5종 체크·전체 동의·전문 바텀시트(DS `.hilitBottomSheet`) 동작 | 골격 ✅ / 🔴 제출 API(S-1)·전문(S-2) |
+| `AuthTerms` | A1 약관 동의(5종) | FeatureAuth — 5종 체크·전체 동의·전문 바텀시트(DS `.hilitDetentSheet` — 시스템 시트 detent) 동작 | 골격 ✅ / 🔴 제출 API(S-1)·전문(S-2) |
 | `AuthSuspension` | A4 정지(블랙리스트) 안내 | FeatureAuth — 진입은 홈 게이트 `ACCOUNT_SUSPENDED` → cross-feature 제시 (§4) | 골격 ✅ / 🔴 게이트 배선·CS 주소 |
 | `AuthOnboardingNaming` | (PRD Part7 밖 — 디자인 확정) 이름 입력 | FeatureAuth/Onboarding — DS `NameField` | 골격 ✅ / 🔴 `updateProfile` 일괄 배선(이름 단독 API 삭제 예정) |
 | `AuthOnboardingJob` | Part1 S0a 직군 선택 | FeatureAuth/Onboarding — FeatureOnboarding STEP1 **복사**(원본은 위저드 정리 시 제거) | 골격 ✅ |
@@ -84,7 +84,7 @@ AuthSuspension — 정지 계정이 면접 시작 시도 시 (게이트 ACCOUNT_
 
 진입: 첫 소셜 인증 직후 1회. `FeatureAuth` 내부 화면 — 코디네이터 `AuthFeature` 의 `Path`(StackState)로 push (도메인 내부 내비). 골격 구현 완료([[auth#가입 플로우]]).
 
-- 구성: 제목 «서비스 이용을 위해 동의가 필요해요» / [전체 동의] / 필수 5종 체크 / [보기] = **전문 바텀시트 — DS `.hilitBottomSheet` 껍데기 ✅ 사용**(딤 오버레이만 제공, 시트 판은 호출부) / [동의하고 시작하기] — **5종 모두 체크 시에만 활성**, 일부 체크 시 비활성(별도 경고 없음).
+- 구성: 제목 «서비스 이용을 위해 동의가 필요해요» / [전체 동의] / 필수 5종 체크 / [보기] = **전문 바텀시트 — DS `.hilitDetentSheet` ✅ 사용**(시스템 `.sheet` + detent — 시안 높이 662/812 로 열리고 드래그로 전체 높이까지, 아래로 스와이프·딤 탭 닫기. 판은 호출부) / [동의하고 시작하기] — **5종 모두 체크 시에만 활성**, 일부 체크 시 비활성(별도 경고 없음).
 - 제출 = 서버가 **계정 생성 확정 + 무료 3회 부여 + 동의 이력(항목·버전·일시) 저장** — 이용권 D3(부여 시점) 이 이 정의로 자동 확정. API 는 `DomainAuth` 확장 🔴 (S-1: 인증~동의 사이 임시 토큰 상태 서버 협의).
 - 제출 성공(iOS) → **가입 온보딩(AuthOnboardingNaming~)으로 진행** (PRD 는 «홈 직행»이었으나 디자인이 온보딩 4화면 경유로 확정. A2 없음 — 권한은 면접 시작 시점). 제출 실패(네트워크) → 토스트 + 화면 유지 + **체크 상태 보존**.
 - 중도 이탈(뒤로가기·종료) → 계정 미생성. 재로그인 시 AuthTerms 재진입 — 클라 저장 없음, 서버 판정 수신만.

@@ -9,8 +9,8 @@
 //        «Create_Account_Terms of Service_Detail»(전문 바텀시트)
 //        https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=477-6308 — 공유용 파일의 개정본이
 //        전문 시트의 기준이다(구 ZG7F…?node-id=3768-17124 대비 시트 안 CTA 제거).
-//        두 노드는 별개 화면이 아니라 같은 화면의 기본/오버레이 상태다 — 시트는 DS `.hilitBottomSheet`
-//        껍데기 위에 판만 그린다(딤·바닥 정렬·슬라이드는 DS 몫).
+//        두 노드는 별개 화면이 아니라 같은 화면의 기본/시트 상태다 — 시트는 시스템 `.sheet`
+//        (DS `.hilitDetentSheet`)에 판만 그린다(딤·높이 드래그·스와이프 닫기는 시스템 몫).
 
 import ComposableArchitecture
 import DomainConsentInterface
@@ -27,7 +27,7 @@ public struct AuthTermsView: View {
         static let titleToConsent: CGFloat = 54
         /// 전체동의 ↔ 구분선 ↔ 항목 목록.
         static let consentSection: CGFloat = 34
-        /// 시트 판 높이 비율 (시안 662 / 812).
+        /// 시트가 처음 열리는 detent 비율 (시안 662 / 812) — 위로 드래그하면 `.large`.
         static let sheetHeightRatio: CGFloat = 662.0 / 812.0
         static let grabberWidth: CGFloat = 60
         static let grabberHeight: CGFloat = 5
@@ -53,9 +53,11 @@ public struct AuthTermsView: View {
         }
         .background(Color.BlackWhite.white.ignoresSafeArea())
         .hilitNavigationBar(background: .filled, onClose: { send(.userTappedClose) })
-        .hilitBottomSheet(
+        // 시안 높이(662/812)로 열리고, 드래그로 전체 높이까지 늘렸다 줄일 수 있다 — detent 2개.
+        .hilitDetentSheet(
             item: store.presentedDocument,
-            onDimTap: { send(.userDismissedDocument) },
+            detents: [.fraction(Metric.sheetHeightRatio), .large],
+            onDismiss: { send(.userDismissedDocument) },
             content: { item in documentSheet(item) }
         )
         .alert($store.scope(state: \.alert, action: \.alert))
@@ -144,12 +146,13 @@ public struct AuthTermsView: View {
 
     // MARK: - 전문 바텀시트 (node 477:6341)
 
-    /// 전문 시트 판 — `.hilitBottomSheet` 가 딤·바닥 정렬·전환만 주는 껍데기라 판은 호출부 몫.
+    /// 전문 시트 판 — 딤·높이·전환은 시스템 시트가 주고 판(배경·그래버·본문)만 여기서 그린다.
     /// 시안 판은 **상단 코너 0**(DS 전반의 «모서리 0» 과 같은 결) + 흰 배경 + 높이 662.
+    /// 높이는 detent 가 정하니 판은 주어진 높이를 채운다(고정 frame 없음).
     /// 본문은 서버 마크다운(`ConsentClient.document`) — 조회 중엔 빈 화면이다.
     ///
     /// **시트 안에 CTA 가 없다** (개정 시안 477:6341 — 하단은 홈 인디케이터 띠뿐).
-    /// 읽고 나가는 경로는 딤 탭 하나고, 동의 제출은 시트를 닫은 뒤 화면 CTA 로 한다.
+    /// 나가는 경로는 아래로 스와이프·딤 탭이고, 동의 제출은 시트를 닫은 뒤 화면 CTA 로 한다.
     private func documentSheet(_ item: ConsentItem) -> some View {
         VStack(spacing: 0) {
             grabber
@@ -174,14 +177,8 @@ public struct AuthTermsView: View {
             .padding(.top, .ds(.p16))
             .frame(maxHeight: .infinity)
         }
-        // @ds(layout): 662/812 (81.5%) — 시트 판 높이. 시안이 812pt 기기 고정값이라 비율로 옮겼다
-        .containerRelativeFrame(.vertical) { height, _ in height * Metric.sheetHeightRatio }
-        .frame(maxWidth: .infinity)
-        .background {
-            Rectangle()
-                .fill(Color.BlackWhite.white)
-                .ignoresSafeArea(edges: .bottom)   // 판만 홈 인디케이터 아래까지
-        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .presentationBackground(Color.BlackWhite.white)
     }
 
     // @ds(component): 시트 그래버 — 60×5 g400 바(모서리 0) + 행 높이 20. 공용 컴포넌트 없음

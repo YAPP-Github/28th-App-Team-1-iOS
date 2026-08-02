@@ -54,7 +54,7 @@ public struct ConsentPending: Decodable, Equatable, Sendable {
 }
 
 /// 동의 항목 한 건. `version` 은 제출(submit)과 본문 조회(document)에 그대로 넘긴다.
-public struct ConsentItem: Decodable, Equatable, Sendable {
+public struct ConsentItem: Decodable, Equatable, Sendable, Identifiable {
     /// 항목 코드 (예: "TERMS_OF_SERVICE") — 서버가 관리하는 열린 집합이라 String 으로 둔다
     public let code: String
     /// 항목 제목 (예: "서비스 이용약관")
@@ -65,6 +65,9 @@ public struct ConsentItem: Decodable, Equatable, Sendable {
     public let version: Int
     /// 본문 등록 여부 — false 면 본문 보기 UI 를 숨긴다
     public let hasDocument: Bool
+
+    /// 목록·시트 표출 키 — 코드가 pending 안에서 유일하다(항목당 현행 버전 1개).
+    public var id: String { code }
 
     public init(code: String, label: String, isRequired: Bool, version: Int, hasDocument: Bool) {
         self.code = code
