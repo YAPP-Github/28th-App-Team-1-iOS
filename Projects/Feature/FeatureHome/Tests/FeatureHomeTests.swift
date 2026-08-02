@@ -82,6 +82,22 @@ struct HomeEntryLoadTests {
         }
     }
 
+    @Test("프로필 로드가 실패하면 소진이 아니라 «모른다» 로 둔다")
+    func profileFailureIsNotExhausted() async {
+        struct LoadFailure: Error {}
+        let store = TestStore(initialState: HomeFeature.State()) {
+            HomeFeature()
+        } withDependencies: {
+            $0.userClient.profile = { throw LoadFailure() }
+            $0.portfolioClient.list = { [] }
+        }
+
+        await store.send(.view(.onAppear))
+        // 잔여는 nil 그대로 — 0 으로 떨어뜨리면 «무료 횟수를 모두 사용했어요» 가 떠서
+        // 시작 경로가 [홈으로] 하나로 막힌다. 변형도 초기값 `.first` 에서 안 움직인다.
+        await store.receive(\.inner.entryLoaded)
+    }
+
     @Test("잔여 0 이면 포폴이 있어도 소진 변형이 이긴다")
     func exhaustedWinsOverPortfolio() async {
         let store = TestStore(initialState: HomeFeature.State()) {

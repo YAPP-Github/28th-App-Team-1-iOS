@@ -50,17 +50,20 @@ public struct StartInterviewFeature {
         /// 응답 전엔 비어 있고, 그때는 뷰가 이름 줄을 뺀다(사람 이름을 기본값으로 두지 않는다).
         public var userName: String
         /// 남은 무료 면접 횟수 — 서버 값 표시만(«진실은 서버에만», docs/work/home-account.md §3).
-        public var remainingChances: Int
+        /// **nil 은 «아직 모른다»** 다(프로필 응답 전·실패). 0 과 갈라 둬야 로드 실패를 소진으로
+        /// 오해하지 않는다 — 포폴 날짜·용량과 같은 규칙이다(없는 조각은 가짜 값 대신 뺀다).
+        public var remainingChances: Int?
         /// 등록된 포트폴리오 — 없으면 nil(«이전 정보 재사용» 시안에서만 카드에 쓴다).
         public var portfolio: Portfolio?
 
         /// 기본값은 전부 중립이다 — `variant` 로 시안 값을 파생하지 않는다.
         /// 파생하면 프리뷰 픽스처(`Portfolio.placeholder` 의 «{파일명}.pdf», 조작된 잔여 3회)가
         /// 앱에서 그대로 그려진다. 시안대로 보고 싶은 프리뷰가 픽스처를 명시로 넘긴다.
+        /// 잔여의 중립은 **0 이 아니라 nil** 이다 — 0 은 «소진» 이라는 서버 판정이라서.
         public init(
             variant: Variant,
             userName: String = "",
-            remainingChances: Int = 0,
+            remainingChances: Int? = nil,
             portfolio: Portfolio? = nil
         ) {
             self.variant = variant

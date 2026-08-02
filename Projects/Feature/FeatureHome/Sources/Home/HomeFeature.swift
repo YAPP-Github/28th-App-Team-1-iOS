@@ -273,11 +273,14 @@ private extension HomeFeature {
 
     /// 면접 시작 카드 변형 — 잔여 0 이 최우선(소진 안내), 다음이 재사용할 포폴 유무.
     /// 서버 판정의 표시일 뿐이다 — 시작 가능 여부의 진실은 탭 시점 게이트다.
+    ///
+    /// **잔여를 모르면(nil) 소진이 아니다** — 프로필이 죽었을 뿐인데 «무료 횟수를 모두 사용했어요»
+    /// 를 띄우면 시작 경로가 [홈으로] 하나로 막힌다. 모를 땐 포폴 유무로만 가른다.
     static func startVariant(
-        remainingChances: Int,
+        remainingChances: Int?,
         portfolio: StartInterviewFeature.Portfolio?
     ) -> StartInterviewFeature.Variant {
-        if remainingChances <= 0 { return .exhausted }
+        if let remainingChances, remainingChances <= 0 { return .exhausted }
         return portfolio == nil ? .first : .hasPortfolio
     }
 }
