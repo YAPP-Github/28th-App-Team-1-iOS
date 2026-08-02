@@ -187,6 +187,22 @@ public struct AuthTermsFeature {
                     )
                     return loadPending()
                 }
+                // 미승격 서버 에러는 임시 노출 규칙(2026-08-02) — title «CODE(status)», message 원문.
+                if let serverAlert = error.serverAlert {
+                    state.alert = AlertState(
+                        title: { TextState(serverAlert.title) },
+                        actions: { ButtonState(role: .cancel) { TextState("확인") } },
+                        message: { TextState(serverAlert.message) }
+                    )
+                    return .none
+                }
+                if case let .invalid(message) = error {
+                    state.alert = AlertState(
+                        title: { TextState(message) },
+                        actions: { ButtonState(role: .cancel) { TextState("확인") } }
+                    )
+                    return .none
+                }
                 state.alert = AlertState(
                     title: { TextState("동의 제출에 실패했어요. 다시 시도해주세요.") },
                     actions: { ButtonState(role: .cancel) { TextState("확인") } }
