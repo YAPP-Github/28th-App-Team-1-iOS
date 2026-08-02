@@ -2,14 +2,15 @@
 
 YAPP APP 1팀 백엔드(D14 API v1)와의 연동 지식. 서버 태그(AppVersion·Auth·Consent·Interview·Interview Report·JD·Job·Portfolio·User·Feedback Share·Guest Feedback)를 Domain 모듈로 1:1 미러링하고, 공통 규약(envelope·토큰)은 CoreNetwork 가 흡수한다. 인프라 계약은 [[domain.map#네트워킹 인프라]], 레이어 규칙은 [[architecture]].
 
-- Swagger: `http://43.202.34.84:8080/swagger-ui/index.html`
+- Swagger: `https://hilit.my/swagger-ui/index.html`
 - 스펙 원문: `GET /v3/api-docs` (OpenAPI 3.1)
 
 ## 서버와 환경
 
-개발 서버는 `http://43.202.34.84:8080` (HTTP + IP 직결). baseURL 은 계별 xcconfig `API_BASE_URL` → Info.plist → `NetworkClient.defaultBaseURL()` 로 흐른다 (→ DocC Environments). QA/Prod 값은 아직 자리표시자다.
+개발 서버는 `https://hilit.my` (같은 인스턴스에 `http://43.202.34.84:8080` 로 IP 직결도 가능). baseURL 은 계별 xcconfig `API_BASE_URL` → Info.plist → `NetworkClient.defaultBaseURL()` 로 흐른다 (→ DocC Environments). QA/Prod 값은 아직 자리표시자다.
 
-- HTTP 라서 ATS 전면 허용(`NSAllowsArbitraryLoads`)이 걸려 있다 — `Target+Templates.swift` 의 `.app()`/`feature(example:)`. 운영 HTTPS 전환 시 반드시 제거 (App Store 심사에서 사유 요구).
+- **도메인은 반드시 https** — `http://hilit.my` 로 붙으면 Caddy 가 308 로 https 에 넘기는데, scheme 이 바뀌어 origin 이 달라지므로 URLSession 이 `Authorization` 헤더를 떼고 재요청한다 → 전 API 403(익명 취급). body 로 자격증명을 싣는 재발급만 살아남아 «토큰은 멀쩡한데 전부 403» 로 보인다.
+- ATS 전면 허용(`NSAllowsArbitraryLoads`)은 IP 직결(HTTP) 디버깅 경로 때문에 남아 있다 — `Target+Templates.swift` 의 `.app()`/`feature(example:)`. IP 직결이 사라지면 제거 (App Store 심사에서 사유 요구).
 
 ## 공통 규약
 
@@ -57,11 +58,11 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 
 ## Consent
 
-`DomainConsent` — `ConsentClient`. 온보딩 최초 동의와 약관 개정 재동의를 한 흐름으로 처리한다. `pending` 의 `status` 하나로 최초(NOT_SUBMITTED)/재동의(STALE)/최신(UP_TO_DATE)을 구분하고, 제출은 pending 이 내려준 `version` 을 그대로 보낸다. 첫 성공 제출 시 서버가 무료 이용권 3회를 부여한다.
+`DomainConsent` — `ConsentClient`. 온보딩 최초 동의와 약관 개정 재동의를 한 흐름으로 처리한다. `pending` 의 `consentStatus` 하나로 최초(NOT_SUBMITTED)/재동의(STALE)/최신(UP_TO_DATE)을 구분하고, 제출은 pending 이 내려준 `version` 을 그대로 보낸다. 첫 성공 제출 시 서버가 무료 이용권 3회를 부여한다.
 
 | 메서드 | 엔드포인트 | 비고 |
 |---|---|---|
-| `pending` | GET `/api/v1/consents/pending` | 신규 유저는 필수 5종 전체, 구버전 동의 유저는 바뀐 항목만. `profileRegistered`(게이트 ② 판정값)도 내려준다 — 세션 복구(Splash)가 login 응답 없이 분기하기 위함(2026-08-01 합의, 배포 전엔 없으면 false 로 읽음) |
+| `pending` | GET `/api/v1/consents/pending` | 신규 유저는 필수 5종 전체, 구버전 동의 유저는 바뀐 항목만. `profileRegistered`(게이트 ② 판정값)도 내려준다 — 세션 복구(Splash)가 login 응답 없이 분기하기 위함(2026-08-01 합의, 2026-08-02 배포 확인). 상태 키는 `consentStatus` |
 | `document` | GET `/api/v1/consents/{item}/versions/{version}` | 본문(마크다운) — 항목 탭 시 바텀시트. `hasDocument: false` 면 숨김 |
 | `submit` | POST `/api/v1/consents` | 필수 항목은 agreed: true 만, 선택 항목은 거부도 정상 제출 |
 

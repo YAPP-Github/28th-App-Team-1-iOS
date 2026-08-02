@@ -25,10 +25,11 @@ final class ConsentClientLiveTests: XCTestCase {
         }
     }
 
-    func test_pending_envelope을_벗겨_status와_items를_디코딩한다() async throws {
+    func test_pending_envelope을_벗겨_consentStatus와_items를_디코딩한다() async throws {
         let json = """
         {"success": true, "data": {
-            "status": "STALE",
+            "consentStatus": "STALE",
+            "profileRegistered": true,
             "items": [
                 {"code": "TERMS_OF_SERVICE", "label": "서비스 이용약관", "required": true, "version": 2, "hasDocument": true}
             ]
@@ -43,9 +44,23 @@ final class ConsentClientLiveTests: XCTestCase {
         let pending = try await client.pending()
 
         XCTAssertEqual(pending.status, .stale)
+        XCTAssertTrue(pending.profileRegistered)
         XCTAssertEqual(pending.items, [
             ConsentItem(code: "TERMS_OF_SERVICE", label: "서비스 이용약관", isRequired: true, version: 2, hasDocument: true)
         ])
+    }
+
+    /// 과도기 폴백 — `profileRegistered`·`items` 가 없어도 판정이 실패하지 않아야 한다(스플래시 갇힘 방지).
+    func test_pending_옵셔널_필드가_없으면_미등록과_빈_목록으로_읽는다() async throws {
+        let client = makeClient { _ in
+            Data(#"{"success": true, "data": {"consentStatus": "UP_TO_DATE"}}"#.utf8)
+        }
+
+        let pending = try await client.pending()
+
+        XCTAssertEqual(pending.status, .upToDate)
+        XCTAssertFalse(pending.profileRegistered)
+        XCTAssertEqual(pending.items, [])
     }
 
     func test_document_경로에_항목과_버전을_싣는다() async throws {

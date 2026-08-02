@@ -87,7 +87,7 @@ final class AuthorizedNetworkClientLiveTests: XCTestCase {
             case ("/api/v1/auth/token/refresh", _):
                 return Data(#"{"success": true, "data": {"accessToken": "access-2", "refreshToken": "refresh-2"}}"#.utf8)
             case ("/api/v1/consents/pending", "Bearer access-2"):
-                return Data(#"{"success": true, "data": {"status": "UP_TO_DATE", "items": []}}"#.utf8)
+                return Data(#"{"success": true, "data": {"consentStatus": "UP_TO_DATE", "items": []}}"#.utf8)
             default:
                 XCTFail("예상 밖 요청: \(request.path)")
                 throw NetworkError.invalidURL
