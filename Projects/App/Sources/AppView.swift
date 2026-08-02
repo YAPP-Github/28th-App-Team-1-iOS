@@ -7,7 +7,9 @@
 
 import SwiftUI
 import ComposableArchitecture
+import CoreNetworkInterface
 import Feature
+import SharedDesignSystemInterface
 
 struct AppView: View {
     @Bindable var store: StoreOf<AppFeature>
@@ -31,5 +33,9 @@ struct AppView: View {
             }
         }
         .onAppear { store.send(.onAppear) }
+        // 전역 시스템 로딩 — 모든 API in-flight(NetworkActivity) 동안 화면을 잠근다
+        .hilitModal(isPresented: NetworkActivity.shared.isLoading) {
+            LoadingModal()
+        }
     }
 }
