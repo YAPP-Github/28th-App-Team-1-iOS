@@ -31,7 +31,7 @@ Part 2 «10분 음성 면접» 화면군 (`FeatureInterview`, Figma «[2] Interv
 - `State(sessionId:)` 로 온보딩 분석이 만든 세션 id 를 들고 있다 — 준비 화면의 질문 준비 폴링과, 실패 후 «다시 시작하기» 재진입이 같은 세션을 쓴다.
 - 세션 `finished` 는 상위로 바로 올리지 않는다 — [[interview#리포트 대기]] 를 먼저 띄우고, 거기서 온 `goHomeRequested` 만 `delegate(.finished)` 로 승격한다. 세션 `aborted`·실패 화면 `closeRequested` 는 `delegate(.closed)`.
 - 준비 `prepFailed` → 실패 화면(kind: questionPrep). 실패 `restartRequested`(STT 전용) → 같은 sessionId 로 준비 화면 재진입.
-- AppFeature 배선(세션 payload — 온보딩 산출 sessionId 주입)은 미착수, 현재는 Example 이 주입 → [ai-interview](../docs/work/ai-interview.md) §2.
+- AppFeature 배선 완료 — 온보딩 `delegate(.finished(sessionId:))` 가 `@Presents var interview` 를 세워 `fullScreenCover` 로 연다. 흐름 밖 신호 두 개(`finished`·`closed`)는 cover 를 닫고 홈을 재조회시킨다 → [[app]]. 정상 종료 → 리포트 상세(r1)는 아직 TODO → [ai-interview](../docs/work/ai-interview.md) §2.
 
 ## 권한
 
