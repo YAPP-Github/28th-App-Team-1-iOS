@@ -17,18 +17,29 @@ enum HomeSheetDrag {
     /// 기본 자리의 시트 높이 — 시안 812 중 하단 481.
     // @ds(layout): 481 — 기본 자리 시트 높이
     static let reportHeight: CGFloat = 481
+    /// 그린 영역이 인사말·안내 문구를 **자르지 않고** 담는 최소 높이 — 시안 244(내비바 아래 ~ 시트 위).
+    /// 기본 자리 시트가 이만큼은 남겨 둔다 — 안 그러면 시안보다 짧은 기기에서 인사말이 잘린다.
+    // @ds(layout): 244 — 그린 영역 최소 높이
+    static let greenMinHeight: CGFloat = 244
     /// 자리를 한 칸 옮기는 최소 이동량(pt). 44(터치 최소 크기)보다 크게 잡아 탭 흔들림과 갈라진다.
     static let travelThreshold: CGFloat = 60
     /// 드래그로 인정하는 최소 이동 — 이보다 작으면 탭이다.
     static let minimumDistance: CGFloat = 10
+    /// 시트를 다 내렸을 때 **홈 인디케이터 띠까지** 화면 밖으로 빼기 위한 여유 이동량.
+    /// 판 배경이 하단 안전영역(최대 34)을 덮으므로 그만큼 더 내려야 아래 겹(면접 시작 CTA)이 안 가린다.
+    /// 안전영역 실측을 뷰로 흘리는 대신 상한을 넉넉히 잡는다 — 더 내려가 봐야 이미 화면 밖이다.
+    static let downwardClearance: CGFloat = 48
     /// 손을 뗀 뒤 남은 거리를 이어 미끄러뜨리는 곡선.
     static let settleAnimation: Animation = .snappy(duration: 0.32, extraBounce: 0.06)
 
     /// 자리별 시트 높이. `available` 은 내비바 아래로 쓸 수 있는 세로 길이다.
+    ///
+    /// 기본 자리는 **그린 영역이 먼저**다 — `greenMinHeight` 를 떼어 주고 남은 만큼만 시트가 먹는다.
+    /// 시안(812) 에선 남는 값이 481 근처라 그대로고, 더 짧은 기기에서만 시트가 줄어 문구가 산다.
     static func height(for detent: HomeFeature.SheetDetent, available: CGFloat) -> CGFloat {
         switch detent {
         case .startInterview: 0
-        case .report: min(reportHeight, available)
+        case .report: min(reportHeight, max(available - greenMinHeight, 0))
         case .expanded: available
         }
     }
@@ -39,6 +50,18 @@ enum HomeSheetDrag {
         let base = height(for: .report, available: available)
         guard base > 0 else { return 0 }
         return Double(1 - min(max(sheetHeight / base, 0), 1))
+    }
+
+    /// 기본 자리 아래로 내려갈 때 판을 **줄이지 않고 통째로 밀어 내리는** 세로 오프셋.
+    ///
+    /// 높이를 줄여 내리면 내용이 밑에서부터 잘려 나가다 홈 인디케이터 띠만 남는다 — 바텀시트가
+    /// 미끄러져 사라지는 모양이 아니다. 그래서 기본 자리 밑으로는 높이를 고정하고 이 값만큼 민다.
+    /// 다 내리면 `resting + downwardClearance` — 안전영역을 덮는 판 배경까지 화면 밖으로 나간다.
+    static func dismissOffset(sheetHeight: CGFloat, available: CGFloat) -> CGFloat {
+        let resting = height(for: .report, available: available)
+        guard resting > 0, sheetHeight < resting else { return 0 }
+        let progress = 1 - sheetHeight / resting
+        return progress * (resting + downwardClearance)
     }
 
     /// 손을 뗐을 때 앉을 자리. `travel` 은 관성까지 반영한 예상 종료 이동량(아래가 +).
@@ -87,8 +110,10 @@ struct HomeSheetDragHandle {
     /// 손을 뗌 — 관성 포함 예상 종료 이동량을 넘긴다.
     let onEnded: (CGFloat) -> Void
 
+    /// 좌표계는 **global** — 손잡이는 드래그를 따라 움직이는 뷰라, 기본(local)로 재면 판이 Δ 내려갈 때
+    /// 좌표계도 같이 내려가 translation 이 되감기고, 그 값이 판을 도로 올리는 피드백 루프로 떨린다.
     var gesture: some Gesture {
-        DragGesture(minimumDistance: HomeSheetDrag.minimumDistance)
+        DragGesture(minimumDistance: HomeSheetDrag.minimumDistance, coordinateSpace: .global)
             .onChanged { onChanged($0.translation.height) }
             .onEnded { onEnded($0.predictedEndTranslation.height) }
     }

@@ -25,8 +25,11 @@ import SwiftUI
 @ViewAction(for: HomeFeature.self)
 struct HomeReportView: View {
     @Bindable var store: StoreOf<HomeFeature>
-    /// 지금 시트가 차지할 높이 — 확정된 자리 + 진행 중인 드래그.
+    /// 시트 판 높이 — 기본 자리에서 확장 자리 사이만 움직인다(그 밑으론 기본 자리 높이 고정).
     let sheetHeight: CGFloat
+    /// 판을 통째로 밀어 내린 거리(아래가 +) — 기본 자리 밑으로는 높이 대신 이게 움직여
+    /// 바텀시트가 미끄러져 사라지는 모양이 된다(`HomeSheetDrag.dismissOffset`).
+    let sheetOffset: CGFloat
     /// 면접 시작이 드러난 정도(0…1) — 그린 판은 그만큼 사라진다.
     let startProgress: Double
     let dragHandle: HomeSheetDragHandle
@@ -42,6 +45,7 @@ struct HomeReportView: View {
                 .opacity(1 - startProgress)
             reportSheet
                 .frame(height: sheetHeight)
+                .offset(y: sheetOffset)
         }
     }
 
@@ -93,7 +97,7 @@ struct HomeReportView: View {
 
     // MARK: - 바텀시트
 
-    /// 높이는 부모가 준다 — 내려가면 면접 시작이 드러나고, 올라가면 목록만 남는다.
+    /// 높이는 부모가 준다 — 올라가면 목록만 남고, 내려갈 땐 높이 대신 `sheetOffset` 이 판을 통째로 민다.
     private var reportSheet: some View {
         VStack(spacing: 0) {
             grabber
@@ -106,11 +110,10 @@ struct HomeReportView: View {
         .overlay(alignment: .bottom) { bottomFade }
     }
 
-    /// 판 색만 홈 인디케이터 영역까지 내린다 — 시트가 완전히 내려가면 그 띠도 같이 사라져야
-    /// 아래 겹(면접 시작 CTA)이 안 가려진다.
+    /// 판 색만 홈 인디케이터 영역까지 내린다 — 다 내려가면 판이 통째로 화면 밖이라(offset)
+    /// 띠를 따로 지울 필요가 없다.
     private var sheetBackground: some View {
         Color.BlackWhite.white
-            .opacity(sheetHeight > 0 ? 1 : 0)
             .ignoresSafeArea(edges: .bottom)
     }
 
