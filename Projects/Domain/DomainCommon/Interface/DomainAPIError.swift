@@ -25,13 +25,14 @@ public protocol DomainAPIError: Error {
     /// 도메인 고유 서버 코드 → 케이스. 모르는 코드는 nil — 공통 폴백(5xx → serverUnavailable, 그 외 `fallback`)으로 넘어간다.
     init?(serverCode code: String, message: String)
 
-    /// 어떤 케이스로도 승격되지 않은 4xx 서버 코드의 폴백. 기본 `unexpected` —
-    /// 미승격 코드를 화면까지 흘려야 하는 도메인(Interview 의 `server(code:message:)`)만 재정의한다.
-    static func fallback(unrecognizedCode code: String, message: String) -> Self
+    /// 어떤 케이스로도 승격되지 않은 4xx 서버 에러의 폴백. 기본 `unexpected` —
+    /// 미승격 에러를 화면까지 흘려야 하는 도메인(`server(...)` 케이스 패턴)만 재정의한다.
+    /// ServerError 를 통째로 받는다 — 임시 노출 규칙(«CODE(status)» Alert)에 statusCode 까지 필요해서.
+    static func fallback(unrecognized error: ServerError) -> Self
 }
 
 public extension DomainAPIError {
-    static func fallback(unrecognizedCode code: String, message: String) -> Self {
+    static func fallback(unrecognized error: ServerError) -> Self {
         .unexpected
     }
 
@@ -74,7 +75,7 @@ private extension DomainAPIError {
             } else if error.statusCode >= 500 {
                 self = .serverUnavailable
             } else {
-                self = Self.fallback(unrecognizedCode: error.code, message: error.message)
+                self = Self.fallback(unrecognized: error)
             }
         }
     }

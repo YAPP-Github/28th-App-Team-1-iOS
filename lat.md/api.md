@@ -17,7 +17,9 @@ YAPP APP 1팀 백엔드(D14 API v1)와의 연동 지식. 서버 태그(AppVersio
 
 - Swagger 스키마 일부는 envelope 없이 표기돼 있다(annotation 누락) → `ServerEnvelope.unwrap` 이 직접 디코드 폴백을 가진다.
 - 날짜는 ISO8601 과 LocalDateTime(타임존 표기 없음)이 혼재 → `JSONDecoder.api` 가 KST 가정으로 파싱. 백엔드와 타임존 계약 확정 필요.
-- Domain 은 `ServerError.code` 로 도메인 에러를 매핑한다 — 서버 정의 에러 코드가 있는 모든 도메인이 자체 에러 enum 을 갖는다(AppVersionError·AuthError·ConsentError·InterviewError·InterviewReportError·JDError·PortfolioError·UserError·FeedbackShareError·GuestFeedbackError). 케이스는 State 가 다르게 반응할 경우의 수만큼만. 매핑 공통부(토큰 만료 3코드 → sessionExpired, 미인식 5xx → serverUnavailable, transport → networkFailure, 취소 통과)는 `DomainCommonInterface` 의 `DomainAPIError` 프로토콜이 수행하고, 각 도메인 enum 은 고유 코드 매핑 `init?(serverCode:message:)` 만 구현한다 (Interview 만 미승격 4xx 폴백을 `server(code:message:)` 로 재정의, 무인증 GuestFeedback·AppVersion 은 `sessionExpired` 를 unexpected 별칭으로 충족). Implementation 은 `XxxError.mapping { }` 래퍼로 감싼다. 에러 코드가 없는 도메인(Job)만 ServerError/NetworkError 를 그대로 던진다.
+- 서버 에러 body 는 **두 포맷**(2026-08-02 확인) — 정의된 코드 `{success:false, code, message}` / 미정의(Spring 기본) `{timestamp, status, error, path}`. `ServerError.decode` 가 둘 다 읽는다(후자는 `code:""` + `message:error원문`).
+- Domain 은 `ServerError.code` 로 도메인 에러를 매핑한다 — 서버 정의 에러 코드가 있는 모든 도메인이 자체 에러 enum 을 갖는다(AppVersionError·AuthError·ConsentError·InterviewError·InterviewReportError·JDError·PortfolioError·UserError·FeedbackShareError·GuestFeedbackError). 케이스는 State 가 다르게 반응할 경우의 수만큼만. 매핑 공통부(토큰 만료 3코드 → sessionExpired, 미인식 5xx → serverUnavailable, transport → networkFailure, 취소 통과)는 `DomainCommonInterface` 의 `DomainAPIError` 프로토콜이 수행하고, 각 도메인 enum 은 고유 코드 매핑 `init?(serverCode:message:)` 만 구현한다 (Interview·Consent·Auth 는 미승격 4xx 폴백을 `server(…)` 케이스로 재정의해 원문을 화면까지 흘린다, 무인증 GuestFeedback·AppVersion 은 `sessionExpired` 를 unexpected 별칭으로 충족). Implementation 은 `XxxError.mapping { }` 래퍼로 감싼다. 에러 코드가 없는 도메인(Job)만 ServerError/NetworkError 를 그대로 던진다.
+- **미승격 에러 임시 노출 규칙(2026-08-02)** — 도메인 핸들링 확정 전까지 OS 기본 Alert 에 `ServerError.alertTitle/alertMessage` 로 노출: 정의 코드는 title «CODE(status)»·message 서버 문구, Spring 포맷은 title 상태코드·message `error` 원문. 도메인별 핸들링이 정해지면 전용 케이스 승격이 우선.
 - multipart(파일 업로드)는 `NetworkRequest.multipart(...)` 빌더 — 기존 NetworkRequest 계약(헤더+body) 위의 편의일 뿐이다.
 
 ## 토큰 수명주기
@@ -51,7 +53,7 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 | `logout` | DELETE `/api/v1/auth/logout` | 204. 로컬 토큰은 서버 응답과 무관하게 삭제 |
 | `check` | GET `/api/v1/auth/check` | 인증 동작 확인(테스트용) |
 
-실패는 `AuthError` 로 매핑된다 — INVALID_CREDENTIAL/SOCIAL_LOGIN_FAILED → invalidCredential, LOGIN_EXPIRED·TOKEN_EXPIRED·INVALID_TOKEN → sessionExpired, transport → networkFailure, 5xx → serverUnavailable.
+실패는 `AuthError` 로 매핑된다 — INVALID_CREDENTIAL/SOCIAL_LOGIN_FAILED → invalidCredential, LOGIN_EXPIRED·TOKEN_EXPIRED·INVALID_TOKEN → sessionExpired, transport → networkFailure, 5xx → serverUnavailable, 미승격 4xx → server(원문 동봉 — 임시 노출 규칙, [[api#공통 규약]]).
 
 ## Consent
 
@@ -63,7 +65,7 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 | `document` | GET `/api/v1/consents/{item}/versions/{version}` | 본문(마크다운) — 항목 탭 시 바텀시트. `hasDocument: false` 면 숨김 |
 | `submit` | POST `/api/v1/consents` | 필수 항목은 agreed: true 만, 선택 항목은 거부도 정상 제출 |
 
-에러는 `ConsentError` 로 매핑된다 — CONSENT_VERSION_MISMATCH → versionMismatch(400, 제출 중 개정 → pending 재조회 후 재시도), VALIDATION_ERROR 는 서버 문구를 실은 invalid(message:). REQUIRED_CONSENT_MISSING·INVALID_CONSENT_ITEM 은 UI 가 막는 클라이언트 결함이라 unexpected 폴백.
+에러는 `ConsentError` 로 매핑된다 — CONSENT_VERSION_MISMATCH → versionMismatch(400, 제출 중 개정 → pending 재조회 후 재시도), VALIDATION_ERROR 는 서버 문구를 실은 invalid(message:). REQUIRED_CONSENT_MISSING·INVALID_CONSENT_ITEM 은 UI 가 막는 클라이언트 결함이라 케이스 승격 없이 server 폴백(원문 Alert — 임시 노출 규칙, [[api#공통 규약]]).
 
 ## Interview
 

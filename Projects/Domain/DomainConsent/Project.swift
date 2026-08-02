@@ -7,6 +7,7 @@ let project = Project.makeModule(
     targets: [
         .domain(interface: "Consent", factory: .init(dependencies: [
             .composableArchitecture,      // Client 계약이 TestDependencyKey/DependencyValues 를 사용
+            .core(interface: .network),   // fallback(unrecognized: ServerError) 재정의 — 미승격 에러 원문 동봉
             .domain(interface: .common)   // DomainAPIError 채택 (에러 매핑 공통 계약)
         ])),
         .domain(implements: "Consent", factory: .init(dependencies: [

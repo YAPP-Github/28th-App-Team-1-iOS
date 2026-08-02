@@ -63,10 +63,13 @@ enum NetworkDecodeLogger {
 }
 #endif
 
-/// 서버가 정의한 에러 (`{ success: false, code, message }`).
-/// `message` 는 그대로 사용자 노출 가능한 한국어 문구, `code` 로 Domain 이 도메인 에러로 매핑한다.
+/// 서버 에러. 두 포맷이 실재한다(2026-08-02 확인):
+/// - **정의된 코드** `{ success: false, code, message }` — `message` 는 그대로 사용자 노출 가능한 한국어 문구,
+///   `code` 로 Domain 이 도메인 에러로 매핑한다.
+/// - **미정의(Spring 기본)** `{ timestamp, status, error, path }` — 서버가 코드로 승격하지 않은 에러.
+///   `code` 는 빈 문자열, `message` 에 `error`("Forbidden" 등)가 들어온다.
 public struct ServerError: Error, Equatable, Sendable {
-    /// 서버 에러 코드 (예: `PORTFOLIO_ALREADY_EXISTS`, `NO_REMAINING_TICKET`)
+    /// 서버 에러 코드 (예: `PORTFOLIO_ALREADY_EXISTS`, `NO_REMAINING_TICKET`). Spring 기본 포맷이면 빈 문자열.
     public let code: String
     public let message: String
     public let statusCode: Int
@@ -77,17 +80,36 @@ public struct ServerError: Error, Equatable, Sendable {
         self.statusCode = statusCode
     }
 
-    /// 비 2xx body(`NetworkError.statusCode` 의 payload)에서 서버 에러를 읽는다. envelope 이 아니면 nil.
+    /// 비 2xx body(`NetworkError.statusCode` 의 payload)에서 서버 에러를 읽는다.
+    /// 정의된 코드 포맷 우선, 아니면 Spring 기본 포맷 — 둘 다 아니면 nil (HTML·평문 등).
     public static func decode(statusCode: Int, body: Data) -> ServerError? {
         struct Failure: Decodable {
             let code: String?
             let message: String?
         }
-        guard let failure = try? JSONDecoder().decode(Failure.self, from: body), let code = failure.code else {
-            return nil
+        if let failure = try? JSONDecoder().decode(Failure.self, from: body), let code = failure.code {
+            return ServerError(code: code, message: failure.message ?? "알 수 없는 오류가 발생했어요.", statusCode: statusCode)
         }
-        return ServerError(code: code, message: failure.message ?? "알 수 없는 오류가 발생했어요.", statusCode: statusCode)
+
+        struct SpringFailure: Decodable {
+            let status: Int?
+            let error: String?
+        }
+        if let failure = try? JSONDecoder().decode(SpringFailure.self, from: body), let error = failure.error {
+            return ServerError(code: "", message: error, statusCode: failure.status ?? statusCode)
+        }
+        return nil
     }
+}
+
+public extension ServerError {
+    /// 도메인이 승격하지 않은 에러의 **임시 노출 규칙**(2026-08-02 합의) — OS 기본 Alert 에 그대로 싣는다.
+    /// 정의된 코드는 «CODE(status)», Spring 기본 포맷은 상태코드만. 도메인별 핸들링이 확정되면 그쪽이 우선.
+    var alertTitle: String {
+        code.isEmpty ? "\(statusCode)" : "\(code)(\(statusCode))"
+    }
+    /// Alert 본문 — 정의된 코드는 서버 한국어 문구, Spring 포맷은 `error` 원문("Forbidden" 등).
+    var alertMessage: String { message }
 }
 
 public extension NetworkClient {

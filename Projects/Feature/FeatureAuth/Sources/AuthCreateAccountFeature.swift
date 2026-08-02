@@ -85,14 +85,23 @@ public struct AuthCreateAccountFeature {
             case let .inner(.signInFinished(.failure(error))):
                 state.isLoading = false
                 // TODO: PRD Part7 A0 — alert 가 아니라 토스트("로그인에 실패했어요. 다시 시도해주세요")로 교체.
-                state.alert = AlertState(
-                    title: { TextState(error.alertMessage) },
-                    actions: {
-                        ButtonState(role: .cancel) {
-                            TextState("확인")
+                // 미승격 서버 에러는 임시 노출 규칙(2026-08-02) — title «CODE(status)», message 원문.
+                if let serverAlert = error.serverAlert {
+                    state.alert = AlertState(
+                        title: { TextState(serverAlert.title) },
+                        actions: { ButtonState(role: .cancel) { TextState("확인") } },
+                        message: { TextState(serverAlert.message) }
+                    )
+                } else {
+                    state.alert = AlertState(
+                        title: { TextState(error.alertMessage) },
+                        actions: {
+                            ButtonState(role: .cancel) {
+                                TextState("확인")
+                            }
                         }
-                    }
-                )
+                    )
+                }
                 return .none
 
             case .alert:
@@ -119,6 +128,9 @@ private extension AuthError {
             return "서버에 일시적인 문제가 있습니다. 잠시 후 다시 시도해주세요."
         case .sessionExpired:
             return "로그인이 만료되었습니다. 다시 로그인해주세요."
+        case .server:
+            // 도달 안 함 — serverAlert 분기가 먼저 잡는다. exhaustive switch 충족용.
+            return "알 수 없는 오류가 발생했습니다."
         case .unexpected:
             return "알 수 없는 오류가 발생했습니다."
         }
