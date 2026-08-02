@@ -146,9 +146,10 @@ public struct AuthTermsView: View {
 
     // MARK: - 전문 바텀시트 (node 477:6341)
 
-    /// 전문 시트 판 — 딤·높이·전환은 시스템 시트가 주고 판(배경·그래버·본문)만 여기서 그린다.
-    /// 시안 판은 **상단 코너 0**(DS 전반의 «모서리 0» 과 같은 결) + 흰 배경 + 높이 662.
-    /// 높이는 detent 가 정하니 판은 주어진 높이를 채운다(고정 frame 없음).
+    /// 전문 시트 판 — 딤·높이·모서리·전환은 시스템 시트가 주고 판(배경·그래버·본문)만 여기서 그린다.
+    /// 시안 판은 상단 코너 0 + 흰 배경 + 높이 662였는데, **모서리는 시스템 값을 따른다** — iOS 26 이
+    /// 부분 detent 시트를 가장자리에서 띄워 그려서 코너 0 이면 떠 있는 판이 잘려 보인다.
+    /// 높이도 detent 가 정하니 판은 주어진 높이를 채운다(고정 frame 없음).
     /// 본문은 서버 마크다운(`ConsentClient.document`) — 조회 중엔 빈 화면이다.
     ///
     /// **시트 안에 CTA 가 없다** (개정 시안 477:6341 — 하단은 홈 인디케이터 띠뿐).
@@ -165,11 +166,7 @@ public struct AuthTermsView: View {
                 .padding(.vertical, .ds(.p10))
 
             ScrollView {
-                // 서버가 마크다운으로 준다 — SwiftUI `Text` 의 기본 마크다운 파싱에 맡긴다.
-                Text(LocalizedStringKey(store.documentContent ?? ""))
-                    .dsTypography(.body4)
-                    .foregroundStyle(Color.GrayScale.g800)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                documentBody(store.documentContent ?? "")
                     // 마지막 줄이 홈 인디케이터에 붙지 않게 — 시안 하단 흰 띠(21) 자리.
                     .padding(.bottom, .ds(.p20))
             }
@@ -179,6 +176,40 @@ public struct AuthTermsView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .presentationBackground(Color.BlackWhite.white)
+    }
+
+    /// 전문 본문 — 서버 마크다운을 블록으로 갈라 그린다.
+    /// `Text` 의 기본 마크다운은 **인라인만**(굵게·기울임·링크) 알아서 «### 제1조» 같은 헤딩이
+    /// 원문 그대로 남는다. 그 한 겹(헤딩 ↔ 문단)만 우리가 파고, 인라인은 계속 `Text` 에 맡긴다.
+    private func documentBody(_ markdown: String) -> some View {
+        VStack(alignment: .leading, spacing: .ds(.p12)) {
+            ForEach(Array(DocumentBlock.parse(markdown).enumerated()), id: \.offset) { index, block in
+                switch block {
+                case let .heading(level, text):
+                    Text(LocalizedStringKey(text))
+                        .dsTypography(Self.headingTypography(level))
+                        .foregroundStyle(Color.HilitBlack.b800)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        // 조문 사이를 벌린다 — 문단 간격(12)에 얹어 첫 블록만 뺀다.
+                        .padding(.top, index == 0 ? 0 : .ds(.p12))
+
+                case let .paragraph(text):
+                    Text(LocalizedStringKey(text))
+                        .dsTypography(.body4)
+                        .foregroundStyle(Color.GrayScale.g800)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+    }
+
+    /// 헤딩 깊이 → 타이포. 본문(body4=16r)보다 한 단씩 굵고 크게만 잡으면 되는 얕은 문서다.
+    private static func headingTypography(_ level: Int) -> DSTypography {
+        switch level {
+        case 1: .sub4
+        case 2: .sub7
+        default: .body2
+        }
     }
 
     // @ds(component): 시트 그래버 — 60×5 g400 바(모서리 0) + 행 높이 20. 공용 컴포넌트 없음
