@@ -17,8 +17,9 @@ enum HomeSheetDrag {
     /// 기본 자리의 시트 높이 — 시안 812 중 하단 481.
     // @ds(layout): 481 — 기본 자리 시트 높이
     static let reportHeight: CGFloat = 481
-    /// 그린 영역이 인사말·안내 문구를 **자르지 않고** 담는 최소 높이 — 시안 244(내비바 아래 ~ 시트 위).
+    /// 그린 영역이 인사말·안내 문구를 **자르지 않고** 담는 높이 — 시안 244(내비바 아래 ~ 시트 위).
     /// 기본 자리 시트가 이만큼은 남겨 둔다 — 안 그러면 시안보다 짧은 기기에서 인사말이 잘린다.
+    /// 다만 이건 원칙값이고, 실제로 떼어 가는 값은 상한이 걸린 `greenHeight(available:)` 다.
     // @ds(layout): 244 — 그린 영역 최소 높이
     static let greenMinHeight: CGFloat = 244
     /// 자리를 한 칸 옮기는 최소 이동량(pt). 44(터치 최소 크기)보다 크게 잡아 탭 흔들림과 갈라진다.
@@ -34,14 +35,24 @@ enum HomeSheetDrag {
 
     /// 자리별 시트 높이. `available` 은 내비바 아래로 쓸 수 있는 세로 길이다.
     ///
-    /// 기본 자리는 **그린 영역이 먼저**다 — `greenMinHeight` 를 떼어 주고 남은 만큼만 시트가 먹는다.
+    /// 기본 자리는 **그린 영역이 먼저**다 — `greenHeight` 를 떼어 주고 남은 만큼만 시트가 먹는다.
     /// 시안(812) 에선 남는 값이 481 근처라 그대로고, 더 짧은 기기에서만 시트가 줄어 문구가 산다.
     static func height(for detent: HomeFeature.SheetDetent, available: CGFloat) -> CGFloat {
         switch detent {
         case .startInterview: 0
-        case .report: min(reportHeight, max(available - greenMinHeight, 0))
+        case .report: min(reportHeight, max(available - greenHeight(available: available), 0))
         case .expanded: available
         }
+    }
+
+    /// 그린 영역이 실제로 떼어 가는 높이 — 원칙은 시안 244 지만, 그러고 나면 시트가 한 줄도 못 남는
+    /// 짧은 컨테이너에선 **available 의 40% 까지만** 가져간다.
+    ///
+    /// 상한이 필요한 이유: 기본 자리 높이가 0 이 되면 그 자리와 «면접 시작» 자리가 **같은 높이(0)** 라
+    /// `startProgress` 가 둘을 구분하지 못한다(기본 자리인데 면접 시작이 안 드러나거나 그 반대).
+    /// 시트가 항상 조금이라도 남으면 두 자리가 값으로 갈린다.
+    static func greenHeight(available: CGFloat) -> CGFloat {
+        min(greenMinHeight, max(available * 0.4, 0))
     }
 
     /// 면접 시작이 드러난 정도(0…1) — 기본 자리 높이에서 0 으로 줄어드는 만큼 1 에 가까워진다.
