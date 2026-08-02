@@ -67,8 +67,12 @@ struct AppFeature {
         case resume(AuthFeature.Destination)
         /// 두 게이트 통과 — 홈 직행.
         case home
-        /// 판정 불가(네트워크·5xx) — 토큰은 유지된다. 재시도 대상.
-        case failed
+        /// 판정 불가(네트워크·5xx·계약 불일치) — 토큰은 유지된다. 재시도 대상.
+        ///
+        /// 도메인 에러 매핑이 원인을 `unexpected` 하나로 뭉개므로 **어느 단계에서 무엇으로** 실패했는지를
+        /// 함께 싣는다 — 이게 없으면 스플래시에 갇혔을 때 refresh 인지 pending 인지조차 알 수 없다.
+        /// 에러를 그대로 싣지 않고 설명 문자열로 옮기는 건 `any Error` 가 Sendable 이 아니라서다.
+        case failed(step: String, reason: String)
     }
 
     @Dependency(\.authClient) var authClient
@@ -175,7 +179,7 @@ struct AppFeature {
             } catch AuthError.sessionExpired {
                 return await send(.launchRoutingResolved(.login))
             } catch {
-                return await send(.launchRoutingResolved(.failed))
+                return await send(.launchRoutingResolved(.failed(step: "refresh", reason: "\(error)")))
             }
             do {
                 // 게이트 판정값 2개를 한 번에 받는다 — 약관 항목까지 딸려와 재조회가 없다.
@@ -185,7 +189,7 @@ struct AppFeature {
                 // refresh 직후인데 거부됐다 — 세션이 죽은 것으로 본다.
                 await send(.launchRoutingResolved(.login))
             } catch {
-                await send(.launchRoutingResolved(.failed))
+                await send(.launchRoutingResolved(.failed(step: "consents/pending", reason: "\(error)")))
             }
         }
     }
@@ -208,7 +212,10 @@ struct AppFeature {
             state.root = .auth
         case .home:
             state.root = .home
-        case .failed:
+        case let .failed(step, reason):
+            #if DEBUG
+            print("🚧 [LAUNCH-ROUTING] \(step) 실패 — \(reason)")
+            #endif
             state.root = .splashFailed
         }
         return .none
