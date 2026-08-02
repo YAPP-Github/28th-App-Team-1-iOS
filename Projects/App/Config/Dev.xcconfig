@@ -5,7 +5,7 @@
 // `http:/$()/` 의 $() 는 xcconfig 가 // 를 주석으로 먹는 걸 피하는 트릭.
 // D14 개발 서버 (HTTP + IP 직결 — ATS 예외는 Target+Templates.swift 참조. HTTPS 전환 시 함께 제거)
 APP_ENV = dev
-API_BASE_URL = http:/$()/43.202.34.84:8080
+API_BASE_URL = http:/$()/hilit.my
 
 // 카카오 Native 앱 키 — 개발계 Kakao 앱 (Secrets.xcconfig)
 KAKAO_NATIVE_APP_KEY = $(KAKAO_NATIVE_APP_KEY_DEV)
