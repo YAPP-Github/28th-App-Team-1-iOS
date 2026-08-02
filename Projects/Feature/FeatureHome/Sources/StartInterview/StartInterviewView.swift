@@ -167,9 +167,14 @@ public struct StartInterviewView: View {
     }
 
     /// 업로드일 표기 «2026.07.31» — 시안 표기(`{20xx.xx.xx}`)를 그대로 옮긴 고정 포맷이라 로케일에 흔들리지 않게 둔다.
+    ///
+    /// 타임존도 **KST 고정**이다 — 서버가 타임존 없는 LocalDateTime 을 주고 디코더가 그걸 KST 로
+    /// 읽는데(`JSONDecoder.api`), 표시만 기기 로컬로 두면 UTC 서쪽 기기에서 하루 밀린 날짜가 뜬다.
+    /// 읽는 쪽과 쓰는 쪽이 같은 가정을 써야 한다(백엔드와 타임존 계약 확정 시 두 곳을 같이 고친다).
     private static let uploadedAtFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
         formatter.dateFormat = "yyyy.MM.dd"
         return formatter
     }()
