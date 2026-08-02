@@ -145,11 +145,12 @@ extension ConsentClient: TestDependencyKey {
                     status: .notSubmitted,
                     profileRegistered: false,
                     items: [
-                        ConsentItem(code: "AGE_OVER_14", label: "만 14세 이상", isRequired: true, version: 1, hasDocument: true),
+                        // 만 14세만 전문이 없다(자체 확인 체크) — 시안 477:6308 의 «보기» 노출과 같은 배치.
+                        ConsentItem(code: "AGE_OVER_14", label: "만 14세 이상", isRequired: true, version: 1, hasDocument: false),
                         ConsentItem(code: "TERMS_OF_SERVICE", label: "서비스 이용약관", isRequired: true, version: 1, hasDocument: true),
                         ConsentItem(code: "PERSONAL_INFO_COLLECTION", label: "개인정보 수집·이용", isRequired: true, version: 1, hasDocument: true),
                         ConsentItem(code: "INTERVIEW_RECORDING", label: "면접 영상·음성 촬영·저장", isRequired: true, version: 1, hasDocument: true),
-                        ConsentItem(code: "OVERSEAS_TRANSFER", label: "개인정보 국외 이전", isRequired: true, version: 1, hasDocument: false)
+                        ConsentItem(code: "OVERSEAS_TRANSFER", label: "개인정보 국외 이전", isRequired: true, version: 1, hasDocument: true)
                     ]
                 )
             },

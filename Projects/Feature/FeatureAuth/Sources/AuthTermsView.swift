@@ -6,7 +6,9 @@
 //
 
 // Figma: «Create_Account_Terms of Service» https://figma.com/design/ZG7FUxWCvITmnvzZi7fpTS/?node-id=3768-16521
-//        «Create_Account_Terms of Service_Detail»(전문 바텀시트) …?node-id=3768-17124
+//        «Create_Account_Terms of Service_Detail»(전문 바텀시트)
+//        https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=477-6308 — 공유용 파일의 개정본이
+//        전문 시트의 기준이다(구 ZG7F…?node-id=3768-17124 대비 시트 안 CTA 제거).
 //        두 노드는 별개 화면이 아니라 같은 화면의 기본/오버레이 상태다 — 시트는 DS `.hilitBottomSheet`
 //        껍데기 위에 판만 그린다(딤·바닥 정렬·슬라이드는 DS 몫).
 
@@ -140,11 +142,14 @@ public struct AuthTermsView: View {
         }
     }
 
-    // MARK: - 전문 바텀시트 (node 3768:17192)
+    // MARK: - 전문 바텀시트 (node 477:6341)
 
     /// 전문 시트 판 — `.hilitBottomSheet` 가 딤·바닥 정렬·전환만 주는 껍데기라 판은 호출부 몫.
     /// 시안 판은 **상단 코너 0**(DS 전반의 «모서리 0» 과 같은 결) + 흰 배경 + 높이 662.
     /// 본문은 서버 마크다운(`ConsentClient.document`) — 조회 중엔 빈 화면이다.
+    ///
+    /// **시트 안에 CTA 가 없다** (개정 시안 477:6341 — 하단은 홈 인디케이터 띠뿐).
+    /// 읽고 나가는 경로는 딤 탭 하나고, 동의 제출은 시트를 닫은 뒤 화면 CTA 로 한다.
     private func documentSheet(_ item: ConsentItem) -> some View {
         VStack(spacing: 0) {
             grabber
@@ -162,16 +167,12 @@ public struct AuthTermsView: View {
                     .dsTypography(.body4)
                     .foregroundStyle(Color.GrayScale.g800)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    // 마지막 줄이 홈 인디케이터에 붙지 않게 — 시안 하단 흰 띠(21) 자리.
+                    .padding(.bottom, .ds(.p20))
             }
             .padding(.horizontal, .ds(.p20))
             .padding(.top, .ds(.p16))
             .frame(maxHeight: .infinity)
-
-            // 시안(3768:17215)이 시트 안에 화면 CTA 를 그대로 넣었고, 동작도 같다 —
-            // 필수 5종 전부 체크 시 활성, 누르면 다음 화면(이름 입력)으로 (사용자 확인 2026-07-31).
-            // «이 항목만 동의하고 시트 닫기» 가 아니므로 별도 액션을 두지 않는다.
-            ButtonLarge("동의하고 시작하기", .bottom) { send(.userTappedAgree) }
-                .disabled(!store.isSubmitEnabled)
         }
         // @ds(layout): 662/812 (81.5%) — 시트 판 높이. 시안이 812pt 기기 고정값이라 비율로 옮겼다
         .containerRelativeFrame(.vertical) { height, _ in height * Metric.sheetHeightRatio }
