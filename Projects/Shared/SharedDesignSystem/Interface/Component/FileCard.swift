@@ -31,6 +31,8 @@ import SwiftUI
 ///
 /// Figma 의 «x 버튼만 / 버튼 미니가 존재 / 버튼 미존재 / 날짜·용량만 / 서브텍스트만 / only 파일명 /
 /// 툴팁 미노출» 축은 전부 **값의 유무**로 표현한다 — 슬롯·클로저가 nil 이면 그 자리가 사라진다.
+/// 예외가 `noteTone` 하나 — 마스터에는 없고 화면 인스턴스가 색만 덮어쓰는데, 덮어쓰는 이유가
+/// «진행이냐 오류냐» 라서 값의 유무로는 표현이 안 된다.
 /// 오른쪽 버튼은 열린 슬롯이다(카드마다 라벨·아이콘이 다르다). 시안은 `button-mini` 회색 with-icon 판이라
 /// `.mini(.gray, layout: .withIcon)` 을 넣는다 — 배색·눌림은 그쪽 몫.
 ///
@@ -46,10 +48,21 @@ public struct FileCard<Accessory: View>: View {
         case white
     }
 
+    /// 서브 텍스트 색 — 같은 자리에 진행 안내(«분석 중»)와 오류(«업로드 실패»)가 둘 다 들어온다.
+    /// Figma 마스터 9케이스는 전부 g400 이고 색은 화면 인스턴스가 덮어쓰는데(Part5 업로드 실패
+    /// 439:13132·439:13299 가 #FF5757), 덮어쓰는 이유가 «상태»라 파라미터로 열었다.
+    public enum NoteTone: Sendable, CaseIterable {
+        /// 회색 g400 (기본) — 진행·안내 문구
+        case neutral
+        /// 빨강 e500 — 오류 문구
+        case error
+    }
+
     private let name: String
     private let date: String?
     private let size: String?
     private let note: String?
+    private let noteTone: NoteTone
     private let showsTooltip: Bool
     private let tone: Tone
     private let onRemove: (() -> Void)?
@@ -60,6 +73,7 @@ public struct FileCard<Accessory: View>: View {
     ///   - date: 등록일. `size` 와 함께 있으면 사이에 세로 구분선이 들어간다. nil 이면 숨김.
     ///   - size: 용량 표기. 형식(`2mb`)은 호출부가 만든다. nil 이면 숨김.
     ///   - note: 메타 줄 오른쪽 서브 텍스트. nil 이면 숨김.
+    ///   - noteTone: 서브 텍스트 색. `note` 가 nil 이면 무시된다.
     ///   - showsTooltip: 서브 텍스트 뒤 안내 아이콘(`info/16px/disabled`). **아이콘만 그린다** —
     ///     실제 툴팁 표출은 호출부 몫이다.
     ///   - tone: 파일 아이콘 색 (Figma `file/36px` 변형).
@@ -70,6 +84,7 @@ public struct FileCard<Accessory: View>: View {
         date: String? = nil,
         size: String? = nil,
         note: String? = nil,
+        noteTone: NoteTone = .neutral,
         showsTooltip: Bool = false,
         tone: Tone = .green,
         onRemove: (() -> Void)? = nil,
@@ -79,6 +94,7 @@ public struct FileCard<Accessory: View>: View {
         self.date = date
         self.size = size
         self.note = note
+        self.noteTone = noteTone
         self.showsTooltip = showsTooltip
         self.tone = tone
         self.onRemove = onRemove
@@ -154,7 +170,7 @@ public struct FileCard<Accessory: View>: View {
                         // 서브 텍스트만 m12(`body9`) 다 — 날짜·용량은 r12(`body10`).
                         Text(note)
                             .dsTypography(.body9)
-                            .foregroundStyle(Color.GrayScale.g400)
+                            .foregroundStyle(noteForeground)
                     }
                     if showsTooltip {
                         Image.Info.disabled
@@ -171,6 +187,13 @@ public struct FileCard<Accessory: View>: View {
         Text(value)
             .dsTypography(.body10)
             .foregroundStyle(Color.GrayScale.g400)
+    }
+
+    private var noteForeground: Color {
+        switch noteTone {
+        case .neutral: Color.GrayScale.g400
+        case .error: Color.Error.e500
+        }
     }
 
     private var hasMeta: Bool {
@@ -208,6 +231,7 @@ public extension FileCard where Accessory == EmptyView {
         date: String? = nil,
         size: String? = nil,
         note: String? = nil,
+        noteTone: NoteTone = .neutral,
         showsTooltip: Bool = false,
         tone: Tone = .green,
         onRemove: (() -> Void)? = nil
@@ -217,6 +241,7 @@ public extension FileCard where Accessory == EmptyView {
             date: date,
             size: size,
             note: note,
+            noteTone: noteTone,
             showsTooltip: showsTooltip,
             tone: tone,
             onRemove: onRemove
@@ -289,6 +314,18 @@ private var previewMiniButton: some View {
             note: "서브 텍스트",
             showsTooltip: true
         )
+    }
+    .frame(width: previewFileCardWidth)
+    .padding(.ds(.p20))
+    .background(Color.GrayScale.g50)
+}
+
+#Preview("서브 텍스트 톤 — 마이페이지 업로드 실패 439:13132") {
+    VStack(spacing: .ds(.p20)) {
+        FileCard("{파일명}.pdf", note: "분석 중", showsTooltip: true, onRemove: {})
+        FileCard("{파일명}.pdf", note: "업로드 실패", noteTone: .error, showsTooltip: true) {
+            previewMiniButton
+        }
     }
     .frame(width: previewFileCardWidth)
     .padding(.ds(.p20))

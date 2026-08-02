@@ -37,7 +37,7 @@ Image.Img.micError           // 일러스트 — 크기·변형 없이 이름만
 | `File` | 문서 낱장 (모서리 접힘) | 첨부·포트폴리오 |
 | `HilitAnalyze` | 36px 원형 배지 3종 — aiSparkle·problem·success | 분석 결과 항목 머리 |
 | `Info` | 원 안 i (빨강 = error·청록 = positive 변형) | 안내 |
-| `Issue` | 원 안 느낌표 (빨강 = error 변형) | 오류·경고 |
+| `Issue` | 원 안 느낌표 (빨강 = 채운 원 + 흰 글리프인 error 변형) | 오류·경고 · `InfoField(.error)` 아이콘 |
 | `Left` / `Right` | 쉐브론 ‹ / › | 뒤로·앞으로 |
 | `Loading` | 진행 링(ing)·대기 링(wait)·기본 링(접두사 없음) | 단계 진행 표시 |
 | `Logo` | kakao 말풍선(노랑)·apple 사과 — with-bg/no-bg (+`…WithBg24` 는 24px 판) · hilit 워드마크 57×24 | 소셜 로그인 · 네비바 logo 변형 |
