@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import DomainConsentInterface
 import Foundation
 
 extension AuthClient {
@@ -37,7 +38,8 @@ extension AuthClient {
                 )
             }
         },
-        login: { _ in },
+        // 신규 취급(최초 동의·프로필 미등록) — 프리뷰·Example 이 가입 플로우 전체를 밟게 한다.
+        login: { _ in LoginResult(consentStatus: .notSubmitted, profileRegistered: false) },
         refresh: {},
         logout: {},
         check: { AuthCheck(message: "인증 성공", userId: UUID()) },

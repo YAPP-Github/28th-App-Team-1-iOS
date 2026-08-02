@@ -9,7 +9,9 @@ let project = Project.makeModule(
         .app(factory: .init(dependencies: [
             .core, .domain, .feature, .shared,
             .core(interface: .network),          // AppView 전역 로딩 — NetworkActivity 관찰
+            .domain(interface: .appVersion),     // Splash 버전 게이트 — 강제·권장 업데이트 판정
             .domain(interface: .auth),
+            .domain(interface: .consent),        // Splash 세션 복구 판정 — 게이트 2단(pending)
             .shared(interface: .designSystem),   // AppView 전역 로딩 — LoadingModal 표출
             .composableArchitecture
         ])),

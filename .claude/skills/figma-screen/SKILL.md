@@ -58,8 +58,8 @@ Figma 의 raw 수치를 그대로 박지 않는다. 각 값마다 대응 토큰�
 컴포넌트 하나가 통째로 없으면 만든 뷰·프로퍼티 위에 단다.
 
 ```swift
-// @ds(component): 바텀시트 — detent medium/large + 드래그 인디케이터. 공용 컴포넌트 없음
-private var detailSheet: some View { … }
+// @ds(component): 시트 그래버 — 60×5 g400 바(모서리 0) + 행 높이 20. 공용 컴포넌트 없음
+private var grabber: some View { … }
 ```
 
 지킬 것 두 개:

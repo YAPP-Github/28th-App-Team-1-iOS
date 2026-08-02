@@ -5,6 +5,7 @@
 //  Created by EunseoKim on 26/07/23.
 //
 
+import CoreNetworkInterface
 import DomainCommonInterface
 
 /// Interview API 에러 — State 가 다르게 반응해야 하는 경우의 수만큼만 둔다 (AuthError 와 같은 원칙).
@@ -70,7 +71,7 @@ extension InterviewError: DomainAPIError {
     }
 
     /// 미승격 코드는 원문 그대로 동봉 — 분기가 필요해지면 전용 케이스로 승격.
-    public static func fallback(unrecognizedCode code: String, message: String) -> InterviewError {
-        .server(code: code, message: message)
+    public static func fallback(unrecognized error: ServerError) -> InterviewError {
+        .server(code: error.code, message: error.message)
     }
 }

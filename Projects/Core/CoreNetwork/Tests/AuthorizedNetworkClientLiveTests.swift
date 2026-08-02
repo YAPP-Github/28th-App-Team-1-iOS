@@ -73,6 +73,33 @@ final class AuthorizedNetworkClientLiveTests: XCTestCase {
         XCTAssertEqual(calls.value.count, 3)  // 원요청 → 재발급 → 재시도
     }
 
+    func test_request_403이면_body코드와_무관하게_재발급_후_재시도한다() async throws {
+        let store = TokenStore.inMemory
+        store.save(AuthTokens(accessToken: "expired", refreshToken: "refresh-1"))
+        let calls = LockIsolated<[String]>([])
+
+        let client = makeClient(tokenStore: store) { request in
+            calls.withValue { $0.append(request.path) }
+            switch (request.path, request.headers["Authorization"]) {
+            case ("/api/v1/consents/pending", "Bearer expired"):
+                // 서버 계약(2026-08-02): 모든 API 에서 403 = 액세스 토큰 만료 — envelope 없는 body 도 트리거.
+                throw NetworkError.statusCode(403, Data())
+            case ("/api/v1/auth/token/refresh", _):
+                return Data(#"{"success": true, "data": {"accessToken": "access-2", "refreshToken": "refresh-2"}}"#.utf8)
+            case ("/api/v1/consents/pending", "Bearer access-2"):
+                return Data(#"{"success": true, "data": {"consentStatus": "UP_TO_DATE", "items": []}}"#.utf8)
+            default:
+                XCTFail("예상 밖 요청: \(request.path)")
+                throw NetworkError.invalidURL
+            }
+        }
+
+        _ = try await client.request(NetworkRequest(path: "/api/v1/consents/pending"))
+
+        XCTAssertEqual(store.load(), AuthTokens(accessToken: "access-2", refreshToken: "refresh-2"))
+        XCTAssertEqual(calls.value.count, 3)  // 원요청 → 재발급 → 재시도
+    }
+
     func test_request_재발급이_LOGIN_EXPIRED면_토큰을_폐기하고_던진다() async {
         let store = TokenStore.inMemory
         store.save(AuthTokens(accessToken: "expired", refreshToken: "dead"))

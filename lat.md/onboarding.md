@@ -4,6 +4,8 @@
 
 이 위저드가 「[PRD] AI 면접 Part 1 — 면접 전 입력 & 포트폴리오 등록」 v3 의 S0~S4 구현체 — PRD↔구현 매핑·잔여 개발 포인트는 [ai-interview](../docs/work/ai-interview.md) §5 가 단일 소스. PRD v3 확정 골자: 재시도·멱등성 전면 제외(실패=status 표시 후 재업로드), 비동기+폴링 확정, 개별 저장 API 없이 세션 생성이 S0~S3 일괄 수집, 직군 6종 화이트리스트, 태블릿 제외.
 
+⚠ 개편 예정(2026-07-31 확정): 직군(STEP1)·연차(STEP2)는 가입 온보딩(`FeatureAuth` — `AuthOnboardingJob`·`AuthOnboardingExperience`)으로 이관되고 이 위저드는 JD 부터 남는다. S0 스킵/프리필 처리는 미결 — [home-account](../docs/work/home-account.md) §0·§7 참조.
+
 ## 코디네이터
 
 OnboardingFeature 가 위저드 루트. STEP 1(직군 선택)을 NavigationStack 루트로 두고, 이후 스텝은 `path`(StackState)로 push 한다. 각 스텝의 delegate 만 매칭해 [[onboarding#수집 데이터]]를 누적하고 다음 스텝으로 전환한다 — 조립은 코디네이터에서만.
@@ -18,7 +20,7 @@ STEP 1 (필수). 진입 시 JobClient.jobs 로 선택지를 로드해 칩으로 
 
 ## 연차 입력
 
-STEP 2 (필수). 문장형 휠 피커 «내 경력은 [휠] 이다.» — 정수 연차 0~10년(`CareerOption { years: Int }`, 10="10년 이상", 라벨 신입/N년차/10년 이상). 휠은 native Picker 가 아니라 iOS 17 ScrollView(viewAligned + scrollPosition) 커스텀. 항상 값이 있어 CTA 상시 활성.
+STEP 2 (필수). 문장형 휠 피커 «내 경력은 [휠] 이다.» — 정수 연차 0~10년(`CareerOption { years: Int }`, 라벨 신입/N년 이상 — 최종 시안 3632:14460 표기, 10 은 "10년 이상"). 휠은 native Picker 가 아니라 iOS 17 ScrollView(viewAligned + scrollPosition) 커스텀. 항상 값이 있어 CTA 상시 활성.
 
 delegate 는 `continueRequested(careerYears: Int)` — 페이로드(`OnboardingData.careerYears`)·세션 입력(`InterviewConfig.careerYears`)에 정수 그대로 직결한다(잠정 매핑 없음). 레벨(주니어/미들/시니어)은 서버가 0-2/3-7/8+ 파생 — 클라 미관여.
 

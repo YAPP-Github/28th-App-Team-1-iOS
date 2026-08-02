@@ -30,8 +30,10 @@ public extension View {
     /// 쓰기 경로가 없는데 Binding 을 받으면 API 가 거짓말을 한다.
     ///
     /// 시트 위치는 safe area 바닥(홈 인디케이터 위) — 판을 그 아래까지 깔려면 위 예시처럼
-    /// 배경 shape 에 `.ignoresSafeArea(edges: .bottom)`. 드래그 닫기 없음(시안에 없어서 —
-    /// 필요해지면 그때 추가).
+    /// 배경 shape 에 `.ignoresSafeArea(edges: .bottom)`.
+    ///
+    /// **드래그 없음 — 고정 높이 시트 전용.** 높이가 드래그로 바뀌어야 하면 `.hilitDetentSheet`
+    /// (시스템 `.sheet` + detent)를 쓴다. 오버레이로 제스처를 흉내내지 않는다.
     ///
     /// - Parameter onDimTap: 딤 탭 시 호출 — 보통 닫기 리듀서 액션. `nil`(기본)이면 딤 탭 무시.
     func hilitBottomSheet<Content: View>(
