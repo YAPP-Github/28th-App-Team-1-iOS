@@ -14,7 +14,7 @@ OnboardingFeature 가 위저드 루트. STEP 1(직군 선택)을 NavigationStack
 
 ## 직군 선택
 
-STEP 1 (필수). 진입 시 JobClient.jobs 로 선택지를 로드해 칩으로 나열하고, 하나를 고르면 '계속하기'가 활성화된다. 완료 시 선택 직군의 jobRole(서버 enum, 예 "BACKEND")을 delegate 로 올린다. 이 스텝만 하단 CTA 가 단일 버튼이다(첫 스텝 — 이전 없음).
+STEP 1 (필수). 진입 시 JobClient.jobs 로 선택지를 로드해 칩으로 나열하고, 하나를 고르면 '계속하기'가 활성화된다(고르기 전엔 그 버튼만 `.disabled` — 배색 변형이 아니라 상태다). 완료 시 선택 직군의 jobRole(서버 enum, 예 "BACKEND")을 delegate 로 올린다. 하단 CTA 는 다른 스텝과 같은 «이전으로 | 계속하기» 2분할이고, 루트라 pop 할 스텝이 없어 `backRequested` 는 코디네이터에서 닫기와 같은 dismiss 로 수렴한다(앞에 스텝이 생기면 그 한 줄만 popLast 로 바뀐다).
 
 - 실패 UX 미정: jobsLoadFailed 는 로딩 해제만 (TODO).
 
