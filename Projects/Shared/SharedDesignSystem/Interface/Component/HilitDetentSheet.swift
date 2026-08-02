@@ -33,15 +33,19 @@ public extension View {
     /// 판 배경은 호출부가 `.presentationBackground(…)` 로 준다 — 시트마다 색이 달라서. 그래버는
     /// 시안 규격(60×5 g400)이 시스템 인디케이터와 달라 숨기고, 필요하면 호출부가 직접 그린다.
     ///
+    /// **모서리는 기본이 시스템 값** — DS 전반은 «모서리 0» 이지만 시트는 예외다. iOS 26 은 부분
+    /// detent 시트를 화면 가장자리에서 띄워 그리는데(양옆·아래 여백), 거기에 코너 0 을 박으면 떠 있는
+    /// 판이 잘려 보인다. 시트 룩은 OS 판이니 OS 를 따른다.
+    ///
     /// - Parameters:
     ///   - item: 표출할 값 — nil 이면 닫힘. `Identifiable` 이라 바뀌면 시트 내용도 갈린다.
     ///   - detents: 허용 높이들. 시트는 그중 가장 작은 것으로 열리고, 드래그로 나머지를 오간다.
-    ///   - cornerRadius: 시트 상단 코너 — 기본 0 (DS 전반의 «모서리 0»).
+    ///   - cornerRadius: 시트 상단 코너 — nil(기본)이면 시스템 값. 시안이 각진 판을 요구할 때만 준다.
     ///   - onDismiss: 시스템이 시트를 닫았을 때 호출 — 보통 닫기 리듀서 액션.
     func hilitDetentSheet<Item: Identifiable & Equatable, Content: View>(
         item: Item?,
         detents: Set<PresentationDetent>,
-        cornerRadius: CGFloat = 0,
+        cornerRadius: CGFloat? = nil,
         onDismiss: @escaping () -> Void,
         @ViewBuilder content: @escaping (Item) -> Content
     ) -> some View {
@@ -55,6 +59,7 @@ public extension View {
             content(value)
                 .presentationDetents(detents)
                 .presentationDragIndicator(.hidden)
+                // nil 이면 시스템 값 — 모디파이어 자체가 옵셔널을 받는다.
                 .presentationCornerRadius(cornerRadius)
         }
     }

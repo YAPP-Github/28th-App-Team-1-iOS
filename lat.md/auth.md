@@ -38,7 +38,7 @@ PRD Part 6·7 확정(2026-07-31)으로 FeatureAuth 가 로그인 단일 화면�
 
 `AuthFeature` 가 플로우 코디네이터다 — 루트 `AuthCreateAccountFeature`(A0 소셜 로그인, 구 AuthFeature 개명) + `path`(StackState)로 가입 경로(terms → naming → job → experience → register)를 push 한다. 수집값(이름·직군·연차)은 코디네이터가 누적만 한다 — 서버 제출 시점(화면별 즉시 vs 일괄)이 미결이라서.
 
-- `AuthTermsFeature`(A1) — **동의 항목은 서버가 준다**(`ConsentClient.pending`, [[api#Consent]]) — 하드코딩 5종 enum 을 걷어냈다. 최초 동의(필수 5종 전체)와 재동의(바뀐 항목만)가 같은 화면이고 차이는 내려온 항목뿐. 진입 시 조회(세션 복구 경로는 판정이 이미 받은 항목을 `State(items:)` 로 주입해 재호출 없음), 제출(`submit`)까지 화면이 마치고 성공만 delegate. 항목 코드 → 시안 카피 매핑은 `ConsentItem.rowTitle`(모르는 코드는 서버 label 로 합성). 전문은 `document` 마크다운. `CONSENT_VERSION_MISMATCH` 면 체크를 비우고 pending 재조회.
+- `AuthTermsFeature`(A1) — **동의 항목은 서버가 준다**(`ConsentClient.pending`, [[api#Consent]]) — 하드코딩 5종 enum 을 걷어냈다. 최초 동의(필수 5종 전체)와 재동의(바뀐 항목만)가 같은 화면이고 차이는 내려온 항목뿐. 진입 시 조회(세션 복구 경로는 판정이 이미 받은 항목을 `State(items:)` 로 주입해 재호출 없음), 제출(`submit`)까지 화면이 마치고 성공만 delegate. 항목 코드 → 시안 카피 매핑은 `ConsentItem.rowTitle`(모르는 코드는 서버 label 로 합성). 전문은 `document` 마크다운 — `Text` 가 인라인 문법만 알아서 ATX 헤딩(`### 제N조`)은 `DocumentBlock` 이 갈라 타이포로 올린다(안 그러면 «###» 이 그대로 보인다). `CONSENT_VERSION_MISMATCH` 면 체크를 비우고 pending 재조회.
 - `AuthOnboarding{Naming·Job·Experience·Register}` — `Sources/Onboarding/` 폴더. Job·Experience 는 FeatureOnboarding STEP1·2 의 **복사본**(Feature 간 공유 금지 — 원본은 위저드 정리 시 제거, [[onboarding]]). Naming 은 수집만 — 제출은 `UserClient.updateProfile`(이름·직군·연차 일괄, 이름 최대 5자) 배선 대기 (이름 단독 API 는 서버 삭제 예정, [[api#User]]).
 - `AuthSuspensionFeature`(A4) — 정지 안내. Path 밖 — 진입이 홈 게이트(`ACCOUNT_SUSPENDED`)라 제시는 AppFeature(cross-feature). CS 메일 주소는 placeholder.
 - `SplashView` — 판정 결과를 모르는 뷰. `onRetry` 를 받으면 판정 실패 상태(재시도 노출), nil 이면 판정 중. 판정 자체는 AppFeature 몫 → [[app#Splash 세션 복구]].
