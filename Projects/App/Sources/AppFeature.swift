@@ -6,9 +6,11 @@
 //
 
 import ComposableArchitecture
+import DomainAppVersionInterface
 import DomainAuthInterface
 import DomainConsentInterface
 import Feature
+import Foundation
 
 // @lat: [[app]]
 // depends-on: [[auth]] — 로그인 전/후 루트 게이트. cross-feature 조립은 AppFeature 에서만.
@@ -28,6 +30,8 @@ struct AppFeature {
         case splash
         /// 판정이 네트워크·서버 문제로 실패 — 토큰은 살아 있다. Splash 자리에서 재시도만 받는다.
         case splashFailed
+        /// 강제 업데이트(FORCE) — 세션 판정 자체를 하지 않고 진입을 막는다. 재시도로 빠져나올 수 없다.
+        case updateRequired
         /// 로그인 전 또는 가입 플로우(약관·온보딩) 진행 중.
         case auth
         /// 두 게이트 모두 통과 — 탭 화면.
@@ -43,12 +47,20 @@ struct AppFeature {
         var selectedTab: Tab = .home
         /// dev 전용 온보딩 위저드 — Home 진입 버튼으로 present (온보딩 본체 통합 전 임시).
         @Presents var onboarding: OnboardingFeature.State?
+        /// 업데이트 안내(강제·권장)의 근거 — «업데이트» 가 열 `storeUrl` 과 강제 여부를 여기서 읽는다.
+        var updatePolicy: AppVersionPolicy?
+        @Presents var updateAlert: AlertState<Action.UpdateAlert>?
     }
 
     enum Action: BindableAction {
         case onAppear
         /// Splash 판정 실패 후 재시도.
         case retryLaunchRouting
+        /// 버전 게이트 판정 결과 — 안내가 필요한 FORCE·OPTIONAL 만 도달한다.
+        case appVersionResolved(AppVersionPolicy)
+        /// 강제 업데이트에서 스토어를 다녀온 뒤 — 차단을 유지하려 같은 알럿을 다시 세운다.
+        case updateAlertReasserted
+        case updateAlert(PresentationAction<UpdateAlert>)
         /// 세션 복구 판정 결과 — 목적지 또는 실패 종류.
         case launchRoutingResolved(LaunchRouting)
         case auth(AuthFeature.Action)
@@ -57,6 +69,13 @@ struct AppFeature {
         /// 로그아웃 정리(서버·토큰·draft) 완료 — 초기 State 로 리셋해 로그인 화면으로 돌아간다.
         case sessionCleared
         case binding(BindingAction<State>)
+
+        /// 업데이트 알럿 버튼. 강제(FORCE)일 땐 «나중에» 를 만들지 않아 도달하지 않는다.
+        @CasePathable
+        enum UpdateAlert: Equatable, Sendable {
+            case userTappedUpdate
+            case userTappedLater
+        }
     }
 
     /// Splash 판정의 결과. 게이트 2단 체인의 목적지 + 두 실패 종류다 (docs/work/launch-routing.md).
@@ -75,9 +94,11 @@ struct AppFeature {
         case failed(step: String, reason: String)
     }
 
+    @Dependency(\.appVersionClient) var appVersionClient
     @Dependency(\.authClient) var authClient
     @Dependency(\.consentClient) var consentClient
     @Dependency(\.onboardingDraftStore) var draftStore
+    @Dependency(\.openURL) var openURL
 
     var body: some ReducerOf<Self> {
         BindingReducer()
@@ -98,6 +119,30 @@ struct AppFeature {
             case .retryLaunchRouting:
                 state.root = .splash
                 return resolveLaunchRouting()
+
+            case let .appVersionResolved(policy):
+                state.updatePolicy = policy
+                let isForced = policy.updateType == .force
+                // FORCE 는 세션 판정 자체가 멈춘 상태다 — 루트를 옮겨 Splash 에 갇힌 것과 구분한다.
+                if isForced { state.root = .updateRequired }
+                state.updateAlert = .update(isForced: isForced)
+                return .none
+
+            case .updateAlert(.presented(.userTappedUpdate)):
+                guard let policy = state.updatePolicy else { return .none }
+                let isForced = policy.updateType == .force
+                return .run { send in
+                    if let url = URL(string: policy.storeUrl) { await openURL(url) }
+                    // 스토어에서 그냥 돌아와도 강제 업데이트는 계속 막는다.
+                    if isForced { await send(.updateAlertReasserted) }
+                }
+
+            case .updateAlertReasserted:
+                state.updateAlert = .update(isForced: true)
+                return .none
+
+            case .updateAlert:
+                return .none
 
             case let .launchRoutingResolved(routing):
                 return apply(routing, to: &state)
@@ -160,11 +205,16 @@ struct AppFeature {
         .ifLet(\.$onboarding, action: \.onboarding) {
             OnboardingFeature()
         }
+        .ifLet(\.$updateAlert, action: \.updateAlert)
     }
 
     // MARK: - Splash 세션 복구 판정 → [[auth#가입 플로우]]
 
-    /// 토큰 유무 → pending 한 콜로 목적지를 정한다 (docs/work/launch-routing.md §4).
+    /// 버전 게이트 → 토큰 유무 → pending 한 콜로 목적지를 정한다 (docs/work/launch-routing.md §4).
+    ///
+    /// 버전 게이트가 **먼저**다 — FORCE 인데 뒤에 두면 이미 홈에 들어간 뒤에 막게 된다. 무인증 API 라
+    /// 토큰 유무와 무관하게 돌릴 수 있다. 실패는 **fail-open** — 버전 정책 서버가 죽었다고 앱 실행까지
+    /// 막지 않는다([[api#AppVersion]]).
     ///
     /// refresh 를 **먼저 때리지 않는다** — Access 는 3시간이라 콜드 스타트 대부분 살아 있고,
     /// 만료면 이 호출의 403 을 AuthorizedNetworkClient 가 잡아 재발급 후 재시도한다([[api#토큰 수명주기]]).
@@ -175,6 +225,11 @@ struct AppFeature {
     /// 뭉뚱그리면 오프라인에서 앱을 켠 사용자가 로그아웃당한다.
     private func resolveLaunchRouting() -> Effect<Action> {
         .run { send in
+            if let policy = await checkAppVersion(), policy.updateType != .none {
+                await send(.appVersionResolved(policy))
+                // FORCE 는 여기서 끝 — 세션 판정을 시작하지 않는다.
+                if policy.updateType == .force { return }
+            }
             guard authClient.isAuthenticated() else {
                 return await send(.launchRoutingResolved(.login))
             }
@@ -189,6 +244,12 @@ struct AppFeature {
                 await send(.launchRoutingResolved(.failed(step: "consents/pending", reason: "\(error)")))
             }
         }
+    }
+
+    /// 버전 판정 — 실패(네트워크·5xx·버전 키 없음)는 nil 로 삼켜 진입을 막지 않는다(fail-open).
+    private func checkAppVersion() async -> AppVersionPolicy? {
+        guard let version = AppEnvironment.marketingVersion else { return nil }
+        return try? await appVersionClient.check(version)
     }
 
     /// 게이트 2단 체인 — ① 동의(`status`) ② 프로필(`profileRegistered`). 순서가 고정이다.
@@ -216,5 +277,28 @@ struct AppFeature {
             state.root = .splashFailed
         }
         return .none
+    }
+}
+
+// MARK: - 업데이트 안내
+
+// TODO: 시안 수령 시 OS 기본 Alert → 전용 화면/시트로 교체. 문구도 그때 확정한다.
+private extension AlertState where Action == AppFeature.Action.UpdateAlert {
+    /// 강제면 «나중에» 를 만들지 않는다 — 버튼이 하나뿐이라 알럿을 닫고 앱을 쓸 길이 없다.
+    static func update(isForced: Bool) -> Self {
+        AlertState {
+            TextState(isForced ? "업데이트가 필요해요" : "새 버전이 나왔어요")
+        } actions: {
+            ButtonState(action: .userTappedUpdate) { TextState("업데이트") }
+            if !isForced {
+                ButtonState(role: .cancel, action: .userTappedLater) { TextState("나중에") }
+            }
+        } message: {
+            TextState(
+                isForced
+                    ? "계속 사용하려면 최신 버전으로 업데이트해주세요."
+                    : "더 편해진 기능을 쓰려면 업데이트해주세요."
+            )
+        }
     }
 }

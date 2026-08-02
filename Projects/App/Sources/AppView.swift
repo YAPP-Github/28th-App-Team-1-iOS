@@ -21,6 +21,9 @@ struct AppView: View {
             case .splashFailed:
                 // 판정 불가(네트워크·5xx) — 토큰은 살아 있으므로 로그인으로 내보내지 않고 재시도만 받는다.
                 SplashView(onRetry: { store.send(.retryLaunchRouting) })
+            case .updateRequired:
+                // 강제 업데이트 — 세션 판정을 시작하지 않았다. 재시도 버튼 없이 알럿만 얹힌 Splash.
+                SplashView()
             case .home:
                 TabView(selection: $store.selectedTab) {
                     // 탭 루트마다 자기 NavigationStack — 홈의 내비바(로고 ↔ X 를 값으로 갈아끼움)는
@@ -43,6 +46,8 @@ struct AppView: View {
                 AuthView(store: store.scope(state: \.auth, action: \.auth))
             }
         }
+        // 강제·권장 업데이트 안내 — 루트가 무엇이든 위에 얹힌다(강제는 root 가 .updateRequired).
+        .alert($store.scope(state: \.updateAlert, action: \.updateAlert))
         .onAppear { store.send(.onAppear) }
     }
 }

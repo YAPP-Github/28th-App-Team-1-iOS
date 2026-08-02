@@ -43,6 +43,8 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 
 에러는 `AppVersionError` — 고유 코드(INVALID_PLATFORM·INVALID_VERSION_FORMAT·APP_VERSION_POLICY_NOT_FOUND)는 정상 클라이언트에서 나올 수 없어 케이스 승격 없이 unexpected 폴백. 스플래시는 실패 시 fail-open(게이트 없이 진입)이 기본이라 공통 3케이스(networkFailure·serverUnavailable·unexpected)만 둔다.
 
+호출은 `AppFeature` 진입 판정의 첫 단계다 — 세션 판정보다 **앞**(FORCE 를 뒤에 두면 홈 진입 후에 막게 된다), 실패·버전 키 부재는 `nil` 로 삼켜 통과 → [[app#Splash 세션 복구]].
+
 ## Auth
 
 `DomainAuth` — `AuthClient` 파사드에 서버 세션 수명주기가 얹혔다: `login`(자격증명 교환)·`refresh`·`logout`·`check`·`isAuthenticated`. 소셜 SDK 획득부(signIn)와 서버 교환부(login)는 분리된 엔드포인트 — 흐름은 [[auth]].

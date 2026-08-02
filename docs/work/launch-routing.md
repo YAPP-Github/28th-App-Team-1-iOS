@@ -1,6 +1,8 @@
 # 앱 진입 라우팅 — Splash → 로그인/약관/온보딩/홈
 
-Splash 가 refreshToken 유무로 두 경로(신규 / 세션 복구)를 타고, 두 경로가 모두 **게이트 2단 체인**에 합류한다 — ① 동의 게이트(`consentStatus`) ② 프로필 게이트(`profileRegistered`). 목적지는 이 두 값만으로 결정되고, 판정값 출처만 경로별로 다르다.
+Splash 는 **버전 게이트**를 먼저 통과한 뒤 refreshToken 유무로 두 경로(신규 / 세션 복구)를 타고, 두 경로가 모두 **게이트 2단 체인**에 합류한다 — ① 동의 게이트(`consentStatus`) ② 프로필 게이트(`profileRegistered`). 목적지는 이 두 값만으로 결정되고, 판정값 출처만 경로별로 다르다.
+
+버전 게이트(`GET /app-versions/check`)가 맨 앞인 이유는 순서가 곧 정책이라서다 — FORCE 를 세션 판정 뒤에 두면 이미 홈에 들어간 사용자를 되돌려 막게 된다. 무인증 API 라 토큰과 무관하게 돌릴 수 있다. 실패는 **fail-open** — 버전 정책 서버 장애가 앱 실행 자체를 막으면 안 된다.
 
 세션 복구는 **refresh 를 먼저 부르지 않는다**(2026-08-02 단일화) — Access 는 3시간이라 콜드 스타트 대부분 살아 있고, `pending` 한 콜이 판정과 세션 검증을 겸한다. 만료면 그 403 을 `AuthorizedNetworkClient` 가 잡아 재발급 후 재시도하므로 별도 경로가 없다. 매 실행 무조건 rotation 은 콜 낭비 + 페어 교체 중 앱 킬 = 세션 유실 리스크.
 
@@ -9,7 +11,10 @@ Splash 가 refreshToken 유무로 두 경로(신규 / 세션 복구)를 타고, 
 ```mermaid
 flowchart TD
     launch(["앱 시작"]) --> splash["Splash<br/>SplashView"]
-    splash --> hasRT{"Keychain refreshToken"}
+    splash --> version["GET /app-versions/check<br/>(무인증 · 실패는 fail-open)"]
+    version -- "FORCE" --> blocked["진입 차단<br/>root = updateRequired"]
+    version -- "OPTIONAL — 안내만" --> hasRT{"Keychain refreshToken"}
+    version -- "NONE · 실패" --> hasRT
 
     hasRT -- "없음" --> a0["소셜 로그인 A0<br/>AuthCreateAccountView"]
     a0 --> login["signIn → POST /auth/social/login"]
@@ -125,6 +130,8 @@ sequenceDiagram
 ```mermaid
 stateDiagram-v2
     [*] --> Splash
+    Splash --> UpdateRequired: FORCE
+    UpdateRequired --> [*]: 스토어로 이탈 (앱 내 복귀 경로 없음)
     Splash --> SocialLogin: 토큰 없음
     Splash --> Refreshing: 토큰 있음
     Refreshing --> SocialLogin: LOGIN_EXPIRED (clear)
@@ -148,11 +155,12 @@ stateDiagram-v2
 | `AuthClient.login` | `-> LoginResult(consentStatus, profileRegistered)`. 응답의 `newUser`·`userInfo` 는 소비자가 없어 디코딩하지 않는다 |
 | `ConsentPending` | `profileRegistered` 추가. **서버 배포 전 과도기** — 필드가 없으면 `false`(미등록)로 읽는다: 온보딩을 한 번 더 보는 쪽이 프로필 없이 홈에 앉는 쪽보다 안전한 실패 |
 | `AuthClient.refresh` | Splash 는 **호출하지 않는다**(2026-08-02 단일화) — 재발급은 pending 403 을 받은 인터셉터 몫. 명시적 refresh 는 남겨 둠 |
-| `AppFeature.State.root` | enum `splash`·`splashFailed`·`auth`·`home`. Bool 2개(`isCheckingSession`·`isAuthenticated`) 폐기 |
+| `AppFeature.State.root` | enum `splash`·`splashFailed`·`updateRequired`·`auth`·`home`. Bool 2개(`isCheckingSession`·`isAuthenticated`) 폐기 |
+| 버전 게이트 (2026-08-02 배선) | `AppVersionClient.check(AppEnvironment.marketingVersion)` 가 세션 판정보다 먼저. FORCE → `root = .updateRequired` + «업데이트» 버튼뿐인 알럿(스토어 다녀와도 재노출), OPTIONAL → 안내만 얹고 판정 계속, NONE·실패·버전 키 부재 → 통과. 문구·형태는 OS 기본 Alert 임시(시안 대기) |
 | `AuthFeature` | 게이트 2단(`enterGate` → `passProfileGate`). 세션 복구는 `State(resuming: Destination)` 으로 같은 체인에 합류 |
 | `AuthTermsFeature` | 하드코딩 5종 enum 제거 — `pending()` 항목 렌더 + `document()` 전문 + `submit()` 제출. `CONSENT_VERSION_MISMATCH` 면 체크를 비우고 재조회 |
 | `SplashView` | `onRetry` 를 받으면 실패 상태(재시도 노출), nil 이면 판정 중 |
 
 목적지 표 6행과 복구 진입 2종은 `AuthFeatureGateTests` 가 검증한다. App 타겟엔 테스트 타겟이 없어 `AppFeature` 의 판정 effect(§4)는 미검증이다.
 
-미결: ① 재시도는 수동(«다시 시도») — 자동 백오프 횟수·간격과 Splash 최소·최대 노출 연출 미정 ② 온보딩 중도 이탈 재진입이 이름부터 다시인지 이어받기인지 ③ `LOGIN_EXPIRED` 외 4xx 처리 확정(서버 협의) ④ 약관 «나중에» 선택지 존재 여부 — `STALE` 재동의에서 거부 시 홈 진입 허용 정책(면접 시작만 차단 안은 [home-account](home-account.md) §3) ⑤ Refresh 7일이 rotation 마다 리셋되는 슬라이딩인지 절대 7일인지(서버 확인) — 후자면 일주일 미접속 시 무조건 재로그인.
+미결: ① 재시도는 수동(«다시 시도») — 자동 백오프 횟수·간격과 Splash 최소·최대 노출 연출 미정 ② 온보딩 중도 이탈 재진입이 이름부터 다시인지 이어받기인지 ③ `LOGIN_EXPIRED` 외 4xx 처리 확정(서버 협의) ④ 약관 «나중에» 선택지 존재 여부 — `STALE` 재동의에서 거부 시 홈 진입 허용 정책(면접 시작만 차단 안은 [home-account](home-account.md) §3) ⑤ Refresh 7일이 rotation 마다 리셋되는 슬라이딩인지 절대 7일인지(서버 확인) — 후자면 일주일 미접속 시 무조건 재로그인 ⑥ 업데이트 안내 시안(강제·권장) — 현재 OS 기본 Alert, OPTIONAL 을 실행마다 띄울지 «이 버전 건너뛰기»를 둘지도 미정.
