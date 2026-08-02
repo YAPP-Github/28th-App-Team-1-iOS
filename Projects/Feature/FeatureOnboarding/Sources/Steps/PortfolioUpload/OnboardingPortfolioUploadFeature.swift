@@ -11,7 +11,7 @@ import Foundation
 import PDFKit
 
 // Figma «Onboarding_PortfolioUpload» https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=443-9568
-//        대기 443:9568 · 실패 443:9624 (업로드 중·완료 프레임은 시안에 없다 — View 주석 참조)
+//        대기 443:9568 · 실패 443:9624 · 업로드 중 443:9662 (완료 프레임은 시안에 없다 — View 주석 참조)
 // @lat: [[onboarding#포트폴리오 업로드]]
 /// 온보딩 STEP 2/3 — 포트폴리오 업로드. PDF 1개(20MB 이하)를 골라 서버에 등록하고,
 /// PROCESSING 폴링이 READY 가 될 때까지 기다린다. 대기/업로드 중/실패/완료는
