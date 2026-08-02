@@ -9,12 +9,14 @@ import SwiftUI
 
 /// 입력·화면 아래 붙는 안내/에러 줄 — Figma «info-field» 2085:3925 (`color` 축 2종).
 ///
-/// 원 안 i 아이콘 + 12pt 한두 줄. 판 색이 의미를 나른다:
-/// `.gray` g100 판 + g700 글자 + 검정 아이콘(1974:628) ·
-/// `.error` e200 판 + e300 테두리 1.2 + e500 글자·아이콘(2085:3924).
+/// 아이콘 16 + 12pt 한두 줄. 판 색이 의미를 나른다:
+/// `.gray` g100 판 + g700 글자 + 검정 원 안 i(1974:628) ·
+/// `.error` e200 판 + e300 테두리 1.2 + e500 글자 + **채운 빨간 원 안 흰 느낌표**(`issue/16px/error`).
 ///
 /// 아이콘은 파라미터가 아니다 — 시안에 instance-swap 슬롯이 있지만 열어두면 시안에 없는
 /// 조합이 만들어지므로 판 색에 묶어 닫았다(`TagLabel` 이 열려서 생긴 문제의 반대 선택).
+/// `.error` 글리프는 마스터(2085:3924)의 «원 안 i» 가 아니라 **실사용 인스턴스 쪽**을 따른다 —
+/// 아래 «Figma 원본 불일치» 참조.
 /// 폭은 고정하지 않는다 — 시안 335 는 화면 좌우 여백 20 을 뺀 값이라 호출부 레이아웃 몫이다.
 public struct InfoField: View {
     /// Figma `color` 축.
@@ -62,7 +64,7 @@ public struct InfoField: View {
     private var icon: Image {
         switch style {
         case .gray: Image.Info.default
-        case .error: Image.Info.error
+        case .error: Image.Issue.error16
         }
     }
 
@@ -81,10 +83,18 @@ public struct InfoField: View {
     }
 
     private enum Metric {
-        /// 아이콘 한 변 16 — Figma `info/16px`. 크기 축이 하나라 파라미터로 열지 않는다.
+        /// 아이콘 한 변 16 — Figma `info/16px`·`issue/16px`. 크기 축이 하나라 파라미터로 열지 않는다.
         static let iconSide: CGFloat = 16
     }
 }
+
+// MARK: - Figma 원본 불일치
+//
+// `.error` 아이콘이 **마스터와 인스턴스에서 다르다**. 마스터 «info-field/red»(2085:3924)는 원 안 i 를
+// e500 으로 덮어쓴 것이고(그래서 아이콘 시트에 이름 붙은 변형이 없다 — `Image.Info.error` 주석 참조),
+// 실제로 배치된 빨간 안내줄은 전부 «issue/16px/error»(채운 원 + 흰 느낌표)를 끼워 넣는다 —
+// Part5 마이페이지의 업로드 불가 모달(435:8895)·업로드 실패 카드 아래 줄(439:13132·439:13299).
+// 3:1 로 다수인 실사용 쪽을 따랐다(2026-08-01, 사용자 확인). 마스터가 정리되면 이 주석을 지운다.
 
 #Preview {
     VStack(alignment: .leading, spacing: .ds(.p20)) {
