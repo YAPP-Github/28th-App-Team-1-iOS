@@ -45,7 +45,8 @@ STEP 4 (필수). PDF 1개(최대 20Mb)를 fileImporter 로 받아 PortfolioClien
 
 - 완료 행 디자인 미확인(진행 스트립만 뺀 근사) · 진행률 이벤트 없어 스트립은 고정 비율 · 폴링 상한 없음 (전부 TODO).
 - PRD 검증 분담(클라 선검증 = UX 용 빠른 차단, 최종 판정은 서버 실측): PDF 타입·20MB·**페이지 ≤30**(PDFKit pageCount)·**암호 PDF**(PDFDocument.isEncrypted) 선검증 ✅ — PortfolioFileReader 가 data+pageCount+isEncrypted 반환, register 전 차단. 페이지 수는 PortfolioUpload.pageCount 로 서버에 전달. 글자 수 ≥30 은 서버 전용(Tika) → FAILED_FILE 문구만.
-- **1개 제한 + 409 자동 복구** ✅: register 가 `PORTFOLIO_ALREADY_EXISTS`(409)면 재업로드/실패로 끝내지 않고 `PortfolioClient.list().first`(계정당 1개라 first 가 곧 그 포폴)로 서버의 기존 포폴을 회수한다 — status 가 READY 면 그대로 uploaded 확정, PROCESSING 이면 폴링 이어받기, FAILED/부재면 삭제 후 재업로드 유도. draft 를 잃었지만(로그아웃·재설치·TTL 만료) 서버 포폴은 남은 경우를 투명 처리. 원칙: draft=재개 힌트·서버=진실([[onboarding#분석]] JD 복구와 같은 계). `uploadFile`/`pollStatus` 헬퍼로 최초 업로드와 복구가 effect 공유. **폴링 상한** 초과 시 FAILED_SYSTEM 취급 문구(초기값 tentative).
+- **실패 문구는 서버 원문** (현행): 4xx 는 `PortfolioError.userMessage`(서버 message), 200 + FAILED_FILE/FAILED_SYSTEM 은 응답 `message` 를 배너에 그대로 싣고, 없을 때만 클라 폴백 문구를 쓴다. 코드별 클라 카피·PRD 문구 정책 미확정이라 임시(코드 TODO 표시).
+- **1개 제한 + 409 자동 복구** (설계만, 미구현 — 현재는 409 서버 문구 배너로 끝): register 가 `PORTFOLIO_ALREADY_EXISTS`(409)면 재업로드/실패로 끝내지 않고 `PortfolioClient.list().first`(계정당 1개라 first 가 곧 그 포폴)로 서버의 기존 포폴을 회수한다 — status 가 READY 면 그대로 uploaded 확정, PROCESSING 이면 폴링 이어받기, FAILED/부재면 삭제 후 재업로드 유도. draft 를 잃었지만(로그아웃·재설치·TTL 만료) 서버 포폴은 남은 경우를 투명 처리. 원칙: draft=재개 힌트·서버=진실([[onboarding#분석]] JD 복구와 같은 계). `uploadFile`/`pollStatus` 헬퍼로 최초 업로드와 복구가 effect 공유. **폴링 상한** 초과 시 FAILED_SYSTEM 취급 문구(초기값 tentative).
 
 ## 집중 프로젝트
 
