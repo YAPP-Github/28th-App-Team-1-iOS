@@ -39,10 +39,10 @@
 2. AppFeature 수신 → effect 에서 `authClient.logout()`(서버 로그아웃+토큰 Keychain 삭제)·`onboardingDraftStore.clear()`(온보딩 draft/UserDefaults 삭제). 서버 실패해도 로컬 정리는 진행(`try?`)
 3. `sessionCleared` 로 `state = State()` 리셋 → `root = .auth` → 첫 소셜 로그인 화면 복귀. Splash 로 되돌리지 않는다(로그아웃 복귀는 판정이 아니라 확정 상태). cross-feature 조립이라 authClient 의존은 코디네이터인 여기서만 가진다 → [[home]]
 
-대표 흐름 — **온보딩 dev 진입** (본체 통합 전 임시):
-1. dev 계에서만 `AppFeature.onAppear` 가 `home.showsOnboardingEntry` 를 켜고, Home 진입 버튼이 `delegate(.onboardingRequested)` 방출
-2. AppFeature 수신 → `state.onboarding = OnboardingFeature.State()` (`@Presents` + `.ifLet`) → `AppView` 가 `fullScreenCover` 로 위저드 제시
-3. 온보딩 `delegate(.finished(sessionId:))`·`.dismiss` → cover 닫음. **로그인 이후에만** 열어 토큰을 보유한다(온보딩 API 는 인증 필요) → [[onboarding]]
+대표 흐름 — **온보딩 위저드 진입**:
+1. 발원지 3곳 — 「면접 시작」의 [시작하기](`interviewStartRequested`)·[수정하기](`interviewInfoEditRequested`)·dev 버튼(`onboardingRequested`). [시작하기]는 **첫 면접일 때만** 위저드다: 면접에 필요한 정보(직군·연차·JD·포폴)를 모으는 게 온보딩이라, 재사용할 포폴이 이미 있으면(`variant == .hasPortfolio`) 수집을 건너뛰고 면접으로 가야 한다(그 Feature 미통합 — TODO)
+2. AppFeature 수신 → `state.onboarding = OnboardingFeature.State(userName:)` (`@Presents` + `.ifLet`) → `AppView` 가 `fullScreenCover` 로 위저드 제시. 분기 재료(`variant`)는 홈이 진입 로드로 이미 정해 둔 값을 읽는다
+3. 온보딩 `delegate(.finished(sessionId:))`·`.dismiss` → cover 닫고 **`.home(.view(.onAppear))` 를 명시로 보내 홈을 다시 태운다** — 완료면 포폴·잔여가 바뀌었고 중도 이탈이라도 STEP4 업로드는 끝났을 수 있는데, cover 를 닫는 것만으론 홈 `onAppear` 가 다시 오지 않아 «이전 정보 재사용» 카드가 옛 값으로 남는다. 홈 탭 위에서만 열리므로 **로그인 이후**라 토큰을 보유한다(온보딩 API 는 인증 필요) → [[onboarding]]
 
 → 큰 그림은 [[domain.map]].
 
