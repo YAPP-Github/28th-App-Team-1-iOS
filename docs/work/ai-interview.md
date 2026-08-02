@@ -12,27 +12,26 @@
 
 | 기획 | Feature 모듈 | 도메인 내 navigation |
 |---|---|---|
-| Part 1 면접 전 입력 & 포폴 등록(위저드) | `OnboardingFeature` (FeatureOnboarding — **구현 중**) | 자체 `StackState` 6스텝 (S0~S3.5) → §5 · [[onboarding]] |
+| Part 1 면접 전 입력 & 포폴 등록(위저드) | `OnboardingFeature` (FeatureOnboarding — **구현 중**) | 자체 `StackState` — 수집 3스텝(S1~S3) + 프리로드(S3.5) → §5 · [[onboarding]] |
 | Part 2 10분 음성 면접 | `InterviewSessionFeature` ★ (FeatureInterview — **화면 상태머신 구현**, 음성 배선 전) | 단일 화면 + 턴 **상태머신** · 준비/실패/리포트 대기 화면 전환은 모듈 내 `InterviewFeature` 코디네이터 |
 | 포트폴리오 관리(설정) | `PortfolioFeature` | — |
 | Part 3 보고서/영상 복기 | `InterviewReportFeature` (R0·R1 + V0·V1·V2) | 자체 `Path` (R0→V0→V1→V2→R1) → [ai-interview-report](ai-interview-report.md) |
 | Part 4 사람 평가(유료) | (후속, 별도) | — |
 
 ★ = 엔지니어링 리스크 집중 지점.
-PRD v3 가 화면명을 `Onboarding_*` 로 확정하면서 설계 초안의 가칭 `InterviewSetupFeature` 는 `FeatureOnboarding` 으로 실현됐다 (S0 이 직군/연차 2스텝으로 분할된 것 외 흐름 동일).
+PRD v3 가 화면명을 `Onboarding_*` 로 확정하면서 설계 초안의 가칭 `InterviewSetupFeature` 는 `FeatureOnboarding` 으로 실현됐다. S0(직군·연차)은 2026-08-02 가입 온보딩(`FeatureAuth`)으로 이관돼 이 위저드에서 빠졌다 — 값은 주입으로 들어온다.
 
 ## 1. 모듈 의존 그래프
 
 ```
 App  (composition root — 레이어 umbrella link → liveValue 활성화)
 └── AppFeature  (코디네이터: 탭 + Setup→Session→Report 라우팅)
-    ├── OnboardingFeature (Part 1) ─┬ DomainJobInterface
-    │   └ Path: jobSelection(S0a)   ├ DomainJDInterface
-    │          careerInput(S0b)     ├ DomainPortfolioInterface
-    │          jdLink(S1)           ├ DomainInterviewInterface ✅ (분석 스텝 세션 생성)
-    │          portfolioUpload(S2)  └ SharedDesignSystem
-    │          focusProject(S3)
-    │          analysis(S3.5+S4)
+    ├── OnboardingFeature (Part 1) ─┬ DomainJDInterface
+    │   ├ root: jobDescription      ├ DomainPortfolioInterface
+    │   │        Upload(S1)         ├ DomainInterviewInterface ✅ (프리로드 세션 생성)
+    │   └ Path: portfolioUpload(S2) └ SharedDesignSystem
+    │          mainProject(S3)
+    │          preload(S3.5+S4)
     ├── InterviewSessionFeature ┬ DomainInterviewInterface
     │   (턴 상태머신)            ├ DomainSpeechInterface     (TTS + STT)
     │                           ├ DomainRecordingInterface  (A/V 캡처·보존)
@@ -48,8 +47,9 @@ App  (composition root — 레이어 umbrella link → liveValue 활성화)
 
 ```
 Onboarding --delegate(.finished)-------------▶ AppFeature --fullScreenCover--▶ Session
-                                               (🔴 세션 payload 확장 필요 — 현재 신호만, §5 분석)
+                                               (🔴 세션 payload 확장 필요 — 현재 sessionId 만, §5 프리로드)
 Onboarding --delegate(.dismiss)--------------▶ AppFeature --중도 이탈 (draft 보존, §5)
+                                               (루트 «이전으로» 도 여기로 합류 — 앞 스텝이 없다)
 Session --delegate(.finished)----------------▶ 코디네이터 --리포트 대기 화면--▶ delegate(.finished) --▶ AppFeature
 Session --delegate(.aborted)-----------------▶ AppFeature --dismiss (턴은 서버가 보존 — 차감 D1, PRD §3.7)
 설정 Portfolio --delegate(.emptied)----------▶ AppFeature --다음 연습 진입 시 S2 강제 라우팅
@@ -61,7 +61,7 @@ Session --delegate(.aborted)-----------------▶ AppFeature --dismiss (턴은 �
 
 | Client (모듈) | 책임 | 핵심 시그니처(요지) | 소비처 | 상태 |
 |---|---|---|---|---|
-| **JobClient** (DomainJob) | 직무 목록 — 서버가 6종 관리(백/프론트/iOS/AOS/데이터/인프라·SRE), 클라는 조회만 | `jobs()→[Job]` | S0a | ✅ |
+| **JobClient** (DomainJob) | 직무 목록 — 서버가 6종 관리(백/프론트/iOS/AOS/데이터/인프라·SRE), 클라는 조회만 | `jobs()→[Job]` | 가입 온보딩(직군) | ✅ |
 | **JDClient** (DomainJD) | JD 링크 크롤링·정제·**서버 캐싱** (S1은 캐싱만 — 분석은 세션 생성 시, PRD §3.1) | `validate(url)→JDValidation` — reason: `CRAWLING_FAILED`·`CONTENT_TOO_SHORT`·`EXTRACTION_FAILED` | S1 | ✅ |
 | **PortfolioClient** (DomainPortfolio) | PDF 등록(202)·상태 폴링·목록(재설치 복구)·삭제 | `register(PortfolioUpload)→PortfolioProcessing` · `status(id)` · `list()→[Portfolio]` · `delete(id)` | S2·설정 | ✅ |
 | **InterviewClient** (DomainInterview) | 세션 생성(= S0~S3 **일괄 수집** + 연관성 검사, PRD §3.8)·준비 폴링·답변 제출·질문 오디오 | `createSession(InterviewConfig)→202` · `sessionStatus(id)` · `submitAnswer` · `questionAudioStream` | S3.5/S4·Part2 | ✅ |
@@ -103,16 +103,17 @@ struct JDValidation { valid: Bool; reason: String?; message: String? }
 
 ## 5. Part 1 — `OnboardingFeature` (위저드, PRD v3)
 
-S0→S3.5는 **도메인 내부** navigation → 규칙대로 자체 `Path` + `StackState`. 코디네이터가 누적 `OnboardingData`(직군·연차·JD·portfolioId·freeText)를 들고, 각 스텝은 delegate 로만 위로 신호. 구현 세부·현재 TODO 는 [[onboarding]] 이 진실 — 여기는 PRD ↔ 구현 매핑과 남은 개발 포인트만.
+S1→S3.5는 **도메인 내부** navigation → 규칙대로 자체 `Path` + `StackState`. 코디네이터가 누적 `OnboardingData`(직군·연차·JD·portfolioId·freeText)를 들고, 각 스텝은 delegate 로만 위로 신호. 구현 세부·현재 TODO 는 [[onboarding]] 이 진실 — 여기는 PRD ↔ 구현 매핑과 남은 개발 포인트만.
+
+**S0(직무·연차)은 이 위저드에 없다** — 가입 온보딩(`FeatureAuth`)이 받고 위저드는 `State.init(jobRole:careerYears:)` 로 값만 주입받는다(2026-08-02 화면 삭제). 위저드는 3스텝(JD·포폴·대표 프로젝트) + 프리로드.
 
 | PRD | 스텝 (구현) | 필수 | 상태 |
 |---|---|---|---|
-| S0 직무 | 1 JobSelection — `JobClient.jobs` 칩 | 필수 | ✅ (로드 실패 UX TODO) |
-| S0 연차 | 2 CareerInput — 문장형 휠(0~10년 정수) | 필수 | ✅ 정수 피커 |
-| S1 JD | 3 JDLink — 링크/직접입력 탭 (상호배타) | 선택 — 스킵 상시 | ✅ 직접입력 200~3,000자 검증 완료 (링크 5회 제한·CONTENT_TOO_SHORT 문구 TODO) |
-| S2 포트폴리오 | 4 PortfolioUpload — 202+폴링 | 필수 | ✅ 페이지30·암호 선검증 완료 (폴링 상한·1개제한 dialog TODO) |
-| S3 집중 프로젝트 | 5 FocusProject — 자유입력 | 선택 — 스킵 상시 | ✅ 상단 문구 PRD 확정본 반영 |
-| S3.5 연관성 + S4 진입 | 6 Analysis — **세션 생성 지점** | — | ✅ 세션 생성·폴링·연관성 실패 루프(경고·4회 다이얼로그) 완료 |
+| S0 직무·연차 | — 가입 온보딩(`AuthOnboardingJob`·`AuthOnboardingExperience`) 소관, 위저드는 주입만 | 필수 | ✅ 이관 완료 (AppFeature 주입 배선 TODO) |
+| S1 JD | 1 JobDescriptionUpload — 링크/직접입력 탭 (상호배타) | 선택 — 스킵 상시 | ✅ 직접입력 200~3,000자 검증 완료 (링크 5회 제한·CONTENT_TOO_SHORT 문구 TODO) |
+| S2 포트폴리오 | 2 PortfolioUpload — 202+폴링 | 필수 | ✅ 페이지30·암호 선검증 완료 (폴링 상한·1개제한 dialog TODO) |
+| S3 대표 프로젝트 | 3 MainProject — 자유입력 | 선택 — 스킵 상시 | ✅ 상단 문구 PRD 확정본 반영 |
+| S3.5 연관성 + S4 진입 | Preload — **세션 생성 지점** (프로그레스 밖) | — | ✅ 세션 생성·폴링·연관성 실패 루프(경고·4회 다이얼로그) 완료 |
 
 ### PRD v3 핵심 확정 → 클라 영향
 
@@ -125,24 +126,23 @@ S0→S3.5는 **도메인 내부** navigation → 규칙대로 자체 `Path` + `S
 
 ### 스텝별 개발 포인트
 
-- **1 직군** — 서버 직무 API ✅. 2회차부터 직무·연차 skip 은 서버 준비 완료 — 반복 연습이 MVP 제외라 클라는 후속.
-- **2 연차** ✅ — 정수 피커로 확정(사용자 결정 2026-07-20). `CareerOption { years: Int }` 0~10년(10="10년 이상"), 문장형 휠 유지. 페이로드는 `careerYears: Int` 로 `InterviewConfig.careerYears` 에 직결(잠정 매핑 제거). 레벨(주니어/미들/시니어)은 서버가 0-2/3-7/8+ 파생 — 클라 미관여. 휠 라벨: 신입 / N년 이상 / 10년 이상 (최종 시안 3632:14460 표기, 2026-07-31 — 07-20 결정 당시 「N년차」에서 표기만 변경. 값 계약은 그대로 정수).
-- **3 JD** — 링크 검증(디바운스 → `validate`) ✅ · 성공 시 직접입력 탭 잠금 ✅ · **스킵 시 입력 있어도 검증·저장 없이 통과**(jd=nil) ✅ · ① 직접입력 **200~3,000자** 검증(유효 길이만 계속하기 활성, 무효 시 카운터·red 보더·안내 문구, 초과 클램프 안 함) ✅. TODO: ② 링크 본문 <200자 = `CONTENT_TOO_SHORT` 문구 노출 ③ **링크 검증 1일 5회 제한** 초과 에러 노출(서버 에러 코드 확인).
-- **4 포트폴리오** — 클라 선검증은 UX 용 빠른 차단, **최종 판정은 서버 실측**(PRD §7 분담): PDF 타입·20MB ✅ / **페이지 ≤30**(PDFKit `pageCount`) ✅ / **암호 PDF**(`PDFDocument.isEncrypted`) ✅ — `PortfolioFileReader` 가 data+pageCount+isEncrypted 반환, register 전 차단, pageCount 는 서버에 전달. 글자 수 ≥30 은 서버 전용(Tika) → FAILED_FILE 문구만. 폴링 3초 ✅. TODO: **폴링 상한**(전체 처리 타임아웃 → FAILED_SYSTEM 취급 문구, 초기값 tentative) · **1개 제한** `PORTFOLIO_ALREADY_EXISTS` → "기존 삭제 후 재업로드" dialog(자동 교체 금지) · 셀룰러 20MB 경고(후속).
-- **5 집중 프로젝트** — 10~300자 · 상한 300 클램프 · 빈 입력 = 스킵(nil) · **하한 10자 클라 선검증** ✅(입력 있고 <10자면 continue 차단+경고, PRD §7 분담 — 연관성 등 최종 판정은 서버) · 상단 고정 문구 교체 확정본("입력하면 그 부분을 집중 검증해요. 건너뛰면 포트폴리오 전체에서 질문해요.") 반영 ✅.
-- **6 분석 = S3.5 + S4** — Phase A ✅ / Phase B 🟠:
-  1. ✅ `OnboardingData.interviewConfig()` → `InterviewClient.createSession` + `sessionStatus` 폴링(3초). `.domain(interface: .interview)` 의존 추가 + `tuist generate`. PROCESSING→폴링 / READY→completed / 실패·config 불완전→failed 화면(재시도 없음, PRD §3.1). ⚠ `careerYears` 는 CareerOption 잠정 매핑(STEP2 정수 피커 확정 시 제거).
+- **S0 직군·연차** — 화면은 가입 온보딩으로 이관됐다(`AuthOnboardingJob`·`AuthOnboardingExperience`, [home-account](home-account.md) §가입 온보딩). 값 계약은 그대로: `careerYears: Int` 0~10(10="10년 이상")이 `InterviewConfig.careerYears` 에 직결하고 레벨(주니어/미들/시니어)은 서버가 0-2/3-7/8+ 파생. **위저드 쪽 TODO: AppFeature 가 프로필에서 두 값을 읽어 `OnboardingFeature.State(jobRole:careerYears:)` 로 넘기는 배선** — nil 이면 프리로드가 세션 생성에 실패한다. 2회차부터 skip 은 서버 준비 완료(반복 연습이 MVP 제외라 클라는 후속).
+- **1 JD** — 링크 검증(디바운스 → `validate`) ✅ · 성공 시 직접입력 탭 잠금 ✅ · **스킵 시 입력 있어도 검증·저장 없이 통과**(jd=nil) ✅ · ① 직접입력 **200~3,000자** 검증(유효 길이만 계속하기 활성, 무효 시 카운터·에러 표시, 초과 클램프 안 함) ✅. TODO: ② 링크 본문 <200자 = `CONTENT_TOO_SHORT` 문구 노출 ③ **링크 검증 1일 5회 제한** 초과 에러 노출(서버 에러 코드 확인).
+- **2 포트폴리오** — 클라 선검증은 UX 용 빠른 차단, **최종 판정은 서버 실측**(PRD §7 분담): PDF 타입·20MB ✅ / **페이지 ≤30**(PDFKit `pageCount`) ✅ / **암호 PDF**(`PDFDocument.isEncrypted`) ✅ — `PortfolioFileReader` 가 data+pageCount+isEncrypted 반환, register 전 차단, pageCount 는 서버에 전달. 글자 수 ≥30 은 서버 전용(Tika) → FAILED_FILE 문구만. 폴링 3초 ✅. TODO: **폴링 상한**(전체 처리 타임아웃 → FAILED_SYSTEM 취급 문구, 초기값 tentative) · **1개 제한** `PORTFOLIO_ALREADY_EXISTS` → "기존 삭제 후 재업로드" dialog(자동 교체 금지) · 셀룰러 20MB 경고(후속).
+- **3 대표 프로젝트** — 10~300자 · 상한 300 클램프 · 빈 입력 = 스킵(nil) · **하한 10자 클라 선검증** ✅(입력 있고 <10자면 continue 차단+경고, PRD §7 분담 — 연관성 등 최종 판정은 서버) · 상단 고정 문구 교체 확정본("입력하면 그 부분을 집중 검증해요. 건너뛰면 포트폴리오 전체에서 질문해요.") 반영 ✅.
+- **프리로드 = S3.5 + S4** — Phase A ✅ / Phase B 🟠:
+  1. ✅ `OnboardingData.interviewConfig()` → `InterviewClient.createSession` + `sessionStatus` 폴링(3초). `.domain(interface: .interview)` 의존. PROCESSING→폴링 / READY→completed / 실패·config 불완전→failed 화면(재시도 없음, PRD §3.1). config 불완전에는 **직군·연차 주입 누락**도 포함된다(위 S0 배선 TODO).
   4. ✅ READY → `delegate(.completed(sessionId:))` → 코디네이터 `delegate(.finished(sessionId:))`. AppFeature 미배선이라 요약 질문 등 payload 확장·Part2 제시는 배선 시.
-  2. ✅ 연관성(코사인 ≥0.6 tentative)은 **freeText 있을 때만** 서버 검사. `FREETEXT_NOT_RELEVANT`(Core `ServerError`)를 DomainInterview 가 `InterviewError.freeTextNotRelevant` 로 매핑(레이어 준수) → 분석이 `delegate(.relevanceCheckFailed)` → 코디네이터가 집중 프로젝트로 pop-back + `relevanceFailureCount++`.
-  3. ✅ 4회 미만 실패 → 집중 프로젝트에 경고 문구(PRD 확정) 주입 + 재입력. **연속 4회째** → `ConfirmationDialogState` 2선택지: [포폴 다시 올리기 → STEP4 pop] / [집중 프로젝트 없이 진행 → freeText=nil 로 재분석]. 카운트 `relevanceFailureCount`, 편집 시 경고 해제.
+  2. ✅ 연관성(코사인 ≥0.6 tentative)은 **freeText 있을 때만** 서버 검사. `FREETEXT_NOT_RELEVANT`(Core `ServerError`)를 DomainInterview 가 `InterviewError.freeTextNotRelevant` 로 매핑(레이어 준수) → 프리로드가 `delegate(.relevanceCheckFailed)` → 코디네이터가 대표 프로젝트로 pop-back + `relevanceFailureCount++`.
+  3. ✅ 4회 미만 실패 → 대표 프로젝트에 경고 문구(PRD 확정) 주입 + 재입력. **연속 4회째** → `ConfirmationDialogState` 2선택지: [포폴 다시 올리기 → STEP2 pop] / [대표 프로젝트 없이 진행 → freeText=nil 로 재분석]. 카운트 `relevanceFailureCount`, 편집 시 경고 해제.
 
 ### 입력 draft (PRD §4.4) ✅
 
 S0~S3 입력을 로컬 draft 로 자동 저장 — **앱 진짜 종료(kill/크래시) 대비**. **재개식**(사용자 결정 2026-07-20): 값 + 위저드 위치를 복원해 이어서 시작.
 - `OnboardingDraftStore` seam(UserDefaults JSON, PortfolioFileReader 와 같은 로컬 IO 선상) — load/save/clear. `OnboardingData` 는 Codable, `portfolioFileName` 추가(완료 행 복원용).
 - 저장: 각 스텝 완료(continue)마다 `persist`(data + furthestStep = path.count+1 + savedAt). 폐기: **세션 생성 성공 시** clear.
-- 복원(코디네이터 onAppear): `path` 비었을 때만, TTL **14일** 안이면 data 복원 + 위저드 되쌓기(분석 6은 제외, 집중 프로젝트 5까지). 직군은 목록 로드 후 `preselectedJobRole` 매칭, JD 는 `restoring:` init 으로 탭·검증상태 복원.
-- 잔여(TODO): 복원 시 직무 목록 대조 재검증(현재 로드 후 매칭까지) · 포폴 삭제 시 clear.
+- 복원(코디네이터 onAppear): `path` 비었을 때만, TTL **14일** 안이면 data 복원 + 위저드 되쌓기(프리로드 제외, 대표 프로젝트 3까지). JD 는 루트라 `restoring:` init 으로 탭·검증상태 복원.
+- 잔여(TODO): 포폴 삭제 시 clear.
 
 ### 재진입 분기 (PRD §8)
 
@@ -233,7 +233,7 @@ enum Phase {
 | **연관성 4회 실패 카운트** 임계 (PRD tentative) | Analysis State 카운터 + 2선택지 분기 | 🟠 분석 API 연결 시 |
 | ~~**입력 draft** TTL 14일 (PRD §4.4)~~ → 재개식 구현 ✅ | `OnboardingDraftStore`(UserDefaults) | ✅ 완료 |
 | **세션 생성 payload** (Part1↔2 경계, PRD §3.8 부록) | Onboarding→AppFeature→Session delegate 계약 | 🔴 분석 API 연결 시 (서버 정합) |
-| #5 PDF 상한(20MB/30p) / 암호·페이지 클라 선검증 | PortfolioClient 선검증 seam | 🟡 STEP4 (일부 구현) |
+| #5 PDF 상한(20MB/30p) / 암호·페이지 클라 선검증 | PortfolioClient 선검증 seam | 🟡 포폴 스텝 (일부 구현) |
 | 카운트다운·상태 인디케이터·토스트 | SharedDesignSystem 컴포넌트 추가 | 🟡 병행 |
 
 v3 로 **닫힌** 논의(초안 미결 → 해소): 재시도/멱등성(전면 제외), 동기vs비동기(비동기+폴링 확정), status 개수(4개 확정), 검증 분담(클라 선검증+서버 실측), 채점 엣지(Part2 §9 천장 규칙 흡수). 연관성 LLM 병행은 MVP 제외로 종결(오판 신고율 감시 후 재검토).
@@ -253,7 +253,7 @@ v3 로 **닫힌** 논의(초안 미결 → 해소): 재시도/멱등성(전면 �
 6. **AppFeature 배선** — Onboarding delegate(.finished/.dismiss) 수신 + Session/Report fullScreenCover 체인
 7. **InterviewReportFeature** stub → Part 3 본격화
 
-온보딩 마감 잔여(Part 2 무관): 입력 draft(§4.4) · 재진입 분기(§8) · AppFeature 배선(finished(sessionId) 수신·Part2 진입·포폴 0개→S2 강제). 완료: STEP2 정수 피커 ✅ · 분석 세션 연결 ✅ · 연관성 루프 ✅ · JD/포폴 검증 ✅.
+온보딩 마감 잔여(Part 2 무관): AppFeature 배선(직군·연차 주입 · finished(sessionId) 수신·Part2 진입·포폴 0개→포폴 스텝 강제). 완료: 입력 draft ✅ · 재진입 분기 ✅ · 프리로드 세션 연결 ✅ · 연관성 루프 ✅ · JD/포폴 검증 ✅ · S0 가입 온보딩 이관 ✅.
 
 ## 9. 미정/후속
 

@@ -44,6 +44,8 @@
 2. AppFeature 수신 → `state.onboarding = OnboardingFeature.State()` (`@Presents` + `.ifLet`) → `AppView` 가 `fullScreenCover` 로 위저드 제시
 3. 온보딩 `delegate(.finished(sessionId:))`·`.dismiss` → cover 닫음. **로그인 이후에만** 열어 토큰을 보유한다(온보딩 API 는 인증 필요) → [[onboarding]]
 
+⚠ 지금 `State()` 는 직군·연차를 안 넘긴다 — 두 값은 가입 온보딩이 받아 프로필에 있고 위저드는 주입만 받으므로(화면 삭제, 2026-08-02), 정식 배선 전까지 dev 진입은 프리로드의 세션 생성에서 실패한다. 배선 시 `State(userName:jobRole:careerYears:)` 로 프로필 값을 채워 넘긴다 → [[onboarding#코디네이터 연결]]
+
 → 큰 그림은 [[domain.map]].
 
 ## 주의사항

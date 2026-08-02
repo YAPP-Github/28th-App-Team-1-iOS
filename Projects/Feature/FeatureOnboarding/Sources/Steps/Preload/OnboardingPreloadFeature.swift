@@ -1,5 +1,5 @@
 //
-//  OnboardingAnalysisFeature.swift
+//  OnboardingPreloadFeature.swift
 //  FeatureOnboarding
 //
 //  Created by EunSeo on 26/07/19.
@@ -9,15 +9,16 @@ import ComposableArchitecture
 import DomainInterviewInterface
 import DomainJDInterface
 
-// @lat: [[onboarding#분석]]
-/// 온보딩 STEP 6 — 분석 중/분석 완료 (Figma «6. 분석 중» 1609:9019 · «6.1 분석 완료» 1609:9075).
+// @lat: [[onboarding#프리로드]]
+/// 온보딩 마지막 스텝 프리로드 — 분석 중/분석 완료 (Figma «Onboarding_preload» 443:9768).
+/// 진행 대시 밖에 있는 종착 화면이라 step/totalSteps 를 받지 않는다.
 /// 앞선 스텝들이 채운 OnboardingData 를 InterviewConfig 로 변환해 세션 생성(PRD §3.8 — S0~S3 일괄 수집)을
 /// 요청하고, PROCESSING 이면 status 를 폴링해 READY 를 기다린다.
 /// 체크리스트 3행은 순차 진행 — 1·2행은 가짜 타이머로 차례로 체크되고, 마지막 행만 실제 세션 READY 에
 /// 묶인다(가짜 2행 완료 AND READY). 3행 체크를 잠깐 보여준 뒤 완료 화면 → 유지 시간 경과 →
 /// delegate(.completed(sessionId:))로 세션을 코디네이터에 넘긴다 — dismiss·Part2 진입은 코디네이터 몫.
 @Reducer
-public struct OnboardingAnalysisFeature {
+public struct OnboardingPreloadFeature {
     /// 세션 준비 상태 폴링 주기 — InterviewClient 가이드(3~5초)의 하한.
     static let pollInterval: Duration = .seconds(3)
     /// 완료 화면 노출 유지 시간 — 지나면 자동으로 delegate(.completed)를 올린다.
