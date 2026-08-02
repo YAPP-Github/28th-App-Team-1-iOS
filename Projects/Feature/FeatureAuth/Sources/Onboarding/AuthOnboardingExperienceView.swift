@@ -90,6 +90,9 @@ public struct AuthOnboardingExperienceView: View {
         .contentMargins(.vertical, WheelMetric.verticalInset, for: .scrollContent)
         .scrollIndicators(.hidden)
         .frame(width: WheelMetric.width, height: WheelMetric.height)
+        // 하이라이트 판정 기준계 — 내장 `.scrollView` 는 쓰지 않는다. 그쪽 원점은 `contentMargins` 상단
+        // 인셋만큼 밀려 있어 중앙 기준이 인셋(=2행)만큼 어긋난다. 뷰포트에 직접 이름을 붙여 고정한다.
+        .coordinateSpace(.named(WheelMetric.space))
         .overlay { wheelFade.allowsHitTesting(false) }
     }
 
@@ -165,10 +168,16 @@ private enum WheelMetric {
     /// 페이드가 투명해지는 지점 (프레임 높이 비율).
     static let fadeRatio: CGFloat = fadeHeight / height
 
+    /// 휠 뷰포트 좌표계 이름 — 행 위치를 «스크롤 안 하는 창» 기준으로 재기 위한 것.
+    static let space = "experience-wheel"
+
     /// 이 행이 뷰포트 중앙 밴드(±행높이/2)에 들어왔는지 — 1 이면 선택 행이다.
     /// 경계에서 딱 끊는다 — 사이 값을 주면 두 표기가 반투명하게 겹쳐 글자가 굵어 보인다.
+    /// 밴드는 반열림 구간(-h/2, +h/2] 이다 — 양끝을 다 열면 정확히 경계에 선 순간 아무 행도 강조되지
+    /// 않고, 다 닫으면 위아래 두 행이 동시에 강조된다.
     static func centeredness(_ proxy: GeometryProxy) -> Double {
-        abs(proxy.frame(in: .scrollView).midY - height / 2) < rowHeight / 2 ? 1 : 0
+        let delta = proxy.frame(in: .named(space)).midY - height / 2
+        return (delta > -rowHeight / 2 && delta <= rowHeight / 2) ? 1 : 0
     }
 }
 
