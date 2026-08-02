@@ -22,6 +22,7 @@ import SwiftUI
 /// )
 ///
 /// TitleBox(["제목만 있는 화면"], alignment: .center)   // 마커 없는 줄은 문자열 리터럴로
+/// TitleBox(["선택 스텝"], tag: "선택", tagStyle: .grayGray)   // 뱃지 팔레트만 바꿀 때
 /// ```
 ///
 /// Figma `status` 축(left/middle)은 `alignment`, `light/dark` 축은 `.hilitSurface(_:)` Environment —
@@ -51,19 +52,25 @@ public struct TitleBox: View {
 
     private let lines: [Line]
     private let tag: String?
+    private let tagStyle: TagLabel.Style
     private let sub: String?
     private let alignment: TextAlignment
 
     @Environment(\.hilitSurface) private var surface
 
+    /// - Parameter tagStyle: 뱃지 팔레트. 기본은 «필수» 시안의 검정 판 + 초록 글자.
+    ///   선택 스텝의 «선택» 뱃지는 같은 Figma 컴포넌트(2000:8288)의 회색 변형이라 `.grayGray` 를 넘긴다 —
+    ///   판이 아니라 **의미**(필수/선택)가 정하는 값이라 Environment 가 아니라 파라미터다.
     public init(
         _ lines: [Line],
         tag: String? = nil,
+        tagStyle: TagLabel.Style = .blackGreen,
         sub: String? = nil,
         alignment: TextAlignment = .leading
     ) {
         self.lines = lines
         self.tag = tag
+        self.tagStyle = tagStyle
         self.sub = sub
         self.alignment = alignment
     }
@@ -71,7 +78,7 @@ public struct TitleBox: View {
     public var body: some View {
         VStack(alignment: horizontalAlignment, spacing: .ds(.p8)) {
             if let tag {
-                TagLabel(tag, style: .blackGreen)
+                TagLabel(tag, style: tagStyle)
             }
             VStack(alignment: horizontalAlignment, spacing: .ds(.p4)) {
                 // 줄 사이 간격 0 — 행간은 타이포 토큰이 이미 위아래 패딩으로 갖고 있다.

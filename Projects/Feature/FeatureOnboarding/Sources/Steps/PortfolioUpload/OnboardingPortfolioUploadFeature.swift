@@ -10,20 +10,22 @@ import DomainPortfolioInterface
 import Foundation
 import PDFKit
 
+// Figma «Onboarding_PortfolioUpload» https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=443-9568
+//        대기 443:9568 · 실패 443:9624 (업로드 중·완료 프레임은 시안에 없다 — View 주석 참조)
 // @lat: [[onboarding#포트폴리오 업로드]]
-/// 온보딩 STEP 4 — 포트폴리오 업로드. PDF 1개(20MB 이하)를 골라 서버에 등록하고,
+/// 온보딩 STEP 2/3 — 포트폴리오 업로드. PDF 1개(20MB 이하)를 골라 서버에 등록하고,
 /// PROCESSING 폴링이 READY 가 될 때까지 기다린다. 대기/업로드 중/실패/완료는
-/// 별도 화면 push 없이 `UploadState` 하위 상태로만 전환한다 (Figma 4 · 4.1 · 4.2).
+/// 별도 화면 push 없이 `UploadState` 하위 상태로만 전환한다.
 /// 완료 결과는 delegate(.continueRequested(portfolioId:))로 코디네이터에 올린다.
 @Reducer
 public struct OnboardingPortfolioUploadFeature {
     /// 업로드 진행 하위 상태 — 화면 전환 없이 리스트 영역 렌더만 바꾼다.
     public enum UploadState: Equatable, Sendable {
-        /// 대기 — 아직 첨부된 파일 없음 (빈 점선 박스).
+        /// 대기 — 아직 첨부된 파일 없음 (`FileUpload(.empty)` 점선 판).
         case idle
-        /// 업로드·서버 처리 중 — register 접수 전이면 portfolioId 는 nil (Figma 4.2).
+        /// 업로드·서버 처리 중 — register 접수 전이면 portfolioId 는 nil (`FileUpload(.progressing)`).
         case uploading(fileName: String, portfolioId: UUID?)
-        /// 실패 — 에러 배너 + 빈 점선 박스 (Figma 4.1).
+        /// 실패 — `InfoField(.error)` 안내 줄 + 빈 점선 판 (Figma 443:9624).
         case failed(message: String)
         /// 완료 — 파일 행 표시, 계속하기 활성.
         case uploaded(fileName: String, portfolioId: UUID)
@@ -49,7 +51,7 @@ public struct OnboardingPortfolioUploadFeature {
             if case .uploaded = upload { true } else { false }
         }
 
-        public init(step: Int = 4, totalSteps: Int = 5, upload: UploadState = .idle) {
+        public init(step: Int = 2, totalSteps: Int = 3, upload: UploadState = .idle) {
             self.step = step
             self.totalSteps = totalSteps
             self.upload = upload
@@ -100,7 +102,8 @@ public struct OnboardingPortfolioUploadFeature {
         }
     }
 
-    /// FAILED_FILE 기본 문구 — Figma 4.1 명세. 서버 message 가 있으면 그것을 우선한다.
+    /// FAILED_FILE 기본 문구 — 서버 message 가 있으면 그것을 우선한다.
+    /// 시안(443:9641)의 안내 줄은 «서버에러메세지» 주석이 붙은 자리표시라 문구를 고정하지 않는다.
     static let unreadableFileMessage = "이 PDF에서 글자를 읽지 못했어요.\n글자가 드래그로 선택되는 PDF로 다시 올려주세요."
     /// 파일 읽기·네트워크 등 일반 실패 문구 — 디자인 미정, 임시.
     static let genericFailureMessage = "업로드에 실패했어요.\n잠시 후 다시 시도해 주세요."
@@ -110,7 +113,7 @@ public struct OnboardingPortfolioUploadFeature {
     static let pageExceededMessage = "페이지가 너무 많아요.\n30페이지 이하 PDF로 올려주세요."
     /// 암호 PDF 문구 — PRD S2 확정 (열기 암호 걸린 PDF 는 파싱 불가).
     static let encryptedFileMessage = "암호가 걸린 PDF는 열 수 없어요.\n암호를 푼 PDF로 올려주세요."
-    /// 업로드 상한 20MB — Figma «최대 20Mb» · 서버 검증 FILE_TOO_LARGE.
+    /// 업로드 상한 20MB — Figma 443:9584 «1개 파일, 최대 20Mb까지 가능합니다» · 서버 검증 FILE_TOO_LARGE.
     static let maxFileSizeBytes = 20 * 1024 * 1024
     /// 페이지 상한 30p — PRD S2 · 서버 검증 PAGE_COUNT_EXCEEDED. 클라 선검증(서버 실측 재검증).
     static let maxPageCount = 30

@@ -20,15 +20,15 @@
 | `AuthTerms` | A1 약관 동의(5종) | FeatureAuth — 5종 체크·전체 동의·전문 바텀시트(DS `.hilitDetentSheet` — 시스템 시트 detent) 동작 | 골격 ✅ / 🔴 제출 API(S-1)·전문(S-2) |
 | `AuthSuspension` | A4 정지(블랙리스트) 안내 | FeatureAuth — 진입은 홈 게이트 `ACCOUNT_SUSPENDED` → cross-feature 제시 (§4) | 골격 ✅ / 🔴 게이트 배선·CS 주소 |
 | `AuthOnboardingNaming` | (PRD Part7 밖 — 디자인 확정) 이름 입력 | FeatureAuth/Onboarding — DS `NameField`, 수집만(제출은 연차 CTA 일괄) | 골격 ✅ |
-| `AuthOnboardingJob` | Part1 S0a 직군 선택 | FeatureAuth/Onboarding — FeatureOnboarding STEP1 **복사**(원본은 위저드 정리 시 제거) | 골격 ✅ |
-| `AuthOnboardingExperience` | Part1 S0b 연차 선택 | FeatureAuth/Onboarding — FeatureOnboarding STEP2 **복사**. CTA 에서 코디네이터가 `updateProfile` 일괄 PATCH | 골격 ✅ |
+| `AuthOnboardingJob` | Part1 S0a 직군 선택 | FeatureAuth/Onboarding — 면접 위저드 STEP1 **이관**(원본 삭제 완료 2026-08-02) | 골격 ✅ |
+| `AuthOnboardingExperience` | Part1 S0b 연차 선택 | FeatureAuth/Onboarding — 면접 위저드 STEP2 **이관**(원본 삭제 완료). CTA 에서 코디네이터가 `updateProfile` 일괄 PATCH | 골격 ✅ |
 | `AuthOnboardingRegister` | 등록 완료 (PRD «가입 완료 화면 없음» 을 디자인이 뒤집음) | FeatureAuth/Onboarding — 프로필 PATCH 성공 시에만 push, 완료 후 `delegate(.signedIn)` | 골격 ✅ |
 | 홈 — **두 덩어리(홈 3화면 + 면접 시작 3화면)** (§3) | Part6 전체 | FeatureHome — `Sources/Home/`(`HomeFeature.phase`) + `Sources/StartInterview/`(`StartInterviewFeature`, cover present) | 골격 ✅ / 🔴 로드 4종·위젯 UI |
 | A2 권한 안내 | Part7 | **Out — AOS 전용.** iOS 는 사용 시점 요청 (Part2 준비 화면 게이트 ✅, [[interview#권한]]) | — |
 | A3 재동의 | Part7 | MVP 미도안 — 분기 자리만 예약 | 🟡 |
 | 로그아웃·탈퇴 | Part 5 소유 (탈퇴 완료 → `AuthCreateAccount` 복귀만 계약) | 참고 | — |
 
-**기존 FeatureOnboarding 영향**: 직군·연차 스텝이 가입 플로우로 이동하면 면접 위저드는 JD·포폴·집중 프로젝트·분석 중심으로 남는다 — S0 은 가입 때 받은 프로필 값으로 스킵/프리필(미결 §7). 화면 코드 이동 vs 복사는 구현 시 결정.
+**기존 FeatureOnboarding 영향** (2026-08-02 반영 완료): 직군·연차 스텝은 **삭제**됐고 면접 위저드는 JD·포폴·대표 프로젝트 3스텝 + 프리로드로 남았다(`totalSteps = 3`, 루트가 JD). 두 값은 `OnboardingFeature.State(jobRole:careerYears:)` 로 **주입**받는다 — AppFeature 가 프로필에서 채워 넘기는 배선이 미결(§7)이고, nil 이면 프리로드의 세션 생성이 실패한다.
 
 ## 1. 전체 흐름 (iOS — A2 없음)
 
@@ -97,12 +97,12 @@ AuthTerms 제출 후 이어지는 4화면. AuthFeature 도메인 내부 내비(�
 | 화면 | 내용 | 구현 재료 |
 |---|---|---|
 | `AuthOnboardingNaming` | 이름 입력 | 수집만(이름 한글·영문 최대 5자) — 제출은 연차 CTA 의 일괄 PATCH |
-| `AuthOnboardingJob` | 직군 선택 | 기존 FeatureOnboarding STEP1(JobSelection — `JobClient.jobs` 칩) 이관 |
-| `AuthOnboardingExperience` | 연차 선택 | 기존 FeatureOnboarding STEP2(CareerInput — 문장형 휠 0~10년) 이관 + CTA 에서 `UserClient.updateProfile`(이름·직군·연차 일괄 PATCH) — [[api#User]] |
+| `AuthOnboardingJob` | 직군 선택 | 면접 위저드 STEP1(`JobClient.jobs` 칩) 이관 — 원본 삭제 완료 |
+| `AuthOnboardingExperience` | 연차 선택 | 면접 위저드 STEP2(문장형 휠 0~10년) 이관 — 원본 삭제 완료 + CTA 에서 `UserClient.updateProfile`(이름·직군·연차 일괄 PATCH) — [[api#User]] |
 | `AuthOnboardingRegister` | 등록 완료 | 신규 — PATCH 성공 시에만 진입, 완료 후 홈 (`delegate` → AppFeature) |
 
 - 이름·직군·연차 제출은 `UserClient.updateProfile` 일괄 ✅ — 연차 화면 CTA 시점, 성공해야 Register(2026-08-02 확정). 실패는 그 화면에 머물러 재탭 재시도.
-- 이관 시 기존 면접 위저드([[onboarding]])는 S0 두 스텝을 잃고 JD 부터 시작 — 프로필 프리필/스킵 처리 미결(§7).
+- 이관 완료 — 면접 위저드([[onboarding]])는 S0 두 스텝을 잃고 JD 부터 시작한다. 두 값의 주입원(프로필) 배선은 미결(§7).
 
 ### A3 재동의 — MVP 미도안 (서버만 고려)
 
@@ -138,7 +138,7 @@ AuthTerms 제출 후 이어지는 4화면. AuthFeature 도메인 내부 내비(�
 
 | 게이트 결과 | 행선지 | 조립 |
 |---|---|---|
-| 통과 | 온보딩 위저드 S0~ (직군·연차는 프로필 프리필 가능 — 미결) → 세션 생성 → 면접 | cross-feature — 기존 dev 버튼 경로의 정식화 |
+| 통과 | 온보딩 위저드 S1~ (직군·연차는 프로필에서 주입 — 배선 미결) → 세션 생성 → 면접 | cross-feature — 기존 dev 버튼 경로의 정식화 |
 | held 세션 | [이어서 진행] → 같은 session_id 로 Part 2 복귀 (`InterviewFeature.State(sessionId:)` — [ai-interview](ai-interview.md) 작업 D 와 합류) | cross-feature |
 | `NO_REMAINING` | «무료 횟수를 모두 사용했어요» 안내 (MVP 후 페이월 자리) | 홈 내부 |
 | `PORTFOLIO_NOT_READY` | 포폴 등록(S2) 라우팅 — 교체 소진 시 «다음 달 1일부터 업로드 가능» 병기 | cross-feature (S2 강제 라우팅 — [ai-interview](ai-interview.md) §2 표와 동일 메커니즘) |

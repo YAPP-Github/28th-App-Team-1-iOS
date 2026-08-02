@@ -1,5 +1,5 @@
 //
-//  OnboardingJDLinkFeature.swift
+//  OnboardingJobDescriptionUploadFeature.swift
 //  FeatureOnboarding
 //
 //  Created by EunSeo on 26/07/19.
@@ -9,29 +9,31 @@ import ComposableArchitecture
 import DomainJDInterface
 import Foundation
 
-// @lat: [[onboarding#JD 링크]]
-/// 온보딩 STEP 3 — 채용공고(JD) 링크 입력 (선택 스텝).
+// @lat: [[onboarding#JD 업로드]]
+/// 온보딩 STEP 1 — 채용공고(JD) 링크 입력 (선택 스텝, 위저드 스택의 루트).
 /// 링크 붙여넣기 / 본문 직접 입력은 같은 화면의 탭(모드) 전환이고,
 /// 링크 검증의 로딩·에러·성공은 별도 화면이 아니라 `LinkValidation` 하위 상태로 표현한다.
 /// 수집 결과는 delegate(.continueRequested(JDSubmission?))로 코디네이터에 올린다 — nil 은 스킵.
 @Reducer
-public struct OnboardingJDLinkFeature {
-    /// JD 입력 방식 — Figma «3. 링크 입력»(1609:8597) ↔ «3.2 직접입력»(1991:7433) 탭.
+public struct OnboardingJobDescriptionUploadFeature {
+    /// JD 입력 방식 — Figma «링크 붙여넣기»(443:9384) ↔ «직접 입력하기»(443:9424) 탭.
     public enum InputMode: Equatable, Sendable {
-        /// 채용공고 링크 붙여넣기 (기본 탭 «JD 붙여넣기»)
+        /// 채용공고 링크 붙여넣기 (기본 탭 «링크 붙여넣기»)
         case link
         /// JD 본문 직접 입력 (크롤링 실패 폴백 탭 «직접 입력하기»)
         case directText
     }
 
-    /// 링크 검증(서버 크롤링+정제) 하위 상태 — 텍스트필드의 로딩/에러/성공 변형으로 렌더된다.
+    /// 링크 검증(서버 크롤링+정제) 하위 상태 — DS «text-field»(`HilitTextField.Status`)의
+    /// loading/error/success 변형으로 렌더된다. 새 시안 두 노드엔 기본 상태만 그려져 있어
+    /// 상태 변형의 생김새는 컴포넌트가 소유한다.
     public enum LinkValidation: Equatable, Sendable {
         case idle
-        /// «3.1 링크 로딩»(1716:5283) — 필드 잠금 + «분석 중» + 진행 스트립.
+        /// 분석 중 — 필드 잠금 + «분석 중» 라벨 + 무한 진행 바.
         case loading
-        /// «3.1.1 링크 에러»(1716:5334) — 서버 message 또는 기본 문구.
+        /// 실패 — 빨간 바 + 서버 message(또는 기본 문구) 서브 줄.
         case failure(message: String)
-        /// «3.1.2 링크 성공»(1716:5393) — 서버가 JD 를 캐싱한 상태.
+        /// 성공 — 초록 바. 서버가 JD 를 캐싱한 상태.
         case success
     }
 
@@ -42,7 +44,8 @@ public struct OnboardingJDLinkFeature {
     public struct State: Equatable, Sendable {
         /// 직접입력 JD 최소 글자 수 — 서버 검증과 동일. 미만이면 질문 재료가 부족하다 (PRD S1 무효-짧음).
         public static let minDirectTextLength = 200
-        /// 직접입력 JD 최대 글자 수 — 카운터 분모. 초과 시 «다음» 이 꺼진다 (PRD S1 무효-초과, 클램프 안 함).
+        /// 직접입력 JD 최대 글자 수 — 카운터 분모(시안 «0/3000»). `HilitTextEditor(maxLength:)` 가
+        /// 이 값에서 잘라내므로 타이핑으로는 초과가 나지 않는다 — 초과 판정은 복원된 draft 용 방어선이다.
         public static let maxDirectTextLength = 3_000
 
         /// 프로그레스 바 분모 — 온보딩 전체 단계 수.
@@ -50,7 +53,7 @@ public struct OnboardingJDLinkFeature {
         /// 프로그레스 바 분자 — 이 화면의 단계(1-based).
         public let step: Int
         public var mode: InputMode = .link
-        /// «JD 붙여넣기» 탭의 링크 입력값.
+        /// «링크 붙여넣기» 탭의 링크 입력값.
         public var linkText: String = ""
         /// «직접 입력하기» 탭의 JD 본문 입력값.
         public var directText: String = ""
@@ -58,16 +61,13 @@ public struct OnboardingJDLinkFeature {
         /// 스킵 툴팁 자동 소멸 여부 — onAppear 후 tooltipDuration(3초)이 지나면 true, 이후 유지.
         public var isTooltipExpired: Bool = false
 
-        /// 검증 성공 후에는 직접 입력 탭이 비활성화된다 (Figma 1716:5393 — 탭 텍스트 gray).
+        /// 검증 성공 후에는 «직접 입력하기» 탭을 잠근다 — `TabSelector.Item(isEnabled:)` 로 내려간다.
+        /// (분석 중 필드 잠금은 `HilitTextField(.loading)` 이 스스로 갖는다.)
         public var isDirectTextDisabled: Bool { linkValidation == .success }
-        /// 분석 중에는 링크 필드 편집을 잠근다 (Figma 1716:5283 — 필드 회색 배경).
-        public var isLinkFieldDisabled: Bool { linkValidation == .loading }
 
-        /// 직접입력 글자 수 — 카운터 분자.
+        /// 직접입력 글자 수 — 카운터 분자(카운터 자체는 `HilitTextEditor` 가 그린다).
         public var directTextCount: Int { directText.count }
-        /// 카운터 라벨 «n/3000자».
-        public var directTextCountLabel: String { "\(directTextCount)/\(Self.maxDirectTextLength)자" }
-        /// 상한 초과 — 카운터를 빨갛게 강조한다.
+        /// 상한 초과 — 복원된 draft 로만 도달한다(입력은 컴포넌트가 잘라낸다).
         public var isDirectTextOverLimit: Bool { directTextCount > Self.maxDirectTextLength }
         /// 직접입력이 서버 전송 가능한 유효 길이(200~3,000자)인가.
         public var isDirectTextValid: Bool {
@@ -94,7 +94,9 @@ public struct OnboardingJDLinkFeature {
                 return directText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isDirectTextValid
             }
         }
-        /// 스킵 안내 툴팁 — 현재 탭의 입력이 비어 있는 동안만, 진입 후 3초까지 노출 (1609:8597 · 1991:7433).
+        /// 스킵 안내 툴팁 «bubble-field»(443:9400) — 현재 탭의 입력이 비어 있는 동안만,
+        /// 진입 후 3초까지 노출(시안 주석 «3초 후 사라짐»).
+        /// 직접 입력 노드(443:9424)엔 말풍선이 안 그려져 있지만 3초 뒤 프레임으로 보고 두 탭 공통으로 둔다.
         public var showsSkipTooltip: Bool {
             guard !isTooltipExpired else { return false }
             switch mode {
@@ -103,13 +105,13 @@ public struct OnboardingJDLinkFeature {
             }
         }
 
-        public init(step: Int = 3, totalSteps: Int = 5) {
+        public init(step: Int = 1, totalSteps: Int = 3) {
             self.step = step
             self.totalSteps = totalSteps
         }
 
         /// draft 복원용 — 저장된 JD(.link/.text)를 탭·입력값·검증상태로 되살린다.
-        public init(step: Int = 3, totalSteps: Int = 5, restoring jd: JDSubmission?) {
+        public init(step: Int = 1, totalSteps: Int = 3, restoring jd: JDSubmission?) {
             self.step = step
             self.totalSteps = totalSteps
             switch jd {
@@ -139,11 +141,14 @@ public struct OnboardingJDLinkFeature {
             case userSelectedMode(InputMode)
             /// 키보드 리턴 — 디바운스 없이 즉시 검증.
             case userSubmittedLink
+            /// 링크 지우기 — 화면의 클리어 버튼은 `HilitTextField` 안에 있어 바인딩으로 도착하지만,
+            /// «지우면 검증 결과도 버린다» 규칙은 리듀서 쪽 진입점으로 남겨 둔다.
             case userTappedClearLink
-            case userTappedClearDirectText
             case userTappedBack
             case userTappedClose
             case userTappedContinue
+            /// 네비바 오른쪽 «건너뛰기» — 선택 스텝이라 입력 없이 다음으로 넘어간다.
+            case userTappedSkip
         }
 
         /// effect 결과·리듀서 내부 신호. 리듀서만 방출한다.
@@ -160,9 +165,9 @@ public struct OnboardingJDLinkFeature {
         /// 코디네이터(OnboardingFeature) 통보. 부모는 이것만 매칭한다 (D1).
         @CasePathable
         public enum Delegate: Equatable, Sendable {
-            /// 스텝 완료 — 수집한 JD. 선택 스텝이므로 nil(스킵) 가능.
+            /// 스텝 완료 — 수집한 JD. 선택 스텝이므로 nil(스킵) 가능 — 네비바 «건너뛰기» 도 이 경로다.
             case continueRequested(JDSubmission?)
-            /// 뒤로(하단 «이전으로») — 코디네이터가 스택을 pop.
+            /// 뒤로(하단 «이전으로») — 이 화면이 위저드 루트라 코디네이터는 온보딩 이탈로 해석한다.
             case backRequested
             /// 온보딩 이탈(X) 요청 — dismiss 는 코디네이터 몫.
             case closeRequested
@@ -241,10 +246,6 @@ public struct OnboardingJDLinkFeature {
             state.linkValidation = .idle
             return .cancel(id: CancelID.validate)
 
-        case .userTappedClearDirectText:
-            state.directText = ""
-            return .none
-
         case .userTappedBack:
             return .send(.delegate(.backRequested))
 
@@ -252,25 +253,37 @@ public struct OnboardingJDLinkFeature {
             return .send(.delegate(.closeRequested))
 
         case .userTappedContinue:
-            switch state.mode {
-            case .link:
-                switch state.linkValidation {
-                case .loading:
-                    // 분석 중 탭은 무시 — 결과 확인 후 진행. TODO: 디자인 확정 시 재검토 (CTA 비활성 표기 없음).
-                    return .none
-                case .success:
-                    return .send(.delegate(.continueRequested(.link(trimmedLink(state)))))
-                case .idle, .failure:
-                    // 선택 스텝 — 검증되지 않은 링크는 버리고 스킵한다 (툴팁 안내와 일치).
-                    return .send(.delegate(.continueRequested(nil)))
-                }
-            case .directText:
-                let text = state.directText.trimmingCharacters(in: .whitespacesAndNewlines)
-                // 빈 입력은 스킵(nil). 길이 무효는 «계속하기» 가 꺼져 있어 도달하지 않지만 방어적으로 막는다.
-                guard !text.isEmpty else { return .send(.delegate(.continueRequested(nil))) }
-                guard state.isDirectTextValid else { return .none }
-                return .send(.delegate(.continueRequested(.text(text))))
+            return submit(state)
+
+        case .userTappedSkip:
+            // 진행 중인 검증은 버린다 — 스킵한 뒤 늦게 도착한 성공이 다음 스텝을 한 번 더 push 하면 안 된다.
+            return .merge(
+                .cancel(id: CancelID.validate),
+                .send(.delegate(.continueRequested(nil)))
+            )
+        }
+    }
+
+    /// 하단 «계속하기» — 현재 탭의 입력을 delegate 페이로드로 옮긴다. 선택 스텝이라 nil(스킵)도 정상 경로다.
+    private func submit(_ state: State) -> Effect<Action> {
+        switch state.mode {
+        case .link:
+            switch state.linkValidation {
+            case .loading:
+                // 분석 중 탭은 무시 — 결과 확인 후 진행. TODO: 디자인 확정 시 재검토 (CTA 비활성 표기 없음).
+                return .none
+            case .success:
+                return .send(.delegate(.continueRequested(.link(trimmedLink(state)))))
+            case .idle, .failure:
+                // 검증되지 않은 링크는 버리고 스킵한다 (툴팁 안내와 일치).
+                return .send(.delegate(.continueRequested(nil)))
             }
+        case .directText:
+            let text = state.directText.trimmingCharacters(in: .whitespacesAndNewlines)
+            // 빈 입력은 스킵(nil). 길이 무효는 «계속하기» 가 꺼져 있어 도달하지 않지만 방어적으로 막는다.
+            guard !text.isEmpty else { return .send(.delegate(.continueRequested(nil))) }
+            guard state.isDirectTextValid else { return .none }
+            return .send(.delegate(.continueRequested(.text(text))))
         }
     }
 
