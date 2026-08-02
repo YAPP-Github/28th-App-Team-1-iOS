@@ -23,25 +23,31 @@ import SwiftUI
 @ViewAction(for: HomeFeature.self)
 struct HomeDefaultView: View {
     @Bindable var store: StoreOf<HomeFeature>
-    /// 지금 시트가 차지할 높이 — 확정된 자리 + 진행 중인 드래그.
+    /// 시트 판 높이 — 이 phase 엔 확장 자리가 없어 기본 자리 높이로 고정이다.
+    /// 내려갈 땐 높이가 아니라 `sheetOffset` 이 움직인다 — 내용 좌표계가 판과 1:1 로 붙어 있다.
     let sheetHeight: CGFloat
+    /// 판을 통째로 밀어 내린 거리(아래가 +) — 바텀시트가 미끄러져 사라지는 모양(`HomeSheetDrag.dismissOffset`).
+    let sheetOffset: CGFloat
     /// 면접 시작이 드러난 정도(0…1) — 그린 영역은 그만큼 사라진다.
     let startProgress: Double
     let dragHandle: HomeSheetDragHandle
 
+    /// 그린 영역은 **겹**으로 깔고 시트가 그 위를 덮는다 — 세로로 나눠 담으면(VStack) 시트가 높이를
+    /// 먼저 먹어 그린 영역이 눌리고 인사말이 잘린다. 시트가 남길 자리는 `HomeSheetDrag` 가 보장한다.
     var body: some View {
-        VStack(spacing: 0) {
+        ZStack(alignment: .bottom) {
             greenHeader
                 .opacity(1 - startProgress)
             reportSheet
                 .frame(height: sheetHeight)
+                .offset(y: sheetOffset)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - 그린 영역 (내비바 ~ 시트 위)
 
-    /// 인사말 + 스크롤 안내. 높이는 내용이 정하고(시안 244), 남은 높이는 시트가 먹는다 —
+    /// 인사말 + 스크롤 안내. 내용은 위에 붙고(시안 244 안), 아래 남은 자리를 시트가 덮는다 —
     /// 시안에서 안내 문구 프레임의 아래변이 시트 상단과 정확히 맞물린다.
     private var greenHeader: some View {
         VStack(spacing: 0) {
@@ -86,7 +92,7 @@ struct HomeDefaultView: View {
     // MARK: - 리포트 시트
 
     /// 하단 흰 판 — 그래버 + 개수 헤더 + 빈 상태. 빈 상태는 헤더와 무관하게 **판 중앙**에 놓인다(시안 기준).
-    /// 높이는 부모가 준다 — 내려가면 면접 시작이 드러난다.
+    /// 판은 줄지 않는다 — 내려갈 땐 부모가 `sheetOffset` 으로 통째로 밀어 내려 내용이 판과 같이 움직인다.
     private var reportSheet: some View {
         ZStack {
             VStack(spacing: 0) {
@@ -97,15 +103,13 @@ struct HomeDefaultView: View {
             }
             emptyReportState
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         // 판 색만 홈 인디케이터 영역까지 내리고, 내용은 safe area 안에 둔다 — 시안의 중앙 정렬이 그 기준이다.
-        // 시트가 완전히 내려가면 그 띠도 사라져야 아래 겹(면접 시작 CTA)이 안 가려진다.
+        // 다 내려가면 판이 통째로 화면 밖이라(offset) 띠를 따로 지울 필요가 없다.
         .background {
             Color.BlackWhite.white
-                .opacity(sheetHeight > 0 ? 1 : 0)
                 .ignoresSafeArea(edges: .bottom)
         }
-        .clipped()
         // 이 phase 의 시트엔 스크롤이 없어 판 전체를 손잡이로 쓸 수 있다.
         .contentShape(Rectangle())
         .gesture(dragHandle.gesture)
