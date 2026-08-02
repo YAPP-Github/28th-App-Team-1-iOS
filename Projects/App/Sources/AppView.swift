@@ -44,6 +44,13 @@ struct AppView: View {
                 ) { onboardingStore in
                     OnboardingView(store: onboardingStore)
                 }
+                // 면접 흐름 — 위저드가 세션을 만든 직후 그 자리에서 열린다(온보딩 cover 는 이미 닫힌 뒤).
+                // 카메라·마이크를 쓰는 전면 화면이라 탭 줄이 남으면 안 된다.
+                .fullScreenCover(
+                    item: $store.scope(state: \.interview, action: \.interview)
+                ) { interviewStore in
+                    InterviewView(store: interviewStore)
+                }
             case .auth:
                 // 로그인 전 + 가입 플로우(약관·온보딩) — 세션 복구가 게이트에 걸린 경우도 여기로 온다.
                 AuthView(store: store.scope(state: \.auth, action: \.auth))
