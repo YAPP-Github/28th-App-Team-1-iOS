@@ -58,7 +58,8 @@ struct HomeDefaultView: View {
     }
 
     private var greeting: some View {
-        Text("오랜만이에요\n\(store.userName)님!")
+        // 이름은 프로필 로드 결과라 응답 전엔 비어 있다 — 그때는 «님!» 만 남지 않게 이름 줄을 뺀다.
+        Text(store.userName.isEmpty ? "오랜만이에요!" : "오랜만이에요\n\(store.userName)님!")
             .dsTypography(.head1)
             .foregroundStyle(Color.HilitBlack.b800)
             .frame(maxWidth: .infinity, alignment: .leading)

@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import DomainPortfolioInterface
 import Foundation
 
 // @lat: [[home]]
@@ -27,12 +28,14 @@ public struct StartInterviewFeature {
 
     /// 등록된 포트폴리오 표시값 — 카드 한 줄에 들어가는 원값만 담는다.
     /// **포맷팅은 뷰 몫**이다(«2026.07.31»·«3.2mb» 같은 표기는 시안 소유).
+    /// 날짜·용량이 옵셔널인 건 서버 응답이 그렇기 때문이다 — 없으면 뷰가 그 조각만 뺀다
+    /// («0.0mb»·«1970.01.01» 같은 가짜 값을 만들지 않는다).
     public struct Portfolio: Equatable, Sendable {
         public var fileName: String
-        public var uploadedAt: Date
-        public var byteCount: Int
+        public var uploadedAt: Date?
+        public var byteCount: Int?
 
-        public init(fileName: String, uploadedAt: Date, byteCount: Int) {
+        public init(fileName: String, uploadedAt: Date?, byteCount: Int?) {
             self.fileName = fileName
             self.uploadedAt = uploadedAt
             self.byteCount = byteCount
@@ -41,23 +44,29 @@ public struct StartInterviewFeature {
 
     @ObservableState
     public struct State: Equatable {
-        /// 표시할 시안 변형 — present 시점에 홈이 정해서 넘긴다.
+        /// 표시할 시안 변형 — 홈 진입 로드 결과로 홈이 정한다(잔여 0 이면 소진, 포폴 있으면 재사용).
         public var variant: Variant
+        /// 인사말에 넣는 사용자 이름 — 홈이 프로필 로드 결과를 그대로 내려 준다.
+        /// 응답 전엔 비어 있고, 그때는 뷰가 이름 줄을 뺀다(사람 이름을 기본값으로 두지 않는다).
+        public var userName: String
         /// 남은 무료 면접 횟수 — 서버 값 표시만(«진실은 서버에만», docs/work/home-account.md §3).
         public var remainingChances: Int
         /// 등록된 포트폴리오 — 없으면 nil(«이전 정보 재사용» 시안에서만 카드에 쓴다).
         public var portfolio: Portfolio?
 
-        // TODO: 잔여·포트폴리오는 홈 진입 로드가 넘겨야 한다 — 지금 기본값은 시안 값이다(미결 6-1 서버 협의).
+        /// 기본값은 전부 중립이다 — `variant` 로 시안 값을 파생하지 않는다.
+        /// 파생하면 프리뷰 픽스처(`Portfolio.placeholder` 의 «{파일명}.pdf», 조작된 잔여 3회)가
+        /// 앱에서 그대로 그려진다. 시안대로 보고 싶은 프리뷰가 픽스처를 명시로 넘긴다.
         public init(
             variant: Variant,
-            remainingChances: Int? = nil,
+            userName: String = "",
+            remainingChances: Int = 0,
             portfolio: Portfolio? = nil
         ) {
             self.variant = variant
-            // 값이 안 넘어오면 시안 값에서 파생한다 — 프리뷰가 시안 3장과 같게 보이도록.
-            self.remainingChances = remainingChances ?? (variant == .exhausted ? 0 : 3)
-            self.portfolio = portfolio ?? (variant == .hasPortfolio ? Portfolio.placeholder : nil)
+            self.userName = userName
+            self.remainingChances = remainingChances
+            self.portfolio = portfolio
         }
     }
 
@@ -108,8 +117,26 @@ public struct StartInterviewFeature {
     }
 }
 
+// MARK: - 서버 값 → 표시값
+
+extension StartInterviewFeature.Portfolio {
+    /// 서버 포폴(`DomainPortfolio.Portfolio`) → 카드 표시값.
+    /// 파일명이 없으면 그릴 줄 자체가 성립하지 않아 nil 이다(서버는 항상 주지만 응답 모델이 옵셔널).
+    init?(portfolio: DomainPortfolioInterface.Portfolio) {
+        guard let fileName = portfolio.fileName else { return nil }
+        self.init(
+            fileName: fileName,
+            uploadedAt: portfolio.uploadedAt,
+            byteCount: portfolio.fileSize
+        )
+    }
+}
+
 // MARK: - 시안 값
 
+// `#if DEBUG` — 「프리뷰 전용」을 주석이 아니라 컴파일러가 지키게 한다.
+// 릴리스 코드가 이걸 참조하면 그 빌드가 깨지므로 시안 픽스처가 앱에 새지 않는다.
+#if DEBUG
 extension StartInterviewFeature.Portfolio {
     /// 시안(3632:13730)의 파일 한 줄 — **프리뷰·시안 확인 전용** 픽스처다.
     /// 파일명은 시안 표기 그대로, 날짜·용량은 형이 붙어 표본값이다(포맷은 뷰가 만든다).
@@ -120,3 +147,4 @@ extension StartInterviewFeature.Portfolio {
         byteCount: 3_355_443
     )
 }
+#endif

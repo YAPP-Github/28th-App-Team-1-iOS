@@ -64,7 +64,8 @@ struct HomeReportView: View {
     /// 인사 문구 — 시안은 내비바 아래 54 지점에서 시작한다.
     private var greeting: some View {
         // @ds(color): mix-blend-color-burn — 인사 문구 블렌드 (DS 에 블렌드 규칙 없음, 그린 판 위에서만 성립)
-        Text("오랜만이에요\n\(store.userName)님!")
+        // 이름은 프로필 로드 결과라 응답 전엔 비어 있다 — 그때는 «님!» 만 남지 않게 이름 줄을 뺀다.
+        Text(store.userName.isEmpty ? "오랜만이에요!" : "오랜만이에요\n\(store.userName)님!")
             .dsTypography(.head1)
             .foregroundStyle(Color.HilitBlack.b800)
             .blendMode(.colorBurn)

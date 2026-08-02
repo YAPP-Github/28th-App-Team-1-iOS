@@ -23,7 +23,7 @@
 | `AuthOnboardingJob` | Part1 S0a 직군 선택 | FeatureAuth/Onboarding — FeatureOnboarding STEP1 **복사**(원본은 위저드 정리 시 제거) | 골격 ✅ |
 | `AuthOnboardingExperience` | Part1 S0b 연차 선택 | FeatureAuth/Onboarding — FeatureOnboarding STEP2 **복사**. CTA 에서 코디네이터가 `updateProfile` 일괄 PATCH | 골격 ✅ |
 | `AuthOnboardingRegister` | 등록 완료 (PRD «가입 완료 화면 없음» 을 디자인이 뒤집음) | FeatureAuth/Onboarding — 프로필 PATCH 성공 시에만 push, 완료 후 `delegate(.signedIn)` | 골격 ✅ |
-| 홈 — **두 덩어리(홈 3화면 + 면접 시작 3화면)** (§3) | Part6 전체 | FeatureHome — `Sources/Home/`(`HomeFeature.phase`) + `Sources/StartInterview/`(`StartInterviewFeature`, cover present) | 골격 ✅ / 🔴 로드 4종·위젯 UI |
+| 홈 — **두 덩어리(홈 3화면 + 면접 시작 3화면)** (§3) | Part6 전체 | FeatureHome — `Sources/Home/`(`HomeFeature.phase`) + `Sources/StartInterview/`(`StartInterviewFeature`, cover present) | 골격 ✅ / 로드 2종 ✅ (프로필·포폴) / 🔴 로드 2종(기록·held)·위젯 UI |
 | A2 권한 안내 | Part7 | **Out — AOS 전용.** iOS 는 사용 시점 요청 (Part2 준비 화면 게이트 ✅, [[interview#권한]]) | — |
 | A3 재동의 | Part7 | MVP 미도안 — 분기 자리만 예약 | 🟡 |
 | 로그아웃·탈퇴 | Part 5 소유 (탈퇴 완료 → `AuthCreateAccount` 복귀만 계약) | 참고 | — |
@@ -196,19 +196,21 @@ Onboarding --delegate(.finished(sessionId:))-▶ AppFeature → 면접 시작 (�
 
 ## 5. Client / Domain 영향
 
-홈 진입 시 4종 로드 — 묶음 API 1회 vs 기존 4회 호출은 서버 협의(미결 #1). 확정 전 Client 계약 착수 보류, 화면은 mock 선행.
+홈 진입 시 4종 로드 — 묶음 API 1회 vs 기존 4회 호출은 서버 협의(미결 #1). 신규 계약이 필요한 2종(기록·held)만 보류하고, **기존 계약으로 되는 2종(프로필·포폴)은 2026-08-02 배선했다** — 결과를 `inner(.entryLoaded)` 한 케이스로 받으므로 묶음 API 로 바뀌어도 갈아끼울 자리는 하나다.
+
+**갱신 주기 = 매 진입 재조회**(첫 진입만 로드하지 않는다). 포폴은 온보딩 S2·마이페이지가, 잔여는 면접이 바꾸므로 캐시하면 무효화 신호를 Feature 밖으로 돌려야 하는데(Feature→Feature 금지) 1건짜리 GET 두 번보다 비싸다. §6 «지인 피드백 도착 직후 홈 복귀 → 재조회로 실현» 과도 같은 태도다. 부분 실패는 허용하고(한쪽이 죽어도 나머지는 그린다) 값은 덮어쓰기만 한다 — 재진입마다 비우면 깜빡인다. 상세는 [[home#진입 로드]].
 
 | 데이터 | Client (모듈) | 상태 |
 |---|---|---|
-| 잔여 횟수 | `UserClient.profile` → `remainingTicketCount` ✅ 존재 — PRD 표기 `GET /me/entitlement` 와의 대응은 묶음 API 협의와 함께 확정 | ✅/🟠 |
+| 잔여 횟수·이름 | `UserClient.profile` → `remainingTicketCount`·`name` — PRD 표기 `GET /me/entitlement` 와의 대응은 묶음 API 협의와 함께 확정 | ✅ 2026-08-02 배선 |
 | 면접 기록 리스트 | 신규 — 세션 스냅샷 + 레포트 상태(1차/최종/실패) + 시각 4종 + 포폴 삭제 여부. `DomainInterviewReport` 확장(`list`) 예상 | 🔴 서버 협의 |
 | 진행 중(held) 세션 유무 | 신규 — `InterviewClient` 확장. held 세션 존재 시 신규 POST /sessions 처리도 미결 #3 | 🔴 서버 협의 |
-| 포폴 상태 (위젯③·빈 상태) | `PortfolioClient.list` | ✅ |
+| 포폴 상태 (위젯③·빈 상태·재사용 카드) | `PortfolioClient.list` — READY 건만 «이전 정보 재사용» 으로 친다(PROCESSING 은 게이트가 뒤집는다, 폴링 승격은 TODO) | ✅ 2026-08-02 배선 |
 | 시작 게이트 | 신규 — `checkStartEligibility`(사전확인·선택)· 사유 코드 `ACCOUNT_SUSPENDED`·`NO_REMAINING`·`PORTFOLIO_NOT_READY`·`CONSENT_VERSION_STALE`·`RATE_LIMITED`. 기존 `createSession` 에러(`NO_REMAINING_TICKET` 등 — [[api#Interview]])와 코드 체계 정리 필요 | 🔴 서버 협의 |
 | A1 동의 제출 | `ConsentClient.pending`·`document`·`submit` (3회 부여는 서버가 첫 제출 시) | ✅ 2026-08-01 |
 | 자동 로그인 판정 | `AuthClient.isAuthenticated`·`refresh` + `ConsentClient.pending` (게이트 2단) | ✅ 2026-08-01 — [launch-routing](launch-routing.md) |
 
-HomeFeature 는 «외부 IO 없는 Feature 예시»([[home]])에서 벗어난다 — `.domain(interface:)` 의존이 생기는 첫 확장. 화면 상태는 서버 판정의 표시일 뿐(탭 시점 게이트가 진실 — TTL 레이스 미결 #4 도 «탭 시 재검증»으로 흡수 제안):
+HomeFeature 는 «외부 IO 없는 Feature 예시»([[home]])에서 벗어났다 — `.domain(interface: .portfolio)`·`.domain(interface: .user)` 가 붙었다(2026-08-02). 화면 상태는 서버 판정의 표시일 뿐(탭 시점 게이트가 진실 — TTL 레이스 미결 #4 도 «탭 시 재검증»으로 흡수 제안):
 
 ```swift
 // 홈 화면 — GuestFeedback 패턴 (State.phase → 뷰 스위치). §3 «구현 시 수정» 반영 후 2종
@@ -244,7 +246,7 @@ enum ReportRow { case first; case final(lastUpdatedAt:); case generationFailed }
 
 | # | 항목 | 소유 | 클라 영향 |
 |---|---|---|---|
-| 6-1 | 홈 진입 API 묶음(1회) vs 기존 4회 | 서버 | 🔴 홈 Client 계약 블로커 |
+| 6-1 | 홈 진입 API 묶음(1회) vs 기존 4회 | 서버 | 🟠 신규 계약 2종(기록·held)만 블로킹 — 프로필·포폴은 기존 계약으로 선배선(§5) |
 | 6-2 | [이어서 진행]·위젯③ 미리보기·빈 상태 문구 | 디자인 | 🟡 문구 슬롯만 |
 | 6-3 | held 세션 존재 시 신규 POST /sessions 처리 | 서버 | 🟠 resume 경로 확정 |
 | 6-4 | [이어서 진행] 탭 시점 재검증(TTL 만료 → «세션 만료·미차감» 안내?) | 정책 | 🟠 탭 시 게이트 재호출로 흡수 제안 |
@@ -279,6 +281,6 @@ UI 는 전 단계 공통으로 **Figma 시안 수령 후 연결**(figma-screen) 
 
 1. ~~**AppFeature 루트 게이트 확장**~~ ✅ 2026-08-01 — Splash 세션 복구(refresh + pending) + `State.root` enum + 재시도. [launch-routing](launch-routing.md).
 2. **FeatureAuth 가입 플로우** — 골격 ✅ 2026-07-31 (코디네이터 `AuthFeature` + 화면 6종 + Example 완주 데모, STEP1·2 는 복사), 동의 제출·게이트 2단 분기 ✅ 2026-08-01, 프로필 일괄 PATCH ✅ 2026-08-02. 잔여 🔴: 실패 토스트, Figma UI.
-3. **FeatureHome 개편** — phase 골격 ✅ 2026-07-31 (`Phase` 4종 + 서브뷰 스텁). 잔여 🔴: 진입 로드 4종·위젯 3종 UI·행 foldable·빈 상태 (리스트/게이트 API 전엔 mock + `UserClient.profile` 잔여만 실값).
+3. **FeatureHome 개편** — phase 골격 ✅ 2026-07-31 (`Phase` 4종 + 서브뷰 스텁), 진입 로드 2종(프로필·포폴) ✅ 2026-08-02. 잔여 🔴: 로드 2종(기록·held)·위젯 3종 UI·행 foldable·빈 상태 (리스트/게이트 API 전엔 mock).
 4. **Domain 신규 계약** — 게이트·기록 리스트·held 세션 (미결 6-1·6-3·S-1 서버 협의 후).
 5. **라우팅 배선** — 위젯①→면접 위저드/면접(작업 D 합류)·AuthSuspension, 위젯②→리포트, 위젯③→마이페이지(Part 5 대기). dev 임시 버튼 제거. 면접 위저드 S0 정리(§7 신규 미결 — 원본 STEP1·2 제거 포함).
