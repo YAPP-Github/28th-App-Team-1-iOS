@@ -11,8 +11,9 @@ import Foundation
 
 extension NetworkClient: DependencyKey {
     /// URLSession 기반 실제 구현. Implementation 은 App/Example 만 link 한다 (D4).
+    /// `trackingActivity()` — 전 API in-flight 를 `NetworkActivity` 에 반영 (전역 로딩 신호).
     public static var liveValue: NetworkClient {
-        live(session: .shared)
+        live(session: .shared).trackingActivity()
     }
 
     /// 세션·baseURL 을 주입할 수 있는 팩토리 — Tests 가 스텁 세션/baseURL 로 검증한다.
