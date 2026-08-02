@@ -47,7 +47,7 @@ Domain `Implementation`(`liveValue`)은 App / Example 만 link. → [[home]]
 
 D14 공통 규약(성공/실패 envelope·토큰 수명주기)은 그 위에 얹힌다 — envelope 언랩·`ServerError` 승격은 `api(...)` 확장, Bearer 첨부·단일 비행 재발급은 `AuthorizedNetworkClient`, 토큰 보관은 `TokenStore`(Keychain). 인증 필요 엔드포인트의 Domain liveValue 는 `@Dependency(\.authorizedNetworkClient)` 를 쓴다. 상세 → [[api#공통 규약]] · [[api#토큰 수명주기]]
 
-전 API 공통 로딩: in-flight 는 `NetworkActivity`(@MainActor @Observable 카운터, Interface)가 센다 — liveValue 가 `trackingActivity()` 데코레이터 한 겹으로 계측하고(Authorized·재발급도 base 를 지나 전부 잡힘), `AppView` 가 `isLoading` 을 관찰해 `LoadingModal` 을 전역 표출한다. Feature 는 이 신호에 관여하지 않는다.
+전 API 공통 로딩: in-flight 는 `NetworkActivity`(@MainActor @Observable 카운터, Interface)가 센다 — liveValue 가 `trackingActivity()` 데코레이터 한 겹으로 계측하고(Authorized·재발급도 base 를 지나 전부 잡힘), `AppView` 가 `isLoading` 을 관찰해 `LoadingModal` 을 전역 표출한다. Feature 는 이 신호에 관여하지 않는다. **예외 — Splash 계열 루트(`.splash`·`.splashFailed`·`.updateRequired`)에서는 얹지 않는다**: Splash 자체가 대기 표시이고 `.updateRequired` 는 알럿과 딤이 겹친다 → [[app#Splash 세션 복구]]
 
 ## 계획 — AI 면접
 YAPP APP 1팀 「AI 면접 연습 앱」을 우리 아키텍처에 녹인 후속 도메인 설계(현재 데모 탭과 별개) — Onboarding(Part1)/Session/Report Feature + Domain 군. Part 1 은 PRD v3 로 `FeatureOnboarding` 구현 중(초안 가칭 InterviewSetup 실현). 서버 연동 Domain 은 [[api]] 미러링으로 실체화됐다.
