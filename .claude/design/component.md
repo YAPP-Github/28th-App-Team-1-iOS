@@ -27,9 +27,10 @@
 | `DashIndicator` | 진행 단계 대시 | 내비게이션 |
 | `FieldSubText` | 필드 아래 서브 텍스트 한 줄 | 입력 |
 | `HighlightedText` | 형광펜 마커 텍스트 | 표시 |
-| `.hilitBottomSheet` | 바텀시트 딤 오버레이 표출 — 껍데기만, 시트 판은 호출부 (모디파이어) | 표시 |
+| `.hilitBottomSheet` | 고정 높이 바텀시트 딤 오버레이 — 껍데기만, 시트 판은 호출부 (모디파이어) | 표시 |
 | `.hilitButtonLoading` | 버튼 로딩 오버레이 (시안에 없음) | 버튼 |
 | `HilitCheckboxStyle` | 체크박스 (`ToggleStyle`) | 입력 |
+| `.hilitDetentSheet` | 높이 바뀌는 바텀시트 — 시스템 `.sheet` + detent (모디파이어) | 표시 |
 | `.hilitLogoNavigationBar` | 내비바 — 루트 브랜드 판(로고·프로필) | 내비게이션 |
 | `.hilitModal` | 모달 딤 오버레이 표출 (모디파이어) | 표시 |
 | `.hilitNavigationBar` | 내비바 — push 화면(스택 안) | 내비게이션 |
