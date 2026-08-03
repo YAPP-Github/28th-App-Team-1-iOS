@@ -53,11 +53,6 @@ public struct OnboardingFeature {
         /// 복원 조건이 `path.isEmpty` 뿐이면 pop 으로 스택을 비운 순간 draft 를 다시 되쌓아 화면이 앞으로 튄다.
         /// 위저드 수명당 복원을 1회로 제한해 이 재복원을 막는다.
         var didAttemptRestore = false
-        /// 기존 포트폴리오 조회 1회성 가드 — STEP2 를 **처음 세울 때만** 조회를 켠다.
-        /// 스텝 State 는 pop 하면 사라지므로 이 기억은 위저드가 들어야 한다: 스텝이 들면
-        /// 대표 프로젝트에서 뒤로 올 때마다 «기존 포폴로 진행할까요?» 가 다시 뜬다.
-        var didCheckExistingPortfolio = false
-
         /// - Parameters:
         ///   - jobRole·careerYears: 가입 온보딩(FeatureAuth)이 이미 받아 둔 프로필 값. 세션 생성 입력에
         ///     필수라 위저드가 그대로 들고 다닌다 — 이 위저드엔 두 값을 받는 화면이 없다.
@@ -124,7 +119,7 @@ public struct OnboardingFeature {
                 switch action {
                 case let .continueRequested(submission):
                     state.data.jd = submission
-                    let step = portfolioStep(&state)
+                    let step = portfolioStep()
                     state.path.append(step)
                     return persist(state)
                 // 루트의 «이전으로» — 위저드 앞이 없으니 이탈과 같다. 어디로 돌아갈지는 부모가 정한다.
@@ -213,14 +208,15 @@ public struct OnboardingFeature {
         .ifLet(\.$relevanceChoice, action: \.relevanceChoice)
     }
 
-    /// STEP 2 스텝 State 를 만든다 — 기존 포트폴리오 조회는 **위저드 수명당 1회**만 켠다.
+    /// STEP 2 스텝 State 를 만든다 — 빈 판으로 세울 때는 **매번** 기존 포트폴리오 조회를 켠다.
+    /// 서버 READY 는 위저드 밖에서도 바뀐다(마이페이지 업로드·삭제, PROCESSING 승격) — 위저드 수명당
+    /// 1회로 묶으면 두 번째 진입에서 재사용 가능한 포폴을 놓치고 register 가 409 로 떨어진다.
+    /// 조회 자체의 중복 방지는 스텝 State 의 `checksExisting`(진입 1회) 가 담당한다.
     /// 이미 첨부된 판(draft 복원)으로 세울 땐 켜지 않는다: 물어볼 게 없다.
     private func portfolioStep(
-        _ state: inout State,
         upload: OnboardingPortfolioUploadFeature.UploadState = .idle
     ) -> Path.State {
-        let checksExisting = !state.didCheckExistingPortfolio && upload == .idle
-        state.didCheckExistingPortfolio = true
+        let checksExisting = upload == .idle
         return .portfolioUpload(.init(
             step: 2,
             totalSteps: Self.totalSteps,
@@ -256,7 +252,7 @@ public struct OnboardingFeature {
             } else {
                 upload = .idle
             }
-            let step = portfolioStep(&state, upload: upload)
+            let step = portfolioStep(upload: upload)
             state.path.append(step)
         }
         if top >= 3 {

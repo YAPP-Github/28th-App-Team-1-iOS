@@ -36,7 +36,6 @@ struct OnboardingCoordinatorTests {
         let store = makeStore(initialState())
 
         await store.send(.jobDescriptionUpload(.delegate(.continueRequested(nil)))) {
-            $0.didCheckExistingPortfolio = true
             $0.path.append(.portfolioUpload(.init(step: 2, totalSteps: self.total, checksExisting: true)))
         }
     }
@@ -47,7 +46,26 @@ struct OnboardingCoordinatorTests {
 
         await store.send(.jobDescriptionUpload(.delegate(.continueRequested(.link("https://job.com/1"))))) {
             $0.data.jd = .link("https://job.com/1")
-            $0.didCheckExistingPortfolio = true
+            $0.path.append(.portfolioUpload(.init(step: 2, totalSteps: self.total, checksExisting: true)))
+        }
+    }
+
+    /// 서버 READY 는 위저드 밖에서도 바뀌므로(마이페이지 업로드·삭제) 재진입마다 다시 물어야 한다 —
+    /// 조회를 위저드 수명당 1회로 묶으면 두 번째 진입에서 재사용 대상을 놓치고 register 가 409 로 떨어진다.
+    @Test("빈 판으로 STEP2 를 다시 세울 때도 기존 포폴 조회를 켠다")
+    func portfolioStepRearmsExistingCheckOnReentry() async {
+        let store = makeStore(initialState())
+
+        await store.send(.jobDescriptionUpload(.delegate(.continueRequested(nil)))) {
+            $0.path.append(.portfolioUpload(.init(step: 2, totalSteps: self.total, checksExisting: true)))
+        }
+
+        let id = store.state.path.ids[0]
+        await store.send(.path(.element(id: id, action: .portfolioUpload(.delegate(.backRequested))))) {
+            $0.path.removeAll()
+        }
+
+        await store.send(.jobDescriptionUpload(.delegate(.continueRequested(nil)))) {
             $0.path.append(.portfolioUpload(.init(step: 2, totalSteps: self.total, checksExisting: true)))
         }
     }
