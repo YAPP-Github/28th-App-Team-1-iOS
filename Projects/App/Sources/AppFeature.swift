@@ -7,7 +7,6 @@
 
 import ComposableArchitecture
 import CoreCommonInterface
-import CoreNetworkInterface
 import DomainAppVersionInterface
 import DomainAuthInterface
 import DomainConsentInterface
@@ -109,7 +108,6 @@ struct AppFeature {
     @Dependency(\.firstLaunchStore) var firstLaunchStore
     @Dependency(\.onboardingDraftStore) var draftStore
     @Dependency(\.openURL) var openURL
-    @Dependency(\.tokenStore) var tokenStore
 
     var body: some ReducerOf<Self> {
         BindingReducer()
@@ -279,8 +277,12 @@ struct AppFeature {
     }
 
     /// 로컬 저장소 정리 — 첫 실행 정리와 로그아웃이 공유한다. 서버 호출은 하지 않는다.
+    ///
+    /// Keychain 은 `tokenStore.clear()`(항목 하나)가 아니라 **전체**를 지운다 — 목적이 «앱이 남긴 것
+    /// 전부» 라 Keychain 항목이 늘어도 놓치지 않아야 한다. UserDefaults 는 도메인째 지우지 않는다:
+    /// 첫 실행 마커가 거기 있어 통째로 날리면 다음 실행이 다시 첫 실행으로 판정된다.
     private func clearLocalData() {
-        try? tokenStore.clear()
+        KeychainWipe.wipeAll()
         draftStore.clear()
     }
 

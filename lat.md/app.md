@@ -24,7 +24,9 @@
 앱을 삭제해도 iOS 는 Keychain 을 지우지 않는다 — 재설치하면 토큰만 살아남아 Splash 가 «기존 세션» 으로 판정하고, 방금 새로 설치한 사용자가 로그인 상태로 들어온다. UserDefaults 쪽(온보딩 draft)은 앱과 함께 사라지므로 로컬끼리도 어긋난다. 그래서 판정을 시작하기 전에 «이 설치의 첫 실행인가» 를 묻고, 첫 실행이면 잔존 로컬 데이터를 지운다.
 
 - **판정 근거는 «앱과 함께 사라지는 저장소에 찍은 마커»** — `FirstLaunchStore`(CoreCommon)가 UserDefaults 에 마커를 두고 `isFirstLaunch()`/`markLaunched()` 만 노출한다. 마커가 없다 = 이 설치에서 아직 실행 안 됨. 마커를 Keychain 에 두면 재설치 후에도 남아 첫 실행을 영원히 놓친다.
-- **무엇을 지울지는 마커가 모른다** — 정리 대상 선택은 코디네이터(`AppFeature.clearLocalData()`)의 판단이고, 스토어 계약은 판정만 맡는다. 지금 대상은 토큰(Keychain)·온보딩 draft.
+- **무엇을 지울지는 마커가 모른다** — 정리 대상 선택은 코디네이터(`AppFeature.clearLocalData()`)의 판단이고, 스토어 계약은 판정만 맡는다. 대상은 **Keychain 전체**(`KeychainWipe.wipeAll()` — 아이템 클래스 5종)와 온보딩 draft.
+- **Keychain 은 `tokenStore.clear()` 가 아니라 전체를 지운다** — 그건 `account: "auth-tokens"` 한 항목만 지우는데, 여기 목적은 «앱이 남긴 것 전부» 라 항목이 늘면 조용히 새는 쪽이 된다. 전체 폐기를 `TokenStore` 계약에 넣지 않은 건 토큰 스토어의 책임이 자기 항목이기 때문이고, 앱 전체를 비우는 판단은 composition root(App 타겟 `KeychainWipe`) 몫이다.
+- **UserDefaults 는 도메인째 지우지 않는다** — 첫 실행 마커가 거기 있어 통째로 날리면 다음 실행이 다시 첫 실행으로 판정된다. 지우는 건 draft 처럼 대상을 아는 항목뿐.
 - **마커는 정리를 마친 뒤 찍는다** — 사이에서 앱이 죽으면 다음 실행이 다시 첫 실행으로 판정돼 정리를 끝내는데, 먼저 찍으면 지우다 만 상태로 굳는다.
 - **정리가 세션 판정보다 먼저** — `onAppear` 가 정리 effect 만 돌리고 `firstLaunchResolved` 로 갈라 그때 판정을 시작한다. 같은 effect 안에서 이으면 순서가 코드 배치에 묻힌다.
 - 정리 함수는 **디버그 로그아웃과 공유**한다 — 지울 로컬 목록이 두 곳에서 갈라지면 한쪽만 늘어난다.
@@ -46,7 +48,7 @@
 
 대표 흐름 — **dev 디버그 로그아웃** (Home 임시 버튼):
 1. dev 계에서만 `AppFeature.onAppear` 가 `home.showsDebugLogout` 을 켜고, Home 로그아웃 버튼이 `delegate(.logoutRequested)` 방출
-2. AppFeature 수신 → effect 에서 `authClient.logout()`(서버 로그아웃) 후 `clearLocalData()`(토큰·온보딩 draft — [[app#첫 실행 정리]]와 공유). 서버 실패해도 로컬 정리는 진행(`try?`)
+2. AppFeature 수신 → effect 에서 `authClient.logout()`(서버 로그아웃) 후 `clearLocalData()`(Keychain 전체·온보딩 draft — [[app#첫 실행 정리]]와 공유). 순서가 중요하다 — 로그아웃은 토큰이 있어야 서버에 닿으므로 Keychain 삭제보다 먼저다. 서버 실패해도 로컬 정리는 진행(`try?`)
 3. `sessionCleared` 로 `state = State()` 리셋 → `root = .auth` → 첫 소셜 로그인 화면 복귀. Splash 로 되돌리지 않는다(로그아웃 복귀는 판정이 아니라 확정 상태). cross-feature 조립이라 authClient 의존은 코디네이터인 여기서만 가진다 → [[home]]
 
 대표 흐름 — **온보딩 위저드 진입**:
