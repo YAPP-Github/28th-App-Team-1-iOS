@@ -86,6 +86,44 @@ struct OnboardingPortfolioUploadFeatureTests {
         #expect(!store.state.isContinueEnabled)
     }
 
+    @Test("서버 4xx 는 응답 message 를 그대로 실패 문구로 쓴다")
+    func serverErrorShowsServerMessage() async {
+        let serverMessage = "이미 등록된 포트폴리오가 있어요. 기존 포트폴리오를 삭제한 뒤 새로 올려주세요."
+        let store = TestStore(initialState: OnboardingPortfolioUploadFeature.State()) {
+            OnboardingPortfolioUploadFeature()
+        } withDependencies: {
+            $0.portfolioFileReader.read = { _ in PortfolioFile(data: Data("pdf".utf8)) }
+            $0.portfolioClient.register = { _ in throw PortfolioError.alreadyExists(message: serverMessage) }
+        }
+
+        await store.send(.view(.fileSelected(Self.fileURL))) {
+            $0.upload = .uploading(fileName: "포트폴리오.pdf", portfolioId: nil)
+        }
+        await store.receive(\.inner.uploadFailed) {
+            $0.upload = .failed(message: serverMessage)
+        }
+    }
+
+    @Test("서버 message 를 실은 200 FAILED_FILE 은 그 문구로 실패 상태가 된다")
+    func failedFileUsesServerMessage() async {
+        let serverMessage = "파일이 손상되었거나 암호로 보호되어 있어요. 다시 업로드해 주세요."
+        let store = TestStore(initialState: OnboardingPortfolioUploadFeature.State()) {
+            OnboardingPortfolioUploadFeature()
+        } withDependencies: {
+            $0.portfolioFileReader.read = { _ in PortfolioFile(data: Data("pdf".utf8)) }
+            $0.portfolioClient.register = { _ in
+                PortfolioProcessing(portfolioId: Self.portfolioId, status: .failedFile, message: serverMessage)
+            }
+        }
+
+        await store.send(.view(.fileSelected(Self.fileURL))) {
+            $0.upload = .uploading(fileName: "포트폴리오.pdf", portfolioId: nil)
+        }
+        await store.receive(\.inner.uploadAccepted) {
+            $0.upload = .failed(message: serverMessage)
+        }
+    }
+
     @Test("파일 읽기 실패는 일반 실패 문구의 실패 상태로 전환한다")
     func fileReadFailureTransitionsToFailedState() async {
         let store = TestStore(initialState: OnboardingPortfolioUploadFeature.State()) {

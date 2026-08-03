@@ -49,6 +49,12 @@ public struct HomeView: View {
         let sheetHeight = resolvedSheetHeight(available: available)
         let startProgress = HomeSheetDrag.startProgress(sheetHeight: sheetHeight, available: available)
 
+        // 기본 자리 밑으로는 판을 줄이지 않고 통째로 밀어 내린다 — 바텀시트가 미끄러져 사라지는
+        // 모양(HomeSheetDrag.dismissOffset). 그래서 phase 뷰가 받는 높이는 기본 자리 밑에서 고정이다.
+        let restingSheetHeight = HomeSheetDrag.height(for: .report, available: available)
+        let displayHeight = max(sheetHeight, restingSheetHeight)
+        let sheetOffset = HomeSheetDrag.dismissOffset(sheetHeight: sheetHeight, available: available)
+
         return ZStack {
             HomeGreenBackdrop()
                 .ignoresSafeArea()
@@ -58,7 +64,11 @@ public struct HomeView: View {
                 .opacity(startProgress)
                 .allowsHitTesting(store.sheetDetent == .startInterview)
 
-            phaseContent(sheetHeight: sheetHeight, startProgress: startProgress)
+            phaseContent(
+                sheetHeight: displayHeight,
+                sheetOffset: sheetOffset,
+                startProgress: startProgress
+            )
                 // 투명해져도 탭은 그대로 먹는다 — 면접 시작 자리에선 아래 겹에 길을 내준다.
                 .allowsHitTesting(store.sheetDetent != .startInterview)
         }
@@ -69,12 +79,17 @@ public struct HomeView: View {
     }
 
     @ViewBuilder
-    private func phaseContent(sheetHeight: CGFloat, startProgress: Double) -> some View {
+    private func phaseContent(
+        sheetHeight: CGFloat,
+        sheetOffset: CGFloat,
+        startProgress: Double
+    ) -> some View {
         switch store.phase {
         case .default:
             HomeDefaultView(
                 store: store,
                 sheetHeight: sheetHeight,
+                sheetOffset: sheetOffset,
                 startProgress: startProgress,
                 // 빈 상태엔 펼칠 목록이 없어 확장 자리를 막는다.
                 dragHandle: dragHandle(allowsExpanded: false)
@@ -83,6 +98,7 @@ public struct HomeView: View {
             HomeReportView(
                 store: store,
                 sheetHeight: sheetHeight,
+                sheetOffset: sheetOffset,
                 startProgress: startProgress,
                 dragHandle: dragHandle(allowsExpanded: true)
             )

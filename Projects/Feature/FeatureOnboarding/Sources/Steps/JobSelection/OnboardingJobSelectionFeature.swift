@@ -48,6 +48,7 @@ public struct OnboardingJobSelectionFeature {
         /// 사용자 입력·생명주기. View 의 send(...) 로만 방출된다.
         public enum View: Equatable, Sendable {
             case onAppear
+            case userTappedBack
             case userTappedClose
             case userTappedJob(Job.ID)
             case userTappedContinue
@@ -63,6 +64,10 @@ public struct OnboardingJobSelectionFeature {
         /// 코디네이터(OnboardingFeature) 통보. 부모는 이것만 매칭한다 (D1).
         @CasePathable
         public enum Delegate: Equatable, Sendable {
+            /// 하단 [이전으로] — 이 화면이 위저드 루트라 되돌아갈 스텝이 없다. 처리는 코디네이터 몫
+            /// (지금은 위저드 이탈). 다른 스텝과 같은 이름을 쓰는 이유: 앞에 스텝이 붙으면
+            /// 코디네이터 한 줄만 pop 으로 바뀌고 이 화면은 안 바뀐다.
+            case backRequested
             /// 직군 선택 완료 — 다음 스텝으로. jobRole 은 서버 enum 값(예: "BACKEND").
             case continueRequested(jobRole: String)
             /// 온보딩 이탈(X) 요청 — dismiss 는 코디네이터 몫.
@@ -97,6 +102,9 @@ public struct OnboardingJobSelectionFeature {
             } catch: { _, send in
                 await send(.inner(.jobsLoadFailed))
             }
+
+        case .userTappedBack:
+            return .send(.delegate(.backRequested))
 
         case .userTappedClose:
             return .send(.delegate(.closeRequested))

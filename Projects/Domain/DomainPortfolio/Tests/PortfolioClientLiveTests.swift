@@ -86,7 +86,8 @@ final class PortfolioClientLiveTests: XCTestCase {
             _ = try await client.register(PortfolioUpload(fileName: "p.pdf", data: Data()))
             XCTFail("에러가 던져져야 한다")
         } catch {
-            XCTAssertEqual(error as? PortfolioError, .alreadyExists)
+            // 서버 문구를 배너에 그대로 싣기 때문에 message 까지 보존돼야 한다.
+            XCTAssertEqual(error as? PortfolioError, .alreadyExists(message: "이미 등록된 포트폴리오가 있어요."))
         }
     }
 
