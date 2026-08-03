@@ -54,8 +54,19 @@ public struct OnboardingPortfolioUploadView: View {
                 send(.fileSelectionFailed)
             }
         }
+        // 지금(dev)의 `.hilitModal` 은 overlay 표출이라 두 번 붙여도 겹쳐 뜬다.
+        // TODO: [#63 머지 후] cover 표출로 바뀌면 이 두 줄을 지우고 아래 `item:` 블록을 살린다 —
+        //       한 화면에 cover 둘은 동시 표출 시 둘째가 조용히 무시된다.
         .hilitModal(isPresented: store.isDeleteConfirmPresented) { deleteConfirmModal }
         .hilitModal(isPresented: store.existingPortfolio != nil) { existingPortfolioModal }
+        // .hilitModal(item: store.presentedModal) { modal in
+        //     switch modal {
+        //     case .existingPortfolio:
+        //         existingPortfolioModal
+        //     case .deleteConfirm:
+        //         deleteConfirmModal
+        //     }
+        // }
         .onAppear { send(.onAppear) }
     }
 
