@@ -15,7 +15,8 @@ import Foundation
 // @lat: [[app]]
 // depends-on: [[auth]] — 로그인 전/후 루트 게이트. cross-feature 조립은 AppFeature 에서만.
 // depends-on: [[home]] — Home 을 탭으로 임베드(owner). cross-feature delegate 라우팅은 Feature 추가 시 이 자리에서 조립.
-// depends-on: [[onboarding]] — dev 전용 진입(Home 버튼)으로 온보딩 위저드를 present. 조립은 여기서만 (온보딩 본체 통합 전 임시).
+// depends-on: [[interview]] — 온보딩이 만든 세션(finished(sessionId:))으로 면접 cover 를 present. 조립은 여기서만.
+// depends-on: [[onboarding]] — 「면접 시작」의 [시작하기]·[수정하기] 가 온보딩 위저드를 present. 조립은 여기서만.
 @Reducer
 struct AppFeature {
     /// 탭 식별자. 새 탭 추가 시: 여기 case → State 프로퍼티 → body Scope → AppView tabItem 순으로 확장.
@@ -45,6 +46,9 @@ struct AppFeature {
         var root: Root = .splash
         var home = HomeFeature.State()
         var selectedTab: Tab = .home
+        /// 면접 흐름(Part 2) — 온보딩이 세션을 만들어 준 뒤에만 열린다(`finished(sessionId:)`).
+        /// 세션 없이 진입할 길이 없어 `sessionId` 를 들고 시작한다.
+        @Presents var interview: InterviewFeature.State?
         /// dev 전용 온보딩 위저드 — Home 진입 버튼으로 present (온보딩 본체 통합 전 임시).
         @Presents var onboarding: OnboardingFeature.State?
         /// 업데이트 안내(강제·권장)의 근거 — «업데이트» 가 열 `storeUrl` 과 강제 여부를 여기서 읽는다.
@@ -65,6 +69,7 @@ struct AppFeature {
         case launchRoutingResolved(LaunchRouting)
         case auth(AuthFeature.Action)
         case home(HomeFeature.Action)
+        case interview(PresentationAction<InterviewFeature.Action>)
         case onboarding(PresentationAction<OnboardingFeature.Action>)
         /// 로그아웃 정리(서버·토큰·draft) 완료 — 초기 State 로 리셋해 로그인 화면으로 돌아간다.
         case sessionCleared
@@ -157,15 +162,30 @@ struct AppFeature {
             case .auth:
                 return .none
             case .home(.delegate(.onboardingRequested)):
-                state.onboarding = OnboardingFeature.State()
+                state.onboarding = OnboardingFeature.State(userName: state.home.userName)
                 return .none
             case .home(.delegate(.interviewStartRequested)):
-                // TODO: 면접 플로우 조립 — 게이트(checkStartEligibility) 결과별 라우팅(위저드 cover / S2 강제 /
-                //       AuthSuspension). `FeatureInterview` 는 아직 App 에 scope 조차 없다
-                //       (docs/work/home-account.md §4, 미결 6-1 서버 협의).
+                // 면접에 필요한 정보(직군·연차·JD·포폴)를 모으는 게 온보딩 위저드다 — 첫 면접은 거기부터다.
+                // 면접 화면은 **세션 id 로만** 열리는데(`InterviewFeature.State(sessionId:)`) 그 id 를 만드는
+                // 건 위저드의 세션 생성뿐이라, 재사용 경로도 지금은 같은 위저드를 태운다.
+                switch state.home.startInterview.variant {
+                case .first:
+                    state.onboarding = OnboardingFeature.State(userName: state.home.userName)
+                case .hasPortfolio:
+                    // TODO: «이전 정보 그대로» 세션 생성 API 가 생기면 수집을 건너뛰고 곧장 면접으로
+                    //       (게이트 checkStartEligibility 결과별 라우팅 — 미결 6-1 서버 협의).
+                    //       그때까지는 위저드를 태운다 — draft 가 값을 복원해 대부분 넘기기만 하면 되고,
+                    //       아무 일도 안 일어나는 [시작하기] 보다는 낫다.
+                    state.onboarding = OnboardingFeature.State(userName: state.home.userName)
+                case .exhausted:
+                    // 소진 시안엔 [시작하기] 가 없다(CTA 는 «홈으로») — 도달하지 않는다.
+                    break
+                }
                 return .none
             case .home(.delegate(.interviewInfoEditRequested)):
-                // TODO: 면접 정보 수정(직군·연차·JD·포폴) 진입 조립 — 소유 Feature 확정 후.
+                // [수정하기] — 고칠 대상이 온보딩이 모으는 그 정보다. 같은 위저드를 처음부터 다시 태운다.
+                // 저장된 draft 가 살아 있으면 위저드가 알아서 값을 복원한다(TTL 14일 — [[onboarding#코디네이터]]).
+                state.onboarding = OnboardingFeature.State(userName: state.home.userName)
                 return .none
             case .home(.delegate(.profileRequested)):
                 // TODO: 마이페이지 진입 — Part 5 Feature 가 생기면 조립한다(docs/work/home-account.md §4).
@@ -182,13 +202,31 @@ struct AppFeature {
                 }
             case .home:
                 return .none
-            // 온보딩 완료(분석까지)/중도 이탈 모두 위저드를 닫는다. finished(sessionId:) 는
-            // 본체 통합 시 Part2 진입에 쓰지만 dev 진입에선 닫기만 한다.
-            case .onboarding(.presented(.delegate(.finished))),
-                 .onboarding(.presented(.delegate(.dismiss))):
+            // 온보딩 완료 = **세션이 준비됐다** — 위저드를 닫고 그 자리에서 면접으로 넘긴다.
+            // 홈을 태우지 않는 이유: 지금 홈은 면접 뒤에 가려질 뿐이고, 갱신이 필요한 시점은
+            // 면접이 끝나 홈으로 돌아올 때다(아래 `interview` delegate 두 갈래가 태운다).
+            case let .onboarding(.presented(.delegate(.finished(sessionId)))):
                 state.onboarding = nil
+                state.interview = InterviewFeature.State(sessionId: sessionId)
                 return .none
+            // 중도 이탈 — 위저드만 닫고 홈을 다시 태운다. STEP4 에서 업로드는 이미 끝났을 수 있어
+            // 안 태우면 «이전 정보 재사용» 카드가 옛 값 그대로 남는다. cover 를 닫는 것만으론 홈의
+            // `onAppear` 가 다시 오지 않아 여기서 명시로 보낸다(겸사겸사 시트도 기본 자리로 —
+            // 위저드를 다녀온 뒤 면접 시작 겹에 그대로 서 있지 않는다).
+            case .onboarding(.presented(.delegate(.dismiss))):
+                state.onboarding = nil
+                return .send(.home(.view(.onAppear)))
             case .onboarding:
+                return .none
+            // 면접 종료·이탈 모두 cover 를 닫고 홈을 다시 태운다 — 어느 쪽이든 잔여가 줄었고,
+            // 정상 종료면 리포트도 늘었다.
+            // TODO: 정상 종료는 리포트 상세(r1)로 이어져야 한다 — `InterviewReportFeature` 통합 후
+            //       sessionId 로 배선 (docs/work/home-account.md §4).
+            case .interview(.presented(.delegate(.finished))),
+                 .interview(.presented(.delegate(.closed))):
+                state.interview = nil
+                return .send(.home(.view(.onAppear)))
+            case .interview:
                 return .none
             case .sessionCleared:
                 // 로그아웃 정리 완료 — 초기 State 로 리셋하고 첫 소셜 로그인 화면으로.
@@ -201,6 +239,9 @@ struct AppFeature {
             case .binding:
                 return .none
             }
+        }
+        .ifLet(\.$interview, action: \.interview) {
+            InterviewFeature()
         }
         .ifLet(\.$onboarding, action: \.onboarding) {
             OnboardingFeature()
