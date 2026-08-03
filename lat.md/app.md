@@ -39,10 +39,12 @@
 2. AppFeature 수신 → effect 에서 `authClient.logout()`(서버 로그아웃+토큰 Keychain 삭제)·`onboardingDraftStore.clear()`(온보딩 draft/UserDefaults 삭제). 서버 실패해도 로컬 정리는 진행(`try?`)
 3. `sessionCleared` 로 `state = State()` 리셋 → `root = .auth` → 첫 소셜 로그인 화면 복귀. Splash 로 되돌리지 않는다(로그아웃 복귀는 판정이 아니라 확정 상태). cross-feature 조립이라 authClient 의존은 코디네이터인 여기서만 가진다 → [[home]]
 
-대표 흐름 — **온보딩 dev 진입** (본체 통합 전 임시):
-1. dev 계에서만 `AppFeature.onAppear` 가 `home.showsOnboardingEntry` 를 켜고, Home 진입 버튼이 `delegate(.onboardingRequested)` 방출
-2. AppFeature 수신 → `state.onboarding = OnboardingFeature.State()` (`@Presents` + `.ifLet`) → `AppView` 가 `fullScreenCover` 로 위저드 제시
-3. 온보딩 `delegate(.finished(sessionId:))`·`.dismiss` → cover 닫음. **로그인 이후에만** 열어 토큰을 보유한다(온보딩 API 는 인증 필요) → [[onboarding]]
+대표 흐름 — **온보딩 위저드 진입**:
+1. 발원지 3곳 — 「면접 시작」의 [시작하기](`interviewStartRequested`)·[수정하기](`interviewInfoEditRequested`)·dev 버튼(`onboardingRequested`). [시작하기]는 재사용 포폴 유무와 **무관하게** 위저드다: 면접 화면이 `sessionId` 로만 열리는데 그 id 를 만드는 건 위저드의 세션 생성뿐이라서다. «이전 정보 그대로» 세션 생성 API 가 생기면 `variant == .hasPortfolio` 는 수집을 건너뛴다(TODO — 미결 6-1)
+2. AppFeature 수신 → `state.onboarding = OnboardingFeature.State(userName:)` (`@Presents` + `.ifLet`) → `AppView` 가 `fullScreenCover` 로 위저드 제시. 분기 재료(`variant`)는 홈이 진입 로드로 이미 정해 둔 값을 읽는다
+3. 온보딩 `delegate(.finished(sessionId:))` = **세션 준비 완료** → 위저드 cover 를 닫고 그 자리에서 `state.interview = InterviewFeature.State(sessionId:)` 로 면접 cover 를 연다(홈은 안 태운다 — 어차피 가려지고, 갱신 시점은 면접이 끝나 돌아올 때다) → [[interview]]
+4. 중도 이탈 `.dismiss` → cover 만 닫고 **`.home(.view(.onAppear))` 를 명시로 보내 홈을 다시 태운다** — STEP4 업로드는 끝났을 수 있는데 cover 를 닫는 것만으론 홈 `onAppear` 가 다시 오지 않아 «이전 정보 재사용» 카드가 옛 값으로 남는다. 홈 탭 위에서만 열리므로 **로그인 이후**라 토큰을 보유한다(온보딩 API 는 인증 필요) → [[onboarding]]
+5. 면접 `delegate(.finished)`(리포트 대기 → 홈)·`.closed`(중단·실패 닫기) → 둘 다 cover 닫고 홈 재조회 — 어느 쪽이든 잔여가 줄었다. 정상 종료의 리포트 상세(r1) 연결은 `InterviewReportFeature` 통합 후(TODO)
 
 ⚠ 지금 `State()` 는 직군·연차를 안 넘긴다 — 두 값은 가입 온보딩이 받아 프로필에 있고 위저드는 주입만 받으므로(화면 삭제, 2026-08-02), 정식 배선 전까지 dev 진입은 프리로드의 세션 생성에서 실패한다. 배선 시 `State(userName:jobRole:careerYears:)` 로 프로필 값을 채워 넘긴다 → [[onboarding#코디네이터 연결]]
 

@@ -170,12 +170,17 @@ public extension JSONDecoder {
         let iso8601 = ISO8601DateFormatter()
         if let date = iso8601.date(from: raw) { return date }
 
-        // Spring LocalDateTime (타임존 표기 없음) — KST 가정
+        // Spring LocalDateTime (타임존 표기 없음) — KST 가정.
+        // 소수부 자릿수는 서버가 고정하지 않는다(밀리초~마이크로초, 0 이면 생략) — 잘라내고 초 단위로 되더한다.
         let localDateTime = DateFormatter()
         localDateTime.locale = Locale(identifier: "en_US_POSIX")
         localDateTime.timeZone = TimeZone(identifier: "Asia/Seoul")
         localDateTime.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        return localDateTime.date(from: raw)
+
+        let parts = raw.split(separator: ".", maxSplits: 1, omittingEmptySubsequences: false)
+        guard let date = localDateTime.date(from: String(parts[0])) else { return nil }
+        guard parts.count == 2, let fraction = Double("0.\(parts[1])") else { return date }
+        return date.addingTimeInterval(fraction)
     }
 }
 

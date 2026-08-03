@@ -13,7 +13,7 @@ import DomainSpeechInterface
 /// Part 2 면접 흐름 코디네이터 — 도메인 내부 화면 전환(준비 → 세션 → 실패/종료)만 담당한다.
 /// 화면들은 delegate 로만 신호를 올리고, 이 리듀서가 screen 을 갈아끼운다.
 /// 흐름 밖(보고서 진입·닫기)은 다시 delegate 로 AppFeature 에 올린다 (D1 — cross-feature 조립은 AppFeature).
-/// TODO: 세션 payload(sessionId — 온보딩 분석 산출물) 수신은 AppFeature 배선 시 (work doc §2).
+/// 세션 payload(sessionId — 온보딩 분석 산출물)는 AppFeature 가 `finished(sessionId:)` 로 넘긴다.
 @Reducer
 public struct InterviewFeature {
     /// 면접 흐름 하위 화면 — push 스택이 아니라 전면 교체라 StackState 대신 enum destination.
