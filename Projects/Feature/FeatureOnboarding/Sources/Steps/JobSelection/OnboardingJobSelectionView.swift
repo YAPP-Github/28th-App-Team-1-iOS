@@ -11,6 +11,7 @@ import SharedDesignSystemInterface
 import SwiftUI
 
 // Figma «STEP 1_직군선택» (node 1609:8484) 구현.
+// 하단 바는 «Onboarding_JobSelection» (node 766:6564) 개정 — 단일 CTA → «이전으로 | 계속하기» 2분할.
 // @ViewAction 매크로가 send(_:) 를 제공한다 — View 는 store.send(.view(...)) 대신 send(.onAppear) 로만 방출.
 @ViewAction(for: OnboardingJobSelectionFeature.self)
 public struct OnboardingJobSelectionView: View {
@@ -32,7 +33,7 @@ public struct OnboardingJobSelectionView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
             }
-            continueButton
+            bottomBar
         }
         .background(Color.BlackWhite.white.ignoresSafeArea())
         .hilitNavigationBar(background: .filled, onClose: { send(.userTappedClose) })
@@ -93,10 +94,16 @@ public struct OnboardingJobSelectionView: View {
         .buttonStyle(.plain)
     }
 
-    /// 이 스텝만 단일 CTA (첫 스텝 — 이전 없음). 비활성 룩은 DS 가 소유한다.
-    private var continueButton: some View {
-        ButtonLarge("계속하기", .bottom) { send(.userTappedContinue) }
-            .disabled(!store.isContinueEnabled)
+    /// 하단 «이전으로 | 계속하기» 바 — 나머지 스텝과 같은 2분할이다(시안 `2button-1disabled`).
+    /// 배경·구분선·등폭 배치·눌림은 `ButtonLarge(.bottom, tone: .dark)` 가 소유하고,
+    /// **직군을 고르기 전 비활성은 배색 변형이 아니라 상태**라 해당 자식에만 `.disabled` 를 건다.
+    private var bottomBar: some View {
+        ButtonLarge(.bottom, tone: .dark) {
+            Button("이전으로") { send(.userTappedBack) }
+        } trailing: {
+            Button("계속하기") { send(.userTappedContinue) }
+                .disabled(!store.isContinueEnabled)
+        }
     }
 }
 
@@ -170,9 +177,23 @@ private let previewJobs: [Job] = [
     Job(jobId: 6, jobRole: "INFRA_SRE", label: "인프라 ⋅ SRE")
 ]
 
-#Preview("직군 선택") {
+/// 선택 전 — [계속하기] 가 비활성이다(시안 `2button-1disabled`).
+#Preview("직군 선택 — 선택 전") {
     OnboardingJobSelectionView(
         store: Store(initialState: OnboardingJobSelectionFeature.State(userName: "재원")) {
+            OnboardingJobSelectionFeature()
+        } withDependencies: {
+            $0.jobClient = JobClient(jobs: { previewJobs })
+        }
+    )
+}
+
+/// 선택 후 — 두 버튼 다 활성. 선택은 draft 복원 경로(`preselectedJobRole`)로 흉내 낸다.
+#Preview("직군 선택 — 선택됨") {
+    OnboardingJobSelectionView(
+        store: Store(
+            initialState: OnboardingJobSelectionFeature.State(userName: "재원", preselectedJobRole: "IOS")
+        ) {
             OnboardingJobSelectionFeature()
         } withDependencies: {
             $0.jobClient = JobClient(jobs: { previewJobs })

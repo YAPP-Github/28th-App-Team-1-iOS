@@ -51,7 +51,6 @@ public struct StartInterviewView: View {
     // MARK: - 인사말
 
     private var greeting: some View {
-        // TODO: 이름은 서버 프로필(nickname) — State 에 값이 생기면 교체 (필요한 State: userName).
         Text(greetingText)
             .dsTypography(.head1)
             .foregroundStyle(Color.HilitBlack.b800)
@@ -63,11 +62,13 @@ public struct StartInterviewView: View {
     }
 
     /// 시안의 줄바꿈을 그대로 옮긴다 — 세 시안 모두 3줄 고정 폭에 맞춰 끊어져 있다.
+    /// 이름은 프로필 로드 결과라 응답 전엔 비어 있다 — 그때는 «님,» 만 남지 않게 이름 줄을 뺀다.
     private var greetingText: String {
+        let namePrefix = store.userName.isEmpty ? "" : "\(store.userName)님,\n"
         switch store.variant {
-        case .first: "재원님,\n지금부터 면접을\n시작해 볼까요?"
-        case .hasPortfolio: "이전과\n동일한 정보로\n시작할까요?"
-        case .exhausted: "재원님,\n무료 횟수를 모두\n사용했어요"
+        case .first: return namePrefix + "지금부터 면접을\n시작해 볼까요?"
+        case .hasPortfolio: return "이전과\n동일한 정보로\n시작할까요?"
+        case .exhausted: return namePrefix + "무료 횟수를 모두\n사용했어요"
         }
     }
 
@@ -93,9 +94,13 @@ public struct StartInterviewView: View {
                 Text("남은 면접 기회")
                     .dsTypography(.body6)
                     .foregroundStyle(Color.GrayScale.g500)
-                Text("\(store.remainingChances)회")
-                    .dsTypography(.sub4)
-                    .foregroundStyle(Color.HilitBlack.b800)
+                // 잔여를 모르는 동안(프로필 응답 전·실패)엔 숫자 줄을 뺀다 — «0회» 로 떨어뜨리면
+                // 서버가 말하지 않은 소진을 화면이 지어낸다(포폴 날짜·용량과 같은 규칙).
+                if let remainingChances = store.remainingChances {
+                    Text("\(remainingChances)회")
+                        .dsTypography(.sub4)
+                        .foregroundStyle(Color.HilitBlack.b800)
+                }
             }
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
@@ -127,16 +132,19 @@ public struct StartInterviewView: View {
                     .foregroundStyle(Color.GrayScale.g700)
                     .lineLimit(1)
                     .truncationMode(.tail)
+                // 날짜·용량은 서버가 안 줄 수 있다 — 없는 조각과 그 구분선만 빼고 나머지는 그대로 그린다.
                 HStack(spacing: .ds(.p4)) {
-                    Text(Self.uploadedAtText(portfolio.uploadedAt))
-                        .dsTypography(.body10)
-                        .foregroundStyle(Color.GrayScale.g400)
-                    Rectangle()
-                        .fill(Color.GrayScale.g200)
-                        .frame(width: .ds(.medium), height: .ds(.p10))
-                    Text(Self.sizeText(portfolio.byteCount))
-                        .dsTypography(.body10)
-                        .foregroundStyle(Color.GrayScale.g400)
+                    if let uploadedAt = portfolio.uploadedAt {
+                        metaText(Self.uploadedAtText(uploadedAt))
+                    }
+                    if portfolio.uploadedAt != nil, portfolio.byteCount != nil {
+                        Rectangle()
+                            .fill(Color.GrayScale.g200)
+                            .frame(width: .ds(.medium), height: .ds(.p10))
+                    }
+                    if let byteCount = portfolio.byteCount {
+                        metaText(Self.sizeText(byteCount))
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -151,10 +159,22 @@ public struct StartInterviewView: View {
         }
     }
 
+    /// 파일 한 줄 아래 메타 조각(날짜·용량) — 두 조각이 같은 타이포·색이라 한 자리에 모은다.
+    private func metaText(_ text: String) -> some View {
+        Text(text)
+            .dsTypography(.body10)
+            .foregroundStyle(Color.GrayScale.g400)
+    }
+
     /// 업로드일 표기 «2026.07.31» — 시안 표기(`{20xx.xx.xx}`)를 그대로 옮긴 고정 포맷이라 로케일에 흔들리지 않게 둔다.
+    ///
+    /// 타임존도 **KST 고정**이다 — 서버가 타임존 없는 LocalDateTime 을 주고 디코더가 그걸 KST 로
+    /// 읽는데(`JSONDecoder.api`), 표시만 기기 로컬로 두면 UTC 서쪽 기기에서 하루 밀린 날짜가 뜬다.
+    /// 읽는 쪽과 쓰는 쪽이 같은 가정을 써야 한다(백엔드와 타임존 계약 확정 시 두 곳을 같이 고친다).
     private static let uploadedAtFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
         formatter.dateFormat = "yyyy.MM.dd"
         return formatter
     }()
@@ -202,12 +222,23 @@ public struct StartInterviewView: View {
 // MARK: - Previews
 
 /// 씬의 한 겹이라 단독으로는 배경이 없다 — 프리뷰에서만 홈이 깔아 주는 배경을 흉내 낸다.
-private func previewLayer(_ variant: StartInterviewFeature.Variant) -> some View {
+/// State 기본값은 중립(이름 없음·잔여 미확정·포폴 없음)이라 **시안 값은 여기서 명시로 넘긴다**.
+private func previewLayer(
+    _ variant: StartInterviewFeature.Variant,
+    remainingChances: Int?
+) -> some View {
     ZStack {
         HomeGreenBackdrop()
             .ignoresSafeArea()
         StartInterviewView(
-            store: Store(initialState: StartInterviewFeature.State(variant: variant)) {
+            store: Store(
+                initialState: StartInterviewFeature.State(
+                    variant: variant,
+                    userName: "재원",
+                    remainingChances: remainingChances,
+                    portfolio: variant == .hasPortfolio ? .placeholder : nil
+                )
+            ) {
                 StartInterviewFeature()
             }
         )
@@ -216,13 +247,18 @@ private func previewLayer(_ variant: StartInterviewFeature.Variant) -> some View
 }
 
 #Preview("처음 — 정보 입력 전") {
-    previewLayer(.first)
+    previewLayer(.first, remainingChances: 3)
 }
 
 #Preview("이전 정보 재사용") {
-    previewLayer(.hasPortfolio)
+    previewLayer(.hasPortfolio, remainingChances: 3)
 }
 
 #Preview("무료 횟수 소진") {
-    previewLayer(.exhausted)
+    previewLayer(.exhausted, remainingChances: 0)
+}
+
+// 프로필이 죽었거나 아직 안 온 자리 — 숫자 줄만 빠지고 시작 경로는 살아 있다.
+#Preview("처음 — 잔여 미확정") {
+    previewLayer(.first, remainingChances: nil)
 }
