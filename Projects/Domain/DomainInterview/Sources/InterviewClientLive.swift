@@ -63,6 +63,14 @@ extension InterviewClient: @retroactive DependencyKey {
                     let resource = try await network.authorizedResource(path)
                     return InterviewAudioStream(url: resource.url, headers: resource.headers)
                 }
+            },
+            reportList: {
+                try await InterviewError.mapping {
+                    let response: ReportListResponse = try await network.api(
+                        NetworkRequest(path: "/api/v1/interview/sessions")
+                    )
+                    return response.reports
+                }
             }
         )
     }
@@ -70,19 +78,21 @@ extension InterviewClient: @retroactive DependencyKey {
 
 // MARK: - 서버 계약 매핑
 
+/// GET /interview/sessions 의 payload — `reports` 배열만 도메인에 흘린다.
+private struct ReportListResponse: Decodable {
+    let reports: [InterviewReportSummary]
+}
+
 /// jdUrl/jdText 상호 배타 규칙을 enum(JobDescriptionInput)에서 서버 필드로 펼친다.
+/// 직군·연차는 싣지 않는다 — 서버가 회원 프로필 스냅샷을 쓴다(2026-08-02 스펙).
 private struct SessionCreateBody: Encodable {
     let portfolioId: UUID
-    let jobRole: String
-    let careerYears: Int
     let jdUrl: String?
     let jdText: String?
     let freeText: String?
 
     init(_ config: InterviewConfig) {
         portfolioId = config.portfolioId
-        jobRole = config.jobRole
-        careerYears = config.careerYears
         switch config.jobDescription {
         case .url(let url):
             jdUrl = url
@@ -115,9 +125,8 @@ private extension AnswerSubmission {
         if let endType {
             items.append(.init(name: "endType", value: endType.rawValue))
         }
-        if let isWrapUp {
-            items.append(.init(name: "isWrapUp", value: isWrapUp ? "true" : "false"))
-        }
+        // isWrapUp 은 스펙 required — 항상 싣는다(nil 경로 없음).
+        items.append(.init(name: "isWrapUp", value: isWrapUp ? "true" : "false"))
         return items
     }
 }

@@ -15,8 +15,8 @@ import Foundation
 // @lat: [[app]]
 // depends-on: [[auth]] — 로그인 전/후 루트 게이트. cross-feature 조립은 AppFeature 에서만.
 // depends-on: [[home]] — Home 을 탭으로 임베드(owner). cross-feature delegate 라우팅은 Feature 추가 시 이 자리에서 조립.
-// depends-on: [[interview]] — 온보딩이 만든 세션(finished(sessionId:))으로 면접 cover 를 present. 조립은 여기서만.
-// depends-on: [[onboarding]] — 「면접 시작」의 [시작하기]·[수정하기] 가 온보딩 위저드를 present. 조립은 여기서만.
+// depends-on: [[interview]] — 온보딩 완주 delegate(.finished(sessionId)) 를 받아 면접 흐름을 present. 종료 두 신호(.finished/.closed)는 cover 를 닫고 홈을 다시 태운다.
+// depends-on: [[onboarding]] — dev 전용 진입(Home 버튼)으로 온보딩 위저드를 present. 조립은 여기서만 (온보딩 본체 통합 전 임시).
 @Reducer
 struct AppFeature {
     /// 탭 식별자. 새 탭 추가 시: 여기 case → State 프로퍼티 → body Scope → AppView tabItem 순으로 확장.
@@ -46,8 +46,7 @@ struct AppFeature {
         var root: Root = .splash
         var home = HomeFeature.State()
         var selectedTab: Tab = .home
-        /// 면접 흐름(Part 2) — 온보딩이 세션을 만들어 준 뒤에만 열린다(`finished(sessionId:)`).
-        /// 세션 없이 진입할 길이 없어 `sessionId` 를 들고 시작한다.
+        /// 면접 흐름(Part2) — 온보딩 완주가 넘긴 sessionId 로 연다. 전면 몰입이라 fullScreenCover.
         @Presents var interview: InterviewFeature.State?
         /// 온보딩 위저드 — 「면접 시작」의 [시작하기]·[수정하기] 가 present 한다.
         @Presents var onboarding: OnboardingFeature.State?
@@ -203,9 +202,8 @@ struct AppFeature {
                 }
             case .home:
                 return .none
-            // 온보딩 완료 = **세션이 준비됐다** — 위저드를 닫고 그 자리에서 면접으로 넘긴다.
-            // 홈을 태우지 않는 이유: 지금 홈은 면접 뒤에 가려질 뿐이고, 갱신이 필요한 시점은
-            // 면접이 끝나 홈으로 돌아올 때다(아래 `interview` delegate 두 갈래가 태운다).
+            // 온보딩 완주 = 분석까지 끝나 세션이 준비된 상태 — 위저드를 닫고 그 세션으로 면접을 연다.
+            // 홈은 안 태운다 — 어차피 면접에 가려지고, 갱신 시점은 면접이 끝나 돌아올 때다(위 두 갈래).
             case let .onboarding(.presented(.delegate(.finished(sessionId)))):
                 state.onboarding = nil
                 state.interview = InterviewFeature.State(sessionId: sessionId)
@@ -220,7 +218,8 @@ struct AppFeature {
             case .onboarding:
                 return .none
             // 면접 종료·이탈 모두 cover 를 닫고 홈을 다시 태운다 — 어느 쪽이든 잔여가 줄었고,
-            // 정상 종료면 리포트도 늘었다.
+            // 리포트도 늘었을 수 있다(BACK_EXIT 이탈도 생성 트리거 — 2026-08-03 서버 계약).
+            // 케이스를 합치지 않는 건 곧 갈라지기 때문이다: 정상 종료엔 리포트 상세(r1) 라우팅이 붙는다.
             // TODO: 정상 종료는 리포트 상세(r1)로 이어져야 한다 — `InterviewReportFeature` 통합 후
             //       sessionId 로 배선 (docs/work/home-account.md §4).
             //

@@ -36,13 +36,13 @@ public extension ServerEnvelope {
         } catch {
             envelopeError = error
         }
-
+        
         do {
             return try decoder.decode(T.self, from: data)
         } catch {
-            #if DEBUG
+#if DEBUG
             NetworkDecodeLogger.failure(type: T.self, body: data, envelopeError: envelopeError, fallbackError: error)
-            #endif
+#endif
             throw envelopeError
         }
     }
@@ -73,13 +73,13 @@ public struct ServerError: Error, Equatable, Sendable {
     public let code: String
     public let message: String
     public let statusCode: Int
-
+    
     public init(code: String, message: String, statusCode: Int) {
         self.code = code
         self.message = message
         self.statusCode = statusCode
     }
-
+    
     /// 비 2xx body(`NetworkError.statusCode` 의 payload)에서 서버 에러를 읽는다.
     /// 정의된 코드 포맷 우선, 아니면 Spring 기본 포맷 — 둘 다 아니면 nil (HTML·평문 등).
     public static func decode(statusCode: Int, body: Data) -> ServerError? {
@@ -90,7 +90,7 @@ public struct ServerError: Error, Equatable, Sendable {
         if let failure = try? JSONDecoder().decode(Failure.self, from: body), let code = failure.code {
             return ServerError(code: code, message: failure.message ?? "알 수 없는 오류가 발생했어요.", statusCode: statusCode)
         }
-
+        
         struct SpringFailure: Decodable {
             let status: Int?
             let error: String?
@@ -122,12 +122,12 @@ public extension NetworkClient {
     ) async throws -> T {
         try ServerEnvelope<T>.unwrap(from: try await apiData(request), decoder: decoder)
     }
-
+    
     /// 응답 본문을 쓰지 않는 D14 요청 (204 등) — 서버 에러 승격만 수행한다.
     func api(_ request: NetworkRequest) async throws {
         _ = try await apiData(request)
     }
-
+    
     private func apiData(_ request: NetworkRequest) async throws -> Data {
         do {
             return try await self.request(request)
@@ -161,12 +161,12 @@ public extension JSONDecoder {
         }
         return decoder
     }
-
+    
     private static func parseAPIDate(_ raw: String) -> Date? {
         let iso8601WithFraction = ISO8601DateFormatter()
         iso8601WithFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         if let date = iso8601WithFraction.date(from: raw) { return date }
-
+        
         let iso8601 = ISO8601DateFormatter()
         if let date = iso8601.date(from: raw) { return date }
 
