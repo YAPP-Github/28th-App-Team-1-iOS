@@ -30,6 +30,14 @@ public struct OnboardingPortfolioUploadFeature {
         }
     }
 
+    // TODO: [#63 머지 후] 모달 표출이 cover 로 바뀌면 한 화면에 `.hilitModal` 을 두 번 못 붙인다 —
+    //       이 enum 과 State 의 `presentedModal` 파생값, View 의 `item:` 블록을 함께 살리고
+    //       Bool 두 개 표출을 지운다. (#63 = fix/#63_모달화면전환방식수정)
+    // enum PresentedModal: Equatable {
+    //     case existingPortfolio(ExistingPortfolio)
+    //     case deleteConfirm
+    // }
+
     /// 업로드 진행 하위 상태 — 화면 전환 없이 리스트 영역 렌더만 바꾼다.
     public enum UploadState: Equatable, Sendable {
         /// 대기 — 아직 첨부된 파일 없음 (`FileUpload(.empty)` 점선 판).
@@ -89,6 +97,14 @@ public struct OnboardingPortfolioUploadFeature {
         public var isContinueEnabled: Bool {
             if case .uploaded = upload { true } else { false }
         }
+
+        // TODO: [#63 머지 후] 위 `PresentedModal` 주석과 같이 살린다 — 표출 자리가 하나로 좁혀지면
+        //       조회 모달이 먼저다(진입 직후 뜨고, 그 판엔 파일 행 X 가 없다).
+        // var presentedModal: PresentedModal? {
+        //     if let existingPortfolio { return .existingPortfolio(existingPortfolio) }
+        //     if isDeleteConfirmPresented { return .deleteConfirm }
+        //     return nil
+        // }
 
         public init(
             step: Int = 2,
