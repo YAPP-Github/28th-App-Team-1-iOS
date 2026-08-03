@@ -18,7 +18,9 @@ Splash 는 **버전 게이트**를 먼저 통과한 뒤 refreshToken 유무로 �
 |---|---|
 | 정리가 **세션 판정보다 먼저** | 판정이 옛 토큰을 보기 전에 지워야 한다. `onAppear` 는 정리 effect 만 돌리고 `firstLaunchResolved` 로 갈라 그때 판정을 시작한다 |
 | 마커는 **정리를 마친 뒤** 찍는다 | 사이에서 앱이 죽으면 다음 실행이 다시 첫 실행으로 판정돼 정리를 끝낸다. 먼저 찍으면 지우다 만 상태로 굳는다 |
-| 정리 대상 선택은 **코디네이터 몫** | 스토어 계약은 판정만 맡는다. 지금 대상은 토큰·온보딩 draft (`AppFeature.clearLocalData()` — 디버그 로그아웃과 공유) |
+| 정리 대상 선택은 **코디네이터 몫** | 스토어 계약은 판정만 맡는다. 대상은 Keychain 전체·온보딩 draft (`AppFeature.clearLocalData()` — 디버그 로그아웃과 공유) |
+| Keychain 은 **클래스 단위로 전부** 지운다 | `tokenStore.clear()` 는 `account: "auth-tokens"` 한 항목뿐이라 항목이 늘면 잔존물이 생긴다. App 타겟 `KeychainWipe.wipeAll()` 이 아이템 클래스 5종을 비운다 |
+| UserDefaults 는 **도메인째 지우지 않는다** | 첫 실행 마커가 거기 있다 — 통째로 날리면 다음 실행이 다시 첫 실행으로 판정된다 |
 
 ## 1. 전체 흐름 (activity)
 
@@ -176,7 +178,7 @@ stateDiagram-v2
 | `AuthFeature` | 게이트 2단(`enterGate` → `passProfileGate`). 세션 복구는 `State(resuming: Destination)` 으로 같은 체인에 합류 |
 | `AuthTermsFeature` | 하드코딩 5종 enum 제거 — `pending()` 항목 렌더 + `document()` 전문 + `submit()` 제출. `CONSENT_VERSION_MISMATCH` 면 체크를 비우고 재조회 |
 | `SplashView` | `onRetry` 를 받으면 실패 상태(재시도 노출), nil 이면 판정 중 |
-| 첫 실행 정리 (2026-08-03 배선) | `FirstLaunchStore`(CoreCommon — UserDefaults 마커)가 판정, `AppFeature` 가 `onAppear` → `firstLaunchResolved` 사이에서 토큰·draft 폐기(§0). 스토어 단위 테스트는 `CoreCommonTests` |
+| 첫 실행 정리 (2026-08-03 배선) | `FirstLaunchStore`(CoreCommon — UserDefaults 마커)가 판정, `AppFeature` 가 `onAppear` → `firstLaunchResolved` 사이에서 Keychain 전체·draft 폐기(§0). 스토어 단위 테스트는 `CoreCommonTests` |
 
 목적지 표 6행과 복구 진입 2종은 `AuthFeatureGateTests` 가 검증한다. App 타겟엔 테스트 타겟이 없어 `AppFeature` 의 판정 effect(§4)는 미검증이다.
 
