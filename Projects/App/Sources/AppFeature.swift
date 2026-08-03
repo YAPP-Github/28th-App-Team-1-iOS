@@ -15,7 +15,7 @@ import Foundation
 // @lat: [[app]]
 // depends-on: [[auth]] — 로그인 전/후 루트 게이트. cross-feature 조립은 AppFeature 에서만.
 // depends-on: [[home]] — Home 을 탭으로 임베드(owner). cross-feature delegate 라우팅은 Feature 추가 시 이 자리에서 조립.
-// depends-on: [[interview]] — 온보딩 완주 delegate(.finished(sessionId)) 를 받아 면접 흐름을 present. 종료 두 신호(.finished/.closed)는 cover 를 닫는다.
+// depends-on: [[interview]] — 온보딩 완주 delegate(.finished(sessionId)) 를 받아 면접 흐름을 present. 종료 두 신호(.finished/.closed)는 cover 를 닫고 홈을 다시 태운다.
 // depends-on: [[onboarding]] — dev 전용 진입(Home 버튼)으로 온보딩 위저드를 present. 조립은 여기서만 (온보딩 본체 통합 전 임시).
 @Reducer
 struct AppFeature {
@@ -201,24 +201,22 @@ struct AppFeature {
                 }
             case .home:
                 return .none
-            // 면접 종료는 두 신호 모두 cover 를 닫는 것으로 끝난다 — 아래가 이미 홈이라 별도 라우팅이 없다.
-            // 둘을 합치지 않는 건 곧 갈라지기 때문이다: 정상 종료(.finished — 리포트 대기 «홈으로»)는
-            // 홈의 리포트 목록을 새로고침해야 하고, 이탈(.closed)은 그럴 필요가 없다.
+            // 면접 종료 — 두 신호 모두 cover 를 닫고 홈을 다시 태운다: 어느 쪽이든 잔여가 줄었고,
+            // 리포트도 늘었을 수 있다(BACK_EXIT 이탈도 생성 트리거 — 2026-08-03 서버 계약).
+            // 케이스를 합치지 않는 건 곧 갈라지기 때문이다: 정상 종료엔 리포트 상세(r1) 라우팅이 붙는다.
+            // TODO: 정상 종료를 리포트 상세(r1)로 잇는다 — `InterviewReportFeature` 통합 후
+            //       sessionId 로 배선 (docs/work/home-account.md §4).
             case .interview(.presented(.delegate(.finished))):
                 state.interview = nil
-                return .none
+                return .send(.home(.view(.onAppear)))
             case .interview(.presented(.delegate(.closed))):
                 state.interview = nil
-                return .none
+                return .send(.home(.view(.onAppear)))
             case .interview:
                 return .none
             // 온보딩 완주 = 분석까지 끝나 세션이 준비된 상태 — 위저드를 닫고 그 세션으로 면접을 연다.
+            // 홈은 안 태운다 — 어차피 면접에 가려지고, 갱신 시점은 면접이 끝나 돌아올 때다(위 두 갈래).
             case let .onboarding(.presented(.delegate(.finished(sessionId)))):
-                state.onboarding = nil
-                state.interview = InterviewFeature.State(sessionId: sessionId)
-                return .none
-            // 중도 이탈(X) — 세션이 없으니 닫기만 한다.
-            case .onboarding(.presented(.delegate(.dismiss))):
                 state.onboarding = nil
                 state.interview = InterviewFeature.State(sessionId: sessionId)
                 return .none
@@ -230,16 +228,6 @@ struct AppFeature {
                 state.onboarding = nil
                 return .send(.home(.view(.onAppear)))
             case .onboarding:
-                return .none
-            // 면접 종료·이탈 모두 cover 를 닫고 홈을 다시 태운다 — 어느 쪽이든 잔여가 줄었고,
-            // 정상 종료면 리포트도 늘었다.
-            // TODO: 정상 종료는 리포트 상세(r1)로 이어져야 한다 — `InterviewReportFeature` 통합 후
-            //       sessionId 로 배선 (docs/work/home-account.md §4).
-            case .interview(.presented(.delegate(.finished))),
-                 .interview(.presented(.delegate(.closed))):
-                state.interview = nil
-                return .send(.home(.view(.onAppear)))
-            case .interview:
                 return .none
             case .sessionCleared:
                 // 로그아웃 정리 완료 — 초기 State 로 리셋하고 첫 소셜 로그인 화면으로.
