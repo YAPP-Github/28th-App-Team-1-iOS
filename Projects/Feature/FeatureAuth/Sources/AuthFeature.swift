@@ -164,6 +164,9 @@ public struct AuthFeature {
                         step: 3, totalSteps: Self.onboardingSteps
                     )))
                     return .none
+                case .backRequested:
+                    _ = state.path.popLast()
+                    return .none
                 case .closeRequested:
                     state.path.removeAll()
                     return .none
