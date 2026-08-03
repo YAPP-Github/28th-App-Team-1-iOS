@@ -65,6 +65,9 @@ public struct OnboardingPortfolioUploadFeature {
         public var upload: UploadState
         /// 파일 선택 시트(fileImporter) 표시 여부 — View binding 으로 닫힘까지 동기화된다.
         public var isFileImporterPresented = false
+        /// 삭제 확인 모달 표시 여부 — 파일 행 X 가 켜고, «네»/«아니요» 가 끈다.
+        /// 삭제 API 는 «네» 에서만 나간다(X 만으로는 서버 파일이 그대로다).
+        public var isDeleteConfirmPresented = false
 
         public var isContinueEnabled: Bool {
             if case .uploaded = upload { true } else { false }
@@ -91,7 +94,12 @@ public struct OnboardingPortfolioUploadFeature {
             case userTappedBack
             case userTappedContinue
             case userTappedUploadCard
+            /// 파일 행 X — 바로 지우지 않고 삭제 확인 모달을 띄운다.
             case userTappedRemoveFile
+            /// 삭제 확인 모달 «네» — 여기서만 폴링 취소 + delete API.
+            case userTappedDeleteConfirm
+            /// 삭제 확인 모달 «아니요» — 모달만 닫고 파일은 그대로 둔다.
+            case userTappedDeleteCancel
             /// fileImporter 선택 완료 — security-scoped URL.
             case fileSelected(URL)
             /// fileImporter 자체 실패 (파일 접근 불가 등).
@@ -223,6 +231,17 @@ public struct OnboardingPortfolioUploadFeature {
             return .none
 
         case .userTappedRemoveFile:
+            // 첨부된 파일이 있을 때만 확인 모달 — 삭제는 «네» 를 받고서 한다.
+            switch state.upload {
+            case .uploading, .uploaded:
+                state.isDeleteConfirmPresented = true
+                return .none
+            case .idle, .failed:
+                return .none
+            }
+
+        case .userTappedDeleteConfirm:
+            state.isDeleteConfirmPresented = false
             switch state.upload {
             case let .uploading(_, portfolioId):
                 state.upload = .idle
@@ -233,6 +252,10 @@ public struct OnboardingPortfolioUploadFeature {
             case .idle, .failed:
                 return .none
             }
+
+        case .userTappedDeleteCancel:
+            state.isDeleteConfirmPresented = false
+            return .none
         }
     }
 
