@@ -118,6 +118,27 @@ struct InterviewFeatureTests {
         #expect(playbackStopped.value == 1)
     }
 
+    @Test("준비 화면 뒤로가기는 캡처 장치를 정지한 뒤 상위에 종료를 통보한다 — 모달 없이 즉시 이탈")
+    func readinessBackStopsDevicesThenNotifiesClosed() async {
+        let previewStopped = LockIsolated(0)
+        let captureStopped = LockIsolated(0)
+        let playbackStopped = LockIsolated(0)
+        let store = TestStore(initialState: InterviewFeature.State(sessionId: 1)) {
+            InterviewFeature()
+        } withDependencies: {
+            $0.recordingClient.stopPreview = { previewStopped.withValue { $0 += 1 } }
+            $0.speechClient.stopCapture = { captureStopped.withValue { $0 += 1 } }
+            $0.speechClient.stopPlayback = { playbackStopped.withValue { $0 += 1 } }
+        }
+
+        await store.send(.screen(.readiness(.delegate(.backRequested))))
+        await store.receive(\.delegate.closed)
+        await store.finish()
+        #expect(previewStopped.value == 1)
+        #expect(captureStopped.value == 1)
+        #expect(playbackStopped.value == 1)
+    }
+
     @Test("세션 중도 이탈은 화면 전환 없이 캡처 장치·재생을 정지한 뒤 상위에 종료를 통보한다")
     func sessionAbortStopsDevicesThenNotifiesClosed() async {
         let previewStopped = LockIsolated(0)

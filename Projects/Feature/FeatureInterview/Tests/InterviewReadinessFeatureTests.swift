@@ -180,6 +180,20 @@ struct InterviewReadinessFeatureTests {
         await store.finish()
     }
 
+    @Test("뒤로가기는 되묻는 모달 없이 곧장 이탈을 통보한다 — 아직 면접 전이라 확인 대상이 없다")
+    func backTapNotifiesDelegateImmediately() async {
+        let store = TestStore(initialState: guide2State()) {
+            InterviewReadinessFeature()
+        } withDependencies: {
+            $0.permissionClient = client()
+        }
+
+        await store.send(.view(.userTappedBack))
+        await store.receive(\.delegate.backRequested)
+        // alert 를 띄우지 않는다 — 상태 변화 없이 통보만 하고 끝난다.
+        await store.finish()
+    }
+
     @Test("권한이 미허용인 상태에서 시작하기를 누르면 설정 유도 alert 를 띄우고 시작하지 않는다")
     func startTapDeniedShowsAlert() async {
         let store = TestStore(initialState: guide2State()) {

@@ -88,6 +88,8 @@ public struct InterviewReadinessFeature {
         /// 사용자 입력·생명주기. View 의 send(...) 로만 방출된다.
         public enum View: Equatable, Sendable {
             case onAppear
+            /// 좌상단 뒤로가기 — 면접 흐름을 벗어난다(모달 없이 즉시, 아직 면접 전이라 되물을 게 없다).
+            case userTappedBack
             case userTappedStart
         }
 
@@ -114,6 +116,8 @@ public struct InterviewReadinessFeature {
         /// 부모(코디네이터) 통보. 부모는 이것만 매칭한다 (D1).
         @CasePathable
         public enum Delegate: Equatable, Sendable {
+            /// 뒤로가기 탭 — 면접 흐름 이탈. 캡처 정지·상위 통보는 코디네이터가 처리한다.
+            case backRequested
             /// 면접 시작하기 탭(권한 허용 확인 후) — 세션 화면 전환은 코디네이터가 처리.
             case startRequested
             /// 질문 준비 최종 실패(서버 FAILED) — 실패 화면 전환은 코디네이터가 처리. 재시도 버튼 없음(PRD §3.2).
@@ -140,6 +144,15 @@ public struct InterviewReadinessFeature {
                     requestPermissionsAndStartPreview(),
                     pollQuestionPrep(sessionId: state.sessionId),
                     scheduleAdvance(after: Self.aligningHold)
+                )
+
+            case .view(.userTappedBack):
+                // 아직 면접이 시작되지 않았다(질문 재생 전·답변 0개) — 되묻는 모달 없이 바로 흐름을 나간다.
+                // 진행 중인 phase 타이머·질문 준비 폴링은 여기서 끊는다(코디네이터는 장치만 정지한다).
+                return .merge(
+                    .cancel(id: CancelID.phaseTimer),
+                    .cancel(id: CancelID.prepPolling),
+                    .send(.delegate(.backRequested))
                 )
 
             case .view(.userTappedStart):

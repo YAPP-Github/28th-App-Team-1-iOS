@@ -76,6 +76,11 @@ public struct InterviewFeature {
                 ))
                 return .none
 
+            case .screen(.readiness(.delegate(.backRequested))):
+                // 준비 화면 뒤로가기 = 흐름 이탈. 아직 면접 전이라 서버 제출 없이 장치만 정리하고 나간다
+                // (세션은 서버에 남지만 답변 0개 — 재진입 동선은 홈의 «이어서 진행» 몫, home-account §4).
+                return stopCaptureDevicesThenNotifyClosed()
+
             case .screen(.readiness(.delegate(.prepFailed))):
                 state.screen = .failure(InterviewFailureFeature.State(kind: .questionPrep))
                 return stopCaptureDevicesAndPlayback()
