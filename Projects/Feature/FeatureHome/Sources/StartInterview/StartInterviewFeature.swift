@@ -20,6 +20,9 @@ import Foundation
 @Reducer
 public struct StartInterviewFeature {
     /// 시안 3종 — 처음 / 등록 포폴 있음 / 무료 횟수 모두 사용.
+    ///
+    /// `first` = 1회차, `hasPortfolio` = **2회차 이상**이다 — 판정 키는 READY 포폴 보유 하나뿐이고
+    /// 서버 면접 이력은 보지 않는다(`HomeFeature.startVariant` · docs/work/home-account.md §3).
     public enum Variant: Equatable, Sendable {
         case first
         case hasPortfolio

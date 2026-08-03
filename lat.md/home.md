@@ -35,6 +35,8 @@ dev 계 임시 버튼 2개(HomeDefaultView 소속)는 `showsOnboardingEntry`·`s
 
 로드값 → 표시 매핑은 `HomeFeature` 의 두 헬퍼가 전담한다. `reusablePortfolio` 는 **READY 만** 고르고(PROCESSING 을 걸면 시작 시점에 게이트가 뒤집는다 — 폴링 승격은 TODO), `startVariant` 는 잔여 0 을 최우선(`exhausted`)으로 포폴 유무를 갈라 시안 3종을 정한다 — **잔여 nil(프로필 실패·응답 전)은 0 이 아니다**: 모른다고 소진 시안을 띄우면 시작 경로가 [홈으로] 하나로 막힌다. 나머지 2종(기록 리스트 → `inner(.reportsLoaded([Report]))` · held 세션)은 계약 대기라 미배선 — 응답 자리만 잡혀 있다. phase 는 서버 판정의 표시일 뿐, 진실은 탭 시점 게이트 재검증이다.
 
+`hasPortfolio` 가 곧 **«2회차 이상»** 이다 — 서버 면접 이력 필드를 두지 않고 READY 포폴 보유로 판정한다(2026-08-03 확정). 이 분기가 실제로 묻는 건 «불러올 포폴이 있나» 이고, 포폴은 계정당 1개라 READY 한 건이 곧 재사용 대상이며, 교체가 한 달 1회라 보유자는 새로 올리지도 못한다 → [home-account](../docs/work/home-account.md) §3 «회차 분기 판정 키».
+
 **표시 데이터는 전부 State 소유** — 뷰에 하드코딩·`@State` 를 두지 않는다(예외는 진행 중 드래그 이동량 하나 — «시트 자리» 참조). `userName`(인사말) · `reports: IdentifiedArrayOf<Report>`(위젯② 목록, 개수는 `reports.count` 파생 — 따로 들지 않는다) · `expandedReportID`(펼친 행 1개, 재탭이면 접힘). `Report` 는 `HomeFeature` 안의 표시 모델이고 `DomainInterviewReport` 이관은 목록 계약 확정 후다(TODO). 면접 시작 카드 값(`userName`·`remainingChances`·`portfolio`)은 `StartInterviewFeature.State` 소유, 표기 포맷(«3.2mb»)은 뷰 몫이고 잔여·날짜·용량은 서버가 안 줄 수 있어 옵셔널이다(없는 조각만 뺀다 — 가짜 «0회»·«1970.01.01» 을 만들지 않는다).
 
 **사람 이름을 기본값에 박지 않는다** — `userName` 기본값은 빈 문자열이고 비어 있는 동안 뷰가 이름 줄을 뺀다(«오랜만이에요!»). 시안 값(«재원»)을 기본값에 두면 프로필 응답이 늦을 때 모든 사용자가 남의 이름을 읽는다. 같은 이유로 `StartInterviewFeature.State` 기본값도 전부 중립(0회·포폴 없음)이고, 시안대로 보고 싶은 프리뷰가 픽스처를 명시로 넘긴다.

@@ -168,6 +168,8 @@ struct AppFeature {
                 // 면접에 필요한 정보(직군·연차·JD·포폴)를 모으는 게 온보딩 위저드다 — 첫 면접은 거기부터다.
                 // 면접 화면은 **세션 id 로만** 열리는데(`InterviewFeature.State(sessionId:)`) 그 id 를 만드는
                 // 건 위저드의 세션 생성뿐이라, 재사용 경로도 지금은 같은 위저드를 태운다.
+                // 변형은 곧 회차다 — `first` = 1회차, `hasPortfolio` = 2회차 이상(판정 키는 READY 포폴
+                // 보유 하나 — docs/work/home-account.md §3 «회차 분기 판정 키»).
                 switch state.home.startInterview.variant {
                 case .first:
                     state.onboarding = OnboardingFeature.State(userName: state.home.userName)
