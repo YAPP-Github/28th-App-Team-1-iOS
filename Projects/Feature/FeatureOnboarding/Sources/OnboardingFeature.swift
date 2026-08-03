@@ -163,11 +163,9 @@ public struct OnboardingFeature {
             case let .path(.element(id: _, action: .preload(.delegate(action)))):
                 switch action {
                 case let .completed(sessionId):
-                    // 세션 생성 성공 → draft 폐기 (PRD §4.4).
-                    return .merge(
-                        .send(.delegate(.finished(sessionId: sessionId))),
-                        .run { [draftStore] _ in draftStore.clear() }
-                    )
+                    // draft 는 여기서 지우지 않는다 — 세션 생성은 면접의 시작일 뿐이고, 그 면접이 끝나기
+                    // 전에 앱이 죽거나 이탈하면 다시 값이 필요하다. 폐기는 인터뷰 세션 완료 시점(AppFeature).
+                    return .send(.delegate(.finished(sessionId: sessionId)))
                 case .relevanceCheckFailed:
                     // PRD S3.5 — 연관성 부족 시 프리로드를 pop 하고 대표 프로젝트로 되돌린다.
                     state.relevanceFailureCount += 1

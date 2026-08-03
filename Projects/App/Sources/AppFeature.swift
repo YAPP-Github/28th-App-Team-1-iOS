@@ -222,8 +222,18 @@ struct AppFeature {
             // 정상 종료면 리포트도 늘었다.
             // TODO: 정상 종료는 리포트 상세(r1)로 이어져야 한다 — `InterviewReportFeature` 통합 후
             //       sessionId 로 배선 (docs/work/home-account.md §4).
-            case .interview(.presented(.delegate(.finished))),
-                 .interview(.presented(.delegate(.closed))):
+            //
+            // 정상 종료 = 온보딩이 모은 입력이 제 역할을 다한 지점 — 여기서 온보딩 draft 를 폐기한다(PRD §4.4).
+            // 세션 생성 시점에 지우지 않는 이유: 그 사이 앱이 죽거나 면접에서 이탈하면 값이 다시 필요하고,
+            // 홈의 «이전 정보 재사용»·[수정하기] 도 draft 복원에 얹혀 있다.
+            case .interview(.presented(.delegate(.finished))):
+                state.interview = nil
+                return .merge(
+                    .run { [draftStore] _ in draftStore.clear() },
+                    .send(.home(.view(.onAppear)))
+                )
+            // 이탈은 draft 보존 — 같은 입력으로 다시 시작할 수 있어야 한다.
+            case .interview(.presented(.delegate(.closed))):
                 state.interview = nil
                 return .send(.home(.view(.onAppear)))
             case .interview:

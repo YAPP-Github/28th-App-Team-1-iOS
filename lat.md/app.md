@@ -45,6 +45,7 @@
 3. 온보딩 `delegate(.finished(sessionId:))` = **세션 준비 완료** → 위저드 cover 를 닫고 그 자리에서 `state.interview = InterviewFeature.State(sessionId:)` 로 면접 cover 를 연다(홈은 안 태운다 — 어차피 가려지고, 갱신 시점은 면접이 끝나 돌아올 때다) → [[interview]]
 4. 중도 이탈 `.dismiss` → cover 만 닫고 **`.home(.view(.onAppear))` 를 명시로 보내 홈을 다시 태운다** — STEP4 업로드는 끝났을 수 있는데 cover 를 닫는 것만으론 홈 `onAppear` 가 다시 오지 않아 «이전 정보 재사용» 카드가 옛 값으로 남는다. 홈 탭 위에서만 열리므로 **로그인 이후**라 토큰을 보유한다(온보딩 API 는 인증 필요) → [[onboarding]]
 5. 면접 `delegate(.finished)`(리포트 대기 → 홈)·`.closed`(중단·실패 닫기) → 둘 다 cover 닫고 홈 재조회 — 어느 쪽이든 잔여가 줄었다. 정상 종료의 리포트 상세(r1) 연결은 `InterviewReportFeature` 통합 후(TODO)
+6. 정상 종료(`.finished`)에서만 `onboardingDraftStore.clear()` — 온보딩 입력 draft 가 제 역할을 다한 지점이 여기다([[onboarding#입력 draft]]). 이탈(`.closed`)은 보존 — 같은 입력으로 다시 시작할 수 있어야 하고, 면접 도중 앱이 죽어도 값이 남는다
 
 ⚠ 지금 `State()` 는 직군·연차를 안 넘긴다 — 두 값은 가입 온보딩이 받아 프로필에 있고 위저드는 주입만 받으므로(화면 삭제, 2026-08-02), 정식 배선 전까지 dev 진입은 프리로드의 세션 생성에서 실패한다. 배선 시 `State(userName:jobRole:careerYears:)` 로 프로필 값을 채워 넘긴다 → [[onboarding#코디네이터 연결]]
 

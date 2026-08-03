@@ -140,7 +140,7 @@ S1→S3.5는 **도메인 내부** navigation → 규칙대로 자체 `Path` + `S
 
 S0~S3 입력을 로컬 draft 로 자동 저장 — **앱 진짜 종료(kill/크래시) 대비**. **재개식**(사용자 결정 2026-07-20): 값 + 위저드 위치를 복원해 이어서 시작.
 - `OnboardingDraftStore` seam(UserDefaults JSON, PortfolioFileReader 와 같은 로컬 IO 선상) — load/save/clear. `OnboardingData` 는 Codable, `portfolioFileName` 추가(완료 행 복원용).
-- 저장: 각 스텝 완료(continue)마다 `persist`(data + furthestStep = path.count+1 + savedAt). 폐기: **세션 생성 성공 시** clear.
+- 저장: 각 스텝 완료(continue)마다 `persist`(data + furthestStep = path.count+1 + savedAt). 폐기: **인터뷰 세션 완료 시**(AppFeature 가 `interview delegate(.finished)` 에서 clear) — 세션 생성 시점이 아니다(면접 도중 킬·이탈 대비 + 홈의 «이전 정보 재사용»·[수정하기] 복원이 draft 에 얹혀 있다).
 - 복원(코디네이터 onAppear): `path` 비었을 때만, TTL **14일** 안이면 data 복원 + 위저드 되쌓기(프리로드 제외, 대표 프로젝트 3까지). JD 는 루트라 `restoring:` init 으로 탭·검증상태 복원.
 - 잔여(TODO): 포폴 삭제 시 clear.
 
