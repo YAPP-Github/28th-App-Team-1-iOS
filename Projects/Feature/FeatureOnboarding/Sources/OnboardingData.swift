@@ -129,9 +129,10 @@ public extension DependencyValues {
 public extension OnboardingData {
     /// 분석 스텝의 세션 생성 입력(InterviewConfig)으로 변환한다 (PRD §3.8 — 개별 저장 없이 세션 생성이 S0~S3 일괄 수집).
     /// 필수 3종(직군·연차·포트폴리오)이 하나라도 없으면 nil — 위저드 순서상 분석 진입 시엔 항상 채워져 있다.
+    /// 직군·연차는 존재 확인만 하고 payload 에서 뺀다 — 서버가 회원 프로필 스냅샷을 쓴다(2026-08-02 스펙).
     /// JD·집중 프로젝트는 nullable. JDSubmission(.link/.text) → JobDescriptionInput(.url/.text) 대응.
     func interviewConfig() -> InterviewConfig? {
-        guard let jobRole, let careerYears, let portfolioId else { return nil }
+        guard jobRole != nil, careerYears != nil, let portfolioId else { return nil }
         let jobDescription: JobDescriptionInput? = switch jd {
         case let .link(url): .url(url)
         case let .text(text): .text(text)
@@ -139,8 +140,6 @@ public extension OnboardingData {
         }
         return InterviewConfig(
             portfolioId: portfolioId,
-            jobRole: jobRole,
-            careerYears: careerYears,
             jobDescription: jobDescription,
             freeText: freeText
         )

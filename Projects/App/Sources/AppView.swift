@@ -44,8 +44,8 @@ struct AppView: View {
                 ) { onboardingStore in
                     OnboardingView(store: onboardingStore)
                 }
-                // 면접 흐름 — 위저드가 세션을 만든 직후 그 자리에서 열린다(온보딩 cover 는 이미 닫힌 뒤).
-                // 카메라·마이크를 쓰는 전면 화면이라 탭 줄이 남으면 안 된다.
+                // 면접 흐름(Part2) — 온보딩 완주가 넘긴 세션으로 열린다. 카메라 프리뷰가 전면을 채우는
+                // 몰입 화면이라 탭바까지 덮는 fullScreenCover 다.
                 .fullScreenCover(
                     item: $store.scope(state: \.interview, action: \.interview)
                 ) { interviewStore in
@@ -65,12 +65,15 @@ struct AppView: View {
         }
     }
 
-    /// 전역 로딩을 얹을 자리인지 — **Splash 계열 루트에서는 끈다**.
+    /// 전역 로딩을 얹을 자리인지 — **Splash 계열 루트와 면접 중에는 끈다**.
     /// Splash 자체가 «기다리는 중» 표시라 그 위에 로딩 판을 또 덮으면 브랜드 화면만 가린다
     /// (세션 복구 판정이 곧 그 화면의 존재 이유다). `.updateRequired` 는 알럿이 떠 있어 딤이 겹치면 안 된다.
-    /// `default` 를 두지 않는다 — 루트가 늘면 여기서 컴파일이 깨져 판단을 강제한다.
     private var showsGlobalLoading: Bool {
-        switch store.root {
+        // 면접은 자체 진행 표시(상태 칩·초읽기)로 대기를 말한다 — 답변 제출·질문 스트림마다 전역 딤이
+        // 덮이면 면접이 끊겨 보이고, 타이머가 도는 화면을 잠그는 것 자체가 오동작이다.
+        guard store.interview == nil else { return false }
+        // `default` 를 두지 않는다 — 루트가 늘면 여기서 컴파일이 깨져 판단을 강제한다.
+        return switch store.root {
         case .splash, .splashFailed, .updateRequired: false
         case .auth, .home: true
         }
