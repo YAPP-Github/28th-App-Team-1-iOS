@@ -38,7 +38,8 @@
 | `.hilitDetentSheet` | 높이 바뀌는 바텀시트 — 시스템 `.sheet` + detent (모디파이어) | 표시 |
 | `HilitDivider` | 다크 판 구분선 | 표시 |
 | `.hilitLogoNavigationBar` | 네비바 — 루트 브랜드 판(로고·프로필) | 네비게이션 |
-| `.hilitModal` | 모달 딤 오버레이 표출 (모디파이어) | 표시 |
+| `.hilitModal` | 모달 딤 표출 — 네비바까지 덮는 cover (모디파이어) | 표시 |
+| `.hilitModalOverlay` | 모달 딤 표출 — 앱 루트 전용 overlay 변형 (모디파이어) | 표시 |
 | `.hilitNavigationBar` | 네비바 — push 화면(스택 안) | 네비게이션 |
 | `.hilitPresentedNavigationBar` | 네비바 — present 단독 화면(스택 밖) | 네비게이션 |
 | `.hilitSurface` | 화면 판 톤 선언 → 하위 팔레트 전환 | 버튼 |

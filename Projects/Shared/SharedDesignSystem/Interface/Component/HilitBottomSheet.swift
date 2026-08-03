@@ -35,6 +35,9 @@ public extension View {
     /// **드래그 없음 — 고정 높이 시트 전용.** 높이가 드래그로 바뀌어야 하면 `.hilitDetentSheet`
     /// (시스템 `.sheet` + detent)를 쓴다. 오버레이로 제스처를 흉내내지 않는다.
     ///
+    /// 표출은 `overlay` 라 **딤이 시스템 네비바 밑에 깔린다** — 네비바가 있는 화면에서 쓰려면
+    /// `.hilitModal` 처럼 presentation(cover) 기반으로 바꿔야 한다(현재 호출부 없음).
+    ///
     /// - Parameter onDimTap: 딤 탭 시 호출 — 보통 닫기 리듀서 액션. `nil`(기본)이면 딤 탭 무시.
     func hilitBottomSheet<Content: View>(
         isPresented: Bool,

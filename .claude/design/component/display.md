@@ -16,7 +16,7 @@
 | `.hilitBottomSheet` | 시안에 없음 (딤은 modal 2302:6080 과 공유) | 모디파이어 — `(isPresented:, onDimTap:) { 시트 }` / `(item:, onDimTap:) { sheet in switch … }` | 바텀시트 오버레이 — 딤(`HilitDim`, `.hilitModal` 과 공유) 위 바닥 정렬 + 아래에서 슬라이드(move 0.25). **껍데기만** — 시트 판(배경·상단 코너·패딩)은 호출부가 그린다(화면마다 커스텀 시트가 실재해 카드 비표준). 판을 홈 인디케이터 아래까지 깔려면 배경 shape 에 `.ignoresSafeArea(edges: .bottom)`(파일 프리뷰 참조). **값 기반·읽기 전용** — 계약은 `.hilitModal` 과 동일, 딤 탭 닫기만 `onDimTap` 클로저(리듀서 액션)로 열려 있음. 드래그 닫기 없음. 시트 2개↑ 화면은 `item:` 에 enum 하나. **드래그로 높이가 바뀌는 시트는 `.hilitDetentSheet`** — 이건 고정 높이·화면 상주 시트 몫 |
 | `.hilitDetentSheet` | 시안에 없음 (딤·그래버는 시스템) | 모디파이어 — `(item:, detents:, cornerRadius: 0, onDismiss:) { item in 판 }` | **시스템 `.sheet` 래퍼** — 높이 드래그·아래로 스와이프 닫기·딤 탭 닫기가 전부 시스템 몫이라 흉내낼 게 없다. 시트는 `detents` 중 가장 작은 것으로 열리고 드래그로 나머지를 오간다(`[.fraction(0.815), .large]` 식). **모서리는 기본이 시스템 값**(DS 의 «모서리 0» 예외 — iOS 26 은 부분 detent 시트를 가장자리에서 띄워 그려서 코너 0 이면 잘려 보인다. 각진 판이 필요할 때만 `cornerRadius:`), 시스템 드래그 인디케이터는 숨김(시안 그래버 60×5 g400 규격이 달라 호출부가 그린다). 판 배경은 호출부 `.presentationBackground(…)`, 높이는 detent 가 정하니 판은 `maxHeight: .infinity` 로 채운다. **값 기반** — 상태는 리듀서 소유, 시스템이 닫은 것만 `onDismiss` 로 되돌린다(`Item: Identifiable`). 사용처 AuthTerms 전문 시트 |
 | `HilitDivider` | divider 435:828 | `()` | 구분선 한 줄 — 1pt g800, **다크 판 전제**(흰 판 위에서는 실선처럼 무겁다. 밝은 판의 선은 이 토큰이 아니다 — `CountdownCard` 의 b800 판 안 선은 g700). 라이트 변형이 필요해지면 축을 열기 전에 디자이너 확인. 이름의 `Hilit` 은 SwiftUI `Divider` 와의 충돌 회피(`HilitTextField` 와 같은 이유). 폭은 호출부 몫 |
-| `.hilitModal` | modal 2302:6080 (딤) | 모디파이어 — `(isPresented:) { 카드 }` / `(item:) { modal in switch … }` | 모달의 **오버레이 층** — 카드와의 분담·레시피는 아래 «모달 — 두 층 조립». 딤(블랙 60%, 대응 토큰 없어 리터럴은 `HilitDim` 한 곳 — `.hilitBottomSheet` 와 공유) 위 중앙 카드 + 좌우 px24(시안 327 = 375−48) + opacity 0.2 전환. **값 기반·읽기 전용** — 스스로 닫지 않는다(닫힘은 카드 버튼이 리듀서 액션으로), 딤 탭 dismiss 없음. 모달 2개↑ 화면은 `item:` 에 enum 하나 — 동시 표출을 타입으로 차단(InterviewSession). 시안 backdrop blur 40 미포함 — 필요하면 호출부가 배경 블러로 근사 |
+| `.hilitModal` | modal 2302:6080 (딤) | 모디파이어 — `(isPresented:) { 카드 }` / `(item:) { modal in switch … }` | 모달의 **오버레이 층** — 카드와의 분담·레시피는 아래 «모달 — 두 층 조립». 딤(블랙 60%, 대응 토큰 없어 리터럴은 `HilitDim` 한 곳 — `.hilitBottomSheet` 와 공유) 위 중앙 카드 + 좌우 px24(시안 327 = 375−48) + opacity 0.2 전환. **값 기반·읽기 전용** — 스스로 닫지 않는다(닫힘은 카드 버튼이 리듀서 액션으로), 딤 탭 dismiss 없음. 모달 2개↑ 화면은 `item:` 에 enum 하나 — 동시 표출을 타입으로 차단(InterviewSession). 시안 backdrop blur 40 미포함 — 필요하면 호출부가 배경 블러로 근사(전환도 호출부가 몬다 — 모달 페이드는 cover 안쪽이라 배경까지 끌고 오지 않는다) |
 | `HomeModal` | home modal 435:1565 — opp 439:10408 · port 439:10409 | `(_ title:, subTitle:, icon:, info:) { content }` | 홈 모달 카드 — 흰 판 p24 **네 변** · 세로 리듬 12, **버튼 슬롯 없음**. 텍스트 순서가 `Modal` 과 반대다(**서브타이틀이 타이틀 위**) — 순서 축·버튼 유무 축을 새로 만들지 않으려고 별 타입으로 뒀다. 타이틀 `sub4` b800(`Modal` 은 레거시 변수 탓에 g900). `content` 는 port 케이스의 파일 카드 자리 — `FileCard` 를 넣는다. 폭·딤 배경·표시 전환은 `.hilitModal` 몫 |
 | `LoadingModal` | modal/loading 435:1543 (인스턴스 439:10407) | `()` | 로딩 모달 카드 — 170 정사각 흰 판 가운데 74 스피너 링(b800 링 위 g500 호 0.31 바퀴, 두께 10, 1초 회전). **회전은 시안에 없다** — 정지 이미지로는 로딩으로 안 읽혀 코드가 준다. 텍스트·취소 슬롯 없음(문구가 필요해지면 시안을 먼저 받는다). **`.hilitButtonLoading` 과 별개** — 그쪽은 버튼 스코프 오버레이이고 시안에 없다 |
 | `LoadingText` | loading/text 439:10225(롤링) · 439:10226(정착) | `(_ phrases: [String], activeIndex:, phase: .rolling/.settled)` | 로딩 문구 롤링 줄 — 문구를 가로 한 줄에 gap6 으로 늘어놓고(`sub7`) **활성 문구를 컨테이너 중앙에 맞춘다**(전용 `Layout` 이 한 패스에 배치 — 폭 실측 왕복 없음). 앞뒤 문구는 좌우로 넘쳐 잘린다. 비활성 g700 / 활성은 롤링 g600 · 정착 g50. **모션 스펙은 시안에 없다**(주석만 달려 있다) — 슬라이드 0.3 · 샤이닝 불투명도 왕복으로 근사했고 확정되면 재조정 |
@@ -38,6 +38,13 @@
 |---|---|---|
 | `.hilitModal` (모디파이어) | 딤(블랙 60%)·중앙 배치·표시 전환·좌우 여백 24 | 카드 생김새 — 아무 뷰나 받는다 |
 | `Modal` / `HomeModal` / `LoadingModal` (View) | 흰 판·내용·버튼 슬롯 | 폭·딤·표시/닫힘 — 단독으로 화면에 놓지 않는다 |
+
+**표출 층 — 네비바까지 덮는다.** `.hilitModal` 은 `fullScreenCover`(+ `.presentationBackground(.clear)`) 로 뜬다. 네비바는 시스템 UIKit 바라 뷰 안쪽 `overlay` 로는 딤이 그 밑에 깔려 X 만 환하게 남기 때문 — 시스템 alert 이 바를 덮는 것과 같은 층을 쓴다. 따라오는 규칙 둘:
+
+- **한 화면에 두 번 붙이지 않는다** — 동시 표출 시 둘째 cover 가 조용히 무시된다. 모달 2개↑ 는 `item:` 에 enum 하나 (Bool 두 개 금지가 규약에서 **제약**으로 승격).
+- **앱 루트는 `.hilitModalOverlay`** — 전역 로딩(`AppView`) 전용 overlay 변형. 루트는 NavigationStack 밖이라 overlay 로도 네비바 위에 깔리고, 루트가 cover 를 쓰면 화면 모달과 presentation 자리를 다툰다. 대신 화면 모달이 떠 있는 동안엔 그 아래로 가려진다.
+
+닫힘 전환은 즉시다(표출만 페이드 0.2) — cover 해제에는 opacity 를 태울 자리가 없다.
 
 **카드 고르기**:
 
