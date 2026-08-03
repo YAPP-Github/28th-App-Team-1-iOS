@@ -76,23 +76,20 @@ final class ServerEnvelopeTests: XCTestCase {
         XCTAssertEqual(decoded.local, decoded.iso)
     }
 
-    func test_JSONDecoder_api_LocalDateTime_소수부_자릿수와_무관하게_디코딩한다() throws {
+    func test_JSONDecoder_api_소수점초_LocalDateTime을_초단위로_잘라_디코딩한다() throws {
         struct Timestamps: Decodable {
-            let micros: Date
-            let millis: Date
+            let micro: Date
+            let milli: Date
             let plain: Date
         }
+        // Jackson 은 나노초가 있으면 소수점 초를 붙인다(자릿수 가변) — 2026-08-02 포트폴리오 uploadedAt 실응답 대응.
         let json = Data(#"""
-        {
-          "micros": "2026-08-02T22:42:21.238462",
-          "millis": "2026-08-02T22:42:21.238",
-          "plain": "2026-08-02T22:42:21"
-        }
+        {"micro": "2026-07-06T10:00:04.123456", "milli": "2026-07-06T10:00:04.123", "plain": "2026-07-06T10:00:04"}
         """#.utf8)
 
         let decoded = try JSONDecoder.api.decode(Timestamps.self, from: json)
 
-        XCTAssertEqual(decoded.micros.timeIntervalSince1970, decoded.plain.timeIntervalSince1970 + 0.238462, accuracy: 0.000001)
-        XCTAssertEqual(decoded.millis.timeIntervalSince1970, decoded.plain.timeIntervalSince1970 + 0.238, accuracy: 0.000001)
+        XCTAssertEqual(decoded.micro, decoded.plain)
+        XCTAssertEqual(decoded.milli, decoded.plain)
     }
 }

@@ -10,12 +10,18 @@ import ComposableArchitecture
 import DomainSpeechInterface
 
 extension SpeechClient: @retroactive DependencyKey {
-    /// 단일 AudioCaptureManager 를 공유하는 liveValue — 세션 화면 재진입에도 같은 매니저를 쓴다.
+    /// 단일 매니저(캡처·재생)를 공유하는 liveValue — 세션 화면 재진입에도 같은 매니저를 쓴다.
     public static let liveValue: SpeechClient = {
-        let manager = AudioCaptureManager()
+        let capture = AudioCaptureManager()
+        let playback = AudioPlaybackManager()
         return SpeechClient(
-            startCapture: { await manager.startCapture() },
-            stopCapture: { await manager.stopCapture() }
+            startCapture: { await capture.startCapture() },
+            stopCapture: { await capture.stopCapture() },
+            play: { await playback.play($0) },
+            playStream: { await playback.playStream(url: $0, headers: $1) },
+            // 실녹음(작업 B) 전 — Example 만 번들 샘플로 오버라이드한다.
+            answerAudio: { nil },
+            stopPlayback: { await playback.stop() }
         )
     }()
 }

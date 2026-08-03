@@ -187,11 +187,15 @@ Home --delegate(.startInterviewRequested)----▶ AppFeature — 게이트 결과
 Home --delegate(.resumeInterviewRequested(sessionId))▶ AppFeature → InterviewFeature(sessionId) fullScreenCover
 Home --delegate(.reportRequested(sessionId))-▶ AppFeature → InterviewReportFeature (r1/최종은 리포트 도메인 내부)
 Home --delegate(.myPageRequested)------------▶ AppFeature → 마이페이지 (Part 5 — Feature 생기면)
-Onboarding --delegate(.finished(sessionId:))-▶ AppFeature → 면접 시작 (기존 계약 — [ai-interview] §2)
+Onboarding --delegate(.finished(sessionId:))-▶ AppFeature → 면접 시작 ✅ (2026-08-03 — [ai-interview] §2)
+Interview --delegate(.finished/.closed)------▶ AppFeature → cover 닫고 홈 ✅ (2026-08-03)
 ```
 
 기존 dev 임시 진입(`showsOnboardingEntry`·`showsDebugLogout`)은 위젯①·마이페이지(로그아웃은 Part 5)로 흡수되며 제거 예정.
 
+**추가 (2026-08-03) — 면접 cover 는 이미 조립돼 있다.** `AppFeature` 에 `@Presents var interview` + `.ifLet` + `AppView` fullScreenCover 가 들어갔고(dev 게이트 없음 — 전 계에서 동작), 면접 중에는 전역 LoadingModal 을 끈다. `interviewStartRequested` 를 여는 사람은 **게이트 판정 후 `state.interview = InterviewFeature.State(sessionId:)` 한 줄만** 채우면 된다 — cover 제시·종료 라우팅은 재구현 대상이 아니다. `resumeInterviewRequested(sessionId:)` 도 같은 cover 를 재사용한다.
+
+**추가 (2026-07-31 배선) — 위 표의 delegate 4건이 실제 케이스로 들어갔다.** 이름은 구현 기준: `interviewStartRequested`(StartInterview 의 [시작하기]) · `interviewInfoEditRequested`([수정하기]) · `profileRequested`(마이페이지) · `reportDetailRequested(id:)`(리포트 상세 — 인자는 아직 세션 id 가 아니라 표시 모델의 행 id, 목록 계약 확정 시 교체). `AppFeature` 는 네 케이스를 **명시로 받고 `.none` + TODO** — `resumeInterviewRequested(sessionId:)` 는 held 세션 로드가 없어 아직 만들지 않았다. 홈 내부에 남는 것: 펼침 토글(`userTappedReportRow`)·면접 시작 화면 present.
 **추가 (2026-07-31 배선) — 위 표의 delegate 4건이 실제 케이스로 들어갔다.** 이름은 구현 기준: `interviewStartRequested`(StartInterview 의 [시작하기]) · `interviewInfoEditRequested`([수정하기]) · `profileRequested`(마이페이지) · `reportDetailRequested(id:)`(리포트 상세 — 인자는 아직 세션 id 가 아니라 표시 모델의 행 id, 목록 계약 확정 시 교체). `resumeInterviewRequested(sessionId:)` 는 held 세션 로드가 없어 아직 만들지 않았다. 홈 내부에 남는 것: 펼침 토글(`userTappedReportRow`)·면접 시작 화면 present.
 
 **추가 (2026-08-02 배선) — 앞 두 건이 온보딩 위저드로 연결됐다.** 면접에 필요한 정보(직군·연차·JD·포폴)를 모으는 게 온보딩이라, `interviewStartRequested` 는 **첫 면접일 때만**(`startInterview.variant == .first`) 위저드를 `fullScreenCover` 로 연다. `.hasPortfolio` 는 수집을 건너뛰고 면접으로 가야 하는 자리라 TODO 로 남았다(`FeatureInterview` 미통합). `interviewInfoEditRequested` 는 변형과 무관하게 같은 위저드를 처음부터 태운다 — 저장된 draft 가 살아 있으면 위저드가 값을 복원한다(TTL 14일). 위저드가 닫힐 때(`finished`·`dismiss` 둘 다) AppFeature 가 `.home(.view(.onAppear))` 를 보내 홈을 재조회한다 — 중도 이탈이라도 STEP4 업로드는 끝났을 수 있어 «이전 정보 재사용» 카드가 옛 값으로 남으면 안 된다. `profileRequested`·`reportDetailRequested` 는 여전히 `.none` + TODO.
