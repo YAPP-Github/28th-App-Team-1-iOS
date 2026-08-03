@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import DomainInterviewInterface
 import SharedDesignSystemInterface
 import SwiftUI
 
@@ -184,7 +185,10 @@ public struct InterviewSessionView: View {
 private func sessionPreview(
     _ mutate: (inout InterviewSessionFeature.State) -> Void = { _ in }
 ) -> some View {
-    var state = InterviewSessionFeature.State()
+    var state = InterviewSessionFeature.State(
+        sessionId: 1,
+        summaryQuestion: SummaryQuestion(questionId: 1, ttsAudio: nil, turn: TurnInfo(turnLevel: 0, depthLevel: 0))
+    )
     state.hasStarted = true   // onAppear 의 세션 시계를 막고 상태만 본다.
     mutate(&state)
     return ZStack {
