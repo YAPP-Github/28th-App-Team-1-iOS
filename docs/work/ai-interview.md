@@ -213,7 +213,7 @@ enum Phase {
 - ✅ **종료 경로**(§3.7·§3.8) 8분 전 중도 이탈 경고 → `aborted` / 8분 후·상한·마치기 → 리포트 대기 화면 경유 → `finished`. 확정 문구는 부록 C
 - 🔴 **Speech/Recording 배선(작업 B)** — 발화 감지 기반 «답변 완료하기» 게이팅 · 침묵 10초 확정 · 사고 5초 카운트다운 · 필러 멘트 · 실녹음(A/V 캡처 — `answerAudio` 실구현). 질문 TTS·마무리 멘트 재생은 ✅(2026-08-02)
 - ✅ **서버 턴 루프(작업 C)** — 2026-08-02: `submitAnswer` 실배선(2초 mock 소멸) · 응답 endType 5종 분기 · 랩업 8:45 `isWrapUp` · 503 백오프(1s·3s×2) · 종료 경로 제출 경유(MANUAL_END/HARD_CAP/BACK_EXIT — 구 EARLY_EXIT, 2026-08-03 서버 개명) · Example 실서버 하네스(`HILIT_ACCESS_TOKEN`). 스펙 [2026-08-02-interview-api-design](../superpowers/specs/2026-08-02-interview-api-design.md)
-- ✅ **AppFeature 배선(작업 D)** — 2026-08-03: 온보딩 `finished(sessionId)` → 면접 fullScreenCover, 종료 두 신호(`finished`/`closed`)가 cover 를 닫아 홈 복귀 · 면접 중 전역 LoadingModal 억제. 스펙 [2026-08-03-interview-exit-to-home-design](../superpowers/specs/2026-08-03-interview-exit-to-home-design.md). 잔여: 홈 «면접 시작» 직접 진입(이용권 게이트 — home-account §4 미결 6-1)
+- ✅ **AppFeature 배선(작업 D)** — 2026-08-03: 온보딩 `finished(sessionId)` → 면접 fullScreenCover, 종료 두 신호(`finished`/`closed`)가 cover 를 닫고 홈 재조회 · 면접 중 전역 LoadingModal 억제. 스펙 [2026-08-03-interview-exit-to-home-design](../superpowers/specs/2026-08-03-interview-exit-to-home-design.md). 잔여: 홈 «면접 시작» 직접 진입(이용권 게이트 — home-account §4 미결 6-1)
 - 🟡 **범위 제외** — 8:00 이후 잔여 시간 인디케이터(디자인 미확정) · 5회 재질의 종료(§3.4 — PRD §10 미확정)
 
 ## 7. 기획서 "논의할 문제" → 아키텍처 영향도
@@ -248,7 +248,7 @@ v3 로 **닫힌** 논의(초안 미결 → 해소): 재시도/멱등성(전면 �
    카메라 프리뷰 ✅ (2026-07-28, DomainRecording) — 준비·세션 화면 실동작, aligning→ready 는 «최소 유지+프리뷰 해소» 이중 게이트, 이탈 시 코디네이터가 정지. backdrop 은 InterviewView 상주(2026-07-29 — 화면 교체 시 프리뷰 레이어 재생성으로 끊겨 보이던 문제 해소). 상세 [[interview#프리뷰]](lat.md/interview.md).
    마이크 캡처 ✅ (2026-07-29, DomainSpeech) — 세션 전구간 레벨(1초)·발화 감지 로그로 마이크 동작 검증, STT 는 Implementation 교체 seam 만 마련. 상세 [[interview#음성 캡처]](lat.md/interview.md).
    서버 턴 루프 ✅ (2026-08-02, 작업 C) — `submitAnswer` 실배선·endType 5종 분기·503 백오프·종료 경로 제출 경유 + 질문 TTS/마무리 멘트 재생(SpeechClient play/playStream) + Example 실서버 하네스(`HILIT_ACCESS_TOKEN`).
-   AppFeature 배선 ✅ (2026-08-03, 작업 D) — 온보딩 완주 → 면접 fullScreenCover → 종료 시 홈 복귀 왕복 성립, 면접 커버 중 전역 LoadingModal 억제.
+   AppFeature 배선 ✅ (2026-08-03, 작업 D) — 온보딩 완주 → 면접 fullScreenCover → 종료 시 홈 복귀(재조회) 왕복 성립, 면접 커버 중 전역 LoadingModal 억제.
    잔여 🔴: 발화 감지·침묵 10초·사고 5초·실녹음(`RecordingClient.startRecording`·`answerAudio` 실구현 = 작업 B). 상세 [[interview#면접 흐름]](lat.md/interview.md)
 5. **PortfolioFeature**(설정 관리) — `list`/`delete` 재사용
 6. **AppFeature 배선** ✅ Onboarding delegate(.finished(sessionId)/.dismiss) 수신 + 면접 fullScreenCover. 홈 «면접 시작» 직접 진입은 이용권 게이트 미결(home-account §4)
