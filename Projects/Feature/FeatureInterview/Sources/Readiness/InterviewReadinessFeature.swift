@@ -45,9 +45,10 @@ public struct InterviewReadinessFeature {
         }
 
         /// 질문 준비(preload) 상태 — PRD §3.2 «질문을 준비하고 있어요» 게이트. 서버 3상태만 쓴다.
+        /// READY 는 폴링 페이로드(요약 질문 — 첫 턴 TTS)를 동봉한다 — 코디네이터가 세션 화면에 시드.
         public enum QuestionPrep: Equatable, Sendable {
             case preparing
-            case ready
+            case ready(SummaryQuestion)
             case failed
         }
 
@@ -66,6 +67,12 @@ public struct InterviewReadinessFeature {
         public var isPreviewResolved = false
         /// 시작하기 탭 시 권한 미허용이면 띄우는 설정 유도 alert.
         @Presents public var alert: AlertState<Action.Alert>?
+
+        /// 시작 게이트 판정용 — READY 페이로드 유무만 본다(질문 자체는 코디네이터가 세션에 시드).
+        public var isQuestionPrepReady: Bool {
+            if case .ready = questionPrep { return true }
+            return false
+        }
 
         public init(sessionId: Int) {
             self.sessionId = sessionId
@@ -138,7 +145,7 @@ public struct InterviewReadinessFeature {
             case .view(.userTappedStart):
                 guard state.phase == .guide2 else { return .none }
                 // 질문 준비 전엔 버튼이 비활성(뷰) — 여기 도달했다면 레이스뿐이라 조용히 무시.
-                guard state.questionPrep == .ready else { return .none }
+                guard state.isQuestionPrepReady else { return .none }
                 // 진입 다이얼로그는 모달이라 여기 도달하면 권한은 전부 결정된 상태 — 동기 status 확인으로 충분.
                 let allGranted = [MediaPermission.camera, .microphone]
                     .allSatisfy { permissionClient.status($0) == .granted }
@@ -213,14 +220,15 @@ public struct InterviewReadinessFeature {
 
     /// 질문 준비 폴링 (PRD §3.2) — 사용자 재시도 버튼 없이 «시스템이 알아서 다시 시도» = 폴링 지속.
     /// 네트워크 에러도 다음 틱 재시도로 흡수하고, 최종 실패 판정은 서버 FAILED 만 신뢰한다(클라 타임아웃 없음).
+    /// READY 는 요약 질문을 동봉해 해소한다 — 페이로드 없는 READY 는 계약 위반이라 다음 틱을 계속 돈다.
     private func pollQuestionPrep(sessionId: Int) -> Effect<Action> {
         .run { send in
             while true {
-                if let status = try? await interviewClient.sessionStatus(sessionId).status {
-                    if status == .ready {
-                        return await send(.inner(.questionPrepResolved(.ready)))
+                if let status = try? await interviewClient.sessionStatus(sessionId) {
+                    if status.status == .ready, let summaryQuestion = status.summaryQuestion {
+                        return await send(.inner(.questionPrepResolved(.ready(summaryQuestion))))
                     }
-                    if status == .failed {
+                    if status.status == .failed {
                         return await send(.inner(.questionPrepResolved(.failed)))
                     }
                 }

@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import DomainInterviewInterface
 import DomainPermissionInterface
 import SharedDesignSystemInterface
 import SwiftUI
@@ -90,7 +91,7 @@ public struct InterviewReadinessView: View {
                 send(.userTappedStart)
             }
             // 질문 준비 전 로딩 연출은 «협의 가능»(PRD §3.2) — 임시로 비활성만.
-            .disabled(store.phase == .guide1 || store.questionPrep != .ready)
+            .disabled(store.phase == .guide1 || !store.isQuestionPrepReady)
         }
     }
 }
@@ -171,7 +172,9 @@ private func withBackdrop(_ content: some View) -> some View {
     var state = InterviewReadinessFeature.State(sessionId: 1)
     state.phase = .guide2
     state.hasStarted = true
-    state.questionPrep = .ready   // 질문 준비 완료라야 시작 버튼이 활성이다.
+    state.questionPrep = .ready(   // 질문 준비 완료라야 시작 버튼이 활성이다.
+        SummaryQuestion(questionId: 1, ttsAudio: nil, turn: TurnInfo(turnLevel: 0, depthLevel: 0))
+    )
     return withBackdrop(InterviewReadinessView(
         store: Store(initialState: state) {
             InterviewReadinessFeature()
@@ -184,7 +187,9 @@ private func withBackdrop(_ content: some View) -> some View {
     var state = InterviewReadinessFeature.State(sessionId: 1)
     state.phase = .guide2
     state.hasStarted = true
-    state.questionPrep = .ready
+    state.questionPrep = .ready(
+        SummaryQuestion(questionId: 1, ttsAudio: nil, turn: TurnInfo(turnLevel: 0, depthLevel: 0))
+    )
     state.alert = InterviewReadinessFeature.permissionDeniedAlert()
     return withBackdrop(InterviewReadinessView(
         store: Store(initialState: state) {

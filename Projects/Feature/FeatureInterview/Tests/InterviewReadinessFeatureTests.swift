@@ -26,13 +26,18 @@ struct InterviewReadinessFeatureTests {
         PermissionClient(status: status, request: request, openSettings: openSettings)
     }
 
-    /// sessionStatus 스텁 — 기본값은 즉시 READY.
+    /// sessionStatus 스텁 — 기본값은 즉시 READY(요약 질문 동봉 — 페이로드 없는 READY 는 해소되지 않는다).
     private func interviewClient(
         status: @escaping @Sendable (Int) async throws -> InterviewReadiness = { _ in .ready }
     ) -> InterviewClient {
         var client = InterviewClient.testValue
         client.sessionStatus = { id in
-            InterviewSessionStatus(status: try await status(id), startedAt: nil, summaryQuestion: nil)
+            let readiness = try await status(id)
+            return InterviewSessionStatus(
+                status: readiness,
+                startedAt: nil,
+                summaryQuestion: readiness == .ready ? .fixture : nil
+            )
         }
         return client
     }
@@ -42,7 +47,7 @@ struct InterviewReadinessFeatureTests {
         var state = InterviewReadinessFeature.State(sessionId: 1)
         state.phase = .guide2
         state.hasStarted = true
-        state.questionPrep = .ready
+        state.questionPrep = .ready(.fixture)
         return state
     }
 
@@ -225,7 +230,43 @@ struct InterviewReadinessFeatureTests {
         await store.send(.view(.onAppear))
         await clock.advance(by: InterviewReadinessFeature.prepPollInterval)
         await store.skipReceivedActions()
-        #expect(store.state.questionPrep == .ready)
+        #expect(store.state.questionPrep == .ready(.fixture))   // 요약 질문 페이로드까지 보존된다
+        await store.finish()
+    }
+
+    @Test("READY 인데 요약 질문이 없으면 해소하지 않고 다음 틱 폴링을 계속한다")
+    func readyWithoutSummaryQuestionKeepsPolling() async {
+        let clock = TestClock()
+        let callCount = LockIsolated(0)
+        var state = InterviewReadinessFeature.State(sessionId: 1)
+        state.phase = .guide2
+        var stubClient = InterviewClient.testValue
+        stubClient.sessionStatus = { _ in
+            let count = callCount.withValue { $0 += 1; return $0 }
+            // 첫 응답은 계약 위반(READY + 요약 질문 없음) — 해소로 치지 않고 다음 틱이 정상 READY 를 준다.
+            return InterviewSessionStatus(
+                status: .ready,
+                startedAt: nil,
+                summaryQuestion: count == 1 ? nil : .fixture
+            )
+        }
+        let store = TestStore(initialState: state) {
+            InterviewReadinessFeature()
+        } withDependencies: {
+            $0.continuousClock = clock
+            $0.permissionClient = client()
+            $0.interviewClient = stubClient
+            $0.recordingClient.startPreview = { nil }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.view(.onAppear))
+        await store.skipReceivedActions()
+        #expect(!store.state.isQuestionPrepReady)   // 첫 READY 는 페이로드가 없어 무시됐다
+
+        await clock.advance(by: InterviewReadinessFeature.prepPollInterval)
+        await store.skipReceivedActions()
+        #expect(store.state.questionPrep == .ready(.fixture))
         await store.finish()
     }
 
@@ -279,4 +320,11 @@ struct InterviewReadinessFeatureTests {
         await store.finish()
         #expect(opened.value)
     }
+}
+
+private extension SummaryQuestion {
+    /// READY 폴링 페이로드 픽스처 — 세션 시드 검증과 공유하는 최소 형태(turnLevel=0).
+    static let fixture = SummaryQuestion(
+        questionId: 1, ttsAudio: nil, turn: TurnInfo(turnLevel: 0, depthLevel: 0)
+    )
 }
