@@ -45,9 +45,10 @@ public struct InterviewReadinessFeature {
         }
 
         /// 질문 준비(preload) 상태 — PRD §3.2 «질문을 준비하고 있어요» 게이트. 서버 3상태만 쓴다.
+        /// READY 는 폴링 페이로드(요약 질문 — 첫 턴 TTS)를 동봉한다 — 코디네이터가 세션 화면에 시드.
         public enum QuestionPrep: Equatable, Sendable {
             case preparing
-            case ready
+            case ready(SummaryQuestion)
             case failed
         }
 
@@ -67,6 +68,12 @@ public struct InterviewReadinessFeature {
         /// 시작하기 탭 시 권한 미허용이면 띄우는 설정 유도 alert.
         @Presents public var alert: AlertState<Action.Alert>?
 
+        /// 시작 게이트 판정용 — READY 페이로드 유무만 본다(질문 자체는 코디네이터가 세션에 시드).
+        public var isQuestionPrepReady: Bool {
+            if case .ready = questionPrep { return true }
+            return false
+        }
+
         public init(sessionId: Int) {
             self.sessionId = sessionId
         }
@@ -81,6 +88,8 @@ public struct InterviewReadinessFeature {
         /// 사용자 입력·생명주기. View 의 send(...) 로만 방출된다.
         public enum View: Equatable, Sendable {
             case onAppear
+            /// 좌상단 뒤로가기 — 면접 흐름을 벗어난다(모달 없이 즉시, 아직 면접 전이라 되물을 게 없다).
+            case userTappedBack
             case userTappedStart
         }
 
@@ -107,6 +116,8 @@ public struct InterviewReadinessFeature {
         /// 부모(코디네이터) 통보. 부모는 이것만 매칭한다 (D1).
         @CasePathable
         public enum Delegate: Equatable, Sendable {
+            /// 뒤로가기 탭 — 면접 흐름 이탈. 캡처 정지·상위 통보는 코디네이터가 처리한다.
+            case backRequested
             /// 면접 시작하기 탭(권한 허용 확인 후) — 세션 화면 전환은 코디네이터가 처리.
             case startRequested
             /// 질문 준비 최종 실패(서버 FAILED) — 실패 화면 전환은 코디네이터가 처리. 재시도 버튼 없음(PRD §3.2).
@@ -135,10 +146,19 @@ public struct InterviewReadinessFeature {
                     scheduleAdvance(after: Self.aligningHold)
                 )
 
+            case .view(.userTappedBack):
+                // 아직 면접이 시작되지 않았다(질문 재생 전·답변 0개) — 되묻는 모달 없이 바로 흐름을 나간다.
+                // 진행 중인 phase 타이머·질문 준비 폴링은 여기서 끊는다(코디네이터는 장치만 정지한다).
+                return .merge(
+                    .cancel(id: CancelID.phaseTimer),
+                    .cancel(id: CancelID.prepPolling),
+                    .send(.delegate(.backRequested))
+                )
+
             case .view(.userTappedStart):
                 guard state.phase == .guide2 else { return .none }
                 // 질문 준비 전엔 버튼이 비활성(뷰) — 여기 도달했다면 레이스뿐이라 조용히 무시.
-                guard state.questionPrep == .ready else { return .none }
+                guard state.isQuestionPrepReady else { return .none }
                 // 진입 다이얼로그는 모달이라 여기 도달하면 권한은 전부 결정된 상태 — 동기 status 확인으로 충분.
                 let allGranted = [MediaPermission.camera, .microphone]
                     .allSatisfy { permissionClient.status($0) == .granted }
@@ -213,14 +233,15 @@ public struct InterviewReadinessFeature {
 
     /// 질문 준비 폴링 (PRD §3.2) — 사용자 재시도 버튼 없이 «시스템이 알아서 다시 시도» = 폴링 지속.
     /// 네트워크 에러도 다음 틱 재시도로 흡수하고, 최종 실패 판정은 서버 FAILED 만 신뢰한다(클라 타임아웃 없음).
+    /// READY 는 요약 질문을 동봉해 해소한다 — 페이로드 없는 READY 는 계약 위반이라 다음 틱을 계속 돈다.
     private func pollQuestionPrep(sessionId: Int) -> Effect<Action> {
         .run { send in
             while true {
-                if let status = try? await interviewClient.sessionStatus(sessionId).status {
-                    if status == .ready {
-                        return await send(.inner(.questionPrepResolved(.ready)))
+                if let status = try? await interviewClient.sessionStatus(sessionId) {
+                    if status.status == .ready, let summaryQuestion = status.summaryQuestion {
+                        return await send(.inner(.questionPrepResolved(.ready(summaryQuestion))))
                     }
-                    if status == .failed {
+                    if status.status == .failed {
                         return await send(.inner(.questionPrepResolved(.failed)))
                     }
                 }

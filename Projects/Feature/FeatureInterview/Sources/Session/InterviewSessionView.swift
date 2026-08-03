@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import DomainInterviewInterface
 import SharedDesignSystemInterface
 import SwiftUI
 
@@ -20,26 +21,24 @@ public struct InterviewSessionView: View {
     // 카메라 backdrop 은 InterviewView(코디네이터 뷰) 상주 — 화면 교체 시 프리뷰 레이어 재생성 방지.
     // 모달 딤의 배경(카메라) 블러도 InterviewView 가 세션 상태를 읽어 함께 건다.
     public var body: some View {
-        ZStack {
-            CameraGuideFrame()
-
-            VStack(spacing: 0) {
-                timerChip
-                    .padding(.top, 51)
-                Spacer(minLength: 0)
-                bottomBand
-            }
+        VStack(spacing: 0) {
+            timerChip
+                // 시간 칩은 Figma y94 — 네비바(h44)가 43~87 을 먹으므로 남는 값 7 (94 − 87).
+                .padding(.top, 7)
+            Spacer(minLength: 0)
+            bottomBand
         }
-        .overlay(alignment: .topLeading) {
-            // 이탈 동선 표기는 «협의 가능»(PRD §3.7) — 임시 X. 시안 확정 시 교체.
-            Button {
-                send(.userTappedClose)
-            } label: {
-                Image.Cancel.default24
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, .ds(.p20))
-            .frame(height: 54)
+        // 좌상단 뒤로가기 — 글리프만 X 에서 `<` 로 바뀌고 배관은 그대로다(Figma «[Part2. 면접 녹화]»
+        // 전 프레임 공통, ExitConfirm·이탈 경고 모달은 시안에 살아 있다). 8:00 전이면 이탈 경고,
+        // 8:00 후면 종료 확인 모달로 갈리는 판정은 그대로 리듀서(`userTappedClose`)가 소유한다.
+        .hilitPresentedNavigationBar(
+            surface: .dark,
+            leading: .back,
+            onClose: { send(.userTappedClose) }
+        )
+        // 브래킷은 네비바 inset 밖 — 안에 두면 콘텐츠가 44 밀려 327 정방형 중심이 22 내려간다.
+        .background {
+            CameraGuideFrame()
         }
         // 카메라 위 다크 판 — 하위 `.mini` 버튼 팔레트가 이 선언을 따라 전환된다 (design/component.md).
         .hilitSurface(.dark)
@@ -184,7 +183,10 @@ public struct InterviewSessionView: View {
 private func sessionPreview(
     _ mutate: (inout InterviewSessionFeature.State) -> Void = { _ in }
 ) -> some View {
-    var state = InterviewSessionFeature.State()
+    var state = InterviewSessionFeature.State(
+        sessionId: 1,
+        summaryQuestion: SummaryQuestion(questionId: 1, ttsAudio: nil, turn: TurnInfo(turnLevel: 0, depthLevel: 0))
+    )
     state.hasStarted = true   // onAppear 의 세션 시계를 막고 상태만 본다.
     mutate(&state)
     return ZStack {
