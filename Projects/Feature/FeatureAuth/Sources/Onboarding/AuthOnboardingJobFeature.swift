@@ -42,6 +42,7 @@ public struct AuthOnboardingJobFeature {
         /// 사용자 입력·생명주기. View 의 send(...) 로만 방출된다.
         public enum View: Equatable, Sendable {
             case onAppear
+            case userTappedBack
             case userTappedClose
             case userTappedJob(Job.ID)
             case userTappedContinue
@@ -59,6 +60,8 @@ public struct AuthOnboardingJobFeature {
         public enum Delegate: Equatable, Sendable {
             /// 직군 선택 완료 — 다음(연차)으로. jobRole 은 서버 enum 값(예: "BACKEND").
             case continueRequested(jobRole: String)
+            /// 뒤로(하단 «이전으로») — 코디네이터가 스택을 pop.
+            case backRequested
             /// 가입 온보딩 이탈(X) — 처리는 코디네이터 몫.
             case closeRequested
         }
@@ -95,6 +98,9 @@ public struct AuthOnboardingJobFeature {
                 await send(.inner(.jobsLoadFailed))
             }
             .cancellable(id: CancelID.jobs, cancelInFlight: true)
+
+        case .userTappedBack:
+            return .send(.delegate(.backRequested))
 
         case .userTappedClose:
             return .send(.delegate(.closeRequested))
