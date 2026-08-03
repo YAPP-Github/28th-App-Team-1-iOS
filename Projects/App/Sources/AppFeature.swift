@@ -6,6 +6,8 @@
 //
 
 import ComposableArchitecture
+import CoreCommonInterface
+import CoreNetworkInterface
 import DomainAppVersionInterface
 import DomainAuthInterface
 import DomainConsentInterface
@@ -58,6 +60,8 @@ struct AppFeature {
 
     enum Action: BindableAction {
         case onAppear
+        /// 첫 실행 정리가 끝났다 — 이제 세션 복구 판정을 시작해도 된다.
+        case firstLaunchResolved
         /// Splash 판정 실패 후 재시도.
         case retryLaunchRouting
         /// 버전 게이트 판정 결과 — 안내가 필요한 FORCE·OPTIONAL 만 도달한다.
@@ -102,8 +106,10 @@ struct AppFeature {
     @Dependency(\.appVersionClient) var appVersionClient
     @Dependency(\.authClient) var authClient
     @Dependency(\.consentClient) var consentClient
+    @Dependency(\.firstLaunchStore) var firstLaunchStore
     @Dependency(\.onboardingDraftStore) var draftStore
     @Dependency(\.openURL) var openURL
+    @Dependency(\.tokenStore) var tokenStore
 
     var body: some ReducerOf<Self> {
         BindingReducer()
@@ -119,6 +125,14 @@ struct AppFeature {
                 // dev 계에서만 Home 온보딩 진입·디버그 로그아웃 버튼을 노출한다.
                 state.home.showsOnboardingEntry = AppEnvironment.isDev
                 state.home.showsDebugLogout = AppEnvironment.isDev
+                // 잔존 정리를 **판정보다 먼저** 끝낸다 — 순서를 지키려 판정을 effect 안에서 잇지 않고
+                // 별도 액션으로 갈라 놓는다.
+                return .run { send in
+                    clearIfFirstLaunch()
+                    await send(.firstLaunchResolved)
+                }
+
+            case .firstLaunchResolved:
                 return resolveLaunchRouting()
 
             case .retryLaunchRouting:
@@ -194,10 +208,10 @@ struct AppFeature {
                 // TODO: 리포트 상세(r1/최종) 제시 — `InterviewReportFeature` 통합 후 sessionId 로 배선.
                 return .none
             case .home(.delegate(.logoutRequested)):
-                // 서버 로그아웃(+토큰 Keychain 삭제)·온보딩 draft(UserDefaults) 삭제. 실패해도 로컬 정리는 진행.
+                // 서버 로그아웃 후 로컬 정리. 서버 호출이 실패해도 로컬은 그대로 지운다.
                 return .run { send in
                     try? await authClient.logout()
-                    draftStore.clear()
+                    clearLocalData()
                     await send(.sessionCleared)
                 }
             case .home:
@@ -247,6 +261,27 @@ struct AppFeature {
             OnboardingFeature()
         }
         .ifLet(\.$updateAlert, action: \.updateAlert)
+    }
+
+    // MARK: - 첫 실행 정리 → [[app#첫 실행 정리]]
+
+    /// 이 설치의 첫 실행이면 잔존 로컬 데이터를 지운다 — 앱을 지워도 Keychain 은 남기 때문이다.
+    ///
+    /// 남는 게 토큰뿐이라 정리를 안 하면 재설치 직후가 «로그인된 상태» 로 판정된다. 삭제와 함께
+    /// 사라지는 UserDefaults 쪽(draft)은 이미 비어 있어 지워도 손해가 없다 — 판정 하나로 둘 다 맞춘다.
+    ///
+    /// 마커는 **정리 뒤에** 찍는다. 사이에서 앱이 죽으면 다음 실행이 다시 첫 실행으로 판정돼 정리를
+    /// 마치는데, 먼저 찍으면 지우다 만 상태로 굳는다.
+    private func clearIfFirstLaunch() {
+        guard firstLaunchStore.isFirstLaunch() else { return }
+        clearLocalData()
+        firstLaunchStore.markLaunched()
+    }
+
+    /// 로컬 저장소 정리 — 첫 실행 정리와 로그아웃이 공유한다. 서버 호출은 하지 않는다.
+    private func clearLocalData() {
+        try? tokenStore.clear()
+        draftStore.clear()
     }
 
     // MARK: - Splash 세션 복구 판정 → [[auth#가입 플로우]]
