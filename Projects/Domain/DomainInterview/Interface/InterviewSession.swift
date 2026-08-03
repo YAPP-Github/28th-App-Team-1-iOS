@@ -9,13 +9,10 @@ import Foundation
 
 // MARK: - 세션 생성 입력
 
-/// 면접 세션 생성 입력 — Setup 위저드 산출물. (→ docs/work/ai-interview.md §4)
+/// 면접 세션 생성 입력 — Setup 위저드 산출물. 직군·연차는 보내지 않는다 — 서버가 회원 프로필
+/// 스냅샷을 사용한다(미등록이면 `USER_PROFILE_NOT_REGISTERED`). (→ docs/work/ai-interview.md §4)
 public struct InterviewConfig: Equatable, Sendable {
     public var portfolioId: UUID
-    /// 서버 직군 Enum 값 (`JobClient.jobs` 의 `jobRole`, 예: "BACKEND") — 클라이언트에 직군 Enum 을 중복 정의하지 않는다
-    public var jobRole: String
-    /// 연차(년 단위)
-    public var careerYears: Int
     /// JD 입력 — url/text 상호 배타 (서버 검증)
     public var jobDescription: JobDescriptionInput?
     /// 집중 프로젝트 설명 (10~300자, 포트폴리오 연관성 임베딩 검사 — `FREETEXT_NOT_RELEVANT`)
@@ -23,14 +20,10 @@ public struct InterviewConfig: Equatable, Sendable {
 
     public init(
         portfolioId: UUID,
-        jobRole: String,
-        careerYears: Int,
         jobDescription: JobDescriptionInput? = nil,
         freeText: String? = nil
     ) {
         self.portfolioId = portfolioId
-        self.jobRole = jobRole
-        self.careerYears = careerYears
         self.jobDescription = jobDescription
         self.freeText = freeText
     }
