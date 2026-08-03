@@ -75,4 +75,21 @@ final class ServerEnvelopeTests: XCTestCase {
         // 서버 LocalDateTime 은 KST 가정 — "2026-07-06T10:00:04"(KST) == "2026-07-06T01:00:04Z"(UTC)
         XCTAssertEqual(decoded.local, decoded.iso)
     }
+
+    func test_JSONDecoder_api_소수점초_LocalDateTime을_초단위로_잘라_디코딩한다() throws {
+        struct Timestamps: Decodable {
+            let micro: Date
+            let milli: Date
+            let plain: Date
+        }
+        // Jackson 은 나노초가 있으면 소수점 초를 붙인다(자릿수 가변) — 2026-08-02 포트폴리오 uploadedAt 실응답 대응.
+        let json = Data(#"""
+        {"micro": "2026-07-06T10:00:04.123456", "milli": "2026-07-06T10:00:04.123", "plain": "2026-07-06T10:00:04"}
+        """#.utf8)
+
+        let decoded = try JSONDecoder.api.decode(Timestamps.self, from: json)
+
+        XCTAssertEqual(decoded.micro, decoded.plain)
+        XCTAssertEqual(decoded.milli, decoded.plain)
+    }
 }
