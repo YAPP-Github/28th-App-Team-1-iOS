@@ -287,4 +287,79 @@ struct OnboardingPortfolioUploadFeatureTests {
         await store.send(.view(.userTappedClose))
         await store.receive(\.delegate.closeRequested)
     }
+
+    // MARK: - 기존 포트폴리오 (2회차 이상)
+
+    @Test("진입 조회가 READY 포폴을 찾으면 확인 모달을 띄운다")
+    func onAppearFindsExistingReadyPortfolio() async {
+        let store = TestStore(
+            initialState: OnboardingPortfolioUploadFeature.State(checksExisting: true)
+        ) {
+            OnboardingPortfolioUploadFeature()
+        } withDependencies: {
+            $0.portfolioClient.list = { [Self.readyPortfolio] }
+        }
+
+        await store.send(.view(.onAppear)) {
+            $0.checksExisting = false
+        }
+        await store.receive(\.inner.existingPortfolioFound) {
+            $0.existingPortfolio = .init(portfolioId: Self.portfolioId, fileName: "포트폴리오.pdf")
+        }
+    }
+
+    @Test("READY 가 아닌 포폴만 있으면 모달 없이 빈 판 그대로다")
+    func onAppearIgnoresNonReadyPortfolio() async {
+        let processing = Portfolio(
+            portfolioId: Self.portfolioId,
+            fileName: "포트폴리오.pdf",
+            fileSize: nil,
+            pageCount: nil,
+            status: .processing,
+            uploadedAt: nil
+        )
+        let store = TestStore(
+            initialState: OnboardingPortfolioUploadFeature.State(checksExisting: true)
+        ) {
+            OnboardingPortfolioUploadFeature()
+        } withDependencies: {
+            $0.portfolioClient.list = { [processing] }
+        }
+
+        await store.send(.view(.onAppear)) {
+            $0.checksExisting = false
+        }
+    }
+
+    @Test("조회가 꺼져 있으면 onAppear 는 아무것도 하지 않는다")
+    func onAppearSkipsWhenCheckDisabled() async {
+        let store = TestStore(initialState: OnboardingPortfolioUploadFeature.State()) {
+            OnboardingPortfolioUploadFeature()
+        }
+
+        await store.send(.view(.onAppear))
+    }
+
+    @Test("확인 모달 «예» 는 기존 포폴을 완료 상태로 앉힌다")
+    func useExistingMovesToUploaded() async {
+        var initialState = OnboardingPortfolioUploadFeature.State()
+        initialState.existingPortfolio = .init(portfolioId: Self.portfolioId, fileName: "포트폴리오.pdf")
+        let store = TestStore(initialState: initialState) {
+            OnboardingPortfolioUploadFeature()
+        }
+
+        await store.send(.view(.userTappedUseExisting)) {
+            $0.existingPortfolio = nil
+            $0.upload = .uploaded(fileName: "포트폴리오.pdf", portfolioId: Self.portfolioId)
+        }
+    }
+
+    private static let readyPortfolio = Portfolio(
+        portfolioId: portfolioId,
+        fileName: "포트폴리오.pdf",
+        fileSize: nil,
+        pageCount: nil,
+        status: .ready,
+        uploadedAt: nil
+    )
 }

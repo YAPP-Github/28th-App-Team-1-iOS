@@ -51,6 +51,7 @@ struct OnboardingDraftRestoreTests {
             $0.didAttemptRestore = true
             $0.data = draft.data
             $0.jobDescriptionUpload = .init(step: 1, totalSteps: self.total, restoring: .link("https://job.com/1"))
+            $0.didCheckExistingPortfolio = true
             $0.path.append(.portfolioUpload(.init(
                 step: 2, totalSteps: self.total,
                 upload: .uploaded(fileName: "포폴.pdf", portfolioId: portfolioId)
@@ -116,7 +117,8 @@ struct OnboardingDraftRestoreTests {
             $0.didAttemptRestore = true
             $0.data = draft.data
             $0.jobDescriptionUpload = .init(step: 1, totalSteps: self.total, restoring: nil)
-            $0.path.append(.portfolioUpload(.init(step: 2, totalSteps: self.total)))
+            $0.didCheckExistingPortfolio = true
+            $0.path.append(.portfolioUpload(.init(step: 2, totalSteps: self.total, checksExisting: true)))
         }
 
         // 2) 뒤로가기로 루트까지 pop → path 다시 빔
@@ -142,7 +144,8 @@ struct OnboardingDraftRestoreTests {
 
         await store.send(.jobDescriptionUpload(.delegate(.continueRequested(.link("https://job.com/1"))))) {
             $0.data.jd = .link("https://job.com/1")
-            $0.path.append(.portfolioUpload(.init(step: 2, totalSteps: self.total)))
+            $0.didCheckExistingPortfolio = true
+            $0.path.append(.portfolioUpload(.init(step: 2, totalSteps: self.total, checksExisting: true)))
         }
         await store.finish()
         #expect(saved.value?.data.jd == .link("https://job.com/1"))

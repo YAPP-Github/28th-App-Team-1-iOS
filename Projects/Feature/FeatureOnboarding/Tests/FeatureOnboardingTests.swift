@@ -36,7 +36,8 @@ struct OnboardingCoordinatorTests {
         let store = makeStore(initialState())
 
         await store.send(.jobDescriptionUpload(.delegate(.continueRequested(nil)))) {
-            $0.path.append(.portfolioUpload(.init(step: 2, totalSteps: self.total)))
+            $0.didCheckExistingPortfolio = true
+            $0.path.append(.portfolioUpload(.init(step: 2, totalSteps: self.total, checksExisting: true)))
         }
     }
 
@@ -46,7 +47,8 @@ struct OnboardingCoordinatorTests {
 
         await store.send(.jobDescriptionUpload(.delegate(.continueRequested(.link("https://job.com/1"))))) {
             $0.data.jd = .link("https://job.com/1")
-            $0.path.append(.portfolioUpload(.init(step: 2, totalSteps: self.total)))
+            $0.didCheckExistingPortfolio = true
+            $0.path.append(.portfolioUpload(.init(step: 2, totalSteps: self.total, checksExisting: true)))
         }
     }
 

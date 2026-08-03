@@ -19,6 +19,17 @@ import PDFKit
 /// 완료 결과는 delegate(.continueRequested(portfolioId:))로 코디네이터에 올린다.
 @Reducer
 public struct OnboardingPortfolioUploadFeature {
+    /// 서버에 이미 등록돼 있어 그대로 쓸 수 있는 포트폴리오 — 확인 모달이 쓰는 최소 값.
+    public struct ExistingPortfolio: Equatable, Sendable {
+        public let portfolioId: UUID
+        public let fileName: String
+
+        public init(portfolioId: UUID, fileName: String) {
+            self.portfolioId = portfolioId
+            self.fileName = fileName
+        }
+    }
+
     /// 업로드 진행 하위 상태 — 화면 전환 없이 리스트 영역 렌더만 바꾼다.
     public enum UploadState: Equatable, Sendable {
         /// 대기 — 아직 첨부된 파일 없음 (`FileUpload(.empty)` 점선 판).
@@ -68,15 +79,27 @@ public struct OnboardingPortfolioUploadFeature {
         /// 삭제 확인 모달 표시 여부 — 파일 행 X 가 켜고, «네»/«아니요» 가 끈다.
         /// 삭제 API 는 «네» 에서만 나간다(X 만으로는 서버 파일이 그대로다).
         public var isDeleteConfirmPresented = false
+        /// 진입 시 서버에 등록된 포트폴리오를 조회할지 — 코디네이터가 **위저드 수명당 1회**만 켠다.
+        /// 켜진 채 `onAppear` 를 한 번 받으면 스스로 끈다(뷰 `onAppear` 는 여러 번 온다).
+        var checksExisting: Bool
+        /// 조회로 찾은 기존 READY 포트폴리오 — 확인 모달이 떠 있는 동안만 들고 있다.
+        /// nil 이 곧 «모달 없음» 이다(별도 표시 플래그를 두면 둘이 어긋난다).
+        var existingPortfolio: ExistingPortfolio?
 
         public var isContinueEnabled: Bool {
             if case .uploaded = upload { true } else { false }
         }
 
-        public init(step: Int = 2, totalSteps: Int = 3, upload: UploadState = .idle) {
+        public init(
+            step: Int = 2,
+            totalSteps: Int = 3,
+            upload: UploadState = .idle,
+            checksExisting: Bool = false
+        ) {
             self.step = step
             self.totalSteps = totalSteps
             self.upload = upload
+            self.checksExisting = checksExisting
         }
     }
 
@@ -90,6 +113,8 @@ public struct OnboardingPortfolioUploadFeature {
         @CasePathable
         public enum View: BindableAction, Equatable, Sendable {
             case binding(BindingAction<State>)
+            /// 진입 — 위저드 수명당 1회 기존 포트폴리오를 조회한다(`checksExisting`).
+            case onAppear
             case userTappedClose
             case userTappedBack
             case userTappedContinue
@@ -100,6 +125,8 @@ public struct OnboardingPortfolioUploadFeature {
             case userTappedDeleteConfirm
             /// 삭제 확인 모달 «아니요» — 모달만 닫고 파일은 그대로 둔다.
             case userTappedDeleteCancel
+            /// 기존 포트폴리오 확인 모달 «예» — 그 포폴을 완료 상태로 앉힌다.
+            case userTappedUseExisting
             /// fileImporter 선택 완료 — security-scoped URL.
             case fileSelected(URL)
             /// fileImporter 자체 실패 (파일 접근 불가 등).
@@ -115,6 +142,9 @@ public struct OnboardingPortfolioUploadFeature {
             case statusPolled(PortfolioProcessing)
             /// 파일 읽기·용량 초과·네트워크 등 클라이언트 측 실패.
             case uploadFailed(message: String)
+            /// 진입 조회에서 READY 포트폴리오를 찾았다 — 확인 모달을 띄운다.
+            /// 없거나 조회 실패면 이 액션 자체가 오지 않는다(빈 판 그대로 = 기존 흐름).
+            case existingPortfolioFound(ExistingPortfolio)
         }
 
         /// 코디네이터(OnboardingFeature) 통보. 부모는 이것만 매칭한다 (D1).
@@ -140,6 +170,8 @@ public struct OnboardingPortfolioUploadFeature {
     static let pageExceededMessage = "페이지가 너무 많아요.\n30페이지 이하 PDF로 올려주세요."
     /// 암호 PDF 문구 — PRD S2 확정 (열기 암호 걸린 PDF 는 파싱 불가).
     static let encryptedFileMessage = "암호가 걸린 PDF는 열 수 없어요.\n암호를 푼 PDF로 올려주세요."
+    /// 서버 목록이 파일명을 안 줄 때의 표시명 — 완료 판은 이름 없이 그릴 수 없다(원본 확장자 추정도 못 한다).
+    static let unnamedPortfolioFileName = "포트폴리오"
     /// 업로드 상한 20MB — Figma 443:9584 «1개 파일, 최대 20Mb까지 가능합니다» · 서버 검증 FILE_TOO_LARGE.
     static let maxFileSizeBytes = 20 * 1024 * 1024
     /// 페이지 상한 30p — PRD S2 · 서버 검증 PAGE_COUNT_EXCEEDED. 클라 선검증(서버 실측 재검증).
@@ -173,6 +205,28 @@ public struct OnboardingPortfolioUploadFeature {
     private func reduceView(_ state: inout State, _ action: Action.View) -> Effect<Action> {
         switch action {
         case .binding:
+            return .none
+
+        // 2회차 이상(= 재사용할 READY 포폴 보유 — docs/work/home-account.md §3 «회차 분기 판정 키») 진입.
+        // 위저드가 STEP2 를 처음 세울 때만 켜지고, 이미 첨부된 판(복원 포함)에는 끼어들지 않는다.
+        case .onAppear:
+            guard state.checksExisting, case .idle = state.upload else { return .none }
+            state.checksExisting = false
+            return .run { send in
+                // 실패·부재는 조용히 넘긴다 — 못 찾으면 그냥 평소의 빈 판이라 알릴 게 없다.
+                guard let existing = try? await portfolioClient.list().first(where: { $0.status == .ready })
+                else { return }
+                await send(.inner(.existingPortfolioFound(ExistingPortfolio(
+                    portfolioId: existing.portfolioId,
+                    fileName: existing.fileName ?? Self.unnamedPortfolioFileName
+                ))))
+            }
+
+        case .userTappedUseExisting:
+            guard let existing = state.existingPortfolio else { return .none }
+            state.existingPortfolio = nil
+            // 방금 서버에서 READY 를 확인한 건이라 재등록·폴링 없이 곧장 완료 판이다.
+            state.upload = .uploaded(fileName: existing.fileName, portfolioId: existing.portfolioId)
             return .none
 
         case .userTappedClose:
@@ -266,6 +320,10 @@ public struct OnboardingPortfolioUploadFeature {
 
         case let .uploadFailed(message):
             state.upload = .failed(message: message)
+            return .none
+
+        case let .existingPortfolioFound(existing):
+            state.existingPortfolio = existing
             return .none
         }
     }
