@@ -30,10 +30,10 @@ Part 2 «10분 음성 면접» 화면군 (`FeatureInterview`, Figma «[2] Interv
 
 - `State(sessionId:)` 로 온보딩 분석이 만든 세션 id 를 들고 있다 — 준비 화면의 질문 준비 폴링과, 실패 후 «다시 시작하기» 재진입이 같은 세션을 쓴다.
 - 시작 전환(startRequested)은 준비 화면의 READY 페이로드(요약 질문)와 프리뷰 핸들을 `InterviewSessionFeature.State(sessionId:summaryQuestion:previewHandle:)` 로 시드한다 — 세션이 첫 턴을 바로 재생한다.
-- 알려진 제약: STT_RESET 후 «다시 시작하기» 는 같은 sessionId 로 재진입하지만 세션은 서버에서 무효화돼 거부된다 — 새 세션 생성 동선은 작업 D·Resume 몫(Example 은 부트스트랩 재실행으로 갈음).
+- 알려진 제약: STT_RESET 후 «다시 시작하기» 는 같은 sessionId 로 재진입하지만 세션은 서버에서 무효화돼 거부된다 — 새 세션 생성 동선은 미해결(Example 은 부트스트랩 재실행으로 갈음).
 - 세션 `finished` 는 상위로 바로 올리지 않는다 — [[interview#리포트 대기]] 를 먼저 띄우고, 거기서 온 `goHomeRequested` 만 `delegate(.finished)` 로 승격한다. 세션 `aborted`·실패 화면 `closeRequested` 는 `delegate(.closed)`.
 - 준비 `prepFailed` → 실패 화면(kind: questionPrep). 실패 `restartRequested`(STT 전용) → 같은 sessionId 로 준비 화면 재진입.
-- AppFeature 배선(세션 payload — 온보딩 산출 sessionId 주입)은 미착수, 현재는 Example 이 주입 → [ai-interview](../docs/work/ai-interview.md) §2.
+- AppFeature 배선 완료(2026-08-03) — 온보딩 `finished(sessionId)` 가 `InterviewFeature.State(sessionId:)` 로 커버를 열고, 종료 두 신호는 모두 커버를 닫아 홈으로 돌린다. 목적지가 같아도 `.finished`/`.closed` 를 합치지 않는 건 홈 리포트 목록 갱신이 정상 종료에만 필요해서다 → [[app#Cross-feature Routing]].
 
 ## 권한
 
@@ -52,11 +52,13 @@ Part 2 «10분 음성 면접» 화면군 (`FeatureInterview`, Figma «[2] Interv
 Figma 2479:7569 · 2514:12754 · 2514:12799 · 2529:458.
 
 - 진입 시 카메라·마이크 권한을 요청만 하고([[interview#권한]]) 거부여도 가이드는 조용히 진행 — 알리는 시점은 «면접 시작하기» 탭이다.
+- 좌상단 뒤로가기(2026-08-03 시안, 세션 화면과 같은 DS 네비바)는 **되묻는 모달 없이 즉시** `delegate(.backRequested)` → 코디네이터가 장치 정지 후 `closed`. 아직 질문 재생 전·답변 0개라 확인할 손실이 없다 — 8:00 전 이탈 경고는 «면접 진행 중» 전용이다. 서버 세션은 남지만 재진입 동선은 홈의 «이어서 진행» 몫([home-account](../docs/work/home-account.md) §4).
 - 질문 준비(preload, PRD §3.2)는 `InterviewClient.sessionStatus` 3초 폴링(온보딩 분석 스텝과 같은 주기). READY/FAILED 에서 스스로 멈추고, 그 사이 네트워크 에러는 `try?` 로 삼켜 다음 틱 재시도 — «시스템이 알아서 다시 시도» 가 폴링 지속이라 클라 타임아웃도 재시도 버튼도 없다. 최종 실패는 서버 FAILED 만 신뢰한다. READY 는 요약 질문 동봉 시에만 해소(`.ready(SummaryQuestion)` — 세션 시드용) — 페이로드 없는 READY 는 계약 위반으로 보고 폴링을 계속한다.
 - 준비 중(preparing)엔 시작 버튼 비활성 — 리듀서도 `questionPrep == .ready` 를 재확인해 레이스를 무시한다. FAILED → delegate(.prepFailed) → 실패 화면(questionPrep).
 - 시작하기 탭에 권한 미허용 → 설정 유도 alert: [설정으로 이동]=`openSettings` / [닫기]=alert 만 닫고 화면 유지 — 시작 버튼 재탭이 재시도 지점(막다른 길 없음). 설정에서 권한을 바꾸면 iOS 가 앱을 종료시켜 onAppear 부터 재진입하므로 별도 복귀 재확인은 두지 않는다. 탭 시점엔 권한이 전부 결정된 상태(진입 다이얼로그가 모달)라 status 동기 확인으로 판정한다.
 - aligning→ready 는 «최소 유지 시간(3초) + 프리뷰 해소» 이중 게이트 — 실패(권한 거부·시뮬레이터)도 해소로 치고 placeholder 로 진행한다(화면을 막지 않음, 게이트는 시작 탭). ready 이후는 시간 연출.
 - 브래킷 프레임은 DS 로 승격됐다 — `SharedDesignSystem` 의 `CameraGuideFrame`(`Interface/Component/CameraGuideFrame.swift`), 화면은 문구만 넘긴다. 이것과 하단 티커는 에셋 없이 코드 드로잉이고, 블렌드 스위치는 [[interview#프리뷰]].
+- 하단 티커(문구 3연속)는 화면보다 넓어 **`overlay` 로 얹는다** — `.fixedSize().frame(maxWidth: .infinity)` 로 두면 넘친 이상적 폭이 부모로 새어 화면 좌표계가 넓어지고, 그 위 네비바가 왼쪽으로 밀려 뒤로가기가 가장자리에 붙는다(`.clipped()` 는 그림만 자를 뿐 레이아웃은 못 되돌린다). 높이·배경은 문구 «한 벌»이 잡는다. 2026-08-03 실기 확인 후 수정.
 
 ## 프리뷰
 
@@ -92,7 +94,8 @@ Figma: 2529:6309 · 2537:9397 · 2638:1750 · 2537:9442 · 2537:9525.
 - 종료 경로도 제출을 경유한다 — 마치기=MANUAL_END·12:00 상한=HARD_CAP(제출 완료까지 processingAnswer 로 대기, 제출 비행 중 상한 도달은 응답 수신 후 HARD_CAP 마감). 8분 전 이탈은 EARLY_EXIT 최선 노력 1회 제출(실패해도 이탈 진행). 503 은 같은 제출을 1s·3s 백오프로 최대 2회 재시도, `SESSION_ALREADY_ENDED`(409)는 리포트 대기로.
 - 질문 재생: 요약 질문(턴 0)은 READY 동봉 mp3(`play`), 이후 질문은 `questionAudioStream`→`playStream`(chunked). 재생 실패는 같은 questionId 1회 재시도(TTS 재생성) 후 network 실패. 시간 마킹(questionAudioStart/End·answerStart)은 세션 시계 스냅샷 — 실녹화(작업 B) 전 근사값.
 - «12분» 숫자는 어떤 화면·문구에도 노출하지 않는다(§3.10 — 사용자에겐 «약 10분»). 경과 시계는 10분을 넘어도 m:ss 로 계속 오른다.
-- 좌상단 X 는 8:00 전이면 중도 이탈 경고(«다음에 면접을 다시 진행할까요?», Figma modal 3907:890 — 아이콘 없음, «면접 계속하기»가 강조(검정) 쪽, 차감 사실만·리포트 언급 금지), 8:00 후면 종료 확인 모달(Figma 2555:7696)로 갈린다. 둘 다 destination 없이 Bool 플래그이고 같은 모달 컴포넌트를 쓴다 — 뷰가 두 Bool 을 enum 하나로 접어 DS `.hilitModal(item:)` 로 표출한다(종료 확인 우선, 동시 true 방어). 8:00 해금 틱이 열려 있던 경고를 닫아 «경고를 띄운 채 해금» 레이스를 막는다.
+- 좌상단은 **뒤로가기 `<`**(2026-08-03 시안 — 「Part2. 면접 녹화」 전 프레임 공통). DS `.hilitPresentedNavigationBar(surface: .dark, leading: .back)` — cover 라 present 판, 카메라 영상이 바닥이라 `.dark`(흰 글리프). 글리프만 X 에서 바뀌고 **배관은 그대로**다(아래 분기 유지). 브래킷(`CameraGuideFrame`)은 네비바 `safeAreaInset` **밖**(`.background`)에 둔다 — 안에 두면 콘텐츠가 44 밀려 327 정방형 중심이 22 내려간다. 같은 이유로 상단 칩·타이틀 offset 은 51 이 아니라 7(= Figma y94 − 바 하단 87).
+- 좌상단 뒤로가기는 8:00 전이면 중도 이탈 경고(«다음에 면접을 다시 진행할까요?», Figma modal 3907:890 — 아이콘 없음, «면접 계속하기»가 강조(검정) 쪽, 차감 사실만·리포트 언급 금지), 8:00 후면 종료 확인 모달(Figma 2555:7696)로 갈린다. 둘 다 destination 없이 Bool 플래그이고 같은 모달 컴포넌트를 쓴다 — 뷰가 두 Bool 을 enum 하나로 접어 DS `.hilitModal(item:)` 로 표출한다(종료 확인 우선, 동시 true 방어). 8:00 해금 틱이 열려 있던 경고를 닫아 «경고를 띄운 채 해금» 레이스를 막는다.
 - `aborted` 는 기록 폐기가 아니다 — 그때까지의 턴은 서버가 보존하고 이용권도 차감된다(PRD §3.7 D1). 클라는 이탈 신호만 올린다.
 - asking→answering 은 재생 완료(questionPlaybackFinished)가 전환한다 — 배선 완료. 발화 감지·침묵 10초 확정·사고 5초는 작업 B 잔여. 랩업은 8:45 경과 시 `isWrapUp=true` 제출로 서버에 알린다(새 질문 금지는 서버 판단).
 - 시계 상태머신·이탈은 `InterviewSessionFeatureTests`, 턴 루프·제출 분기는 `InterviewSessionSubmissionTests` 가 고정 (TestClock).
