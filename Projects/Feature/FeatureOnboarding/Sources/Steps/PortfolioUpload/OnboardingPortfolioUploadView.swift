@@ -55,6 +55,19 @@ public struct OnboardingPortfolioUploadView: View {
             }
         }
         .hilitModal(isPresented: store.isDeleteConfirmPresented) { deleteConfirmModal }
+        .hilitModal(isPresented: store.existingPortfolio != nil) { existingPortfolioModal }
+        .onAppear { send(.onAppear) }
+    }
+
+    // MARK: - 기존 포트폴리오 확인 모달
+
+    /// 2회차 이상 진입 — 서버에 READY 포폴이 있으면 그걸 쓸 거라고 알린다.
+    /// **버튼이 하나인 건 고를 게 없어서다** — 포폴은 계정당 1개고 교체는 한 달 1회라
+    /// «아니요» 를 줘도 갈 곳이 없다. 바꾸려면 완료 판의 X → 삭제 확인 모달이 그 자리다.
+    private var existingPortfolioModal: some View {
+        Modal("기존에 있는 포트폴리오로\n진행할까요?", icon: Image.Img.book) {
+            ButtonLarge("예", .modal) { send(.userTappedUseExisting) }
+        }
     }
 
     // MARK: - 삭제 확인 모달
@@ -213,6 +226,23 @@ private let previewFileName = "홍길동 자기소개서_SK프롭티어 기업 �
             initialState: OnboardingPortfolioUploadFeature.State(
                 upload: .failed(message: OnboardingPortfolioUploadFeature.unreadableFileMessage)
             )
+        ) {
+            OnboardingPortfolioUploadFeature()
+        }
+    )
+}
+
+#Preview("기존 포트폴리오 확인 모달") {
+    OnboardingPortfolioUploadView(
+        store: Store(
+            initialState: {
+                var state = OnboardingPortfolioUploadFeature.State()
+                state.existingPortfolio = .init(
+                    portfolioId: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+                    fileName: previewFileName
+                )
+                return state
+            }()
         ) {
             OnboardingPortfolioUploadFeature()
         }
