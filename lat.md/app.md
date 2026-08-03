@@ -19,9 +19,19 @@
 1. `AuthFeature`(가입 플로우 코디네이터)가 기존 회원 로그인 또는 가입 온보딩 완료 시 `delegate(.signedIn)` 방출 (→ [[auth#가입 플로우]])
 2. AppFeature가 수신해 `state = State()`로 초기화 후 `root = .home` — 새 로그인은 새 세션이므로 이전 사용자의 in-memory State(화면·선택값)를 버린다
 
+## 첫 실행 정리
+
+앱을 삭제해도 iOS 는 Keychain 을 지우지 않는다 — 재설치하면 토큰만 살아남아 Splash 가 «기존 세션» 으로 판정하고, 방금 새로 설치한 사용자가 로그인 상태로 들어온다. UserDefaults 쪽(온보딩 draft)은 앱과 함께 사라지므로 로컬끼리도 어긋난다. 그래서 판정을 시작하기 전에 «이 설치의 첫 실행인가» 를 묻고, 첫 실행이면 잔존 로컬 데이터를 지운다.
+
+- **판정 근거는 «앱과 함께 사라지는 저장소에 찍은 마커»** — `FirstLaunchStore`(CoreCommon)가 UserDefaults 에 마커를 두고 `isFirstLaunch()`/`markLaunched()` 만 노출한다. 마커가 없다 = 이 설치에서 아직 실행 안 됨. 마커를 Keychain 에 두면 재설치 후에도 남아 첫 실행을 영원히 놓친다.
+- **무엇을 지울지는 마커가 모른다** — 정리 대상 선택은 코디네이터(`AppFeature.clearLocalData()`)의 판단이고, 스토어 계약은 판정만 맡는다. 지금 대상은 토큰(Keychain)·온보딩 draft.
+- **마커는 정리를 마친 뒤 찍는다** — 사이에서 앱이 죽으면 다음 실행이 다시 첫 실행으로 판정돼 정리를 끝내는데, 먼저 찍으면 지우다 만 상태로 굳는다.
+- **정리가 세션 판정보다 먼저** — `onAppear` 가 정리 effect 만 돌리고 `firstLaunchResolved` 로 갈라 그때 판정을 시작한다. 같은 effect 안에서 이으면 순서가 코드 배치에 묻힌다.
+- 정리 함수는 **디버그 로그아웃과 공유**한다 — 지울 로컬 목록이 두 곳에서 갈라지면 한쪽만 늘어난다.
+
 ## Splash 세션 복구
 
-앱 진입 판정은 `onAppear` 의 effect 하나다 — 버전 게이트 → 토큰 유무 → `pending` **한 콜**로 `State.root` 를 정한다. refresh 를 먼저 부르지 않는다 — Access 는 3시간이라 대부분 살아 있고, 만료면 이 콜의 403 을 AuthorizedNetworkClient 가 재발급·재시도로 흡수한다([[api#토큰 수명주기]]). 목적지 표·시퀀스는 [launch-routing](../docs/work/launch-routing.md), 게이트 규칙은 [[auth#게이트 2단 체인]].
+앱 진입 판정은 `firstLaunchResolved` 의 effect 하나다 (그 앞에 [[app#첫 실행 정리]]가 선다) — 버전 게이트 → 토큰 유무 → `pending` **한 콜**로 `State.root` 를 정한다. refresh 를 먼저 부르지 않는다 — Access 는 3시간이라 대부분 살아 있고, 만료면 이 콜의 403 을 AuthorizedNetworkClient 가 재발급·재시도로 흡수한다([[api#토큰 수명주기]]). 목적지 표·시퀀스는 [launch-routing](../docs/work/launch-routing.md), 게이트 규칙은 [[auth#게이트 2단 체인]].
 
 `root` 가 Bool 2개가 아니라 **enum**(`splash`·`splashFailed`·`updateRequired`·`auth`·`home`)인 이유: 「판정 실패라 재시도해야 하는 상태」를 Bool 조합으로는 못 만든다.
 
@@ -36,7 +46,7 @@
 
 대표 흐름 — **dev 디버그 로그아웃** (Home 임시 버튼):
 1. dev 계에서만 `AppFeature.onAppear` 가 `home.showsDebugLogout` 을 켜고, Home 로그아웃 버튼이 `delegate(.logoutRequested)` 방출
-2. AppFeature 수신 → effect 에서 `authClient.logout()`(서버 로그아웃+토큰 Keychain 삭제)·`onboardingDraftStore.clear()`(온보딩 draft/UserDefaults 삭제). 서버 실패해도 로컬 정리는 진행(`try?`)
+2. AppFeature 수신 → effect 에서 `authClient.logout()`(서버 로그아웃) 후 `clearLocalData()`(토큰·온보딩 draft — [[app#첫 실행 정리]]와 공유). 서버 실패해도 로컬 정리는 진행(`try?`)
 3. `sessionCleared` 로 `state = State()` 리셋 → `root = .auth` → 첫 소셜 로그인 화면 복귀. Splash 로 되돌리지 않는다(로그아웃 복귀는 판정이 아니라 확정 상태). cross-feature 조립이라 authClient 의존은 코디네이터인 여기서만 가진다 → [[home]]
 
 대표 흐름 — **온보딩 위저드 진입**:
