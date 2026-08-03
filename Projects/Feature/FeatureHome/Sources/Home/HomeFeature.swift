@@ -81,26 +81,22 @@ public struct HomeFeature {
         /// 면접 시작 화면 — 시트 **뒤에 늘 깔려 있다**. present 가 아닌 이유는 `SheetDetent` 주석 참조.
         /// 잔여·포폴·변형은 홈 진입 로드가 채운다 — 진실은 탭 시점 게이트(`checkStartEligibility`) 재검증이다.
         public var startInterview: StartInterviewFeature.State
-        /// dev 진입점 노출 여부 — AppFeature 가 dev 빌드에서만 켠다 (온보딩 본체 통합 전 임시 진입).
-        public var showsOnboardingEntry: Bool
-        /// dev 디버그 로그아웃 버튼 노출 여부 — AppFeature 가 dev 빌드에서만 켠다.
-        public var showsDebugLogout: Bool
+        /// dev 데이터 초기화 버튼 노출 여부 — AppFeature 가 dev 빌드에서만 켠다.
+        public var showsDevReset: Bool
 
         public init(
             phase: Phase = .default,
             userName: String = "",
             reports: [Report] = [],
             startVariant: StartInterviewFeature.Variant = .first,
-            showsOnboardingEntry: Bool = false,
-            showsDebugLogout: Bool = false
+            showsDevReset: Bool = false
         ) {
             self.phase = phase
             self.userName = userName
             self.reports = IdentifiedArray(uniqueElements: reports)
             self.expandedReportID = reports.first?.id
             self.startInterview = StartInterviewFeature.State(variant: startVariant, userName: userName)
-            self.showsOnboardingEntry = showsOnboardingEntry
-            self.showsDebugLogout = showsDebugLogout
+            self.showsDevReset = showsDevReset
         }
     }
 
@@ -125,10 +121,8 @@ public struct HomeFeature {
             case userTappedReport(id: Report.ID)
             /// 리포트 행 탭 — 펼침 토글(홈 내부 상태, 화면 전환 아님).
             case userTappedReportRow(id: Report.ID)
-            /// dev 진입 버튼 탭 — 온보딩 시작 요청.
-            case userTappedOnboarding
-            /// dev 디버그 로그아웃 탭 — 세션·토큰·draft 전체 삭제 요청.
-            case userTappedLogout
+            /// dev 데이터 초기화 탭 — 로컬·세션 데이터를 전부 지우고 앱을 처음부터 다시 태운다.
+            case userTappedResetAppData
         }
 
         /// effect 결과·리듀서 내부 신호. 리듀서만 방출한다.
@@ -150,10 +144,8 @@ public struct HomeFeature {
             case interviewStartRequested
             /// 면접 정보 수정 요청 — 면접 시작 화면의 [수정하기] 가 발원지. 전환은 AppFeature.
             case interviewInfoEditRequested
-            /// dev 온보딩 진입 요청 — 조립은 AppFeature 가 한다 (Feature→Feature 금지).
-            case onboardingRequested
-            /// dev 디버그 로그아웃 요청 — orchestration(logout API·draft clear·State 리셋)은 AppFeature.
-            case logoutRequested
+            /// dev 데이터 초기화 요청 — orchestration(logout API·저장소 삭제·State 리셋·재판정)은 AppFeature.
+            case appDataResetRequested
         }
     }
 
@@ -197,10 +189,8 @@ public struct HomeFeature {
                 // 재탭이면 접는다 — foldable 행은 홈 내부 상태다(docs/work/home-account.md §3 위젯②).
                 state.expandedReportID = state.expandedReportID == id ? nil : id
                 return .none
-            case .view(.userTappedOnboarding):
-                return .send(.delegate(.onboardingRequested))
-            case .view(.userTappedLogout):
-                return .send(.delegate(.logoutRequested))
+            case .view(.userTappedResetAppData):
+                return .send(.delegate(.appDataResetRequested))
 
             case let .inner(.entryLoaded(profile, portfolios)):
                 if let profile {

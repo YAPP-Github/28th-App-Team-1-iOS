@@ -198,7 +198,7 @@ Home --delegate(.myPageRequested)------------▶ AppFeature → 마이페이지 
 Onboarding --delegate(.finished(sessionId:))-▶ AppFeature → 면접 시작 (기존 계약 — [ai-interview] §2)
 ```
 
-기존 dev 임시 진입(`showsOnboardingEntry`·`showsDebugLogout`)은 위젯①·마이페이지(로그아웃은 Part 5)로 흡수되며 제거 예정.
+기존 dev 임시 진입(`showsOnboardingEntry`·`showsDebugLogout`)은 제거됐다(2026-08-03) — 온보딩 진입은 위젯①로 흡수됐고, 남은 dev 버튼은 «데이터 전부 삭제 후 재시작»(`showsDevReset`) 하나다. 정식 로그아웃은 마이페이지(Part 5) 몫.
 
 **추가 (2026-07-31 배선) — 위 표의 delegate 4건이 실제 케이스로 들어갔다.** 이름은 구현 기준: `interviewStartRequested`(StartInterview 의 [시작하기]) · `interviewInfoEditRequested`([수정하기]) · `profileRequested`(마이페이지) · `reportDetailRequested(id:)`(리포트 상세 — 인자는 아직 세션 id 가 아니라 표시 모델의 행 id, 목록 계약 확정 시 교체). `resumeInterviewRequested(sessionId:)` 는 held 세션 로드가 없어 아직 만들지 않았다. 홈 내부에 남는 것: 펼침 토글(`userTappedReportRow`)·면접 시작 화면 present.
 
@@ -293,4 +293,4 @@ UI 는 전 단계 공통으로 **Figma 시안 수령 후 연결**(figma-screen) 
 2. **FeatureAuth 가입 플로우** — 골격 ✅ 2026-07-31 (코디네이터 `AuthFeature` + 화면 6종 + Example 완주 데모, STEP1·2 는 복사), 동의 제출·게이트 2단 분기 ✅ 2026-08-01, 프로필 일괄 PATCH ✅ 2026-08-02. 잔여 🔴: 실패 토스트, Figma UI.
 3. **FeatureHome 개편** — phase 골격 ✅ 2026-07-31 (`Phase` 4종 + 서브뷰 스텁), 진입 로드 2종(프로필·포폴) ✅ 2026-08-02. 잔여 🔴: 로드 2종(기록·held)·위젯 3종 UI·행 foldable·빈 상태 (리스트/게이트 API 전엔 mock).
 4. **Domain 신규 계약** — 게이트·기록 리스트·held 세션 (미결 6-1·6-3·S-1 서버 협의 후).
-5. **라우팅 배선** — 위젯①→면접 위저드/면접(작업 D 합류)·AuthSuspension, 위젯②→리포트, 위젯③→마이페이지(Part 5 대기). dev 임시 버튼 제거. 면접 위저드 S0 정리(§7 신규 미결 — 원본 STEP1·2 제거 포함).
+5. **라우팅 배선** — 위젯①→면접 위저드/면접(작업 D 합류)·AuthSuspension, 위젯②→리포트, 위젯③→마이페이지(Part 5 대기). dev 임시 버튼 제거 ✅ (데이터 초기화 1개만 유지). 면접 위저드 S0 정리(§7 신규 미결 — 원본 STEP1·2 제거 포함).

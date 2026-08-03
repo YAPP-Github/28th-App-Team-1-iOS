@@ -88,7 +88,7 @@ OnboardingPlaceholderStepFeature/View — 스텝 골격(네비바·프로그레�
 
 ## 코디네이터 연결
 
-**dev 전용 임시 진입**만 배선된 상태다 — Home 의 dev 버튼 신호를 AppFeature 가 받아 로그인 이후 `fullScreenCover` 로 위저드를 연다(토큰 보유). 정식 통합은 아직. → [[app]]
+홈 「면접 시작」의 [시작하기]·[수정하기] 신호를 AppFeature 가 받아 `fullScreenCover` 로 위저드를 연다 — 홈 탭 위에서만 열리므로 **로그인 이후**라 토큰을 보유한다(온보딩 API 는 인증 필요). dev 전용 임시 진입 버튼은 이 정식 경로가 생기며 제거됐다(2026-08-03). → [[app]]
 
 현재는 `OnboardingFeature.State()`(닉네임·직군·연차 없음)로 열고 `.finished`·`.dismiss` 는 cover 를 닫기만 한다. 정식 배선 시: **닉네임·직군·연차를 사용자 프로필에서 주입**(직군·연차가 nil 이면 프리로드가 세션 생성에 실패한다 — 배선의 필수 조건), delegate(.dismiss) → 중도 이탈(draft 보존), **delegate(.finished(sessionId:)) → Part 2 면접 바로 시작**(사용자 결정 2026-07-20, InterviewSessionFeature 생기면 fullScreenCover).
 

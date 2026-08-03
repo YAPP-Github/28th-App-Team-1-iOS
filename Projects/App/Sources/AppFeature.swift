@@ -49,7 +49,7 @@ struct AppFeature {
         /// 면접 흐름(Part 2) — 온보딩이 세션을 만들어 준 뒤에만 열린다(`finished(sessionId:)`).
         /// 세션 없이 진입할 길이 없어 `sessionId` 를 들고 시작한다.
         @Presents var interview: InterviewFeature.State?
-        /// dev 전용 온보딩 위저드 — Home 진입 버튼으로 present (온보딩 본체 통합 전 임시).
+        /// 온보딩 위저드 — 「면접 시작」의 [시작하기]·[수정하기] 가 present 한다.
         @Presents var onboarding: OnboardingFeature.State?
         /// 업데이트 안내(강제·권장)의 근거 — «업데이트» 가 열 `storeUrl` 과 강제 여부를 여기서 읽는다.
         var updatePolicy: AppVersionPolicy?
@@ -71,8 +71,8 @@ struct AppFeature {
         case home(HomeFeature.Action)
         case interview(PresentationAction<InterviewFeature.Action>)
         case onboarding(PresentationAction<OnboardingFeature.Action>)
-        /// 로그아웃 정리(서버·토큰·draft) 완료 — 초기 State 로 리셋해 로그인 화면으로 돌아간다.
-        case sessionCleared
+        /// dev 데이터 초기화 완료 — 초기 State 로 리셋하고 Splash 판정부터 다시 태운다.
+        case appDataCleared
         case binding(BindingAction<State>)
 
         /// 업데이트 알럿 버튼. 강제(FORCE)일 땐 «나중에» 를 만들지 않아 도달하지 않는다.
@@ -116,9 +116,8 @@ struct AppFeature {
         Reduce { state, action in
             switch action {
             case .onAppear:
-                // dev 계에서만 Home 온보딩 진입·디버그 로그아웃 버튼을 노출한다.
-                state.home.showsOnboardingEntry = AppEnvironment.isDev
-                state.home.showsDebugLogout = AppEnvironment.isDev
+                // dev 계에서만 Home 데이터 초기화 버튼을 노출한다.
+                state.home.showsDevReset = AppEnvironment.isDev
                 return resolveLaunchRouting()
 
             case .retryLaunchRouting:
@@ -156,13 +155,9 @@ struct AppFeature {
                 // 새 로그인 = 새 세션. 이전 사용자가 하던 화면·데이터를 전부 버리고 초기 State 에서 시작한다.
                 state = State()
                 state.root = .home
-                state.home.showsOnboardingEntry = AppEnvironment.isDev
-                state.home.showsDebugLogout = AppEnvironment.isDev
+                state.home.showsDevReset = AppEnvironment.isDev
                 return .none
             case .auth:
-                return .none
-            case .home(.delegate(.onboardingRequested)):
-                state.onboarding = OnboardingFeature.State(userName: state.home.userName)
                 return .none
             case .home(.delegate(.interviewStartRequested)):
                 // 면접에 필요한 정보(직군·연차·JD·포폴)를 모으는 게 온보딩 위저드다 — 첫 면접은 거기부터다.
@@ -195,12 +190,16 @@ struct AppFeature {
             case .home(.delegate(.reportDetailRequested)):
                 // TODO: 리포트 상세(r1/최종) 제시 — `InterviewReportFeature` 통합 후 sessionId 로 배선.
                 return .none
-            case .home(.delegate(.logoutRequested)):
-                // 서버 로그아웃(+토큰 Keychain 삭제)·온보딩 draft(UserDefaults) 삭제. 실패해도 로컬 정리는 진행.
+            case .home(.delegate(.appDataResetRequested)):
+                // dev 전용 «재설치 흉내» — 서버 로그아웃(+토큰 Keychain 삭제) · 온보딩 draft ·
+                // 앱 UserDefaults 도메인 전체를 지운다. 서버 호출이 실패해도 로컬 정리는 그대로 진행한다.
                 return .run { send in
                     try? await authClient.logout()
                     draftStore.clear()
-                    await send(.sessionCleared)
+                    if let bundleId = Bundle.main.bundleIdentifier {
+                        UserDefaults.standard.removePersistentDomain(forName: bundleId)
+                    }
+                    await send(.appDataCleared)
                 }
             case .home:
                 return .none
@@ -240,14 +239,12 @@ struct AppFeature {
                 return .send(.home(.view(.onAppear)))
             case .interview:
                 return .none
-            case .sessionCleared:
-                // 로그아웃 정리 완료 — 초기 State 로 리셋하고 첫 소셜 로그인 화면으로.
-                // Splash 로 되돌리지 않는다 — 로그아웃 복귀는 판정이 아니라 확정 상태다.
+            case .appDataCleared:
+                // 초기 State 로 되돌리고 **Splash 판정부터 다시** — 지운 게 세션만이 아니라 로컬 저장소
+                // 전부라, 재설치 직후와 같은 자리에서 시작해야 버전 게이트·동의·프로필 게이트가 모두 다시 돈다.
                 state = State()
-                state.root = .auth
-                state.home.showsOnboardingEntry = AppEnvironment.isDev
-                state.home.showsDebugLogout = AppEnvironment.isDev
-                return .none
+                state.home.showsDevReset = AppEnvironment.isDev
+                return resolveLaunchRouting()
             case .binding:
                 return .none
             }
