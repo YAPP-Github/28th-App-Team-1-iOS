@@ -212,7 +212,7 @@ enum Phase {
 - ✅ **실패 화면 3종**(§3.2·§3.7·§3.9) questionPrep(처음으로만·재시도 없음) / network(홈으로만) / speechRecognition(다시 시작하기)
 - ✅ **종료 경로**(§3.7·§3.8) 8분 전 중도 이탈 경고 → `aborted` / 8분 후·상한·마치기 → 리포트 대기 화면 경유 → `finished`. 확정 문구는 부록 C
 - 🔴 **Speech/Recording 배선(작업 B)** — 발화 감지 기반 «답변 완료하기» 게이팅 · 침묵 10초 확정 · 사고 5초 카운트다운 · 필러 멘트 · 실녹음(A/V 캡처 — `answerAudio` 실구현). 질문 TTS·마무리 멘트 재생은 ✅(2026-08-02)
-- ✅ **서버 턴 루프(작업 C)** — 2026-08-02: `submitAnswer` 실배선(2초 mock 소멸) · 응답 endType 5종 분기 · 랩업 8:45 `isWrapUp` · 503 백오프(1s·3s×2) · 종료 경로 제출 경유(MANUAL_END/HARD_CAP/EARLY_EXIT) · Example 실서버 하네스(`HILIT_ACCESS_TOKEN`). 스펙 [2026-08-02-interview-api-design](../superpowers/specs/2026-08-02-interview-api-design.md)
+- ✅ **서버 턴 루프(작업 C)** — 2026-08-02: `submitAnswer` 실배선(2초 mock 소멸) · 응답 endType 5종 분기 · 랩업 8:45 `isWrapUp` · 503 백오프(1s·3s×2) · 종료 경로 제출 경유(MANUAL_END/HARD_CAP/BACK_EXIT — 구 EARLY_EXIT, 2026-08-03 서버 개명) · Example 실서버 하네스(`HILIT_ACCESS_TOKEN`). 스펙 [2026-08-02-interview-api-design](../superpowers/specs/2026-08-02-interview-api-design.md)
 - ✅ **AppFeature 배선(작업 D)** — 2026-08-03: 온보딩 `finished(sessionId)` → 면접 fullScreenCover, 종료 두 신호(`finished`/`closed`)가 cover 를 닫아 홈 복귀 · 면접 중 전역 LoadingModal 억제. 스펙 [2026-08-03-interview-exit-to-home-design](../superpowers/specs/2026-08-03-interview-exit-to-home-design.md). 잔여: 홈 «면접 시작» 직접 진입(이용권 게이트 — home-account §4 미결 6-1)
 - 🟡 **범위 제외** — 8:00 이후 잔여 시간 인디케이터(디자인 미확정) · 5회 재질의 종료(§3.4 — PRD §10 미확정)
 
