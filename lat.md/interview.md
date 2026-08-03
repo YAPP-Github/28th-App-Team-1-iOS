@@ -15,7 +15,7 @@ Interface 에 계약 + `testValue`(unimplemented) + `previewValue`(샘플), Impl
 서버 계약이 바뀌면 이 섹션·[[api#Interview]]·`liveValue` 를 함께 갱신한다. 인프라는 [[domain.map#네트워킹 인프라]] 의 `AuthorizedNetworkClient` 계약만 사용 — Bearer 첨부·토큰 재발급은 인프라 몫이고 liveValue 는 경로 조립·인코딩·디코딩만 한다.
 
 - 세션 생성은 회원 프로필 스냅샷(직군·연차 미전송 — 미등록이면 `USER_PROFILE_NOT_REGISTERED`). 준비는 서버 비동기: POST(202) → 3~5초 status 폴링 → READY 에 `startedAt` + 요약 질문(base64 TTS). FAILED 는 이용권 자동 환불.
-- `submitAnswer` 응답이 턴을 결정한다 — `nextQuestion`(계속) 또는 `sessionEnded` + `SessionEndType` 5종(NORMAL/MANUAL/HARD_CAP/EARLY_EXIT/**STT_RESET** — STT 30% 판정은 서버) + 마무리 멘트(`wrapUpMessage.ttsAudio`). 메타데이터는 query(`isWrapUp` required), 오디오만 multipart. 503(`AI_TEMPORARILY_UNAVAILABLE`)은 서버에 아무것도 저장되지 않아 같은 요청 재시도 계약.
+- `submitAnswer` 응답이 턴을 결정한다 — `nextQuestion`(계속) 또는 `sessionEnded` + `SessionEndType` 5종(NORMAL/MANUAL/HARD_CAP/BACK_EXIT(구 EARLY_EXIT)/**STT_RESET** — STT 30% 판정은 서버) + 마무리 멘트(`wrapUpMessage.ttsAudio`). 메타데이터는 query(`isWrapUp` required), 오디오만 multipart. 503(`AI_TEMPORARILY_UNAVAILABLE`)은 서버에 아무것도 저장되지 않아 같은 요청 재시도 계약.
 - liveValue 는 URLSession·토큰을 모르므로 테스트도 Core 구현 없이 AuthorizedNetworkClient 스텁으로 검증한다 (`InterviewClientLiveTests`).
 
 ## 면접 흐름
@@ -90,8 +90,8 @@ Figma 2479:7569 · 2514:12754 · 2514:12799 · 2529:458.
 Figma: 2529:6309 · 2537:9397 · 2638:1750 · 2537:9442 · 2537:9525.
 
 - phase 4종이 상태 칩 3종(PRD §3.5)에 대응한다 — «질문 듣는 중»/«답변 녹음 중»/«답변을 정리하고 있어요», finalCountdown 은 칩 없이 빨간 초읽기. «답변이 기록 됐어요» 토스트는 칩이 역할을 대체해 소멸했고, 남은 토스트는 exitUnlocked·timeExpired 2종뿐이다.
-- «답변 완료하기» 는 침묵 판정을 기다리지 않고 즉시 `processingAnswer` 로 확정하고 `submitAnswer` 를 보낸다(중복 제출 가드 `isSubmitting`, 2026-08-02 작업 C — 2초 mock 소멸). 응답 분기: `nextQuestion` → asking 복귀+재생 / `sessionEnded` → endType 별 `finished`(NORMAL·MANUAL·HARD_CAP — 마무리 멘트 fire-and-forget)·`aborted`(EARLY_EXIT)·`failed(.speechRecognition)`(STT_RESET).
-- 종료 경로도 제출을 경유한다 — 마치기=MANUAL_END·12:00 상한=HARD_CAP(제출 완료까지 processingAnswer 로 대기, 제출 비행 중 상한 도달은 응답 수신 후 HARD_CAP 마감). 8분 전 이탈은 EARLY_EXIT 최선 노력 1회 제출(실패해도 이탈 진행). 503 은 같은 제출을 1s·3s 백오프로 최대 2회 재시도, `SESSION_ALREADY_ENDED`(409)는 리포트 대기로.
+- «답변 완료하기» 는 침묵 판정을 기다리지 않고 즉시 `processingAnswer` 로 확정하고 `submitAnswer` 를 보낸다(중복 제출 가드 `isSubmitting`, 2026-08-02 작업 C — 2초 mock 소멸). 응답 분기: `nextQuestion` → asking 복귀+재생 / `sessionEnded` → endType 별 `finished`(NORMAL·MANUAL·HARD_CAP — 마무리 멘트 fire-and-forget)·`aborted`(BACK_EXIT)·`failed(.speechRecognition)`(STT_RESET).
+- 종료 경로도 제출을 경유한다 — 마치기=MANUAL_END·12:00 상한=HARD_CAP(제출 완료까지 processingAnswer 로 대기, 제출 비행 중 상한 도달은 응답 수신 후 HARD_CAP 마감). 8분 전 이탈은 BACK_EXIT 최선 노력 1회 제출(실패해도 이탈 진행). 503 은 같은 제출을 1s·3s 백오프로 최대 2회 재시도, `SESSION_ALREADY_ENDED`(409)는 리포트 대기로.
 - 질문 재생: 요약 질문(턴 0)은 READY 동봉 mp3(`play`), 이후 질문은 `questionAudioStream`→`playStream`(chunked). 재생 실패는 같은 questionId 1회 재시도(TTS 재생성) 후 network 실패. 시간 마킹(questionAudioStart/End·answerStart)은 세션 시계 스냅샷 — 실녹화(작업 B) 전 근사값.
 - «12분» 숫자는 어떤 화면·문구에도 노출하지 않는다(§3.10 — 사용자에겐 «약 10분»). 경과 시계는 10분을 넘어도 m:ss 로 계속 오른다.
 - 좌상단은 **뒤로가기 `<`**(2026-08-03 시안 — 「Part2. 면접 녹화」 전 프레임 공통). DS `.hilitPresentedNavigationBar(surface: .dark, leading: .back)` — cover 라 present 판, 카메라 영상이 바닥이라 `.dark`(흰 글리프). 글리프만 X 에서 바뀌고 **배관은 그대로**다(아래 분기 유지). 브래킷(`CameraGuideFrame`)은 네비바 `safeAreaInset` **밖**(`.background`)에 둔다 — 안에 두면 콘텐츠가 44 밀려 327 정방형 중심이 22 내려간다. 같은 이유로 상단 칩·타이틀 offset 은 51 이 아니라 7(= Figma y94 − 바 하단 87).
