@@ -34,6 +34,7 @@ Part 2 «10분 음성 면접» 화면군 (`FeatureInterview`, Figma «[2] Interv
 - 세션 `finished` 는 상위로 바로 올리지 않는다 — [[interview#리포트 대기]] 를 먼저 띄우고, 거기서 온 `goHomeRequested` 만 `delegate(.finished)` 로 승격한다. 세션 `aborted`·실패 화면 `closeRequested` 는 `delegate(.closed)`.
 - 준비 `prepFailed` → 실패 화면(kind: questionPrep). 실패 `restartRequested`(STT 전용) → 같은 sessionId 로 준비 화면 재진입.
 - AppFeature 배선 완료(2026-08-03) — 온보딩 `finished(sessionId)` 가 `InterviewFeature.State(sessionId:)` 로 커버를 열고, 종료 두 신호는 모두 커버를 닫아 홈으로 돌린다. 목적지가 같아도 `.finished`/`.closed` 를 합치지 않는 건 홈 리포트 목록 갱신이 정상 종료에만 필요해서다 → [[app#Cross-feature Routing]].
+- AppFeature 배선 완료 — 온보딩 `delegate(.finished(sessionId:))` 가 `@Presents var interview` 를 세워 `fullScreenCover` 로 연다. 흐름 밖 신호 두 개(`finished`·`closed`)는 cover 를 닫고 홈을 재조회시킨다 → [[app]]. 정상 종료 → 리포트 상세(r1)는 아직 TODO → [ai-interview](../docs/work/ai-interview.md) §2.
 
 ## 권한
 

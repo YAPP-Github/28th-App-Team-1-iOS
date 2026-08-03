@@ -37,7 +37,8 @@ struct AppView: View {
                     .tabItem { Label("홈", systemImage: "house") }
                     .tag(AppFeature.Tab.home)
                 }
-                // dev 전용 온보딩 위저드 — Home 진입 버튼으로만 열린다 (로그인 이후이므로 토큰 보유).
+                // 온보딩 위저드 — 「면접 시작」의 [시작하기](첫 면접)·[수정하기], dev 진입 버튼이 연다.
+                // 홈 탭 위에서만 열리므로 로그인 이후다(온보딩 API 는 토큰 필요).
                 .fullScreenCover(
                     item: $store.scope(state: \.onboarding, action: \.onboarding)
                 ) { onboardingStore in

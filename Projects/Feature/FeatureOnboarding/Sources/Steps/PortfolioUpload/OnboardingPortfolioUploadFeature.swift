@@ -191,8 +191,8 @@ public struct OnboardingPortfolioUploadFeature {
                     data: file.data
                 )
                 await send(.inner(.uploadAccepted(try await portfolioClient.register(upload))))
-            } catch: { _, send in
-                await send(.inner(.uploadFailed(message: Self.genericFailureMessage)))
+            } catch: { error, send in
+                await send(.inner(.uploadFailed(message: Self.failureMessage(for: error))))
             }
             .cancellable(id: CancelID.upload, cancelInFlight: true)
 
@@ -236,8 +236,8 @@ public struct OnboardingPortfolioUploadFeature {
             return .run { send in
                 try await clock.sleep(for: Self.pollInterval)
                 await send(.inner(.statusPolled(try await portfolioClient.status(processing.portfolioId))))
-            } catch: { _, send in
-                await send(.inner(.uploadFailed(message: Self.genericFailureMessage)))
+            } catch: { error, send in
+                await send(.inner(.uploadFailed(message: Self.failureMessage(for: error))))
             }
             .cancellable(id: CancelID.upload, cancelInFlight: true)
 
@@ -245,6 +245,7 @@ public struct OnboardingPortfolioUploadFeature {
             state.upload = .uploaded(fileName: fileName, portfolioId: processing.portfolioId)
             return .none
 
+        // TODO: 200 + FAILED_* 문구 정책 PRD 미정 — 서버 message 우선, 없을 때만 클라 문구. 확정되면 재확인.
         case .failedFile:
             state.upload = .failed(message: processing.message ?? Self.unreadableFileMessage)
             return .none
@@ -253,6 +254,13 @@ public struct OnboardingPortfolioUploadFeature {
             state.upload = .failed(message: processing.message ?? Self.genericFailureMessage)
             return .none
         }
+    }
+
+    /// 업로드·폴링 실패 문구 — 서버 4xx 는 원문 message 를 그대로 싣는다.
+    /// TODO: 서버 문구 그대로 노출은 임시 규칙(ServerError.alertMessage 와 같은 계). 코드별 클라 카피 확정 시 교체.
+    /// TODO: PORTFOLIO_ALREADY_EXISTS 는 PRD 상 «기존 삭제 후 재업로드» dialog 안(자동 교체 금지) — 지금은 배너 문구만.
+    static func failureMessage(for error: any Error) -> String {
+        (error as? PortfolioError)?.userMessage ?? genericFailureMessage
     }
 
     /// 서버에 이미 등록된 파일 제거 — 계정당 1개 제한이라 지워야 재업로드가 가능하다.

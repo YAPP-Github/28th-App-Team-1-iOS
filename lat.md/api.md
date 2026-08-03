@@ -126,7 +126,7 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 | `status` | GET `/api/v1/portfolios/{id}/status` | 3~5초 폴링 |
 | `delete` | DELETE `/api/v1/portfolios/{id}` | 재등록 전 필수 (1개 제한) |
 
-에러는 `PortfolioError` 로 매핑된다 — 업로드 검증군 INVALID_FILE_TYPE / FILE_TOO_LARGE / PAGE_COUNT_EXCEEDED / INVALID_PDF_FILE (400), PORTFOLIO_ALREADY_EXISTS → alreadyExists(409), PORTFOLIO_NOT_FOUND → notFound(404).
+에러는 `PortfolioError` 로 매핑된다 — 업로드 검증군 INVALID_FILE_TYPE / FILE_TOO_LARGE / PAGE_COUNT_EXCEEDED / INVALID_PDF_FILE (400), PORTFOLIO_ALREADY_EXISTS → alreadyExists(409), PORTFOLIO_NOT_FOUND → notFound(404). 이 4xx 케이스들은 서버 한국어 `message` 를 associated value 로 보존한다(`userMessage`) — 클라 카피가 확정되지 않아 화면이 원문을 그대로 노출하기 때문(인프라 실패는 nil → 클라 폴백 문구).
 
 ## User
 
