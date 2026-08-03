@@ -49,6 +49,7 @@ App  (composition root — 레이어 umbrella link → liveValue 활성화)
 ```
 Onboarding --delegate(.finished(sessionId))--▶ AppFeature --fullScreenCover--▶ Interview ✅ (2026-08-03)
 Onboarding --delegate(.dismiss)--------------▶ AppFeature --중도 이탈 (draft 보존, §5)
+                                               (루트 «이전으로» 도 여기로 합류 — 앞 스텝이 없다)
 Session --delegate(.finished)----------------▶ 코디네이터 --리포트 대기 화면--▶ delegate(.finished) --▶ AppFeature --dismiss ✅
 Session --delegate(.aborted)-----------------▶ 코디네이터 --delegate(.closed)--▶ AppFeature --dismiss ✅ (턴은 서버가 보존 — 차감 D1, PRD §3.7)
 설정 Portfolio --delegate(.emptied)----------▶ AppFeature --다음 연습 진입 시 S2 강제 라우팅
