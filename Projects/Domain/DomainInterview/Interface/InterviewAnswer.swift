@@ -16,8 +16,9 @@ public enum AnswerEndType: String, Equatable, Sendable {
     case manualEnd = "MANUAL_END"
     /// 12:00 경과로 서버 강제 종료
     case hardCap = "HARD_CAP"
-    /// 0:00~8:00 사이 의도적 이탈 (차감 경고 확인 후)
-    case earlyExit = "EARLY_EXIT"
+    /// 0:00~8:00 사이 뒤로가기 이탈 (차감 경고 확인 후). 구 EARLY_EXIT — 2026-08-03 스웨거에서 개명.
+    /// audio 는 선택 — 있으면 서버가 STT 만 기록하고 즉시 종료한다.
+    case backExit = "BACK_EXIT"
 }
 
 /// POST /interview/sessions/{id}/answers 입력. 시간값은 영상 녹화 기준 초 단위.
@@ -67,8 +68,10 @@ public enum SessionEndType: String, Decodable, Equatable, Sendable {
     case manualEnd = "MANUAL_END"
     /// 12:00 상한 도달 강제 종료.
     case hardCap = "HARD_CAP"
-    /// 8:00 전 의도적 이탈 — 리포트 없이 종료.
-    case earlyExit = "EARLY_EXIT"
+    /// 8:00 전 뒤로가기 이탈 — 마무리 멘트 없음. 구 EARLY_EXIT(2026-08-03 개명).
+    /// ⚠️ 서버는 이제 이 경로에서도 리포트 생성을 트리거한다(이용권 HELD, 성공 시 차감 확정) —
+    /// «리포트 없이 종료» 전제의 클라 문구·라우팅은 PM 재확인 대상.
+    case backExit = "BACK_EXIT"
     /// STT 30% 실패 판정(서버) — 이용권 환불·리포트 없음. 세션은 무효화된다.
     case sttReset = "STT_RESET"
 }

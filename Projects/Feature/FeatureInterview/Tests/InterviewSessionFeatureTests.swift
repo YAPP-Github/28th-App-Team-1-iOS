@@ -428,7 +428,7 @@ struct InterviewSessionSubmissionTests {
         #expect(captured.value?.endType == .manualEnd)
     }
 
-    @Test("8분 전 나가기는 EARLY_EXIT 를 최선 노력 제출한 뒤 중단을 통보한다")
+    @Test("8분 전 나가기는 BACK_EXIT 를 최선 노력 제출한 뒤 중단을 통보한다")
     func earlyExitSubmitsBestEffortThenAborts() async {
         let captured = LockIsolated<AnswerSubmission?>(nil)
         var initialState = InterviewSessionFeature.State.fixture(hasStarted: true)
@@ -438,7 +438,7 @@ struct InterviewSessionSubmissionTests {
         } withDependencies: {
             $0.interviewClient.submitAnswer = { _, submission in
                 captured.setValue(submission)
-                return .ended(.earlyExit)
+                return .ended(.backExit)
             }
         }
 
@@ -450,11 +450,11 @@ struct InterviewSessionSubmissionTests {
         }
         await store.receive(\.inner.earlyExitSubmissionFinished)
         await store.receive(\.delegate.aborted)
-        #expect(captured.value?.endType == .earlyExit)
+        #expect(captured.value?.endType == .backExit)
         #expect(captured.value?.audio == nil)   // 최선 노력 — 오디오·백오프 재시도 없음
     }
 
-    @Test("EARLY_EXIT 제출이 실패해도 이탈은 진행된다")
+    @Test("BACK_EXIT 제출이 실패해도 이탈은 진행된다")
     func earlyExitProceedsDespiteSubmissionFailure() async {
         var initialState = InterviewSessionFeature.State.fixture(hasStarted: true)
         initialState.isEarlyExitWarningPresented = true

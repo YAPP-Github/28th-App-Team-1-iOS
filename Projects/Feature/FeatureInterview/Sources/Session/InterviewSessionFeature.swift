@@ -136,7 +136,7 @@ public struct InterviewSessionFeature {
             case userTappedAnswerComplete
             /// 좌상단 X — 8분 전엔 중도 이탈 경고, 8분 후엔 종료 확인 모달. (이탈 동선 표기는 «협의 가능» — 임시 X)
             case userTappedClose
-            /// 중도 이탈 경고 «나가기» — 차감 감수하고 이탈. EARLY_EXIT 를 최선 노력 제출 후 서버가 턴을 보존한다.
+            /// 중도 이탈 경고 «나가기» — 차감 감수하고 이탈. BACK_EXIT 를 최선 노력 제출 후 서버가 턴을 보존한다.
             case userTappedLeaveInterview
             case userTappedExit
             case userTappedContinueInterview
@@ -246,7 +246,7 @@ extension InterviewSessionFeature {
         case .userTappedLeaveInterview:
             state.isEarlyExitWarningPresented = false
             // 최선 노력 1회 제출(재시도·오디오 없음, 스펙 §5.3) — 실패해도 이탈은 진행한다.
-            let submission = makeSubmission(state, endType: .earlyExit)
+            let submission = makeSubmission(state, endType: .backExit)
             let sessionId = state.sessionId
             return .merge(
                 .cancel(id: CancelID.clock),
@@ -409,7 +409,7 @@ extension InterviewSessionFeature {
     private func endSession(_ state: inout State, result: AnswerResult) -> Effect<Action> {
         state.isExitConfirmPresented = false
         switch result.endType {
-        case .earlyExit:
+        case .backExit:
             return .merge(sessionCleanup(), .send(.delegate(.aborted)))
         case .sttReset:
             return .merge(sessionCleanup(), .send(.delegate(.failed(.speechRecognition))))
