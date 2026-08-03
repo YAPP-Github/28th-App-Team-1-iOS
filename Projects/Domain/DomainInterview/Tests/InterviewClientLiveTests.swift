@@ -234,12 +234,12 @@ final class InterviewClientLiveTests: XCTestCase {
         XCTAssertEqual(result.endType, .hardCap)
     }
 
-    func test_submitAnswer_EARLY_EXIT를_디코딩한다() async throws {
+    func test_submitAnswer_BACK_EXIT를_디코딩한다() async throws {
         let result = try await submitAnswer(returning: """
-        {"success": true, "data": {"sessionEnded": true, "wrapUpMessage": null, "endType": "EARLY_EXIT"}}
+        {"success": true, "data": {"sessionEnded": true, "wrapUpMessage": null, "endType": "BACK_EXIT"}}
         """)
 
-        XCTAssertEqual(result.endType, .earlyExit)
+        XCTAssertEqual(result.endType, .backExit)
         XCTAssertNil(result.wrapUpMessage)
     }
 
