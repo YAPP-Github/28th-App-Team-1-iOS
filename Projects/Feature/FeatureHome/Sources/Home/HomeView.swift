@@ -152,7 +152,7 @@ public struct HomeView: View {
 #Preview("HomeDefault") {
     NavigationStack {
         HomeView(
-            store: Store(initialState: HomeFeature.State(showsOnboardingEntry: true, showsDebugLogout: true)) {
+            store: Store(initialState: HomeFeature.State(showsDevReset: true)) {
                 HomeFeature()
             }
         )

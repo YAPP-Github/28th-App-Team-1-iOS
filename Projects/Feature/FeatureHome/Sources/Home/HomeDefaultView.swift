@@ -19,7 +19,7 @@ import SwiftUI
 ///
 /// 그린 배경·면접 시작 레이어·내비바·시트 높이는 전부 `HomeView` 가 소유한다.
 ///
-/// dev 임시 버튼 2개는 위젯①(면접 시작)·마이페이지 로그아웃이 정식 배선되면 제거한다.
+/// dev 데이터 초기화 버튼은 시안에 없는 개발용이다 — 배포 계에선 플래그가 꺼져 숨겨진다.
 @ViewAction(for: HomeFeature.self)
 struct HomeDefaultView: View {
     @Bindable var store: StoreOf<HomeFeature>
@@ -148,26 +148,14 @@ struct HomeDefaultView: View {
     // MARK: - dev 임시 진입
 
     /// 시안에 없는 dev 전용 버튼 — 배포 계에선 플래그가 꺼져 숨겨진다.
+    /// 서버 로그아웃 + 토큰·UserDefaults 전체 삭제 후 Splash 부터 다시 태운다(재설치와 같은 자리).
     @ViewBuilder
     private var devEntries: some View {
-        if store.showsOnboardingEntry || store.showsDebugLogout {
-            HStack(spacing: .ds(.p8)) {
-                // dev 전용 임시 진입 — 온보딩 본체 통합 전까지 실서버 API 확인용.
-                if store.showsOnboardingEntry {
-                    Button("온보딩 시작 (dev)") {
-                        send(.userTappedOnboarding)
-                    }
-                    .buttonStyle(.borderedProminent)
-                }
-
-                // dev 디버그 — 서버 로그아웃 + 토큰·온보딩 draft 전체 삭제 후 첫 로그인 화면으로.
-                if store.showsDebugLogout {
-                    Button("로그아웃 (dev)", role: .destructive) {
-                        send(.userTappedLogout)
-                    }
-                    .buttonStyle(.bordered)
-                }
+        if store.showsDevReset {
+            Button("데이터 전부 삭제 후 재시작 (dev)", role: .destructive) {
+                send(.userTappedResetAppData)
             }
+            .buttonStyle(.bordered)
             .padding(.horizontal, .ds(.p20))
             .padding(.top, .ds(.p8))
         }
@@ -188,7 +176,7 @@ struct HomeDefaultView: View {
 #Preview("HomeDefault — dev 버튼") {
     NavigationStack {
         HomeView(
-            store: Store(initialState: HomeFeature.State(showsOnboardingEntry: true, showsDebugLogout: true)) {
+            store: Store(initialState: HomeFeature.State(showsDevReset: true)) {
                 HomeFeature()
             }
         )

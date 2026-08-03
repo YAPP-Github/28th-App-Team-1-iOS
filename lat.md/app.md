@@ -34,13 +34,13 @@
 - 판정은 `consentClient`·`appVersionClient` 도 쓴다 — cross-feature 조립 자리라 Domain 의존이 여기 모인다(authClient 와 같은 이유).
 - **Splash 계열 루트에서는 전역 로딩(`LoadingModal`)을 얹지 않는다** — 판정 API 가 도는 동안이 곧 Splash 가 떠 있는 이유라 로딩 판을 덮으면 브랜드 화면만 가리고, `.updateRequired` 는 알럿과 딤이 겹친다. `AppView.showsGlobalLoading` 이 `default` 없는 switch 라 루트가 늘면 컴파일이 깨져 판단을 강제한다 → [[domain.map#네트워킹 인프라]].
 
-대표 흐름 — **dev 디버그 로그아웃** (Home 임시 버튼):
-1. dev 계에서만 `AppFeature.onAppear` 가 `home.showsDebugLogout` 을 켜고, Home 로그아웃 버튼이 `delegate(.logoutRequested)` 방출
-2. AppFeature 수신 → effect 에서 `authClient.logout()`(서버 로그아웃+토큰 Keychain 삭제)·`onboardingDraftStore.clear()`(온보딩 draft/UserDefaults 삭제). 서버 실패해도 로컬 정리는 진행(`try?`)
-3. `sessionCleared` 로 `state = State()` 리셋 → `root = .auth` → 첫 소셜 로그인 화면 복귀. Splash 로 되돌리지 않는다(로그아웃 복귀는 판정이 아니라 확정 상태). cross-feature 조립이라 authClient 의존은 코디네이터인 여기서만 가진다 → [[home]]
+대표 흐름 — **dev 데이터 초기화** (Home 임시 버튼, 2026-08-03 로 통합 — 이전의 온보딩 진입·디버그 로그아웃 두 버튼을 대체):
+1. dev 계에서만 `AppFeature.onAppear` 가 `home.showsDevReset` 을 켜고, Home 버튼이 `delegate(.appDataResetRequested)` 방출
+2. AppFeature 수신 → effect 에서 `authClient.logout()`(서버 로그아웃+토큰 Keychain 삭제)·`onboardingDraftStore.clear()`·`UserDefaults.removePersistentDomain`(앱 도메인 전체). 서버 실패해도 로컬 정리는 진행(`try?`)
+3. `appDataCleared` 로 `state = State()` 리셋 후 **`resolveLaunchRouting()` 재실행** — 로그아웃과 달리 `root = .auth` 로 확정하지 않고 Splash 판정부터 다시 태운다. 지운 게 세션만이 아니라 로컬 저장소 전부라 재설치 직후와 같은 자리여야 버전·동의·프로필 게이트가 모두 다시 돈다. cross-feature 조립이라 authClient 의존은 코디네이터인 여기서만 가진다 → [[home]]
 
 대표 흐름 — **온보딩 위저드 진입**:
-1. 발원지 3곳 — 「면접 시작」의 [시작하기](`interviewStartRequested`)·[수정하기](`interviewInfoEditRequested`)·dev 버튼(`onboardingRequested`). [시작하기]는 재사용 포폴 유무와 **무관하게** 위저드다: 면접 화면이 `sessionId` 로만 열리는데 그 id 를 만드는 건 위저드의 세션 생성뿐이라서다. «이전 정보 그대로» 세션 생성 API 가 생기면 `variant == .hasPortfolio` 는 수집을 건너뛴다(TODO — 미결 6-1)
+1. 발원지 2곳 — 「면접 시작」의 [시작하기](`interviewStartRequested`)·[수정하기](`interviewInfoEditRequested`). [시작하기]는 재사용 포폴 유무와 **무관하게** 위저드다: 면접 화면이 `sessionId` 로만 열리는데 그 id 를 만드는 건 위저드의 세션 생성뿐이라서다. «이전 정보 그대로» 세션 생성 API 가 생기면 `variant == .hasPortfolio` 는 수집을 건너뛴다(TODO — 미결 6-1)
 2. AppFeature 수신 → `state.onboarding = OnboardingFeature.State(userName:)` (`@Presents` + `.ifLet`) → `AppView` 가 `fullScreenCover` 로 위저드 제시. 분기 재료(`variant`)는 홈이 진입 로드로 이미 정해 둔 값을 읽는다
 3. 온보딩 `delegate(.finished(sessionId:))` = **세션 준비 완료** → 위저드 cover 를 닫고 그 자리에서 `state.interview = InterviewFeature.State(sessionId:)` 로 면접 cover 를 연다(홈은 안 태운다 — 어차피 가려지고, 갱신 시점은 면접이 끝나 돌아올 때다) → [[interview]]
 4. 중도 이탈 `.dismiss` → cover 만 닫고 **`.home(.view(.onAppear))` 를 명시로 보내 홈을 다시 태운다** — STEP4 업로드는 끝났을 수 있는데 cover 를 닫는 것만으론 홈 `onAppear` 가 다시 오지 않아 «이전 정보 재사용» 카드가 옛 값으로 남는다. 홈 탭 위에서만 열리므로 **로그인 이후**라 토큰을 보유한다(온보딩 API 는 인증 필요) → [[onboarding]]
