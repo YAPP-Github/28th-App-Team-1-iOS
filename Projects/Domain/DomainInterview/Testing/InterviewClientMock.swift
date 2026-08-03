@@ -26,8 +26,9 @@ public extension InterviewClient {
                 AnswerResult(
                     answerId: 12,
                     nextQuestion: NextQuestion(questionId: 13, isLast: false, turn: TurnInfo(turnLevel: 1, depthLevel: 1)),
+                    sessionEnded: false,
                     wrapUpMessage: nil,
-                    reportId: nil
+                    endType: nil
                 )
             },
             questionAudioStream: { sessionId, questionId in
@@ -35,7 +36,8 @@ public extension InterviewClient {
                     url: URL(string: "mock://interview/\(sessionId)/questions/\(questionId)")!,
                     headers: [:]
                 )
-            }
+            },
+            reportList: { [] }
         )
     }
 }

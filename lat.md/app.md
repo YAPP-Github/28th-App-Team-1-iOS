@@ -19,6 +19,11 @@
 1. `AuthFeature`(가입 플로우 코디네이터)가 기존 회원 로그인 또는 가입 온보딩 완료 시 `delegate(.signedIn)` 방출 (→ [[auth#가입 플로우]])
 2. AppFeature가 수신해 `state = State()`로 초기화 후 `root = .home` — 새 로그인은 새 세션이므로 이전 사용자의 in-memory State(화면·선택값)를 버린다
 
+대표 흐름 — **온보딩 완주 → 면접 → 홈 복귀** (2026-08-03):
+1. `OnboardingFeature` 가 분석까지 끝내고 `delegate(.finished(sessionId))` 방출 → 위저드를 닫고 `state.interview = InterviewFeature.State(sessionId:)` 로 fullScreenCover 제시 (`.dismiss` 는 위저드만 닫고 홈 재조회 — «온보딩 위저드 진입» 4)
+2. 면접 종료 두 신호 모두 `state.interview = nil` + 홈 재조회(`.home(.view(.onAppear))`) — 어느 쪽이든 잔여가 줄었고 BACK_EXIT 이탈도 리포트를 만든다(2026-08-03 서버 계약). 케이스를 합치지 않는 건 정상 종료에 리포트 상세(r1) 라우팅이 붙을 자리라서다 → [[interview#코디네이터]]
+3. **면접 커버 중에는 전역 LoadingModal 을 끈다**(`AppView.showsGlobalLoading`) — 답변 제출·질문 스트림마다 전역 딤이 덮이면 면접이 끊겨 보이고, 타이머가 도는 화면을 잠그는 것 자체가 오동작이다. 면접은 자체 진행 표시(상태 칩·초읽기)로 대기를 말한다.
+
 ## Splash 세션 복구
 
 앱 진입 판정은 `onAppear` 의 effect 하나다 — 버전 게이트 → 토큰 유무 → `pending` **한 콜**로 `State.root` 를 정한다. refresh 를 먼저 부르지 않는다 — Access 는 3시간이라 대부분 살아 있고, 만료면 이 콜의 403 을 AuthorizedNetworkClient 가 재발급·재시도로 흡수한다([[api#토큰 수명주기]]). 목적지 표·시퀀스는 [launch-routing](../docs/work/launch-routing.md), 게이트 규칙은 [[auth#게이트 2단 체인]].
