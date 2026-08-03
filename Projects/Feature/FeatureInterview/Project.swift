@@ -29,6 +29,9 @@ let project = Project.makeModule(
             infoPlist: .extendingDefault(with: [
                 "UILaunchScreen": [:],
                 "NSAppTransportSecurity": ["NSAllowsArbitraryLoads": true],
+                // live 하네스(HILIT_ACCESS_TOKEN)의 실서버 주소 — `NetworkClient.defaultBaseURL` 이
+                // Bundle 에서 읽는다. Example 은 계별 xcconfig 를 안 타므로 Dev 서버 고정.
+                "API_BASE_URL": "https://hilit.my",
                 "CFBundleShortVersionString": "$(MARKETING_VERSION)",
                 "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
                 "CFBundleIconName": "AppIcon",
@@ -36,15 +39,29 @@ let project = Project.makeModule(
                 "NSCameraUsageDescription": "AI 면접에서 얼굴과 답변 영상 녹화를 위해 카메라를 사용합니다.",
                 "NSMicrophoneUsageDescription": "AI 면접에서 음성 답변 인식과 녹음을 위해 마이크를 사용합니다."
             ]),
+            // 번들 샘플 답변 오디오(SampleAnswer.m4a) — live 하네스가 answerAudio seam 으로 주입.
+            resources: ["Example/Resources/**"],
             dependencies: [
                 .composableArchitecture,
+                .core(interface: .network),       // live 하네스 — TokenStore(inMemory)·AuthTokens
                 .domain(interface: .interview),
+                .domain(interface: .portfolio),   // live 부트스트랩 — 첫 포트폴리오 조회
+                .domain(interface: .speech),      // live 하네스 — answerAudio 오버라이드
+                .domain(interface: .user),        // live 부트스트랩 — 프로필·잔여 이용권 진단
+                // live 하네스 실 IO — NetworkClient·AuthorizedNetworkClient liveValue 활성화.
+                .project(target: "CoreNetworkImplementation", path: .core(.network)),
+                // live 하네스 실 IO — InterviewClient liveValue (실서버 세션 생성·턴 루프).
+                .project(target: "DomainInterviewImplementation", path: .domain(.interview)),
                 // 권한만 실물 IO — 준비 화면의 요청→거부 alert→설정 이동 흐름 검증용 (liveValue 활성화).
                 .project(target: "DomainPermissionImplementation", path: .domain(.permission)),
+                // live 하네스 실 IO — PortfolioClient liveValue (부트스트랩 목록 조회).
+                .project(target: "DomainPortfolioImplementation", path: .domain(.portfolio)),
                 // 카메라 프리뷰 실물 IO — 실기기에서 전면 카메라 프리뷰 검증용 (liveValue 활성화).
                 .project(target: "DomainRecordingImplementation", path: .domain(.recording)),
-                // 마이크 캡처 실물 IO — 세션 화면 레벨·발화 로그 검증용 (liveValue 활성화).
-                .project(target: "DomainSpeechImplementation", path: .domain(.speech))
+                // 마이크 캡처·TTS 재생 실물 IO — 레벨·발화 로그와 질문 재생 검증용 (liveValue 활성화).
+                .project(target: "DomainSpeechImplementation", path: .domain(.speech)),
+                // live 부트스트랩 실 IO — UserClient liveValue (프로필·이용권 진단).
+                .project(target: "DomainUserImplementation", path: .domain(.user))
             ]
         ))
     ]
