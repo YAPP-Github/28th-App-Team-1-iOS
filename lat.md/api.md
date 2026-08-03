@@ -72,20 +72,21 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 
 ## Interview
 
-`DomainInterview` — `InterviewClient`. 세션 준비(질문 Preload·요약 질문 TTS)는 서버 비동기 — 생성(202) 후 `sessionStatus` 를 3~5초 폴링하고, READY 에 `startedAt`·요약 질문(base64 TTS)이 동봉된다. FAILED 면 이용권 자동 환불. 계약 상세는 [[interview]].
+`DomainInterview` — `InterviewClient`. 세션 생성은 회원 프로필 스냅샷을 쓴다(직군·연차는 body 에서 제거, 미등록이면 `USER_PROFILE_NOT_REGISTERED`). 준비는 서버 비동기 — 202 후 `sessionStatus` 3~5초 폴링, READY 에 `startedAt`·요약 질문(base64 TTS) 동봉. FAILED 면 이용권 자동 환불. 계약 상세는 [[interview]].
 
 | 메서드 | 엔드포인트 | 비고 |
 |---|---|---|
-| `createSession` | POST `/api/v1/interview/sessions` | 이용권 무료 3회, `jdUrl`/`jdText` 상호 배타 |
+| `createSession` | POST `/api/v1/interview/sessions` | 이용권 무료 3회, `jdUrl`/`jdText` 상호 배타, 직군·연차는 프로필 스냅샷 |
 | `sessionStatus` | GET `/api/v1/interview/sessions/{id}/status` | 3~5초 폴링 |
-| `submitAnswer` | POST `/api/v1/interview/sessions/{id}/answers` | 현재 turnLevel=0 전용, 메타=query + 오디오=multipart(mp3) |
+| `submitAnswer` | POST `/api/v1/interview/sessions/{id}/answers` | 메타=query + 오디오=multipart. 503(`AI_TEMPORARILY_UNAVAILABLE`)은 같은 요청 재시도 계약 |
 | `questionAudioStream` | GET `.../questions/{qid}/audio/stream` | 아래 스트리밍 규약 |
+| `reportList` | GET `/api/v1/interview/sessions` | 내 레포트 목록(마이페이지) — envelope `{reports}` 는 liveValue 가 벗김 |
 
 질문 음성 스트리밍 규약: `audio/mpeg` + `Transfer-Encoding: chunked` (Content-Length 없음). 전부 받고 재생하지 말고 `AVURLAsset(url:options:[헤더])` → `AVPlayer` 점진 재생 — 그래서 계약이 Data 가 아니라 `InterviewAudioStream(url·headers)` 다. 중간 실패는 HTTP 로 안 잡힌다 — 재생 에러 콜백으로 감지하고 같은 questionId 로 재호출(TTS 처음부터 재생성).
 
-`endType` 계약(답변 제출): nil=정상 / SKIP(오디오 없음) / MANUAL_END(8:00 후 수동 종료) / HARD_CAP(12:00 강제) / EARLY_EXIT(8:00 전 이탈). `isWrapUp` 은 8:45 경과 여부 — 타이머 상태머신은 [ai-interview](../docs/work/ai-interview.md) §6.
+`endType` 은 요청·응답이 다른 집합이다. 요청(`AnswerEndType`): nil=정상 / SKIP(오디오 없음) / MANUAL_END(8:00 후 수동 종료) / HARD_CAP(12:00 강제) / EARLY_EXIT(8:00 전 이탈). 응답(`SessionEndType`): MANUAL_END·HARD_CAP·EARLY_EXIT + NORMAL_END(자연 종료) + **STT_RESET**(STT 30% 실패 — 판정은 서버, 이용권 환불·리포트 없음). 종료 응답은 `sessionEnded`·`wrapUpMessage{ttsAudio}`(base64 mp3 마무리 멘트)를 동봉하고 `reportId` 는 삭제됐다. `isWrapUp` 은 8:45 경과 여부(required — 항상 전송) — 타이머 상태머신은 [ai-interview](../docs/work/ai-interview.md) §6.
 
-에러는 `InterviewError` 로 매핑된다 — NO_REMAINING_TICKET → noRemainingTicket(403), PORTFOLIO_NOT_FOUND / PORTFOLIO_PROCESSING / PORTFOLIO_UPLOAD_FAILED / JD_NOT_VALIDATED / FREETEXT_NOT_RELEVANT (세션 생성 400·404), INTERVIEW_SESSION_NOT_FOUND / QUESTION_NOT_FOUND (404), ANSWER_ALREADY_SUBMITTED / SESSION_ALREADY_ENDED (409), 입력 검증군(VALIDATION_ERROR·INVALID_*)은 서버 문구를 실은 invalid(message:), 미승격 코드(4xx)는 server(code·message) 로 동봉 — 분기가 필요해지면 전용 케이스로 승격.
+에러는 `InterviewError` 로 매핑된다 — NO_REMAINING_TICKET → noRemainingTicket(403), PORTFOLIO_NOT_FOUND / PORTFOLIO_PROCESSING / PORTFOLIO_UPLOAD_FAILED / JD_NOT_VALIDATED / FREETEXT_NOT_RELEVANT / USER_PROFILE_NOT_REGISTERED (세션 생성 400·404), INTERVIEW_SESSION_NOT_FOUND / QUESTION_NOT_FOUND (404), ANSWER_ALREADY_SUBMITTED / SESSION_ALREADY_ENDED (409), AI_TEMPORARILY_UNAVAILABLE → aiTemporarilyUnavailable(503 — 코드 매핑이 5xx 판정보다 먼저라 serverUnavailable 에 선점되지 않음, 같은 요청 재시도), 입력 검증군(VALIDATION_ERROR·INVALID_*)은 서버 문구를 실은 invalid(message:), 미승격 코드(4xx)는 server(code·message) 로 동봉 — 분기가 필요해지면 전용 케이스로 승격.
 
 ## Interview Report
 
@@ -129,7 +130,7 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 
 ## User
 
-`DomainUser` — `UserClient`. 회원 프로필 조회/등록·수정과 회원 탈퇴. 조회(profile)와 수정(updateProfile)은 서로 다른 화면(마이페이지 표시 vs 온보딩·프로필 편집)에서 따로 쓰는 전제로 읽기/쓰기 모델을 분리했다(UserProfile vs UserProfileUpdate). 수정값은 이후 새로 생성하는 면접 세션부터 반영된다(과거 세션 스냅샷 불변) — 클라이언트가 이 조회값으로 세션 설정을 프리필한다.
+`DomainUser` — `UserClient`. 회원 프로필 조회/등록·수정과 회원 탈퇴. 조회(profile)와 수정(updateProfile)은 다른 화면(마이페이지 표시 vs 온보딩·프로필 편집)에서 따로 쓰는 전제로 읽기/쓰기 모델을 분리했다(UserProfile vs UserProfileUpdate). 수정값은 이후 새로 생성하는 면접 세션부터 반영된다(과거 세션 스냅샷 불변) — 클라이언트가 이 조회값으로 세션 설정을 프리필한다.
 
 | 메서드 | 엔드포인트 | 비고 |
 |---|---|---|
