@@ -87,7 +87,8 @@ public struct OnboardingPortfolioUploadFeature {
         /// 삭제 확인 모달 표시 여부 — 파일 행 X 가 켜고, «네»/«아니요» 가 끈다.
         /// 삭제 API 는 «네» 에서만 나간다(X 만으로는 서버 파일이 그대로다).
         public var isDeleteConfirmPresented = false
-        /// 진입 시 서버에 등록된 포트폴리오를 조회할지 — 코디네이터가 **위저드 수명당 1회**만 켠다.
+        /// 진입 시 서버에 등록된 포트폴리오를 조회할지 — 코디네이터가 **빈 판으로 세우는 진입마다** 켠다
+        /// (서버 READY 는 위저드 밖에서도 바뀐다 — [[onboarding#포트폴리오 업로드]]).
         /// 켜진 채 `onAppear` 를 한 번 받으면 스스로 끈다(뷰 `onAppear` 는 여러 번 온다).
         var checksExisting: Bool
         /// 조회로 찾은 기존 READY 포트폴리오 — 확인 모달이 떠 있는 동안만 들고 있다.
@@ -224,7 +225,8 @@ public struct OnboardingPortfolioUploadFeature {
             return .none
 
         // 2회차 이상(= 재사용할 READY 포폴 보유 — docs/work/home-account.md §3 «회차 분기 판정 키») 진입.
-        // 위저드가 STEP2 를 처음 세울 때만 켜지고, 이미 첨부된 판(복원 포함)에는 끼어들지 않는다.
+        // 빈 판 진입마다 켜지고(서버 READY 는 위저드 밖에서 바뀐다), 이미 첨부된 판(복원 포함)에는
+        // 끼어들지 않는다. 조회는 진입당 1회 — 이 자리에서 플래그를 끈다.
         case .onAppear:
             guard state.checksExisting, case .idle = state.upload else { return .none }
             state.checksExisting = false
