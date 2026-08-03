@@ -194,11 +194,40 @@ struct OnboardingPortfolioUploadFeatureTests {
         }
     }
 
-    @Test("업로드 중 X 탭은 폴링을 멈추고 등록된 파일을 삭제한다")
-    func removeDuringUploadCancelsAndDeletes() async {
+    @Test("업로드 중 X 탭은 삭제 확인 모달만 띄우고 파일은 그대로 둔다")
+    func removeDuringUploadAsksForConfirmation() async {
+        var initialState = OnboardingPortfolioUploadFeature.State()
+        initialState.upload = .uploading(fileName: "포트폴리오.pdf", portfolioId: Self.portfolioId)
+        let store = TestStore(initialState: initialState) {
+            OnboardingPortfolioUploadFeature()
+        }
+
+        // delete 는 unimplemented testValue — 호출되면 테스트가 실패한다(«네» 전엔 안 나가야 한다).
+        await store.send(.view(.userTappedRemoveFile)) {
+            $0.isDeleteConfirmPresented = true
+        }
+    }
+
+    @Test("삭제 확인 «아니요» 는 모달만 닫는다")
+    func deleteCancelKeepsFile() async {
+        var initialState = OnboardingPortfolioUploadFeature.State()
+        initialState.upload = .uploaded(fileName: "포트폴리오.pdf", portfolioId: Self.portfolioId)
+        initialState.isDeleteConfirmPresented = true
+        let store = TestStore(initialState: initialState) {
+            OnboardingPortfolioUploadFeature()
+        }
+
+        await store.send(.view(.userTappedDeleteCancel)) {
+            $0.isDeleteConfirmPresented = false
+        }
+    }
+
+    @Test("삭제 확인 «네» 는 폴링을 멈추고 등록된 파일을 삭제한다")
+    func deleteConfirmCancelsAndDeletes() async {
         let deletedId = LockIsolated<UUID?>(nil)
         var initialState = OnboardingPortfolioUploadFeature.State()
         initialState.upload = .uploading(fileName: "포트폴리오.pdf", portfolioId: Self.portfolioId)
+        initialState.isDeleteConfirmPresented = true
         let store = TestStore(initialState: initialState) {
             OnboardingPortfolioUploadFeature()
         } withDependencies: {
@@ -208,7 +237,8 @@ struct OnboardingPortfolioUploadFeatureTests {
             }
         }
 
-        await store.send(.view(.userTappedRemoveFile)) {
+        await store.send(.view(.userTappedDeleteConfirm)) {
+            $0.isDeleteConfirmPresented = false
             $0.upload = .idle
         }
         await store.finish()

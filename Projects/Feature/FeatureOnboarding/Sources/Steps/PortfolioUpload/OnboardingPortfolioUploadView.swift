@@ -54,6 +54,26 @@ public struct OnboardingPortfolioUploadView: View {
                 send(.fileSelectionFailed)
             }
         }
+        .hilitModal(isPresented: store.isDeleteConfirmPresented) { deleteConfirmModal }
+    }
+
+    // MARK: - 삭제 확인 모달
+
+    /// 파일 행 X → 삭제 확인. 마이페이지 «모달을 모아봤어요»(435:8892)와 같은 계열이고
+    /// 카피·버튼 라벨(«아니요 / 네»)만 온보딩 판이다. delete API 는 «네» 에서만 나간다.
+    /// TODO: 남은 횟수는 서버가 안 준다(목록 응답은 deleteAvailable·nextDeleteAvailableAt 만) — 1 고정 문구.
+    private var deleteConfirmModal: some View {
+        Modal(
+            "포트폴리오를 삭제하시겠어요?",
+            subText: "포트폴리오 삭제 기회는 한 달에 한 번이에요.",
+            info: "이번달 남은 삭제 기회 1번"
+        ) {
+            ButtonLarge(.modal, tone: .twoColor) {
+                Button("아니요") { send(.userTappedDeleteCancel) }
+            } trailing: {
+                Button("네") { send(.userTappedDeleteConfirm) }
+            }
+        }
     }
 
     // MARK: - 머리글
@@ -193,6 +213,25 @@ private let previewFileName = "홍길동 자기소개서_SK프롭티어 기업 �
             initialState: OnboardingPortfolioUploadFeature.State(
                 upload: .failed(message: OnboardingPortfolioUploadFeature.unreadableFileMessage)
             )
+        ) {
+            OnboardingPortfolioUploadFeature()
+        }
+    )
+}
+
+#Preview("삭제 확인 모달") {
+    OnboardingPortfolioUploadView(
+        store: Store(
+            initialState: {
+                var state = OnboardingPortfolioUploadFeature.State(
+                    upload: .uploaded(
+                        fileName: previewFileName,
+                        portfolioId: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+                    )
+                )
+                state.isDeleteConfirmPresented = true
+                return state
+            }()
         ) {
             OnboardingPortfolioUploadFeature()
         }
