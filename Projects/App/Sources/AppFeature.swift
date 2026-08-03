@@ -15,6 +15,7 @@ import Foundation
 // @lat: [[app]]
 // depends-on: [[auth]] — 로그인 전/후 루트 게이트. cross-feature 조립은 AppFeature 에서만.
 // depends-on: [[home]] — Home 을 탭으로 임베드(owner). cross-feature delegate 라우팅은 Feature 추가 시 이 자리에서 조립.
+// depends-on: [[interview]] — 온보딩 완주 delegate(.finished(sessionId)) 를 받아 면접 흐름을 present. 종료 두 신호(.finished/.closed)는 cover 를 닫는다.
 // depends-on: [[onboarding]] — dev 전용 진입(Home 버튼)으로 온보딩 위저드를 present. 조립은 여기서만 (온보딩 본체 통합 전 임시).
 @Reducer
 struct AppFeature {
@@ -45,6 +46,8 @@ struct AppFeature {
         var root: Root = .splash
         var home = HomeFeature.State()
         var selectedTab: Tab = .home
+        /// 면접 흐름(Part2) — 온보딩 완주가 넘긴 sessionId 로 연다. 전면 몰입이라 fullScreenCover.
+        @Presents var interview: InterviewFeature.State?
         /// dev 전용 온보딩 위저드 — Home 진입 버튼으로 present (온보딩 본체 통합 전 임시).
         @Presents var onboarding: OnboardingFeature.State?
         /// 업데이트 안내(강제·권장)의 근거 — «업데이트» 가 열 `storeUrl` 과 강제 여부를 여기서 읽는다.
@@ -65,6 +68,7 @@ struct AppFeature {
         case launchRoutingResolved(LaunchRouting)
         case auth(AuthFeature.Action)
         case home(HomeFeature.Action)
+        case interview(PresentationAction<InterviewFeature.Action>)
         case onboarding(PresentationAction<OnboardingFeature.Action>)
         /// 로그아웃 정리(서버·토큰·draft) 완료 — 초기 State 로 리셋해 로그인 화면으로 돌아간다.
         case sessionCleared
@@ -160,9 +164,10 @@ struct AppFeature {
                 state.onboarding = OnboardingFeature.State()
                 return .none
             case .home(.delegate(.interviewStartRequested)):
-                // TODO: 면접 플로우 조립 — 게이트(checkStartEligibility) 결과별 라우팅(위저드 cover / S2 강제 /
-                //       AuthSuspension). `FeatureInterview` 는 아직 App 에 scope 조차 없다
-                //       (docs/work/home-account.md §4, 미결 6-1 서버 협의).
+                // TODO: 홈에서의 직접 진입 — 게이트(checkStartEligibility) 결과별 라우팅(위저드 cover / S2 강제 /
+                //       AuthSuspension)이 미결이라 아직 열지 않는다 (docs/work/home-account.md §4, 미결 6-1 서버 협의).
+                //       면접 흐름 자체는 아래 `.interview` 로 조립돼 있다 — 게이트가 정해지면 세션을 만들어
+                //       `state.interview = InterviewFeature.State(sessionId:)` 로 여기서 열면 된다.
                 return .none
             case .home(.delegate(.interviewInfoEditRequested)):
                 // TODO: 면접 정보 수정(직군·연차·JD·포폴) 진입 조립 — 소유 Feature 확정 후.
@@ -182,10 +187,24 @@ struct AppFeature {
                 }
             case .home:
                 return .none
-            // 온보딩 완료(분석까지)/중도 이탈 모두 위저드를 닫는다. finished(sessionId:) 는
-            // 본체 통합 시 Part2 진입에 쓰지만 dev 진입에선 닫기만 한다.
-            case .onboarding(.presented(.delegate(.finished))),
-                 .onboarding(.presented(.delegate(.dismiss))):
+            // 면접 종료는 두 신호 모두 cover 를 닫는 것으로 끝난다 — 아래가 이미 홈이라 별도 라우팅이 없다.
+            // 둘을 합치지 않는 건 곧 갈라지기 때문이다: 정상 종료(.finished — 리포트 대기 «홈으로»)는
+            // 홈의 리포트 목록을 새로고침해야 하고, 이탈(.closed)은 그럴 필요가 없다.
+            case .interview(.presented(.delegate(.finished))):
+                state.interview = nil
+                return .none
+            case .interview(.presented(.delegate(.closed))):
+                state.interview = nil
+                return .none
+            case .interview:
+                return .none
+            // 온보딩 완주 = 분석까지 끝나 세션이 준비된 상태 — 위저드를 닫고 그 세션으로 면접을 연다.
+            case let .onboarding(.presented(.delegate(.finished(sessionId)))):
+                state.onboarding = nil
+                state.interview = InterviewFeature.State(sessionId: sessionId)
+                return .none
+            // 중도 이탈(X) — 세션이 없으니 닫기만 한다.
+            case .onboarding(.presented(.delegate(.dismiss))):
                 state.onboarding = nil
                 return .none
             case .onboarding:
@@ -201,6 +220,9 @@ struct AppFeature {
             case .binding:
                 return .none
             }
+        }
+        .ifLet(\.$interview, action: \.interview) {
+            InterviewFeature()
         }
         .ifLet(\.$onboarding, action: \.onboarding) {
             OnboardingFeature()
