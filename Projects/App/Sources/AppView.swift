@@ -37,11 +37,19 @@ struct AppView: View {
                     .tabItem { Label("홈", systemImage: "house") }
                     .tag(AppFeature.Tab.home)
                 }
-                // dev 전용 온보딩 위저드 — Home 진입 버튼으로만 열린다 (로그인 이후이므로 토큰 보유).
+                // 온보딩 위저드 — 「면접 시작」의 [시작하기](첫 면접)·[수정하기], dev 진입 버튼이 연다.
+                // 홈 탭 위에서만 열리므로 로그인 이후다(온보딩 API 는 토큰 필요).
                 .fullScreenCover(
                     item: $store.scope(state: \.onboarding, action: \.onboarding)
                 ) { onboardingStore in
                     OnboardingView(store: onboardingStore)
+                }
+                // 면접 흐름 — 위저드가 세션을 만든 직후 그 자리에서 열린다(온보딩 cover 는 이미 닫힌 뒤).
+                // 카메라·마이크를 쓰는 전면 화면이라 탭 줄이 남으면 안 된다.
+                .fullScreenCover(
+                    item: $store.scope(state: \.interview, action: \.interview)
+                ) { interviewStore in
+                    InterviewView(store: interviewStore)
                 }
             case .auth:
                 // 로그인 전 + 가입 플로우(약관·온보딩) — 세션 복구가 게이트에 걸린 경우도 여기로 온다.

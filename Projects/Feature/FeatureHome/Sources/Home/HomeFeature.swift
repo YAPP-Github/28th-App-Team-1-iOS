@@ -6,6 +6,8 @@
 //
 
 import ComposableArchitecture
+import DomainPortfolioInterface
+import DomainUserInterface
 import Foundation
 
 // @lat: [[home]]
@@ -66,8 +68,9 @@ public struct HomeFeature {
     public struct State: Equatable {
         /// 화면 상태 — 홈 진입 시 로드 결과(잔여·기록·포폴)가 결정한다.
         public var phase: Phase = .default
-        // TODO: 서버 프로필(nickname) — 홈 진입 로드에 붙으면 기본값을 지운다(미결 6-1).
-        /// 인사말에 넣는 사용자 이름.
+        /// 인사말에 넣는 사용자 이름 — 홈 진입 로드(`UserClient.profile`)가 덮어쓴다.
+        /// 기본값은 빈 문자열이다: 사람 이름을 박아 두면 프로필 응답이 늦을 때 **모든 사용자가
+        /// 남의 이름을 읽는다**. 비어 있는 동안은 뷰가 이름 없는 인사말로 떨어진다.
         public var userName: String
         /// 리포트 목록 — 최신순. 개수는 여기서 파생한다(`reports.count`), 따로 들지 않는다.
         public var reports: IdentifiedArrayOf<Report>
@@ -75,9 +78,8 @@ public struct HomeFeature {
         public var expandedReportID: Report.ID?
         /// 시트가 지금 앉아 있는 자리. 홈에 다시 들어오면 기본으로 돌아온다(`onAppear`).
         public var sheetDetent: SheetDetent = .report
-        // TODO: 잔여·포트폴리오(=variant)는 홈 진입 로드가 정해야 하고, 진실은 탭 시점 게이트
-        //       `checkStartEligibility` 재검증 (미결 6-1 서버 협의 대기).
         /// 면접 시작 화면 — 시트 **뒤에 늘 깔려 있다**. present 가 아닌 이유는 `SheetDetent` 주석 참조.
+        /// 잔여·포폴·변형은 홈 진입 로드가 채운다 — 진실은 탭 시점 게이트(`checkStartEligibility`) 재검증이다.
         public var startInterview: StartInterviewFeature.State
         /// dev 진입점 노출 여부 — AppFeature 가 dev 빌드에서만 켠다 (온보딩 본체 통합 전 임시 진입).
         public var showsOnboardingEntry: Bool
@@ -86,7 +88,7 @@ public struct HomeFeature {
 
         public init(
             phase: Phase = .default,
-            userName: String = "재원",
+            userName: String = "",
             reports: [Report] = [],
             startVariant: StartInterviewFeature.Variant = .first,
             showsOnboardingEntry: Bool = false,
@@ -96,7 +98,7 @@ public struct HomeFeature {
             self.userName = userName
             self.reports = IdentifiedArray(uniqueElements: reports)
             self.expandedReportID = reports.first?.id
-            self.startInterview = StartInterviewFeature.State(variant: startVariant)
+            self.startInterview = StartInterviewFeature.State(variant: startVariant, userName: userName)
             self.showsOnboardingEntry = showsOnboardingEntry
             self.showsDebugLogout = showsDebugLogout
         }
@@ -110,8 +112,8 @@ public struct HomeFeature {
 
         /// 사용자 입력·생명주기. View 의 send(...) 로만 방출된다.
         public enum View: Sendable {
-            // TODO: 홈 진입 4종 로드(잔여·기록 리스트·진행 중 세션·포폴 상태) — 묶음 API 여부 서버 협의(미결 6-1) 후 배선.
-            //       기록 리스트 응답은 `inner(.reportsLoaded)` 로 돌아온다.
+            // 홈 진입 로드 — 프로필·포폴 2종은 여기서 때린다(`inner(.entryLoaded)`).
+            // TODO: 나머지 2종(기록 리스트 → `inner(.reportsLoaded)`·진행 중 세션)은 계약 확정 후(미결 6-1·6-3).
             case onAppear
             /// 시트 드래그가 끝나 자리가 정해졌다 — 판정은 뷰(`HomeSheetDrag`), 확정은 여기.
             case userSettledSheet(SheetDetent)
@@ -131,6 +133,9 @@ public struct HomeFeature {
 
         /// effect 결과·리듀서 내부 신호. 리듀서만 방출한다.
         public enum Inner: Sendable {
+            /// 홈 진입 로드 결과 — 실패한 쪽만 nil 이다(부분 실패 허용, 성공한 값은 그대로 반영).
+            /// 묶음 API(미결 6-1)로 바뀌어도 갈아끼울 자리는 이 한 케이스다.
+            case entryLoaded(profile: UserProfile?, portfolios: [DomainPortfolioInterface.Portfolio]?)
             /// 기록 리스트 로드 결과 — 목록과 phase 를 함께 갱신한다.
             case reportsLoaded([Report])
         }
@@ -152,6 +157,12 @@ public struct HomeFeature {
         }
     }
 
+    /// 진입 로드 취소 식별자 — 탭을 빠르게 오갈 때 앞선 응답이 뒤늦게 덮어쓰는 걸 막는다.
+    private enum CancelID { case entryLoad }
+
+    @Dependency(\.portfolioClient) var portfolioClient
+    @Dependency(\.userClient) var userClient
+
     public init() {}
 
     public var body: some ReducerOf<Self> {
@@ -161,7 +172,17 @@ public struct HomeFeature {
                 // 홈 밖에 다녀오면 시트는 기본 자리로 — 남의 화면에서 돌아왔는데 면접 시작이
                 // 떠 있거나 목록이 펼쳐진 채면 «홈에 왔다» 는 신호가 사라진다.
                 state.sheetDetent = .report
-                return .none
+                // 첫 진입만이 아니라 **매 진입 재조회** — 포폴은 온보딩 S2·마이페이지가, 잔여는 면접이
+                // 바꾼다. 캐시하면 무효화 신호를 AppFeature 로 돌려야 하는데(Feature→Feature 금지)
+                // 1건짜리 GET 두 번보다 비싸다. 진실은 서버(docs/work/home-account.md §3·§6).
+                // 값은 지우지 않고 덮어쓰기만 한다 — 재진입마다 화면이 비면 깜빡인다.
+                return .run { send in
+                    // 한쪽이 죽어도 다른 쪽은 그린다 — 포폴 실패로 인사말·잔여까지 날리지 않는다.
+                    async let profile = try? await userClient.profile()
+                    async let portfolios = try? await portfolioClient.list()
+                    await send(.inner(.entryLoaded(profile: await profile, portfolios: await portfolios)))
+                }
+                .cancellable(id: CancelID.entryLoad, cancelInFlight: true)
             case let .view(.userSettledSheet(detent)):
                 state.sheetDetent = detent
                 return .none
@@ -180,6 +201,24 @@ public struct HomeFeature {
                 return .send(.delegate(.onboardingRequested))
             case .view(.userTappedLogout):
                 return .send(.delegate(.logoutRequested))
+
+            case let .inner(.entryLoaded(profile, portfolios)):
+                if let profile {
+                    // 이름은 온보딩 전이면 비어 올 수 있다 — 그때는 앞서 그리던 값을 유지한다.
+                    if let name = profile.name, !name.isEmpty {
+                        state.userName = name
+                        state.startInterview.userName = name
+                    }
+                    state.startInterview.remainingChances = profile.remainingTicketCount
+                }
+                if let portfolios {
+                    state.startInterview.portfolio = Self.reusablePortfolio(from: portfolios)
+                }
+                state.startInterview.variant = Self.startVariant(
+                    remainingChances: state.startInterview.remainingChances,
+                    portfolio: state.startInterview.portfolio
+                )
+                return .none
 
             case let .inner(.reportsLoaded(reports)):
                 state.reports = IdentifiedArray(uniqueElements: reports)
@@ -215,6 +254,34 @@ public struct HomeFeature {
         Scope(state: \.startInterview, action: \.startInterview) {
             StartInterviewFeature()
         }
+    }
+}
+
+// MARK: - 진입 로드 → 표시값
+
+private extension HomeFeature {
+    /// «이전 정보 재사용» 카드에 걸 포폴 — MVP 는 계정당 1개지만 응답이 배열이라 첫 건을 쓴다.
+    /// READY 만 고른다: PROCESSING 을 걸어 두면 시작 시점에 게이트가 `PORTFOLIO_NOT_READY` 로 뒤집는다.
+    // TODO: PROCESSING 이면 3~5초 폴링해 READY 로 승격 (PortfolioClient.status — 온보딩 S2 와 같은 규칙).
+    static func reusablePortfolio(
+        from portfolios: [DomainPortfolioInterface.Portfolio]
+    ) -> StartInterviewFeature.Portfolio? {
+        portfolios
+            .first { $0.status == .ready }
+            .flatMap(StartInterviewFeature.Portfolio.init(portfolio:))
+    }
+
+    /// 면접 시작 카드 변형 — 잔여 0 이 최우선(소진 안내), 다음이 재사용할 포폴 유무.
+    /// 서버 판정의 표시일 뿐이다 — 시작 가능 여부의 진실은 탭 시점 게이트다.
+    ///
+    /// **잔여를 모르면(nil) 소진이 아니다** — 프로필이 죽었을 뿐인데 «무료 횟수를 모두 사용했어요»
+    /// 를 띄우면 시작 경로가 [홈으로] 하나로 막힌다. 모를 땐 포폴 유무로만 가른다.
+    static func startVariant(
+        remainingChances: Int?,
+        portfolio: StartInterviewFeature.Portfolio?
+    ) -> StartInterviewFeature.Variant {
+        if let remainingChances, remainingChances <= 0 { return .exhausted }
+        return portfolio == nil ? .first : .hasPortfolio
     }
 }
 
