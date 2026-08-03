@@ -149,8 +149,9 @@ struct OnboardingDraftRestoreTests {
         #expect(saved.value?.furthestStep == 2)
     }
 
-    @Test("프리로드 완료는 draft 를 폐기한다")
-    func preloadCompletionClearsDraft() async {
+    /// 세션 생성은 면접의 시작일 뿐 — 폐기는 인터뷰 세션 완료 시점(AppFeature)이다.
+    @Test("프리로드 완료는 draft 를 남긴다")
+    func preloadCompletionKeepsDraft() async {
         let cleared = LockIsolated(false)
         var state = initialState()
         state.path.append(.preload(.init(data: state.data)))
@@ -167,6 +168,6 @@ struct OnboardingDraftRestoreTests {
         await store.send(.path(.element(id: id, action: .preload(.delegate(.completed(sessionId: 1))))))
         await store.receive(\.delegate.finished, 1)
         await store.finish()
-        #expect(cleared.value)
+        #expect(!cleared.value)
     }
 }
