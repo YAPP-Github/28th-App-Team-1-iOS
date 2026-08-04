@@ -59,8 +59,10 @@ struct AppView: View {
         // 강제·권장 업데이트 안내 — 루트가 무엇이든 위에 얹힌다(강제는 root 가 .updateRequired).
         .alert($store.scope(state: \.updateAlert, action: \.updateAlert))
         .onAppear { store.send(.onAppear) }
-        // 전역 시스템 로딩 — 모든 API in-flight(NetworkActivity) 동안 화면을 잠근다
-        .hilitModal(isPresented: showsGlobalLoading && NetworkActivity.shared.isLoading) {
+        // 전역 시스템 로딩 — 모든 API in-flight(NetworkActivity) 동안 화면을 잠근다.
+        // 루트라 `overlay` 변형을 쓴다 — 화면 모달(`hilitModal` = cover)과 presentation 자리를
+        // 다투지 않게 하려는 것이고, 루트는 NavigationStack 밖이라 overlay 로도 네비바 위에 깔린다.
+        .hilitModalOverlay(isPresented: showsGlobalLoading && NetworkActivity.shared.isLoading) {
             LoadingModal()
         }
     }
