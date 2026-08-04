@@ -25,7 +25,7 @@ PRD v3 가 화면명을 `Onboarding_*` 로 확정하면서 설계 초안의 가�
 
 ```
 App  (composition root — 레이어 umbrella link → liveValue 활성화)
-└── AppFeature  (코디네이터: 탭 + Setup→Session→Report 라우팅)
+└── AppFeature  (코디네이터: 루트 화면 + Setup→Session→Report 라우팅)
     ├── OnboardingFeature (Part 1) ─┬ DomainJobInterface
     │   └ Path: jobSelection(S0a)   ├ DomainJDInterface
     │          careerInput(S0b)     ├ DomainPortfolioInterface

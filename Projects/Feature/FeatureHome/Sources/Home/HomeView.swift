@@ -45,8 +45,6 @@ public struct HomeView: View {
             scene(available: proxy.size.height)
         }
         .hilitNavigationBar(navigationBarKind, background: .filled)
-        // 면접 시작 시안엔 탭 줄이 없다 — cover 였을 땐 덮여서 안 보였고, 씬의 한 겹이 된 지금은 직접 숨긴다.
-        .toolbar(store.sheetDetent == .startInterview ? .hidden : .visible, for: .tabBar)
         .onAppear { send(.onAppear) }
     }
 

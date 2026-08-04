@@ -11,7 +11,7 @@
 
 **phase 별 화면 뷰는 없다 (2026-08-04 통합)** — 시안 `HomeDefault`·`HomeReport` 는 겹 구성이 같고 다른 건 판 안 내용(빈 상태 ↔ 목록)뿐이라 `HomeDefaultView`·`HomeReportView` 를 합쳤다. 씬은 Z 아래부터 «배경 → 면접 시작 → 인사말·안내 문구 → 판» 네 겹이고, 인사말은 두 뷰에 중복돼 있던 걸 씬 한 곳으로 올렸다. 판이 올라오면 인사말 겹을 **덮는다** — 그린 영역을 «남은 높이» 로 계산하지 않는다.
 
-«홈» 3화면은 `State.phase`(GuestFeedback 패턴) — `default` / `report(ReportVariant)` 이고 report 의 변형 축은 «오랜만이에요 OO님!» 인사말 표시 여부(`returning`/`recent`) 하나다. **기록이 있으면 항상 `returning`** 이다(2026-08-04 사용자 결정) — «오랜만/최근» 을 가를 마지막 방문 시각이 서버에 없어 `recent` 로 두면 인사말이 영원히 안 보인다. `recent` 는 계약이 생길 때까지 프리뷰 전용이다. 홈 탭 자체는 AppView 가 NavigationStack 으로 감싼다(로고 내비바가 시스템 바 기반이라 스택 밖에선 조용히 안 그려짐 — `.claude/design/component/navigation.md` «부착 — push vs present»). `HomeDuringInterview` 는 MVP 제외로 삭제했다(커밋 `c3e14ee` 에 남음).
+«홈» 3화면은 `State.phase`(GuestFeedback 패턴) — `default` / `report(ReportVariant)` 이고 report 의 변형 축은 «오랜만이에요 OO님!» 인사말 표시 여부(`returning`/`recent`) 하나다. **기록이 있으면 항상 `returning`** 이다(2026-08-04 사용자 결정) — «오랜만/최근» 을 가를 마지막 방문 시각이 서버에 없어 `recent` 로 두면 인사말이 영원히 안 보인다. `recent` 는 계약이 생길 때까지 프리뷰 전용이다. 홈 자체는 AppView 가 NavigationStack 으로만 감싼다(탭바 없음 — [[app#화면 구성]]. 로고 네비바가 시스템 바 기반이라 스택 밖에선 조용히 안 그려짐 — `.claude/design/component/navigation.md` «부착 — push vs present»). `HomeDuringInterview` 는 MVP 제외로 삭제했다(커밋 `c3e14ee` 에 남음).
 
 ## 시트 자리
 phase 와 **직교하는 두 번째 축** — 리포트 시트가 앉는 자리 `State.sheetDetent`(`startInterview` / `report` 기본 / `expanded`). 한 씬에 그린 배경 · 면접 시작 · (인사말 + 시트) 세 겹이 쌓인다. 기본 ↔ 확장은 시트 **높이**가 움직이고, 기본 밑으로는 높이를 줄이지 않고 판을 **통째로 offset** 으로 밀어 내린다(`HomeSheetDrag.dismissOffset`) — 높이를 줄이면 내용이 밑에서부터 잘려 나가 바텀시트가 미끄러져 사라지는 모양이 안 된다.
@@ -22,7 +22,7 @@ phase 와 **직교하는 두 번째 축** — 리포트 시트가 앉는 자리 
 
 **높이 우선순위는 그린 영역이 먼저** — 기본 자리 시트는 `min(481, available - greenMinHeight)` 라 시안(812)보다 짧은 기기에서 시트가 줄고 인사말은 안 잘린다. 겹을 `VStack` 이 아니라 **ZStack** 으로 쌓는 이유도 같다(세로로 나눠 담으면 고정 높이 시트가 먼저 먹어 그린 영역이 눌린다). 내려갈 땐 판 높이가 고정이라(offset 만 움직임) 시트 안 내용은 판과 1:1 로 같이 움직인다 — 빈 상태 중앙 정렬도 판 프레임 기준 그대로면 된다.
 
-자리에 따라 내비바가 로고 ↔ X 로 갈리는데 **모디파이어 분기가 아니라 값**(`HilitNavigationBar.Kind`)으로 갈아끼운다 — 분기하면 SwiftUI 가 씬을 새로 만들어 드래그가 끊긴다. 면접 시작 자리에선 탭 줄도 숨긴다(`.toolbar(.hidden, for: .tabBar)` — 시안에 없어서).
+자리에 따라 내비바가 로고 ↔ X 로 갈리는데 **모디파이어 분기가 아니라 값**(`HilitNavigationBar.Kind`)으로 갈아끼운다 — 분기하면 SwiftUI 가 씬을 새로 만들어 드래그가 끊긴다. 탭바가 없어져 면접 시작 자리의 `.toolbar(.hidden, for: .tabBar)` 는 폐기했다(2026-08-05).
 
 「면접 시작」 진입은 **시트를 끌어 내리기 하나**다(`view(.userSettledSheet(.startInterview))`) — 안내 문구는 문구일 뿐이라 탭 제스처를 걸지 않는다(사용자 결정 2026-08-04, `userTappedStartInterview` 폐기). 되돌리기는 내비바 X 와 소진 시안의 «홈으로» CTA 둘 다 기본 자리로 보낸다. 내비바는 두 phase 뷰가 같은 바라 `HomeView` 가 한 번만 붙인다(프로필 탭 → `view(.userTappedProfile)`).
 

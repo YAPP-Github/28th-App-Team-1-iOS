@@ -49,7 +49,7 @@ flowchart TD
     terms --> submit["POST /consents<br/>동의 제출"]
     submit --> gate2
 
-    gate2{"프로필 게이트<br/>profileRegistered"} -- "true" --> home["홈 TabView"]
+    gate2{"프로필 게이트<br/>profileRegistered"} -- "true" --> home["홈 NavigationStack"]
     gate2 -- "false" --> onboarding["온보딩 — 이름부터<br/>Naming → Job → Experience → Register"]
     onboarding --> home
 ```
