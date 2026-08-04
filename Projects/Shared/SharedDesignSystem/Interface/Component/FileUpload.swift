@@ -25,7 +25,13 @@ public struct FileUpload: View {
     /// Figma `status` 축. 값이 붙는 자리가 상태마다 달라서 payload 를 케이스가 나른다.
     public enum Status: Sendable, Equatable {
         /// 업로드 전 — g50 판(1pt g100 테두리) 안에 업로드 원 + 안내 두 줄 (Figma `status=before`)
-        case before(title: String, guidance: String)
+        ///
+        /// 두 문구는 포트폴리오 업로드 규격(20MB·30쪽·PDF 1개)을 그대로 옮긴 기본값이라
+        /// 호출부는 `.before()` 로 쓴다 — 다른 문구가 필요한 자리만 넘긴다.
+        case before(
+            title: String = "파일을 업로드해주세요",
+            guidance: String = "최대 20MB, 30쪽 이내의 PDF 파일 1개만 가능합니다"
+        )
         /// 첨부 없음 — 흰 판 + g200 점선 테두리 + 회색 한 줄 (Figma `status=empty`)
         case empty(message: String)
         /// 업로드 중 — 파일 행 + g200 트랙 위 그린 진행 바 (Figma `status=progressing`)
@@ -275,7 +281,7 @@ public struct FileUpload: View {
 #Preview("file-upload") {
     ScrollView {
         VStack(spacing: .ds(.p20)) {
-            FileUpload(.before(title: "파일을 업로드해주세요", guidance: "1개 파일, 최대 20Mb까지 가능합니다"))
+            FileUpload(.before())
             FileUpload(.empty(message: "아직 첨부된 포트폴리오가 없어요"))
             FileUpload(
                 .progressing(

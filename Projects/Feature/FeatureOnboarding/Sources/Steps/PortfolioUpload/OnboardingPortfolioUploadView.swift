@@ -148,7 +148,8 @@ public struct OnboardingPortfolioUploadView: View {
         Button {
             send(.userTappedUploadCard)
         } label: {
-            FileUpload(.before(title: "파일을 업로드해주세요", guidance: "1개 파일, 최대 20Mb까지 가능합니다"))
+            // 문구는 DS 기본값(업로드 규격 그대로) — 이 화면이 따로 정하지 않는다.
+            FileUpload(.before())
         }
         .buttonStyle(.plain)
     }
