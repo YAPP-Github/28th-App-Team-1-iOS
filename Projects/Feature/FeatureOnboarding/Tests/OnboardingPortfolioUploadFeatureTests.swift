@@ -297,7 +297,7 @@ struct OnboardingPortfolioUploadFeatureTests {
         ) {
             OnboardingPortfolioUploadFeature()
         } withDependencies: {
-            $0.portfolioClient.list = { [Self.readyPortfolio] }
+            $0.portfolioClient.list = { PortfolioList(portfolios: [Self.readyPortfolio]) }
         }
 
         await store.send(.view(.onAppear)) {
@@ -323,7 +323,7 @@ struct OnboardingPortfolioUploadFeatureTests {
         ) {
             OnboardingPortfolioUploadFeature()
         } withDependencies: {
-            $0.portfolioClient.list = { [processing] }
+            $0.portfolioClient.list = { PortfolioList(portfolios: [processing]) }
         }
 
         await store.send(.view(.onAppear)) {

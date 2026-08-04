@@ -45,7 +45,7 @@ struct HomeEntryLoadTests {
             HomeFeature()
         } withDependencies: {
             $0.userClient.profile = { Self.profile(remaining: 2) }
-            $0.portfolioClient.list = { [Self.portfolio()] }
+            $0.portfolioClient.list = { PortfolioList(portfolios: [Self.portfolio()]) }
         }
 
         await store.send(.view(.onAppear))
@@ -89,7 +89,7 @@ struct HomeEntryLoadTests {
             HomeFeature()
         } withDependencies: {
             $0.userClient.profile = { throw LoadFailure() }
-            $0.portfolioClient.list = { [] }
+            $0.portfolioClient.list = { PortfolioList(portfolios: []) }
         }
 
         await store.send(.view(.onAppear))
@@ -104,7 +104,7 @@ struct HomeEntryLoadTests {
             HomeFeature()
         } withDependencies: {
             $0.userClient.profile = { Self.profile(remaining: 0) }
-            $0.portfolioClient.list = { [Self.portfolio()] }
+            $0.portfolioClient.list = { PortfolioList(portfolios: [Self.portfolio()]) }
         }
 
         await store.send(.view(.onAppear))
@@ -126,7 +126,7 @@ struct HomeEntryLoadTests {
             HomeFeature()
         } withDependencies: {
             $0.userClient.profile = { Self.profile(remaining: 3) }
-            $0.portfolioClient.list = { [Self.portfolio(status: .processing)] }
+            $0.portfolioClient.list = { PortfolioList(portfolios: [Self.portfolio(status: .processing)]) }
         }
 
         await store.send(.view(.onAppear))
@@ -144,7 +144,7 @@ struct HomeEntryLoadTests {
             HomeFeature()
         } withDependencies: {
             $0.userClient.profile = { Self.profile(name: nil, remaining: 3) }
-            $0.portfolioClient.list = { [] }
+            $0.portfolioClient.list = { PortfolioList(portfolios: []) }
         }
 
         await store.send(.view(.onAppear))

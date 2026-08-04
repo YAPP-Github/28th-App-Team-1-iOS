@@ -235,7 +235,8 @@ public struct OnboardingPortfolioUploadFeature {
             state.checksExisting = false
             return .run { send in
                 // 실패·부재는 조용히 넘긴다 — 못 찾으면 그냥 평소의 빈 판이라 알릴 게 없다.
-                guard let existing = try? await portfolioClient.list().first(where: { $0.status == .ready })
+                guard let existing = try? await portfolioClient.list().portfolios
+                    .first(where: { $0.status == .ready })
                 else { return }
                 await send(.inner(.existingPortfolioFound(ExistingPortfolio(
                     portfolioId: existing.portfolioId,

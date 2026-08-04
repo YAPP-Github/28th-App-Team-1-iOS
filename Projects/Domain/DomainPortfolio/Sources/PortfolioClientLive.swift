@@ -20,8 +20,7 @@ extension PortfolioClient: @retroactive DependencyKey {
         return PortfolioClient(
             list: {
                 try await PortfolioError.mapping {
-                    let payload: PortfolioListPayload = try await network.api(NetworkRequest(path: "/api/v1/portfolios"))
-                    return payload.portfolios
+                    try await network.api(NetworkRequest(path: "/api/v1/portfolios"))
                 }
             },
             // 접수·폴링은 전역 로딩에서 뺀다 — 온보딩 포트폴리오 스텝이 그동안 진행 카드
@@ -77,8 +76,4 @@ extension PortfolioClient: @retroactive DependencyKey {
             }
         )
     }
-}
-
-private struct PortfolioListPayload: Decodable, Sendable {
-    let portfolios: [Portfolio]
 }

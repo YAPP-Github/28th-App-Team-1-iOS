@@ -26,15 +26,22 @@ final class PortfolioClientLiveTests: XCTestCase {
     }
 
     func test_list_envelope을_벗겨_목록과_uploadedAt을_디코딩한다() async throws {
+        // 가용성 4종은 개별 포폴이 아니라 계정 속성이라 `portfolios` 밖(data 레벨)에 온다.
         let json = """
-        {"success": true, "data": {"portfolios": [{
-            "portfolioId": "3E1A8E4B-6C1B-4E1F-9B5A-2F1C0D9E8A70",
-            "fileName": "portfolio.pdf",
-            "fileSize": 1048576,
-            "pageCount": 12,
-            "status": "READY",
-            "uploadedAt": "2026-07-06T10:00:04"
-        }]}}
+        {"success": true, "data": {
+            "replaceAvailable": true,
+            "nextAvailableAt": null,
+            "deleteAvailable": false,
+            "nextDeleteAvailableAt": "2026-09-01T00:00:00",
+            "portfolios": [{
+                "portfolioId": "3E1A8E4B-6C1B-4E1F-9B5A-2F1C0D9E8A70",
+                "fileName": "portfolio.pdf",
+                "fileSize": 1048576,
+                "pageCount": 12,
+                "status": "READY",
+                "uploadedAt": "2026-07-06T10:00:04"
+            }]
+        }}
         """
         let client = makeClient { request in
             XCTAssertEqual(request.path, "/api/v1/portfolios")
@@ -42,11 +49,29 @@ final class PortfolioClientLiveTests: XCTestCase {
             return Data(json.utf8)
         }
 
-        let portfolios = try await client.list()
+        let list = try await client.list()
 
-        XCTAssertEqual(portfolios.count, 1)
-        XCTAssertEqual(portfolios.first?.status, .ready)
-        XCTAssertNotNil(portfolios.first?.uploadedAt)  // LocalDateTime 도 JSONDecoder.api 가 파싱
+        XCTAssertEqual(list.portfolios.count, 1)
+        XCTAssertEqual(list.portfolios.first?.status, .ready)
+        XCTAssertNotNil(list.portfolios.first?.uploadedAt)  // LocalDateTime 도 JSONDecoder.api 가 파싱
+        XCTAssertEqual(list.replaceAvailable, true)
+        XCTAssertNil(list.nextAvailableAt)
+        XCTAssertEqual(list.deleteAvailable, false)
+        XCTAssertNotNil(list.nextDeleteAvailableAt)
+    }
+
+    func test_list_가용성_필드가_없어도_목록만으로_디코딩된다() async throws {
+        let client = makeClient { _ in
+            Data("""
+            {"success": true, "data": {"portfolios": []}}
+            """.utf8)
+        }
+
+        let list = try await client.list()
+
+        XCTAssertTrue(list.portfolios.isEmpty)
+        XCTAssertNil(list.replaceAvailable)
+        XCTAssertNil(list.deleteAvailable)
     }
 
     func test_register_메타데이터는_query로_PDF는_multipart로_보낸다() async throws {
