@@ -30,7 +30,7 @@ enum HomeSheetDrag {
     static let minimumDistance: CGFloat = 10
     /// 착지 판정에 얹는 관성 비율(0 = 관성 무시, 1 = `predictedEndTranslation` 그대로).
     /// 1 이면 살짝 튕기기만 해도 자리가 넘어가서 «조금 올렸는데 다 올라간다» 가 된다.
-    static let velocityAssist: CGFloat = 0.25
+    static let velocityAssist: CGFloat = 0.1
     /// 시트를 다 내렸을 때 **홈 인디케이터 띠까지** 화면 밖으로 빼기 위한 여유 이동량.
     /// 판 배경이 하단 안전영역(최대 34)을 덮으므로 그만큼 더 내려야 아래 겹(면접 시작 CTA)이 안 가린다.
     /// 안전영역 실측을 뷰로 흘리는 대신 상한을 넉넉히 잡는다 — 더 내려가 봐야 이미 화면 밖이다.
