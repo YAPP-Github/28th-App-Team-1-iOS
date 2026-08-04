@@ -28,7 +28,7 @@ struct OnboardingCoordinatorTests {
     }
 
     private func initialState() -> OnboardingFeature.State {
-        OnboardingFeature.State(userName: "재원", jobRole: "BACKEND", careerYears: 1)
+        OnboardingFeature.State(userName: "재원")
     }
 
     @Test("JD 스킵(nil)은 jd 필드를 비운 채 포트폴리오 스텝을 push 한다")

@@ -17,14 +17,9 @@ import Testing
 struct OnboardingPreloadFeatureTests {
     private static let portfolioId = UUID(uuidString: "00000000-0000-0000-0000-0000000000f1")!
 
-    /// 세션 입력을 만들 수 있는 완전한 수집 데이터(직군·연차·포트폴리오 필수).
+    /// 세션 입력을 만들 수 있는 완전한 수집 데이터(포트폴리오만 필수 — 직군·연차는 서버 프로필 스냅샷).
     private func fullData() -> OnboardingData {
-        OnboardingData(
-            userName: "재원",
-            jobRole: "BACKEND",
-            careerYears: 1,
-            portfolioId: Self.portfolioId
-        )
+        OnboardingData(userName: "재원", portfolioId: Self.portfolioId)
     }
 
     @Test("READY 가 먼저 와도 가짜 스테이지가 다 지나야 3행이 체크되고 완료로 넘어간다")
@@ -126,9 +121,9 @@ struct OnboardingPreloadFeatureTests {
 
     @Test("수집 데이터가 불완전하면 세션 생성 없이 실패한다")
     func analysisFailsWhenConfigIncomplete() async {
-        // career·portfolioId 누락 → interviewConfig() 가 nil → createSession 호출 안 됨.
+        // portfolioId 누락 → interviewConfig() 가 nil → createSession 호출 안 됨.
         let store = TestStore(
-            initialState: OnboardingPreloadFeature.State(data: OnboardingData(userName: "재원", jobRole: "BACKEND"))
+            initialState: OnboardingPreloadFeature.State(data: OnboardingData(userName: "재원"))
         ) {
             OnboardingPreloadFeature()
         }

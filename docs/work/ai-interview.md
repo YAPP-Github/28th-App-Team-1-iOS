@@ -83,7 +83,7 @@ SpeechClient는 책임이 커지면 `TextToSpeechClient` / `SpeechRecognitionCli
 struct Job { jobId: Int; jobRole: String /* 서버 enum "BACKEND" */; label: String }
 
 // DomainInterview — 세션 생성 입력 = 위저드 산출물 (PRD §3.8: jd·freeText nullable, 나머지 필수)
-struct InterviewConfig { portfolioId: UUID; jobRole: String; careerYears: Int
+struct InterviewConfig { portfolioId: UUID   /* 직군·연차 미전송 — 서버 프로필 스냅샷 */
                          jobDescription: JobDescriptionInput?; freeText: String? /* 10~300자 */ }
 enum JobDescriptionInput { case url(String) /* validate 선검증 필수 — JD_NOT_VALIDATED */
                            case text(String) /* 200~3,000자 */ }
@@ -131,7 +131,7 @@ S0→S3.5는 **도메인 내부** navigation → 규칙대로 자체 `Path` + `S
 - **4 포트폴리오** — 클라 선검증은 UX 용 빠른 차단, **최종 판정은 서버 실측**(PRD §7 분담): PDF 타입·20MB ✅ / **페이지 ≤30**(PDFKit `pageCount`) ✅ / **암호 PDF**(`PDFDocument.isEncrypted`) ✅ — `PortfolioFileReader` 가 data+pageCount+isEncrypted 반환, register 전 차단, pageCount 는 서버에 전달. 글자 수 ≥30 은 서버 전용(Tika) → FAILED_FILE 문구만. 폴링 3초 ✅. TODO: **폴링 상한**(전체 처리 타임아웃 → FAILED_SYSTEM 취급 문구, 초기값 tentative) · **1개 제한** `PORTFOLIO_ALREADY_EXISTS` → "기존 삭제 후 재업로드" dialog(자동 교체 금지) · 셀룰러 20MB 경고(후속).
 - **5 집중 프로젝트** — 10~300자 · 상한 300 클램프 · 빈 입력 = 스킵(nil) · **하한 10자 클라 선검증** ✅(입력 있고 <10자면 continue 차단+경고, PRD §7 분담 — 연관성 등 최종 판정은 서버) · 상단 고정 문구 교체 확정본("입력하면 그 부분을 집중 검증해요. 건너뛰면 포트폴리오 전체에서 질문해요.") 반영 ✅.
 - **6 분석 = S3.5 + S4** — Phase A ✅ / Phase B 🟠:
-  1. ✅ `OnboardingData.interviewConfig()` → `InterviewClient.createSession` + `sessionStatus` 폴링(3초). `.domain(interface: .interview)` 의존 추가 + `tuist generate`. PROCESSING→폴링 / READY→completed / 실패·config 불완전→failed 화면(재시도 없음, PRD §3.1). ⚠ `careerYears` 는 CareerOption 잠정 매핑(STEP2 정수 피커 확정 시 제거).
+  1. ✅ `OnboardingData.interviewConfig()` → `InterviewClient.createSession` + `sessionStatus` 폴링(3초). `.domain(interface: .interview)` 의존 추가 + `tuist generate`. PROCESSING→폴링 / READY→completed / 실패·config 불완전→failed 화면(재시도 없음, PRD §3.1). config 불완전 = `portfolioId` 부재뿐 — 직군·연차는 payload 에서 빠져(서버 프로필 스냅샷) 검사도 제거했다(2026-08-04).
   4. ✅ READY → `delegate(.completed(sessionId:))` → 코디네이터 `delegate(.finished(sessionId:))`. AppFeature 미배선이라 요약 질문 등 payload 확장·Part2 제시는 배선 시.
   2. ✅ 연관성(코사인 ≥0.6 tentative)은 **freeText 있을 때만** 서버 검사. `FREETEXT_NOT_RELEVANT`(Core `ServerError`)를 DomainInterview 가 `InterviewError.freeTextNotRelevant` 로 매핑(레이어 준수) → 분석이 `delegate(.relevanceCheckFailed)` → 코디네이터가 집중 프로젝트로 pop-back + `relevanceFailureCount++`.
   3. ✅ 4회 미만 실패 → 집중 프로젝트에 경고 문구(PRD 확정) 주입 + 재입력. **연속 4회째** → `ConfirmationDialogState` 2선택지: [포폴 다시 올리기 → STEP4 pop] / [집중 프로젝트 없이 진행 → freeText=nil 로 재분석]. 카운트 `relevanceFailureCount`, 편집 시 경고 해제.

@@ -4,7 +4,7 @@
 
 이 위저드가 「[PRD] AI 면접 Part 1 — 면접 전 입력 & 포트폴리오 등록」 v3 의 S1~S4 구현체 — PRD↔구현 매핑·잔여 개발 포인트는 [ai-interview](../docs/work/ai-interview.md) §5 가 단일 소스. PRD v3 확정 골자: 재시도·멱등성 전면 제외(실패=status 표시 후 재업로드), 비동기+폴링 확정, 개별 저장 API 없이 세션 생성이 S0~S3 일괄 수집, 직군 6종 화이트리스트, 태블릿 제외.
 
-**직군·연차(구 STEP1·2)는 이 위저드에 없다** — 가입 온보딩(`FeatureAuth` — `AuthOnboardingJob`·`AuthOnboardingExperience`)으로 이관됐고 원본 화면은 삭제됐다(2026-08-02). 두 값은 세션 생성 입력에 여전히 필수라 `OnboardingFeature.State.init(userName:jobRole:careerYears:)` 으로 **주입**받아 [[onboarding#수집 데이터]]에 실린다. 주입원 배선은 미결 — [home-account](../docs/work/home-account.md) §0·§7 참조.
+**직군·연차(구 STEP1·2)는 이 위저드에 없다** — 가입 온보딩(`FeatureAuth` — `AuthOnboardingJob`·`AuthOnboardingExperience`)으로 이관됐고 원본 화면은 삭제됐다(2026-08-02). 위저드는 두 값을 **아예 들고 다니지 않는다**(2026-08-04) — 세션 생성 payload 에서 제거돼 서버가 회원 프로필 스냅샷을 쓰므로([[api#Interview]]) 클라가 쥘 이유가 없다. 이전 판은 `State.init(userName:jobRole:careerYears:)` 로 주입받고 `interviewConfig()` 가 nil 검사까지 했는데, 주입원 배선이 미결이라 **실제 진입은 전부 createSession 을 못 부르고 config 불완전 실패로 떨어졌다** — 검사와 필드를 함께 제거해 그 실패 경로를 없앴다.
 
 ## 코디네이터
 
@@ -60,7 +60,7 @@ STEP 3 (선택 — 마지막 수집 스텝, 프로그레스 3/3). 300자 자유 
 이 화면이 곧 대기 표시라 **전역 로딩을 얹지 않는다** — `InterviewClient.createSession`·`.sessionStatus` liveValue 에 `GlobalLoadingSuppression.run` 을 건다. AppView 가 Splash 계열 루트를 제외하는 것과 같은 이유(브랜드 대기 화면을 로딩 판이 가린다) → [[domain.map#네트워킹 인프라]] · [[app#Splash 세션 복구]]
 
 세션 생성 연결 = PRD S3.5+S4. → [[interview#Client 계약]]
-- ① OnboardingData.interviewConfig() → InterviewClient.createSession + sessionStatus 폴링(3초) ✅. `.domain(interface: .interview)` 의존. PROCESSING→폴링, READY→completed(sessionId), 실패→failed 화면(재시도 없음), config 불완전→failed. onAppear 가드로 중복 시작 방지. CancelID.session 으로 pop 시 취소. createSession effect 는 `startSession(config:)` 로 추출해 최초 시도와 JD 재검증 후 재시도가 공유. **config 불완전은 이제 주입 실패도 포함한다** — 직군·연차가 nil 인 채 위저드가 열리면 여기서 failed 로 떨어진다.
+- ① OnboardingData.interviewConfig() → InterviewClient.createSession + sessionStatus 폴링(3초) ✅. `.domain(interface: .interview)` 의존. PROCESSING→폴링, READY→completed(sessionId), 실패→failed 화면(재시도 없음), config 불완전→failed. onAppear 가드로 중복 시작 방지. CancelID.session 으로 pop 시 취소. createSession effect 는 `startSession(config:)` 로 추출해 최초 시도와 JD 재검증 후 재시도가 공유. **config 불완전 = portfolioId 부재뿐**(2026-08-04) — 위저드 순서상 프리로드 진입이면 항상 채워져 있어 사실상 안 타는 방어선이다. 직군·연차 nil 검사는 제거했다(서버 프로필 스냅샷 — 위 서문).
 - ①-JD 검증 만료 자동 복구 ✅ — 서버 JD 검증 캐시는 단명이라 오래된 draft 로 재개하면 createSession 이 `JD_NOT_VALIDATED` 로 거부된다(draft 는 jd 를 영구 유효로 착각). 이때 죽지 않고 저장된 `.link` 를 `JDClient.validate` 로 **1회**(`didRetryJDValidation` 가드) 재검증→valid 면 세션 생성 재시도, invalid/링크 아님이면 failed. 원칙: draft=재개 힌트·서버=진실, 서버 부작용 값은 직전에 서버와 화해. `.domain(interface: .jd)` 의존. → [[api#Interview]]
 - ④ READY → delegate(.completed(sessionId)) → 코디네이터 delegate(.finished(sessionId:)) ✅. AppFeature 미배선이라 요약 질문 등 payload 확장은 배선 시.
 - ② 연관성 실패 처리 ✅ — `FREETEXT_NOT_RELEVANT` 를 DomainInterview 가 `InterviewError.freeTextNotRelevant` 로 매핑, 프리로드가 delegate(.relevanceCheckFailed) → 코디네이터가 프리로드 popLast + relevanceFailureCount++.
@@ -70,7 +70,7 @@ STEP 3 (선택 — 마지막 수집 스텝, 프로그레스 3/3). 300자 자유 
 
 OnboardingData — 위저드가 스텝을 거치며 채우는 공유 페이로드(Codable — draft 영속용). 코디네이터가 소유하고 각 스텝 delegate 결과를 누적, 프리로드 스텝에 통째로 주입된다.
 
-필드: userName·jobRole·careerYears(셋 다 주입 — 화면 없음) · jd(JDSubmission — .link/.text 상호 배타를 타입 보장, 스킵 nil) · portfolioId · portfolioFileName(draft 복원용) · freeText. JDSubmission 은 OnboardingData.swift 소속 — JD 스텝 delegate 가 올린 값을 코디네이터가 해체 없이 저장한다.
+필드: userName(주입 — 화면 없음) · jd(JDSubmission — .link/.text 상호 배타를 타입 보장, 스킵 nil) · portfolioId · portfolioFileName(draft 복원용) · freeText. JDSubmission 은 OnboardingData.swift 소속 — JD 스텝 delegate 가 올린 값을 코디네이터가 해체 없이 저장한다.
 
 ## 입력 draft
 
@@ -90,7 +90,7 @@ OnboardingPlaceholderStepFeature/View — 스텝 골격(네비바·프로그레�
 
 홈 「면접 시작」의 [시작하기]·[수정하기] 신호를 AppFeature 가 받아 `fullScreenCover` 로 위저드를 연다 — 홈 탭 위에서만 열리므로 **로그인 이후**라 토큰을 보유한다(온보딩 API 는 인증 필요). dev 전용 임시 진입 버튼은 이 정식 경로가 생기며 제거됐다(2026-08-03). → [[app]]
 
-현재는 `OnboardingFeature.State()`(닉네임·직군·연차 없음)로 열고 `.finished`·`.dismiss` 는 cover 를 닫기만 한다. 정식 배선 시: **닉네임·직군·연차를 사용자 프로필에서 주입**(직군·연차가 nil 이면 프리로드가 세션 생성에 실패한다 — 배선의 필수 조건), delegate(.dismiss) → 중도 이탈(draft 보존), **delegate(.finished(sessionId:)) → Part 2 면접 바로 시작**(사용자 결정 2026-07-20, InterviewSessionFeature 생기면 fullScreenCover).
+현재는 `OnboardingFeature.State(userName:)`(홈이 쥔 닉네임)로 열고 `.finished`·`.dismiss` 는 cover 를 닫기만 한다. 직군·연차는 넘길 것이 없다 — 세션 생성이 서버 프로필 스냅샷을 쓴다. 잔여 배선: delegate(.dismiss) → 중도 이탈(draft 보존), **delegate(.finished(sessionId:)) → Part 2 면접 바로 시작**(사용자 결정 2026-07-20, InterviewSessionFeature 생기면 fullScreenCover).
 
 코디네이터 onAppear 가 draft 복원을 트리거하므로 OnboardingView 는 루트에 onAppear 를 발신한다. 단 루트 onAppear 는 SwiftUI 특성상 뒤로가기로 루트에 되돌아올 때마다 재발동하므로, 복원은 `didAttemptRestore` 로 1회만 수행한다(재복원=화면 튐 방지). Example 앱은 전체 위저드를 스텁 의존성으로 구동하며 ONBOARDING_START_STEP 환경변수로 특정 스텝부터 시작할 수 있다(draft 는 no-op 스텁). → [[app]]
 

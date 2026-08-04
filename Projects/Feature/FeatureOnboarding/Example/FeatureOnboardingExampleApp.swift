@@ -21,7 +21,7 @@ import SwiftUI
 @main
 struct FeatureOnboardingExampleApp: App {
     private static func initialState() -> OnboardingFeature.State {
-        var state = OnboardingFeature.State(userName: "재원", jobRole: "BACKEND", careerYears: 1)
+        var state = OnboardingFeature.State(userName: "재원")
         guard
             let raw = ProcessInfo.processInfo.environment["ONBOARDING_START_STEP"],
             let startStep = Int(raw)

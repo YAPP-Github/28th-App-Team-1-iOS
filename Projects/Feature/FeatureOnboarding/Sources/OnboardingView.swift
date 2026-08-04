@@ -42,7 +42,7 @@ public struct OnboardingView: View {
 #Preview("온보딩 플로우") {
     OnboardingView(
         store: Store(
-            initialState: OnboardingFeature.State(userName: "재원", jobRole: "BACKEND", careerYears: 1)
+            initialState: OnboardingFeature.State(userName: "재원")
         ) {
             OnboardingFeature()
         } withDependencies: {

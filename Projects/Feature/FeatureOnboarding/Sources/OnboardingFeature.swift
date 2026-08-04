@@ -13,7 +13,8 @@ import Foundation
 /// 각 스텝의 delegate 만 매칭해 공유 데이터(OnboardingData)를 누적하고 다음 스텝으로 전환한다 (D5).
 /// 스텝 자체 간 직접 의존은 없다 — 조립은 여기서만 (도메인 내 navigation = Path/StackState).
 ///
-/// 직군·연차는 가입 온보딩(FeatureAuth)이 수집하므로 이 위저드는 값을 **주입받는다** — 화면이 없다.
+/// 직군·연차는 가입 온보딩(FeatureAuth)이 수집해 프로필에 등록하고, 세션 생성은 서버 프로필 스냅샷을
+/// 쓰므로 이 위저드는 두 값을 아예 다루지 않는다 — 화면도, 페이로드도 없다.
 @Reducer
 public struct OnboardingFeature {
     /// 위저드 총 스텝 수 — 수집 스텝 3개(JD·포트폴리오·대표 프로젝트)가 프로그레스 3칸.
@@ -53,12 +54,11 @@ public struct OnboardingFeature {
         /// 복원 조건이 `path.isEmpty` 뿐이면 pop 으로 스택을 비운 순간 draft 를 다시 되쌓아 화면이 앞으로 튄다.
         /// 위저드 수명당 복원을 1회로 제한해 이 재복원을 막는다.
         var didAttemptRestore = false
-        /// - Parameters:
-        ///   - jobRole·careerYears: 가입 온보딩(FeatureAuth)이 이미 받아 둔 프로필 값. 세션 생성 입력에
-        ///     필수라 위저드가 그대로 들고 다닌다 — 이 위저드엔 두 값을 받는 화면이 없다.
-        ///     TODO: AppFeature 정식 배선 시 사용자 프로필에서 채워 넘긴다 (dev 진입은 아직 nil).
-        public init(userName: String = "", jobRole: String? = nil, careerYears: Int? = nil) {
-            self.data = OnboardingData(userName: userName, jobRole: jobRole, careerYears: careerYears)
+        /// - Parameter userName: 타이틀 등에 쓰는 닉네임 — 부모(AppFeature)가 프로필에서 넘긴다.
+        ///   직군·연차는 받지 않는다 — 가입 온보딩(FeatureAuth)이 프로필에 등록해 두고 세션 생성은
+        ///   서버 프로필 스냅샷을 쓰므로(payload 에서 제거) 위저드가 들고 다닐 이유가 없다.
+        public init(userName: String = "") {
+            self.data = OnboardingData(userName: userName)
             self.jobDescriptionUpload = OnboardingJobDescriptionUploadFeature.State(
                 step: 1,
                 totalSteps: OnboardingFeature.totalSteps
