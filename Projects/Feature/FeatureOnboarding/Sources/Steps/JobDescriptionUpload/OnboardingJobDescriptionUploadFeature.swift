@@ -31,7 +31,7 @@ public struct OnboardingJobDescriptionUploadFeature {
         case idle
         /// 분석 중 — **화면엔 안 그린다**(필드는 idle 그대로). 대기 표시는 `validate` in-flight 를
         /// 세는 AppView 의 전역 LoadingModal 몫이라 인라인 스피너를 달면 이중 로딩이 된다.
-        /// 이 값은 «계속하기» 무시·재검증 취소를 가르는 게이트로만 산다.
+        /// 이 값은 «계속하기» 비활성·재검증 취소를 가르는 게이트로만 산다.
         case loading
         /// 실패 — 빨간 바 + 서버 message(또는 기본 문구) 서브 줄.
         case failure(message: String)
@@ -87,12 +87,19 @@ public struct OnboardingJobDescriptionUploadFeature {
             }
             return nil
         }
-        /// «계속하기» 활성 조건 — 링크 탭은 항상(무효 링크는 스킵 처리),
-        /// 직접입력 탭은 빈 입력(스킵)이거나 유효 길이일 때만 (PRD S1 무효 입력 시 다음 꺼짐).
+        /// 링크 입력이 (공백만 포함해) 비어 있는가 — 빈 링크는 스킵 경로다.
+        public var isLinkEmpty: Bool {
+            linkText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+
+        /// «계속하기» 활성 조건 — 두 탭 모두 «빈 입력(스킵) 또는 유효한 입력» 일 때만 열린다.
+        /// 링크 탭은 링크를 넣은 순간 검증 성공까지 잠긴다 — 미검증(idle·분석 중·실패) 링크로 넘기면
+        /// 붙여넣은 공고가 조용히 버려진다. 빈 입력은 스킵 경로라 열어 둔다(툴팁 안내와 일치).
+        /// 직접입력 탭은 빈 입력(스킵)이거나 유효 길이(200~3,000자)일 때 (PRD S1 무효 입력 시 다음 꺼짐).
         public var isContinueEnabled: Bool {
             switch mode {
             case .link:
-                return true
+                return isLinkEmpty || linkValidation == .success
             case .directText:
                 return directText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isDirectTextValid
             }
@@ -271,17 +278,13 @@ public struct OnboardingJobDescriptionUploadFeature {
     private func submit(_ state: State) -> Effect<Action> {
         switch state.mode {
         case .link:
-            switch state.linkValidation {
-            case .loading:
-                // 분석 중 탭은 무시 — 결과 확인 후 진행. 보통은 전역 LoadingModal 이 덮어 탭이 안 닿지만,
-                // showDelay(200ms) 안에 끝나는 검증은 모달 없이 지나가므로 여기로 들어올 수 있다.
-                return .none
-            case .success:
-                return .send(.delegate(.continueRequested(.link(trimmedLink(state)))))
-            case .idle, .failure:
-                // 검증되지 않은 링크는 버리고 스킵한다 (툴팁 안내와 일치).
-                return .send(.delegate(.continueRequested(nil)))
-            }
+            let url = trimmedLink(state)
+            // 빈 링크는 스킵(nil) — 툴팁 안내와 일치.
+            guard !url.isEmpty else { return .send(.delegate(.continueRequested(nil))) }
+            // 미검증 링크는 «계속하기» 가 꺼져 있어 도달하지 않지만 방어적으로 막는다
+            // (검증은 보통 전역 LoadingModal 이 덮지만 showDelay(200ms) 안에 끝나면 모달 없이 지나간다).
+            guard state.linkValidation == .success else { return .none }
+            return .send(.delegate(.continueRequested(.link(url))))
         case .directText:
             let text = state.directText.trimmingCharacters(in: .whitespacesAndNewlines)
             // 빈 입력은 스킵(nil). 길이 무효는 «계속하기» 가 꺼져 있어 도달하지 않지만 방어적으로 막는다.
@@ -314,14 +317,10 @@ public struct OnboardingJobDescriptionUploadFeature {
                 state.linkValidation = .failure(message: validation.message ?? Self.fallbackErrorMessage)
                 return .none
             }
+            // 성공은 상태만 바꾼다 — 자동 진행은 없앴다. 초록 성공 필드를 확인하고
+            // «계속하기»(그때 활성된다)를 눌러 넘어간다.
             state.linkValidation = .success
-            // 검증 성공 시 버튼 없이 자동 진행 — 성공 상태를 잠깐 보여준 뒤 다음 스텝으로.
-            let url = trimmedLink(state)
-            return .run { send in
-                try await clock.sleep(for: .seconds(0.6))
-                await send(.delegate(.continueRequested(.link(url))))
-            }
-            .cancellable(id: CancelID.validate, cancelInFlight: true)
+            return .none
 
         case .linkValidationFailed:
             state.linkValidation = .failure(message: Self.fallbackErrorMessage)

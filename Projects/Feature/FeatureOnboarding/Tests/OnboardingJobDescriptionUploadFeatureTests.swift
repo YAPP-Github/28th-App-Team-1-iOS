@@ -36,6 +36,9 @@ struct OnboardingJobDescriptionUploadFeatureTests {
         await store.receive(\.inner.linkValidated) {
             $0.linkValidation = .success
         }
+        // 자동 진행은 없다 — 성공은 계속하기를 열어 주기만 한다(전환은 사용자 탭).
+        #expect(store.state.isContinueEnabled)
+        await store.finish()
     }
 
     @Test("입력이 이어지면 이전 디바운스 예약을 취소하고 마지막 값만 검증한다")
@@ -202,27 +205,34 @@ struct OnboardingJobDescriptionUploadFeatureTests {
         await store.receive(\.delegate.continueRequested, .link(link))
     }
 
-    @Test("미검증 링크의 계속하기는 스킵(nil)으로 올린다")
-    func continueWithUnvalidatedLinkSkips() async {
-        var initialState = OnboardingJobDescriptionUploadFeature.State()
-        initialState.linkText = link
-        let store = TestStore(initialState: initialState) {
+    @Test("빈 링크의 계속하기는 활성이고 스킵(nil)으로 올린다")
+    func continueWithEmptyLinkSkips() async {
+        let store = TestStore(initialState: OnboardingJobDescriptionUploadFeature.State()) {
             OnboardingJobDescriptionUploadFeature()
         }
 
+        #expect(store.state.isContinueEnabled)
         await store.send(.view(.userTappedContinue))
         await store.receive(\.delegate.continueRequested, nil)
     }
 
-    @Test("분석 중에는 계속하기를 무시한다")
-    func continueIsIgnoredWhileLoading() async {
+    @Test("링크를 넣은 뒤 검증 성공 전까지는 계속하기가 비활성이고 탭도 무시된다", arguments: [
+        OnboardingJobDescriptionUploadFeature.LinkValidation.idle,
+        .loading,
+        .failure(message: "링크를 분석하지 못했어요. 링크를 확인해 주세요.")
+    ])
+    func continueIsDisabledUntilLinkValidated(
+        _ validation: OnboardingJobDescriptionUploadFeature.LinkValidation
+    ) async {
         var initialState = OnboardingJobDescriptionUploadFeature.State()
         initialState.linkText = link
-        initialState.linkValidation = .loading
+        initialState.linkValidation = validation
         let store = TestStore(initialState: initialState) {
             OnboardingJobDescriptionUploadFeature()
         }
 
+        #expect(!store.state.isContinueEnabled)
+        // 비활성이라 눌릴 일이 없지만, 눌려도 delegate 방출 없이 무시된다.
         await store.send(.view(.userTappedContinue))
     }
 
@@ -235,7 +245,7 @@ struct OnboardingJobDescriptionUploadFeatureTests {
             OnboardingJobDescriptionUploadFeature()
         }
 
-        // 취소가 없으면 뒤늦은 .success 가 두 번째 continueRequested 를 쏘아 스텝이 두 번 push 된다.
+        // 취소가 없으면 화면을 떠난 뒤 도착한 응답이 상태를 뒤늦게 뒤집는다(다음 진입에 남는 성공·에러 판).
         await store.send(.view(.userTappedSkip))
         await store.receive(\.delegate.continueRequested, nil)
         await store.finish()
