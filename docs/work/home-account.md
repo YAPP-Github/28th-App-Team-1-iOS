@@ -170,13 +170,15 @@ AuthTerms 제출 후 이어지는 4화면. AuthFeature 도메인 내부 내비(�
 | 최종 레포트 | 지인 피드백 1건 이상 — **도착 즉시 갱신, 확정 시점 없음** | 최종 레포트 뷰 + «마지막 업데이트» 시각 |
 | 레포트 생성 실패 | 생성 영구 실패 (**미차감**) — 종료 상태, 자동 재생성 없음 | 진입 버튼 없음. «레포트 생성에 실패했어요 · 횟수는 차감되지 않았어요» |
 
+**상태별 노출 (2026-08-04 확정)** — PRD 표는 1차/최종/실패 3종뿐이라 API `reportStatus` 4종([[api#Interview]])과 어긋난다. 결정: **GENERATING 은 행을 만들지 않는다**(채점 끝나기 전 세션은 목록에서 뺀다 — 홈은 폴링하지 않으니 다음 진입 재조회 때 나타난다). **INSUFFICIENT_ANALYSIS 는 채점된 카드만이라도 리포트가 있으니 READY 와 같은 행**이다. **FAILED 는 전용 행**(시안 2026-08-05) — 제목 «레포트 생성에 실패했어요» + 회색 보조 문구 «이용권 횟수는 차감되지 않아요», [레포트 보기] 없음.
+
 메타데이터(전부 **세션 스냅샷** 값): 직군·연차(면접 당시 값) / 포트폴리오 파일명(원본 삭제 시 «삭제된 포트폴리오» 배지 + 파일명 유지) / JD(url 문자열 또는 «JD 직접 입력») / 시각 4종(서버 시간 — 면접 진행·레포트 생성·지인 피드백 요청·최종 마지막 업데이트).
 
 [레포트 보기] → `InterviewReportFeature` 는 cross-feature — `delegate` → AppFeature 제시([ai-interview-report](ai-interview-report.md)).
 
-**추가 (2026-07-31 배선)** — 목록·펼침은 `HomeFeature.State` 가 든다: `reports: IdentifiedArrayOf<Report>`(개수는 `reports.count` 파생) · `expandedReportID`(1개, 재탭 접힘 — 리듀서 토글).
+**추가 (2026-07-31 배선)** — 목록·펼침은 `HomeFeature.State` 가 든다: `reports: IdentifiedArrayOf<Report>`(개수는 `reports.count` 파생) · `expandedReportIDs`(집합 — 리듀서 토글). **2026-08-05 개정: 복수 펼침 허용** — 진입 시 최신 1개만 펼치고, 펼친 카드 본문을 탭하면 그 행만 접힌다([>] 버튼 영역은 상세 진입이라 접힘과 겹치지 않는다).
 
-**추가 (2026-08-04 배선) — 목록이 서버에서 온다.** `InterviewClient.reportList`(GET /interview/sessions)를 홈 진입 로드에 붙였고, 행 모델 `Report` 는 `id`(= 세션 id) · `dateText`(«7월 11일 토» — KST·ko_KR 고정 포맷) · `title` · `canOpenReport` 다. `canOpenReport = reportStatus == .ready` 라 생성 중·분석 부족·실패 행은 위 표대로 [레포트 보기] 가 없고 제목 자리에 상태 문구가 온다. 기록이 있으면 phase 는 **`report(.returning)`** — 인사말을 띄운다(«오랜만/최근» 판정 재료가 없어 `recent` 는 프리뷰 전용). 확장 자리(시트가 내비바 밑까지 올라온 상태)는 시안 [649:6625](https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=649-6625) 대로 그래버 없이 헤더+목록만 남는다. 아직 미구현: 지인 피드백 유무로 갈리는 1차/최종 구분(`feedbackAvailable` 만 받고 안 쓴다) · 메타데이터 4종(포폴 파일명·삭제 배지·JD·시각) · READY 행의 «답변 한 줄 요약» — 목록 응답에 그 문장이 없어 세션 스냅샷(직군·연차)으로 대신한다(미결 #1 에 필드 요청 추가).
+**추가 (2026-08-04 배선) — 목록이 서버에서 온다.** `InterviewClient.reportList`(GET /interview/sessions)를 홈 진입 로드에 붙였고, 행 모델 `Report` 는 `id`(= 세션 id) · `dateText`(«7월 11일 토» — KST·ko_KR 고정 포맷) · `title` · `canOpenReport` 다. 행 노출은 `reportStatus` 로 갈린다(아래 «상태별 노출» 참조). 기록이 있으면 phase 는 **`report(.returning)`** — 인사말을 띄운다(«오랜만/최근» 판정 재료가 없어 `recent` 는 프리뷰 전용). 확장 자리(시트가 내비바 밑까지 올라온 상태)는 시안 [649:6625](https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=649-6625) 대로 그래버 없이 헤더+목록만 남고, 판 위쪽에 내비바 그림자(0 8 6 · #DDDFE5 60%)가 깔린다(2026-08-05). 아직 미구현: 지인 피드백 유무로 갈리는 1차/최종 구분(`feedbackAvailable` 만 받고 안 쓴다) · 메타데이터 4종(포폴 파일명·삭제 배지·JD·시각) · READY 행의 «답변 한 줄 요약» — 목록 응답에 그 문장이 없어 세션 스냅샷(직군·연차)으로 대신한다(미결 #1 에 필드 요청 추가).
 
 ### 잔여 무료 횟수 — 홈 단독 표시
 
