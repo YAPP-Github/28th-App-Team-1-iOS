@@ -46,15 +46,19 @@ struct FeatureHomeExampleApp: App {
 
     /// 가짜 포폴 1건(READY) — 면접 시작 카드가 «이전 정보 재사용» 변형으로 뜬다.
     /// 빈 배열로 바꾸면 «처음» 변형을 볼 수 있다.
-    private static let portfolios = [
-        Portfolio(
-            portfolioId: UUID(uuidString: "00000000-0000-0000-0000-0000000000e2")!,
-            fileName: "포트폴리오.pdf",
-            fileSize: 3_355_443,
-            pageCount: 12,
-            status: .ready,
-            // 2026-07-31 00:00 UTC — 데모가 흔들리지 않게 고정값.
-            uploadedAt: Date(timeIntervalSince1970: 1_785_456_000)
-        )
-    ]
+    private static let portfolios = PortfolioList(
+        portfolios: [
+            Portfolio(
+                portfolioId: UUID(uuidString: "00000000-0000-0000-0000-0000000000e2")!,
+                fileName: "포트폴리오.pdf",
+                fileSize: 3_355_443,
+                pageCount: 12,
+                status: .ready,
+                // 2026-07-31 00:00 UTC — 데모가 흔들리지 않게 고정값.
+                uploadedAt: Date(timeIntervalSince1970: 1_785_456_000)
+            )
+        ],
+        replaceAvailable: true,
+        deleteAvailable: true
+    )
 }

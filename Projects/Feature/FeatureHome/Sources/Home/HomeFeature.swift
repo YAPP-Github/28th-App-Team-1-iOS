@@ -171,8 +171,11 @@ public struct HomeFeature {
                 return .run { send in
                     // 한쪽이 죽어도 다른 쪽은 그린다 — 포폴 실패로 인사말·잔여까지 날리지 않는다.
                     async let profile = try? await userClient.profile()
-                    async let portfolios = try? await portfolioClient.list()
-                    await send(.inner(.entryLoaded(profile: await profile, portfolios: await portfolios)))
+                    async let portfolioList = try? await portfolioClient.list()
+                    await send(.inner(.entryLoaded(
+                        profile: await profile,
+                        portfolios: await portfolioList?.portfolios
+                    )))
                 }
                 .cancellable(id: CancelID.entryLoad, cancelInFlight: true)
             case let .view(.userSettledSheet(detent)):

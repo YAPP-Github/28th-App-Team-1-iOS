@@ -47,7 +47,7 @@ struct FeatureOnboardingExampleApp: App {
                     })
                     // STEP 2 — 등록 즉시 PROCESSING, 폴링 1회 후 READY.
                     $0.portfolioClient = PortfolioClient(
-                        list: { [] },
+                        list: { PortfolioList(portfolios: []) },
                         register: { upload in
                             try await Task.sleep(for: .seconds(1))
                             return PortfolioProcessing(
