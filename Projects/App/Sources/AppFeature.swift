@@ -199,8 +199,9 @@ struct AppFeature {
                 // TODO: 마이페이지 진입 — Part 5 Feature 가 생기면 조립한다(docs/work/home-account.md §4).
                 return .none
             case .home(.delegate(.reportDetailRequested)):
-                // TODO: 리포트 상세(r1/최종) 제시 — `InterviewReportFeature` 통합 후 배선.
-                //       인자는 이미 세션 id 다(GET /interview/sessions 의 `sessionId`) — 그대로 넘기면 된다.
+                // TODO: 리포트 상세(r1/최종) 제시 — Part 3 `InterviewReportFeature` 브랜치에서 배선한다.
+                //       발원지는 홈 펼친 행의 [>] 버튼이고, 인자는 이미 세션 id 다
+                //       (GET /interview/sessions 의 `sessionId`) — 그대로 넘기면 된다.
                 return .none
             case .home(.delegate(.appDataResetRequested)):
                 // dev 전용 «재설치 흉내» — 서버 로그아웃 · Keychain 전체 · 온보딩 draft ·

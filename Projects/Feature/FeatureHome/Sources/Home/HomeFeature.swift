@@ -56,14 +56,23 @@ public struct HomeFeature {
         public let id: Int
         public let dateText: String
         public let title: String
-        /// [레포트 보기] 노출 여부 — 생성 중·분석 부족·실패 세션은 열 상세가 없다
+        /// 제목 아래 회색 보조 문구 — 지금은 생성 실패 행의 «이용권 횟수는 차감되지 않아요» 하나다.
+        public let subtitle: String?
+        /// [레포트 보기] 노출 여부 — 생성 실패 세션은 열 상세가 없다
         /// (docs/work/home-account.md §3 위젯② 행 상태 표).
         public let canOpenReport: Bool
 
-        public init(id: Int, dateText: String, title: String, canOpenReport: Bool = true) {
+        public init(
+            id: Int,
+            dateText: String,
+            title: String,
+            subtitle: String? = nil,
+            canOpenReport: Bool = true
+        ) {
             self.id = id
             self.dateText = dateText
             self.title = title
+            self.subtitle = subtitle
             self.canOpenReport = canOpenReport
         }
     }
@@ -78,8 +87,14 @@ public struct HomeFeature {
         public var userName: String
         /// 리포트 목록 — 최신순. 개수는 여기서 파생한다(`reports.count`), 따로 들지 않는다.
         public var reports: IdentifiedArrayOf<Report>
-        /// 펼친 행 — 시안은 최신 1개가 펼쳐진 상태다. nil 이면 전부 접힘.
-        public var expandedReportID: Report.ID?
+        /// 펼친 행들 — **여러 행을 동시에 펼쳐 둘 수 있다**(사용자 결정 2026-08-05).
+        /// 진입 시엔 시안대로 최신 1개만 펼쳐져 있고, 행을 탭할 때마다 토글된다.
+        public var expandedReportIDs: Set<Report.ID>
+        /// 목록 갱신 후 남길 펼침 — 사라진 세션은 버리고, 전부 사라졌으면 최신 1개를 펼친다.
+        static func expanded(keeping previous: Set<Report.ID>, in reports: [Report]) -> Set<Report.ID> {
+            let kept = previous.intersection(reports.map(\.id))
+            return kept.isEmpty ? Set(reports.first.map { [$0.id] } ?? []) : kept
+        }
         /// 시트가 지금 앉아 있는 자리. 홈에 다시 들어오면 기본으로 돌아온다(`onAppear`).
         public var sheetDetent: SheetDetent = .report
         /// 면접 시작 화면 — 시트 **뒤에 늘 깔려 있다**. present 가 아닌 이유는 `SheetDetent` 주석 참조.
@@ -98,7 +113,7 @@ public struct HomeFeature {
             self.phase = phase
             self.userName = userName
             self.reports = IdentifiedArray(uniqueElements: reports)
-            self.expandedReportID = reports.first?.id
+            self.expandedReportIDs = Set(reports.first.map { [$0.id] } ?? [])
             self.startInterview = StartInterviewFeature.State(variant: startVariant, userName: userName)
             self.showsDevReset = showsDevReset
         }
@@ -119,9 +134,9 @@ public struct HomeFeature {
             case userSettledSheet(SheetDetent)
             /// 내비바 프로필 탭 — 마이페이지 진입 요청.
             case userTappedProfile
-            /// 펼친 행의 [레포트 보기] 탭 — 리포트 상세 진입 요청.
+            /// 펼친 행의 [레포트 보기](>) 탭 — 리포트 상세 진입 요청.
             case userTappedReport(id: Report.ID)
-            /// 리포트 행 탭 — 펼침 토글(홈 내부 상태, 화면 전환 아님).
+            /// 리포트 행 탭 — 펼침 토글(홈 내부 상태, 화면 전환 아님). 펼친 행 본문 탭이면 접힌다.
             case userTappedReportRow(id: Report.ID)
             /// dev 데이터 초기화 탭 — 로컬·세션 데이터를 전부 지우고 앱을 처음부터 다시 태운다.
             case userTappedResetAppData
@@ -185,7 +200,8 @@ public struct HomeFeature {
                     // 기록 목록은 별도 effect — 목록이 느려도 인사말·면접 시작 카드는 먼저 그린다.
                     .run { send in
                         let summaries = try? await interviewClient.reportList()
-                        await send(.inner(.reportsLoaded(summaries?.map(Report.init(summary:)))))
+                        // compactMap — 생성 중 세션은 행을 만들지 않는다(Report.init?(summary:)).
+                        await send(.inner(.reportsLoaded(summaries?.compactMap(Report.init(summary:)))))
                     }
                 )
                 .cancellable(id: CancelID.entryLoad, cancelInFlight: true)
@@ -198,7 +214,12 @@ public struct HomeFeature {
                 return .send(.delegate(.reportDetailRequested(id: id)))
             case let .view(.userTappedReportRow(id)):
                 // 재탭이면 접는다 — foldable 행은 홈 내부 상태다(docs/work/home-account.md §3 위젯②).
-                state.expandedReportID = state.expandedReportID == id ? nil : id
+                // 다른 행을 닫지 않는다 — 여러 행을 펼쳐 둔 채 비교할 수 있다(사용자 결정 2026-08-05).
+                if state.expandedReportIDs.contains(id) {
+                    state.expandedReportIDs.remove(id)
+                } else {
+                    state.expandedReportIDs.insert(id)
+                }
                 return .none
             case .view(.userTappedResetAppData):
                 return .send(.delegate(.appDataResetRequested))
@@ -225,7 +246,8 @@ public struct HomeFeature {
                 // 실패(nil)면 아무것도 건드리지 않는다 — 목록을 비우면 «기록이 없어졌다» 로 읽힌다.
                 guard let reports = loaded else { return .none }
                 state.reports = IdentifiedArray(uniqueElements: reports)
-                state.expandedReportID = reports.first?.id
+                // 재조회로 사라진 세션의 펼침만 버린다 — 남은 펼침은 그대로 둔다(깜빡임 방지).
+                state.expandedReportIDs = State.expanded(keeping: state.expandedReportIDs, in: reports)
                 // 기록이 있으면 **인사말을 띄운다**(`returning`) — «오랜만/최근» 을 가를 재료(마지막 방문 시각)가
                 // 서버에도 목록에도 없는데 `recent` 로 두면 인사말이 영원히 안 보인다(사용자 결정 2026-08-04).
                 // TODO: 마지막 방문·면접 시각 계약이 생기면 그때 `recent` 판정을 되살린다(미결 6-1).
@@ -296,12 +318,21 @@ private extension HomeFeature {
 
 extension HomeFeature.Report {
     /// GET /interview/sessions 한 건 → 행 하나. `id` 는 세션 id 그대로다(상세 진입 인자).
-    init(summary: InterviewReportSummary) {
+    ///
+    /// **GENERATING 은 행을 만들지 않는다**(nil) — 채점이 끝나기 전 세션은 목록에서 빼기로 확정했다
+    /// (사용자 결정 2026-08-04, PRD 위젯② 행 상태 표에 없던 자리). 홈은 폴링하지 않으므로
+    /// 생성이 끝난 행은 다음 홈 진입 재조회 때 나타난다.
+    init?(summary: InterviewReportSummary) {
+        guard summary.reportStatus != .generating else { return nil }
+        let isFailed = summary.reportStatus == .failed
         self.init(
             id: summary.sessionId,
             dateText: Self.dateText(summary.interviewedAt),
             title: Self.title(for: summary),
-            canOpenReport: summary.reportStatus == .ready
+            subtitle: isFailed ? Self.failureSubtitle : nil,
+            // 실패 세션은 열 상세가 없다. INSUFFICIENT_ANALYSIS 는 채점된 카드만이라도 있는
+            // 리포트라 READY 와 같은 행이다(사용자 결정 2026-08-04).
+            canOpenReport: !isFailed
         )
     }
 
@@ -322,23 +353,14 @@ extension HomeFeature.Report {
         interviewedAtFormatter.string(from: date)
     }
 
-    /// 행 제목 — 생성 안 끝난/실패한 세션은 상태 안내가 제목 자리를 대신한다
-    /// (docs/work/home-account.md §3 위젯② 행 상태 표).
-    ///
-    /// READY 는 시안처럼 «답변 한 줄 요약» 을 띄우고 싶지만 목록 응답에 그 문장이 없다 —
-    /// 지금은 세션 스냅샷(직군·연차)으로 대신한다.
-    // TODO: 목록 응답에 요약 문장 필드 추가 요청(미결 6-1) → 오면 이 함수만 갈아끼운다.
+    /// 생성 실패 행 보조 문구 — 실패해도 이용권은 안 깎인다는 게 이 행이 전할 전부다(시안 2026-08-05).
+    static let failureSubtitle = "이용권 횟수는 차감되지 않아요"
+
+    /// 행 제목 — 실패만 상태 문구고, READY·INSUFFICIENT_ANALYSIS 는 세션 스냅샷(직군·연차)이다
+    /// (시안처럼 «답변 한 줄 요약» 을 띄우고 싶지만 목록 응답에 그 문장이 없다).
+    // TODO: 목록 응답에 요약 문장 필드 추가 요청(미결 6-1) → 오면 스냅샷 갈래만 갈아끼운다.
     private static func title(for summary: InterviewReportSummary) -> String {
-        switch summary.reportStatus {
-        case .ready:
-            return snapshotTitle(for: summary)
-        case .generating:
-            return "레포트를 만들고 있어요"
-        case .insufficientAnalysis:
-            return "분석할 답변이 부족해 레포트를 만들지 못했어요"
-        case .failed:
-            return "레포트 생성에 실패했어요 · 횟수는 차감되지 않았어요"
-        }
+        summary.reportStatus == .failed ? "레포트 생성에 실패했어요" : snapshotTitle(for: summary)
     }
 
     /// 세션 스냅샷 제목 — 없는 조각은 뺀다(가짜 «0년차» 를 만들지 않는다).
@@ -361,23 +383,17 @@ extension HomeFeature.Report {
         .init(id: 5, dateText: "7월 10일 월", title: "성능 개선 결과를 지표로 설명했어요")
     ]
 
-    /// 상태가 섞인 목록 — 준비된 행 2개 + 생성 중·분석 부족·실패 각 1개.
-    /// 준비 안 된 행은 제목 자리가 상태 문구이고 [레포트 보기] 가 없다(`canOpenReport: false`).
-    /// 제목 문구는 `Report.title(for:)` 이 만드는 값과 같게 맞춰 뒀다 — **프리뷰 전용** 픽스처다.
-    public static let statusPlaceholders: [Self] = [
+    /// 세션 스냅샷 제목 목록 — 요약 문장 필드가 오기 전 실제 행이 어떻게 보이는지 확인하는 **프리뷰 전용** 픽스처.
+    /// 제목은 `Report.title(for:)` 이 만드는 값과 같게 맞췄다(직군 · 연차).
+    public static let snapshotPlaceholders: [Self] = [
         .init(id: 1, dateText: "7월 11일 토", title: "백엔드 개발자 · 3년차"),
-        .init(id: 2, dateText: "7월 10일 금", title: "백엔드 개발자 · 3년차"),
-        .init(id: 3, dateText: "7월 9일 목", title: "레포트를 만들고 있어요", canOpenReport: false),
+        .init(id: 2, dateText: "7월 10일 금", title: "프론트엔드 개발자 · 1년차"),
+        .init(id: 3, dateText: "7월 9일 목", title: "백엔드 개발자"),
         .init(
             id: 4,
             dateText: "7월 8일 수",
-            title: "분석할 답변이 부족해 레포트를 만들지 못했어요",
-            canOpenReport: false
-        ),
-        .init(
-            id: 5,
-            dateText: "7월 7일 화",
-            title: "레포트 생성에 실패했어요 · 횟수는 차감되지 않았어요",
+            title: "레포트 생성에 실패했어요",
+            subtitle: failureSubtitle,
             canOpenReport: false
         )
     ]

@@ -47,7 +47,27 @@ struct HomeReportSheet: View {
         // 빈 상태는 헤더와 무관하게 **판 중앙**이다(시안) — 그래서 스택 안이 아니라 판 전체 overlay 다.
         .overlay { if isEmpty { emptyState } }
         .clipped()
+        .overlay(alignment: .top) { topBarShadow }
         .overlay(alignment: .bottom) { if !isEmpty { bottomFade } }
+    }
+
+    /// 확장 자리에서 내비바가 판 위로 드리우는 그림자 — 시안 649:6652 top-bar
+    /// `drop-shadow(0 8 6, #DDDFE5 60%)`. 판이 내비바에 붙는 자리에서만 보인다.
+    ///
+    /// 시스템 툴바에는 그림자를 붙일 수 없어(`toolbarBackground` 는 색만 받는다) **판 쪽에서**
+    /// 같은 그림을 그린다 — 그림자는 어차피 아래 판 위에 떨어지는 것이라 결과가 같다.
+    /// 자리 확정(`sheetDetent`) 뒤에 켜지므로 끌고 있는 동안은 안 보인다 — 붙고 나서 생기는 게 맞다.
+    private var topBarShadow: some View {
+        LinearGradient(
+            colors: [Self.topBarShadowColor, Self.topBarShadowColor.opacity(0)],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        // @ds(layout): 14 = 그림자 y8 + blur 6 — 번지는 거리
+        .frame(height: 14)
+        .opacity(isExpanded ? 1 : 0)
+        .animation(HomeSheetDrag.settleAnimation, value: isExpanded)
+        .allowsHitTesting(false)
     }
 
     /// 판 색만 홈 인디케이터 영역까지 내린다 — 다 내려가면 판이 통째로 화면 밖이라(offset)
@@ -127,7 +147,7 @@ struct HomeReportSheet: View {
         ScrollView {
             LazyVStack(spacing: 1) {
                 ForEach(store.reports) { report in
-                    if report.id == store.expandedReportID {
+                    if store.expandedReportIDs.contains(report.id) {
                         expandedRow(report)
                     } else {
                         collapsedRow(report)
@@ -141,7 +161,8 @@ struct HomeReportSheet: View {
         .gesture(dragHandle.gesture, including: isExpanded ? .subviews : .all)
     }
 
-    /// 펼친 행 — 다크 카드에 날짜·제목·[레포트 보기] 버튼.
+    /// 펼친 행 — 다크 카드에 날짜·제목·[레포트 보기] 버튼. 카드 본문을 탭하면 도로 접힌다
+    /// ([>] 버튼은 자기 탭을 먹으므로 접힘과 겹치지 않는다).
     private func expandedRow(_ report: HomeFeature.Report) -> some View {
         VStack(alignment: .trailing, spacing: .ds(.p16)) {
             VStack(alignment: .leading, spacing: .ds(.p8)) {
@@ -152,9 +173,18 @@ struct HomeReportSheet: View {
                     .dsTypography(.sub4)
                     .foregroundStyle(Color.BlackWhite.white)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                // 생성 실패 행만 붙는 보조 문구 — «횟수는 안 깎였다» (시안 2026-08-05).
+                if let subtitle = report.subtitle {
+                    Text(subtitle)
+                        .dsTypography(.body6)
+                        .foregroundStyle(Color.GrayScale.g400)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
-            // 생성 중·분석 부족·실패 세션은 열 상세가 없어 버튼을 아예 뺀다 — 제목 자리가 상태 안내다.
+            // 생성 실패 세션은 열 상세가 없어 버튼을 아예 뺀다 — 카드에 상태 문구만 남는다.
             if report.canOpenReport {
+                // TODO: Part 3 리포트 상세 진입 — delegate 는 이미 나간다(`reportDetailRequested(id:)`,
+                //       인자 = 세션 id). 남은 건 AppFeature 에서 `InterviewReportFeature` 를 제시하는 것뿐이다.
                 Button {
                     send(.userTappedReport(id: report.id))
                 } label: {
@@ -169,6 +199,9 @@ struct HomeReportSheet: View {
         .padding(.vertical, .ds(.p24))
         .frame(maxWidth: .infinity)
         .background(Color.HilitBlack.b800)
+        // 카드 전체가 접기 영역 — 빈 자리(텍스트 사이·여백)도 먹게 모양을 채운다.
+        .contentShape(Rectangle())
+        .onTapGesture { send(.userTappedReportRow(id: report.id)) }
     }
 
     /// 접힌 행 — 날짜만. 탭하면 펼친다(리듀서가 토글).
@@ -225,6 +258,10 @@ struct HomeReportSheet: View {
 
     // @ds(color): #D2EFCC (Figma «hilit green/200») — 접힌 리포트 행 배경. 팔레트에 그린 200 단계가 없다
     private static let collapsedRowBackground = Color(red: 210 / 255, green: 239 / 255, blue: 204 / 255)
+
+    // @ds(color): #DDDFE5 60% — 내비바 드롭섀도 색. 팔레트에 이 단계가 없다(g100 #EBECF1 ~ g200 #BCBEC6 사이)
+    private static let topBarShadowColor = Color(red: 221 / 255, green: 223 / 255, blue: 229 / 255)
+        .opacity(0.6)
 }
 
 // MARK: - Previews
@@ -235,7 +272,7 @@ struct HomeReportSheet: View {
         store: Store(
             initialState: HomeFeature.State(
                 phase: .report(.returning),
-                reports: HomeFeature.Report.statusPlaceholders
+                reports: HomeFeature.Report.snapshotPlaceholders
             )
         ) {
             HomeFeature()
@@ -243,6 +280,19 @@ struct HomeReportSheet: View {
         dragHandle: HomeSheetDragHandle(onChanged: { _ in }, onEnded: { _ in })
     )
     .frame(height: 481)
+}
+
+// 확장 자리(649:6625) — 그래버 없이 헤더부터 시작하고, 판 위쪽에 내비바 그림자가 깔린다.
+#Preview("리포트 시트 — 확장 자리(내비바 그림자)") {
+    var state = HomeFeature.State(
+        phase: .report(.returning),
+        reports: HomeFeature.Report.snapshotPlaceholders
+    )
+    state.sheetDetent = .expanded
+    return HomeReportSheet(
+        store: Store(initialState: state) { HomeFeature() },
+        dragHandle: HomeSheetDragHandle(onChanged: { _ in }, onEnded: { _ in })
+    )
 }
 
 #Preview("리포트 시트 — 빈 상태") {

@@ -226,35 +226,52 @@ struct HomeReportListTests {
             $0.reports = [
                 HomeFeature.Report(id: 7, dateText: "7월 11일 토", title: "백엔드 개발자 · 3년차")
             ]
-            $0.expandedReportID = 7
+            $0.expandedReportIDs = [7]
             $0.phase = .report(.returning)
         }
     }
 
-    @Test("생성 중·실패 세션은 상태 문구가 제목이 되고 [레포트 보기] 를 감춘다")
-    func unreadyReportsHideDetailEntry() async {
+    @Test("생성 중 세션은 행에서 빠지고, 분석 부족은 READY·실패는 상태 문구 행으로 들어온다")
+    func generatingReportsAreDropped() async {
         let store = Self.store(reportList: {
-            [Self.summary(sessionId: 1, status: .generating), Self.summary(sessionId: 2, status: .failed)]
+            [
+                Self.summary(sessionId: 1, status: .generating),
+                Self.summary(sessionId: 2, status: .insufficientAnalysis),
+                Self.summary(sessionId: 3, status: .failed)
+            ]
         })
 
         await store.send(.view(.onAppear))
         await store.receive(\.inner.reportsLoaded) {
             $0.reports = [
+                HomeFeature.Report(id: 2, dateText: "7월 11일 토", title: "백엔드 개발자 · 3년차"),
                 HomeFeature.Report(
-                    id: 1,
+                    id: 3,
                     dateText: "7월 11일 토",
-                    title: "레포트를 만들고 있어요",
-                    canOpenReport: false
-                ),
-                HomeFeature.Report(
-                    id: 2,
-                    dateText: "7월 11일 토",
-                    title: "레포트 생성에 실패했어요 · 횟수는 차감되지 않았어요",
+                    title: "레포트 생성에 실패했어요",
+                    subtitle: "이용권 횟수는 차감되지 않아요",
                     canOpenReport: false
                 )
             ]
-            $0.expandedReportID = 1
+            $0.expandedReportIDs = [2]
             $0.phase = .report(.returning)
+        }
+    }
+
+    @Test("전부 생성 중이면 목록이 비어 기본 상태로 떨어진다")
+    func allGeneratingFallsBackToDefaultPhase() async {
+        let store = Self.store(
+            initialState: HomeFeature.State(phase: .report(.returning), reports: [
+                HomeFeature.Report(id: 1, dateText: "7월 10일 금", title: "옛 행")
+            ]),
+            reportList: { [Self.summary(sessionId: 1, status: .generating)] }
+        )
+
+        await store.send(.view(.onAppear))
+        await store.receive(\.inner.reportsLoaded) {
+            $0.reports = []
+            $0.expandedReportIDs = []
+            $0.phase = .default
         }
     }
 
@@ -267,7 +284,7 @@ struct HomeReportListTests {
             $0.reports = [
                 HomeFeature.Report(id: 7, dateText: "7월 11일 토", title: "면접 레포트가 준비됐어요")
             ]
-            $0.expandedReportID = 7
+            $0.expandedReportIDs = [7]
             $0.phase = .report(.returning)
         }
     }
@@ -284,7 +301,7 @@ struct HomeReportListTests {
         await store.send(.view(.onAppear))
         await store.receive(\.inner.reportsLoaded) {
             $0.reports = []
-            $0.expandedReportID = nil
+            $0.expandedReportIDs = []
             $0.phase = .default
         }
     }
@@ -303,5 +320,55 @@ struct HomeReportListTests {
         await store.receive(\.inner.reportsLoaded)
         #expect(store.state.reports.elements == [previous])
         #expect(store.state.phase == .report(.recent))
+    }
+}
+
+@MainActor
+struct HomeReportExpansionTests {
+    private static func report(_ id: Int) -> HomeFeature.Report {
+        HomeFeature.Report(id: id, dateText: "7월 1\(id)일 토", title: "백엔드 개발자 · 3년차")
+    }
+
+    private static func store() -> TestStore<HomeFeature.State, HomeFeature.Action> {
+        TestStore(
+            initialState: HomeFeature.State(
+                phase: .report(.returning),
+                reports: [report(1), report(2), report(3)]
+            )
+        ) {
+            HomeFeature()
+        }
+    }
+
+    @Test("행 탭은 다른 행을 닫지 않는다 — 여러 행을 동시에 펼쳐 둔다")
+    func rowsExpandIndependently() async {
+        let store = Self.store()
+        // 진입 시엔 최신 1개만 펼쳐져 있다.
+        #expect(store.state.expandedReportIDs == [1])
+
+        await store.send(.view(.userTappedReportRow(id: 2))) {
+            $0.expandedReportIDs = [1, 2]
+        }
+        await store.send(.view(.userTappedReportRow(id: 3))) {
+            $0.expandedReportIDs = [1, 2, 3]
+        }
+    }
+
+    @Test("펼친 행을 다시 탭하면 그 행만 접힌다")
+    func tappingExpandedRowCollapsesOnlyThatRow() async {
+        let store = Self.store()
+        await store.send(.view(.userTappedReportRow(id: 2))) {
+            $0.expandedReportIDs = [1, 2]
+        }
+        await store.send(.view(.userTappedReportRow(id: 1))) {
+            $0.expandedReportIDs = [2]
+        }
+    }
+
+    @Test("[>] 탭은 세션 id 를 그대로 상세 진입 delegate 로 넘긴다")
+    func detailButtonForwardsSessionID() async {
+        let store = Self.store()
+        await store.send(.view(.userTappedReport(id: 3)))
+        await store.receive(\.delegate.reportDetailRequested)
     }
 }

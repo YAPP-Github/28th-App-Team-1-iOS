@@ -227,14 +227,15 @@ public struct HomeView: View {
     }
 }
 
-// 픽스처는 첫 프레임용이고, `onAppear` 진입 로드가 `previewValue` 목록(상태 섞인 5건)으로 덮는다.
-#Preview("HomeReport — 상태 섞인 목록") {
+// 픽스처는 첫 프레임용이고, `onAppear` 진입 로드가 `previewValue` 목록으로 덮는다 —
+// 5건 중 GENERATING 1건은 행에서 빠져 4행이 남는다.
+#Preview("HomeReport — 스냅샷 제목 목록") {
     NavigationStack {
         HomeView(
             store: Store(
                 initialState: HomeFeature.State(
                     phase: .report(.returning),
-                    reports: HomeFeature.Report.statusPlaceholders
+                    reports: HomeFeature.Report.snapshotPlaceholders
                 )
             ) {
                 HomeFeature()
