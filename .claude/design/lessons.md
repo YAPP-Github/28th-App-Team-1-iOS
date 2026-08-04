@@ -10,7 +10,7 @@
 
 ## 1. 원본색 에셋에 `foregroundStyle` 을 걸어도 아무 일도 안 난다 (2026-07-26)
 
-**무엇** — `OnboardingAnalysisView` 가 `Image.Ic.success` 에 `.foregroundStyle(Color.HilitGreen.g500)` 을 걸고 있었는데, `IcSuccess.imageset` 에 `template-rendering-intent` 가 없어 원본색으로 렌더됐다. 코드만 보면 초록으로 칠해질 것 같은데 실제론 무효인 줄이 남아 있었다.
+**무엇** — 프리로드 화면(당시 `OnboardingAnalysisView`, 현 `OnboardingPreloadView`)이 `Image.Ic.success` 에 `.foregroundStyle(Color.HilitGreen.g500)` 을 걸고 있었는데, `IcSuccess.imageset` 에 `template-rendering-intent` 가 없어 원본색으로 렌더됐다. 코드만 보면 초록으로 칠해질 것 같은데 실제론 무효인 줄이 남아 있었다.
 
 **왜** — 에셋이 template 인지 원본색인지는 카탈로그 설정에 있고 호출부에서 안 보인다. 리뷰로 잡히지 않는 종류의 어긋남이다.
 

@@ -130,7 +130,7 @@ AuthTerms 제출 후 이어지는 4화면. AuthFeature 도메인 내부 내비(�
 | `HomeStartInterview` | 시작 CTA 변형 — 처음 / 등록 포폴 있음 / 무료 횟수 모두 사용. **phase 아니라 present** (홈 위 전체화면 cover — 홈 스택 push 아님) |
 | `HomeDuringInterview` | 진행 중 면접 있음 / 레포트 제작 시점 — **MVP 제외 (2026-07-31 삭제)** |
 
-#### 회차 분기 판정 키 (2026-08-03 확정)
+### 회차 분기 판정 키 (2026-08-03 확정)
 
 **«2회차 이상» = READY 포트폴리오 보유.** 서버에 면접 이력 필드를 추가하지 않는다 — 이 분기가 실제로 묻는 건 «불러올 포폴이 있나» 이고, 포폴은 계정당 1개([ai-interview](ai-interview.md) §3 Portfolio)라 `PortfolioClient.list` 에 READY 가 있으면 그게 곧 재사용 대상이다. 교체가 한 달 1회로 묶여([mypage](../../lat.md/mypage.md)) 보유자는 새로 올리지도 못하므로, 이들이 가야 할 자리가 «이전과 동일한 정보로» 시안이다.
 
@@ -211,8 +211,7 @@ Interview --delegate(.finished/.closed)------▶ AppFeature → cover 닫고 홈
 
 **추가 (2026-08-03) — 면접 cover 는 이미 조립돼 있다.** `AppFeature` 에 `@Presents var interview` + `.ifLet` + `AppView` fullScreenCover 가 들어갔고(dev 게이트 없음 — 전 계에서 동작), 면접 중에는 전역 LoadingModal 을 끈다. `interviewStartRequested` 를 여는 사람은 **게이트 판정 후 `state.interview = InterviewFeature.State(sessionId:)` 한 줄만** 채우면 된다 — cover 제시·종료 라우팅은 재구현 대상이 아니다. `resumeInterviewRequested(sessionId:)` 도 같은 cover 를 재사용한다.
 
-**추가 (2026-07-31 배선) — 위 표의 delegate 4건이 실제 케이스로 들어갔다.** 이름은 구현 기준: `interviewStartRequested`(StartInterview 의 [시작하기]) · `interviewInfoEditRequested`([수정하기]) · `profileRequested`(마이페이지) · `reportDetailRequested(id:)`(리포트 상세 — 인자는 세션 id 다, 2026-08-04 목록 배선으로 교체 완료). `AppFeature` 는 네 케이스를 **명시로 받고 `.none` + TODO** — `resumeInterviewRequested(sessionId:)` 는 held 세션 로드가 없어 아직 만들지 않았다. 홈 내부에 남는 것: 펼침 토글(`userTappedReportRow`)·면접 시작 화면 present.
-**추가 (2026-07-31 배선) — 위 표의 delegate 4건이 실제 케이스로 들어갔다.** 이름은 구현 기준: `interviewStartRequested`(StartInterview 의 [시작하기]) · `interviewInfoEditRequested`([수정하기]) · `profileRequested`(마이페이지) · `reportDetailRequested(id:)`(리포트 상세 — 인자는 세션 id 다, 2026-08-04 목록 배선으로 교체 완료). `resumeInterviewRequested(sessionId:)` 는 held 세션 로드가 없어 아직 만들지 않았다. 홈 내부에 남는 것: 펼침 토글(`userTappedReportRow`)·면접 시작 화면 present.
+**추가 (2026-07-31 배선) — 위 표의 delegate 4건이 실제 케이스로 들어갔다.** 이름은 구현 기준: `interviewStartRequested`(StartInterview 의 [시작하기]) · `interviewInfoEditRequested`([수정하기]) · `profileRequested`(마이페이지) · `reportDetailRequested(id:)`(리포트 상세 — 인자는 세션 id 다, 2026-08-04 목록 배선으로 교체 완료). `AppFeature` 는 네 케이스를 **명시로 받고 `.none` + TODO** 였다(아래 08-02 추가에서 앞 두 건이 위저드로 배선됐다). `resumeInterviewRequested(sessionId:)` 는 held 세션 로드가 없어 아직 만들지 않았다. 홈 내부에 남는 것: 펼침 토글(`userTappedReportRow`)·면접 시작 화면 present.
 
 **추가 (2026-08-02 배선) — 앞 두 건이 온보딩 위저드로 연결됐다.** 면접에 필요한 정보(직군·연차·JD·포폴)를 모으는 게 온보딩이라, `interviewStartRequested` 는 **첫 면접일 때만**(`startInterview.variant == .first`) 위저드를 `fullScreenCover` 로 연다. `.hasPortfolio` 는 수집을 건너뛰고 면접으로 가야 하는 자리라 TODO 로 남았다(`FeatureInterview` 미통합). `interviewInfoEditRequested` 는 변형과 무관하게 같은 위저드를 처음부터 태운다 — 저장된 draft 가 살아 있으면 위저드가 값을 복원한다(TTL 14일). 위저드가 닫힐 때(`finished`·`dismiss` 둘 다) AppFeature 가 `.home(.view(.onAppear))` 를 보내 홈을 재조회한다 — 중도 이탈이라도 STEP4 업로드는 끝났을 수 있어 «이전 정보 재사용» 카드가 옛 값으로 남으면 안 된다. `profileRequested`·`reportDetailRequested` 는 여전히 `.none` + TODO.
 
@@ -220,7 +219,7 @@ Interview --delegate(.finished/.closed)------▶ AppFeature → cover 닫고 홈
 
 홈 진입 시 4종 로드 — 묶음 API 1회 vs 기존 4회 호출은 서버 협의(미결 #1). **3종(프로필·포폴 2026-08-02 · 기록 목록 2026-08-04)은 기존 계약으로 배선했고** held 세션만 남았다 — 프로필·포폴은 결과를 `inner(.entryLoaded)` 한 케이스로 받아 묶음 API 로 바뀌어도 갈아끼울 자리가 하나고, 기록 목록은 느려도 인사말을 막지 않게 별개 effect(`inner(.reportsLoaded)`) 다.
 
-**갱신 주기 = 매 진입 재조회**(첫 진입만 로드하지 않는다). 포폴은 온보딩 S2·마이페이지가, 잔여는 면접이 바꾸므로 캐시하면 무효화 신호를 Feature 밖으로 돌려야 하는데(Feature→Feature 금지) 1건짜리 GET 두 번보다 비싸다. §6 «지인 피드백 도착 직후 홈 복귀 → 재조회로 실현» 과도 같은 태도다. 부분 실패는 허용하고(한쪽이 죽어도 나머지는 그린다) 값은 덮어쓰기만 한다 — 재진입마다 비우면 깜빡인다. 상세는 [[home#진입 로드]].
+**갱신 주기 = 매 진입 재조회**(첫 진입만 로드하지 않는다). 포폴은 온보딩 S2·마이페이지가, 잔여는 면접이 바꾸므로 캐시하면 무효화 신호를 Feature 밖으로 돌려야 하는데(Feature→Feature 금지) 1건짜리 GET 세 번보다 비싸다. §6 «지인 피드백 도착 직후 홈 복귀 → 재조회로 실현» 과도 같은 태도다. 부분 실패는 허용하고(한쪽이 죽어도 나머지는 그린다) 값은 덮어쓰기만 한다 — 재진입마다 비우면 깜빡인다. 상세는 [[home#진입 로드]].
 
 | 데이터 | Client (모듈) | 상태 |
 |---|---|---|

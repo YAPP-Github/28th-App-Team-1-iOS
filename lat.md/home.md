@@ -26,7 +26,7 @@ phase 와 **직교하는 두 번째 축** — 리포트 시트가 앉는 자리 
 
 「면접 시작」 진입은 **시트를 끌어 내리기 하나**다(`view(.userSettledSheet(.startInterview))`) — 안내 문구는 문구일 뿐이라 탭 제스처를 걸지 않는다(사용자 결정 2026-08-04, `userTappedStartInterview` 폐기). 되돌리기는 내비바 X 와 소진 시안의 «홈으로» CTA 둘 다 기본 자리로 보낸다. 내비바는 두 phase 뷰가 같은 바라 `HomeView` 가 한 번만 붙인다(프로필 탭 → `view(.userTappedProfile)`).
 
-홈 밖으로 나가는 4건은 delegate — `profileRequested`(마이페이지) · `reportDetailRequested(id:)`(리포트 상세) · `interviewStartRequested`·`interviewInfoEditRequested`(StartInterview 의 `startRequested`·`editInfoRequested` 를 올린 것). AppFeature 가 네 케이스를 명시로 받되 아직 `.none` + TODO 다 — 막힌 지점이 경계 한 곳에 모인다. 펼침 토글(`userTappedReportRow`)은 홈 내부 상태라 delegate 가 아니다.
+홈 밖으로 나가는 4건은 delegate — `profileRequested`(마이페이지) · `reportDetailRequested(id:)`(리포트 상세) · `interviewStartRequested`·`interviewInfoEditRequested`(StartInterview 의 `startRequested`·`editInfoRequested` 를 올린 것). AppFeature 가 네 케이스를 명시로 받고, 면접 두 건은 온보딩 위저드 cover 로 이어진다(`state.onboarding` — [[app]]). `profileRequested`·`reportDetailRequested(id:)` 만 아직 `.none` + TODO 다 — 막힌 지점이 경계 한 곳에 모인다. 펼침 토글(`userTappedReportRow`)은 홈 내부 상태라 delegate 가 아니다.
 
 dev 계 임시 버튼은 1개(`HomeView` 인사말 옆 — 기록이 생기면 안 보이던 빈 상태 자리에서 2026-08-05 옮겼다) — `showsDevReset` 플래그로 게이팅하고 `delegate(.appDataResetRequested)`(로그아웃·Keychain·draft·UserDefaults 전체 삭제 후 Splash 판정 재실행 — [[app]])를 올린다. 2026-08-03 통합 전엔 온보딩 진입·디버그 로그아웃 두 버튼이었다.
 
