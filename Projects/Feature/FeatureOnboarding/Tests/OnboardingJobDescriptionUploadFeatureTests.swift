@@ -202,27 +202,33 @@ struct OnboardingJobDescriptionUploadFeatureTests {
         await store.receive(\.delegate.continueRequested, .link(link))
     }
 
-    @Test("미검증 링크의 계속하기는 스킵(nil)으로 올린다")
-    func continueWithUnvalidatedLinkSkips() async {
-        var initialState = OnboardingJobDescriptionUploadFeature.State()
-        initialState.linkText = link
-        let store = TestStore(initialState: initialState) {
+    @Test("빈 링크는 계속하기가 비활성이다 — 링크 없이 넘어가는 길은 건너뛰기뿐")
+    func continueIsDisabledForEmptyLink() async {
+        let store = TestStore(initialState: OnboardingJobDescriptionUploadFeature.State()) {
             OnboardingJobDescriptionUploadFeature()
         }
 
+        #expect(!store.state.isContinueEnabled)
         await store.send(.view(.userTappedContinue))
-        await store.receive(\.delegate.continueRequested, nil)
     }
 
-    @Test("분석 중에는 계속하기를 무시한다")
-    func continueIsIgnoredWhileLoading() async {
+    @Test("검증 성공 전 링크는 계속하기가 비활성이고 탭도 무시된다", arguments: [
+        OnboardingJobDescriptionUploadFeature.LinkValidation.idle,
+        .loading,
+        .failure(message: "링크를 분석하지 못했어요. 링크를 확인해 주세요.")
+    ])
+    func continueIsDisabledUntilLinkValidated(
+        _ validation: OnboardingJobDescriptionUploadFeature.LinkValidation
+    ) async {
         var initialState = OnboardingJobDescriptionUploadFeature.State()
         initialState.linkText = link
-        initialState.linkValidation = .loading
+        initialState.linkValidation = validation
         let store = TestStore(initialState: initialState) {
             OnboardingJobDescriptionUploadFeature()
         }
 
+        #expect(!store.state.isContinueEnabled)
+        // 비활성이라 눌릴 일이 없지만, 눌려도 delegate 방출 없이 무시된다.
         await store.send(.view(.userTappedContinue))
     }
 
