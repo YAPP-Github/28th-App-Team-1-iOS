@@ -87,12 +87,15 @@ public struct OnboardingJobDescriptionUploadFeature {
             }
             return nil
         }
-        /// «계속하기» 활성 조건 — 링크 탭은 항상(무효 링크는 스킵 처리),
-        /// 직접입력 탭은 빈 입력(스킵)이거나 유효 길이일 때만 (PRD S1 무효 입력 시 다음 꺼짐).
+        /// «계속하기» 활성 조건.
+        /// 링크 탭은 **검증 성공만** — 빈 입력·미검증(idle·분석 중·실패) 모두 잠근다.
+        /// 링크 없이 넘어가는 길은 네비바 «건너뛰기» 하나로 몰아, 붙여넣은 공고가 조용히
+        /// 버려지거나 빈 채로 넘어가는 일이 없게 한다.
+        /// 직접입력 탭은 빈 입력(스킵)이거나 유효 길이(200~3,000자)일 때 (PRD S1 무효 입력 시 다음 꺼짐).
         public var isContinueEnabled: Bool {
             switch mode {
             case .link:
-                return true
+                return linkValidation == .success
             case .directText:
                 return directText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isDirectTextValid
             }
@@ -271,17 +274,11 @@ public struct OnboardingJobDescriptionUploadFeature {
     private func submit(_ state: State) -> Effect<Action> {
         switch state.mode {
         case .link:
-            switch state.linkValidation {
-            case .loading:
-                // 분석 중 탭은 무시 — 결과 확인 후 진행. 보통은 전역 LoadingModal 이 덮어 탭이 안 닿지만,
-                // showDelay(200ms) 안에 끝나는 검증은 모달 없이 지나가므로 여기로 들어올 수 있다.
-                return .none
-            case .success:
-                return .send(.delegate(.continueRequested(.link(trimmedLink(state)))))
-            case .idle, .failure:
-                // 검증되지 않은 링크는 버리고 스킵한다 (툴팁 안내와 일치).
-                return .send(.delegate(.continueRequested(nil)))
-            }
+            // 검증 성공 아닌 링크 탭은 «계속하기» 가 꺼져 있어 도달하지 않지만 방어적으로 막는다
+            // (검증은 보통 전역 LoadingModal 이 덮지만 showDelay(200ms) 안에 끝나면 모달 없이 지나간다).
+            // 링크 없이 넘어가려면 «건너뛰기»(.userTappedSkip) 경로다.
+            guard state.linkValidation == .success else { return .none }
+            return .send(.delegate(.continueRequested(.link(trimmedLink(state)))))
         case .directText:
             let text = state.directText.trimmingCharacters(in: .whitespacesAndNewlines)
             // 빈 입력은 스킵(nil). 길이 무효는 «계속하기» 가 꺼져 있어 도달하지 않지만 방어적으로 막는다.
