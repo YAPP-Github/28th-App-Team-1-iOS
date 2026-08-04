@@ -6,6 +6,7 @@
 //
 
 // Figma: «Home_Report» https://figma.com/design/ZG7FUxWCvITmnvzZi7fpTS/?node-id=3368-17266
+// Figma: «Home_Report — 확장 자리(목록만)» https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=649-6625
 
 import ComposableArchitecture
 import SharedDesignSystemInterface
@@ -37,6 +38,12 @@ struct HomeReportView: View {
     /// 인사 문구 표시 여부 — report 변형이 결정한다(`returning` 만 띄운다).
     private var isGreetingVisible: Bool {
         store.phase == .report(.returning)
+    }
+
+    /// 확장 자리 — 시트가 내비바 밑까지 올라와 목록만 남은 상태(시안 649:6625).
+    /// 이 자리 시안엔 그래버가 없고 헤더가 내비바 바로 밑에 붙는다.
+    private var isExpanded: Bool {
+        store.sheetDetent == .expanded
     }
 
     var body: some View {
@@ -100,7 +107,10 @@ struct HomeReportView: View {
     /// 높이는 부모가 준다 — 올라가면 목록만 남고, 내려갈 땐 높이 대신 `sheetOffset` 이 판을 통째로 민다.
     private var reportSheet: some View {
         VStack(spacing: 0) {
-            grabber
+            // 확장 자리 시안(649:6625)엔 그래버가 없다 — 헤더가 손잡이를 이어받으므로 내려올 길은 남는다.
+            if !isExpanded {
+                grabber
+            }
             sheetHeader
             reportList
         }
@@ -140,13 +150,19 @@ struct HomeReportView: View {
             Spacer(minLength: 0)
         }
         .padding(.horizontal, .ds(.p20))
-        .padding(.top, .ds(.p10))
+        // 확장 자리는 그래버가 빠진 만큼 위를 20 으로 벌린다 — 시안 헤더 프레임 63 = 20 + 23 + 20.
+        .padding(.top, isExpanded ? .ds(.p20) : .ds(.p10))
         .padding(.bottom, .ds(.p20))
         .contentShape(Rectangle())
         .gesture(dragHandle.gesture)
     }
 
     /// 목록 — 행 사이 1pt 흰 틈이 그대로 구분선이 된다(시안 gap 1).
+    ///
+    /// **기본 자리에선 목록 위 스와이프가 «시트 올리기» 다** — 시안(649:6625)이 약속하는 «위로 스크롤하면
+    /// 목록만 남는다» 를 그 제스처로 잇는다. 스크롤과 시트 드래그는 **같은 축**이라 동시에 걸면 서로
+    /// 먹으므로, 자리에 따라 한쪽만 산다: 기본 자리 = 시트 드래그(스크롤 끔) / 확장 자리 = 목록 스크롤.
+    /// 확장 자리에서 다시 내려오는 길은 헤더 드래그다.
     private var reportList: some View {
         ScrollView {
             LazyVStack(spacing: 1) {
@@ -160,6 +176,9 @@ struct HomeReportView: View {
             }
         }
         .scrollIndicators(.hidden)
+        .scrollDisabled(!isExpanded)
+        // 확장 자리에선 목록이 스크롤을 가져가므로 시트 드래그를 뺀다(`.subviews` = 부모 제스처 비활성).
+        .gesture(dragHandle.gesture, including: isExpanded ? .subviews : .all)
     }
 
     /// 펼친 행 — 다크 카드에 날짜·제목·[레포트 보기] 버튼.
@@ -174,14 +193,17 @@ struct HomeReportView: View {
                     .foregroundStyle(Color.BlackWhite.white)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            Button {
-                send(.userTappedReport(id: report.id))
-            } label: {
-                Image.Right.default24
-                    .padding(.ds(.p10))
-                    .background(Color.HilitGreen.g500)
+            // 생성 중·분석 부족·실패 세션은 열 상세가 없어 버튼을 아예 뺀다 — 제목 자리가 상태 안내다.
+            if report.canOpenReport {
+                Button {
+                    send(.userTappedReport(id: report.id))
+                } label: {
+                    Image.Right.default24
+                        .padding(.ds(.p10))
+                        .background(Color.HilitGreen.g500)
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .padding(.horizontal, .ds(.p20))
         .padding(.vertical, .ds(.p24))
@@ -255,6 +277,23 @@ struct HomeReportView: View {
                 initialState: HomeFeature.State(
                     phase: .report(.recent),
                     reports: HomeFeature.Report.placeholders
+                )
+            ) {
+                HomeFeature()
+            }
+        )
+    }
+}
+
+// 목록 위를 위로 스와이프하면 확장 자리(시안 649:6625 — 그래버 없이 헤더 + 목록)로 올라간다.
+// 픽스처는 첫 프레임용이고, `onAppear` 진입 로드가 `previewValue` 목록(같은 5건)으로 덮는다.
+#Preview("HomeReport — 상태 섞인 목록") {
+    NavigationStack {
+        HomeView(
+            store: Store(
+                initialState: HomeFeature.State(
+                    phase: .report(.returning),
+                    reports: HomeFeature.Report.statusPlaceholders
                 )
             ) {
                 HomeFeature()

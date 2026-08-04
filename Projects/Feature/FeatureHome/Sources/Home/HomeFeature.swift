@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import DomainInterviewInterface
 import DomainPortfolioInterface
 import DomainUserInterface
 import Foundation
@@ -48,19 +49,22 @@ public struct HomeFeature {
         case expanded
     }
 
-    /// 리포트 행 표시 모델 — 위젯② 면접 기록 한 줄.
+    /// 리포트 행 표시 모델 — 위젯② 면접 기록 한 줄. `id` 는 **세션 id** 라 그대로 리포트 상세 인자가 된다
+    /// (GET /interview/sessions 의 `sessionId`).
     /// `dateText` 는 이미 포맷된 문자열이다(«7월 11일 월» 포맷은 목록을 만드는 쪽 몫).
-    // TODO: `DomainInterviewReport` 의 목록 모델로 이관 — 지금 `.domain(interface: .interviewReport)` 를
-    //       붙이면 «외부 IO 없는 Feature» 전제가 깨진다. 목록 계약은 서버 협의(미결 6-1) 후 확정.
     public struct Report: Identifiable, Equatable, Sendable {
-        public let id: UUID
+        public let id: Int
         public let dateText: String
         public let title: String
+        /// [레포트 보기] 노출 여부 — 생성 중·분석 부족·실패 세션은 열 상세가 없다
+        /// (docs/work/home-account.md §3 위젯② 행 상태 표).
+        public let canOpenReport: Bool
 
-        public init(id: UUID = UUID(), dateText: String, title: String) {
+        public init(id: Int, dateText: String, title: String, canOpenReport: Bool = true) {
             self.id = id
             self.dateText = dateText
             self.title = title
+            self.canOpenReport = canOpenReport
         }
     }
 
@@ -108,8 +112,8 @@ public struct HomeFeature {
 
         /// 사용자 입력·생명주기. View 의 send(...) 로만 방출된다.
         public enum View: Sendable {
-            // 홈 진입 로드 — 프로필·포폴 2종은 여기서 때린다(`inner(.entryLoaded)`).
-            // TODO: 나머지 2종(기록 리스트 → `inner(.reportsLoaded)`·진행 중 세션)은 계약 확정 후(미결 6-1·6-3).
+            // 홈 진입 로드 — 프로필·포폴은 `inner(.entryLoaded)`, 기록 목록은 `inner(.reportsLoaded)`.
+            // TODO: 남은 1종(진행 중 held 세션)은 계약 확정 후(미결 6-3).
             case onAppear
             /// 시트 드래그가 끝나 자리가 정해졌다 — 판정은 뷰(`HomeSheetDrag`), 확정은 여기.
             case userSettledSheet(SheetDetent)
@@ -131,7 +135,8 @@ public struct HomeFeature {
             /// 묶음 API(미결 6-1)로 바뀌어도 갈아끼울 자리는 이 한 케이스다.
             case entryLoaded(profile: UserProfile?, portfolios: [DomainPortfolioInterface.Portfolio]?)
             /// 기록 리스트 로드 결과 — 목록과 phase 를 함께 갱신한다.
-            case reportsLoaded([Report])
+            /// nil 은 «모른다»(호출 실패) — 직전 목록을 지우지 않는다. 빈 배열은 «기록이 없다» 로 다르다.
+            case reportsLoaded([Report]?)
         }
 
         /// 부모(AppFeature) 통보. 부모는 이것만 매칭한다 (D1).
@@ -152,6 +157,7 @@ public struct HomeFeature {
     /// 진입 로드 취소 식별자 — 탭을 빠르게 오갈 때 앞선 응답이 뒤늦게 덮어쓰는 걸 막는다.
     private enum CancelID { case entryLoad }
 
+    @Dependency(\.interviewClient) var interviewClient
     @Dependency(\.portfolioClient) var portfolioClient
     @Dependency(\.userClient) var userClient
 
@@ -164,19 +170,26 @@ public struct HomeFeature {
                 // 홈 밖에 다녀오면 시트는 기본 자리로 — 남의 화면에서 돌아왔는데 면접 시작이
                 // 떠 있거나 목록이 펼쳐진 채면 «홈에 왔다» 는 신호가 사라진다.
                 state.sheetDetent = .report
-                // 첫 진입만이 아니라 **매 진입 재조회** — 포폴은 온보딩 S2·마이페이지가, 잔여는 면접이
-                // 바꾼다. 캐시하면 무효화 신호를 AppFeature 로 돌려야 하는데(Feature→Feature 금지)
-                // 1건짜리 GET 두 번보다 비싸다. 진실은 서버(docs/work/home-account.md §3·§6).
+                // 첫 진입만이 아니라 **매 진입 재조회** — 포폴은 온보딩 S2·마이페이지가, 잔여·기록은
+                // 면접이 바꾼다. 캐시하면 무효화 신호를 AppFeature 로 돌려야 하는데(Feature→Feature 금지)
+                // 1건짜리 GET 세 번보다 비싸다. 진실은 서버(docs/work/home-account.md §3·§6).
                 // 값은 지우지 않고 덮어쓰기만 한다 — 재진입마다 화면이 비면 깜빡인다.
-                return .run { send in
-                    // 한쪽이 죽어도 다른 쪽은 그린다 — 포폴 실패로 인사말·잔여까지 날리지 않는다.
-                    async let profile = try? await userClient.profile()
-                    async let portfolioList = try? await portfolioClient.list()
-                    await send(.inner(.entryLoaded(
-                        profile: await profile,
-                        portfolios: await portfolioList?.portfolios
-                    )))
-                }
+                return .merge(
+                    .run { send in
+                        // 한쪽이 죽어도 다른 쪽은 그린다 — 포폴 실패로 인사말·잔여까지 날리지 않는다.
+                        async let profile = try? await userClient.profile()
+                        async let portfolioList = try? await portfolioClient.list()
+                        await send(.inner(.entryLoaded(
+                            profile: await profile,
+                            portfolios: await portfolioList?.portfolios
+                        )))
+                    },
+                    // 기록 목록은 별도 effect — 목록이 느려도 인사말·면접 시작 카드는 먼저 그린다.
+                    .run { send in
+                        let summaries = try? await interviewClient.reportList()
+                        await send(.inner(.reportsLoaded(summaries?.map(Report.init(summary:)))))
+                    }
+                )
                 .cancellable(id: CancelID.entryLoad, cancelInFlight: true)
             case let .view(.userSettledSheet(detent)):
                 state.sheetDetent = detent
@@ -213,19 +226,20 @@ public struct HomeFeature {
                 )
                 return .none
 
-            case let .inner(.reportsLoaded(reports)):
+            case let .inner(.reportsLoaded(loaded)):
+                // 실패(nil)면 아무것도 건드리지 않는다 — 목록을 비우면 «기록이 없어졌다» 로 읽힌다.
+                guard let reports = loaded else { return .none }
                 state.reports = IdentifiedArray(uniqueElements: reports)
                 state.expandedReportID = reports.first?.id
-                // 인사말 변형(returning/recent) 판정 재료는 목록에 없다 — 목록 유무만 반영하고 변형은 유지한다.
-                switch (reports.isEmpty, state.phase) {
-                case (true, _):
+                // 기록이 있으면 **인사말을 띄운다**(`returning`) — «오랜만/최근» 을 가를 재료(마지막 방문 시각)가
+                // 서버에도 목록에도 없는데 `recent` 로 두면 인사말이 영원히 안 보인다(사용자 결정 2026-08-04).
+                // TODO: 마지막 방문·면접 시각 계약이 생기면 그때 `recent` 판정을 되살린다(미결 6-1).
+                if reports.isEmpty {
                     state.phase = .default
                     // 펼칠 목록이 사라졌으면 확장 자리도 성립하지 않는다.
                     if state.sheetDetent == .expanded { state.sheetDetent = .report }
-                case (false, .report):
-                    break
-                case (false, .default):
-                    state.phase = .report(.recent)
+                } else {
+                    state.phase = .report(.returning)
                 }
                 return .none
 
@@ -283,16 +297,93 @@ private extension HomeFeature {
     }
 }
 
+// MARK: - 목록 응답 → 표시 행
+
+extension HomeFeature.Report {
+    /// GET /interview/sessions 한 건 → 행 하나. `id` 는 세션 id 그대로다(상세 진입 인자).
+    init(summary: InterviewReportSummary) {
+        self.init(
+            id: summary.sessionId,
+            dateText: Self.dateText(summary.interviewedAt),
+            title: Self.title(for: summary),
+            canOpenReport: summary.reportStatus == .ready
+        )
+    }
+
+    /// 날짜 표기 «7월 11일 월» — 시안 표기를 그대로 옮긴 고정 포맷이라 기기 로케일에 흔들리지 않게 둔다.
+    ///
+    /// 타임존도 **KST 고정**이다 — 서버가 타임존 없는 LocalDateTime 을 주고 디코더가 그걸 KST 로 읽는데
+    /// (`JSONDecoder.api`), 표시만 기기 로컬로 두면 UTC 서쪽 기기에서 하루 밀린 날짜가 뜬다
+    /// (포폴 업로드일 표기와 같은 규칙 — `StartInterviewView.uploadedAtFormatter`).
+    private static let interviewedAtFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
+        formatter.dateFormat = "M월 d일 E"
+        return formatter
+    }()
+
+    private static func dateText(_ date: Date) -> String {
+        interviewedAtFormatter.string(from: date)
+    }
+
+    /// 행 제목 — 생성 안 끝난/실패한 세션은 상태 안내가 제목 자리를 대신한다
+    /// (docs/work/home-account.md §3 위젯② 행 상태 표).
+    ///
+    /// READY 는 시안처럼 «답변 한 줄 요약» 을 띄우고 싶지만 목록 응답에 그 문장이 없다 —
+    /// 지금은 세션 스냅샷(직군·연차)으로 대신한다.
+    // TODO: 목록 응답에 요약 문장 필드 추가 요청(미결 6-1) → 오면 이 함수만 갈아끼운다.
+    private static func title(for summary: InterviewReportSummary) -> String {
+        switch summary.reportStatus {
+        case .ready:
+            return snapshotTitle(for: summary)
+        case .generating:
+            return "레포트를 만들고 있어요"
+        case .insufficientAnalysis:
+            return "분석할 답변이 부족해 레포트를 만들지 못했어요"
+        case .failed:
+            return "레포트 생성에 실패했어요 · 횟수는 차감되지 않았어요"
+        }
+    }
+
+    /// 세션 스냅샷 제목 — 없는 조각은 뺀다(가짜 «0년차» 를 만들지 않는다).
+    private static func snapshotTitle(for summary: InterviewReportSummary) -> String {
+        let pieces = [summary.jobTypeLabel, summary.careerYears.map { "\($0)년차" }].compactMap(\.self)
+        return pieces.isEmpty ? "면접 레포트가 준비됐어요" : pieces.joined(separator: " · ")
+    }
+}
+
 // MARK: - 시안 값
 
 extension HomeFeature.Report {
     /// 시안(3368:17266)의 목록 5행 — **프리뷰·시안 확인 전용** 픽스처다.
     /// 실제 목록은 `inner(.reportsLoaded)` 로만 들어온다.
     public static let placeholders: [Self] = [
-        .init(dateText: "7월 11일 월", title: "캐시 도입 결정의 이유와 한계까지 구체적인 수치로 설명해 주셨어요"),
-        .init(dateText: "7월 10일 월", title: "질문 의도를 되묻고 답변 범위를 좁혀 나갔어요"),
-        .init(dateText: "7월 10일 월", title: "경험을 시간순으로 정리해 전달했어요"),
-        .init(dateText: "7월 10일 월", title: "트레이드오프를 먼저 말하고 선택 이유를 덧붙였어요"),
-        .init(dateText: "7월 10일 월", title: "성능 개선 결과를 지표로 설명했어요")
+        .init(id: 1, dateText: "7월 11일 월", title: "캐시 도입 결정의 이유와 한계까지 구체적인 수치로 설명해 주셨어요"),
+        .init(id: 2, dateText: "7월 10일 월", title: "질문 의도를 되묻고 답변 범위를 좁혀 나갔어요"),
+        .init(id: 3, dateText: "7월 10일 월", title: "경험을 시간순으로 정리해 전달했어요"),
+        .init(id: 4, dateText: "7월 10일 월", title: "트레이드오프를 먼저 말하고 선택 이유를 덧붙였어요"),
+        .init(id: 5, dateText: "7월 10일 월", title: "성능 개선 결과를 지표로 설명했어요")
+    ]
+
+    /// 상태가 섞인 목록 — 준비된 행 2개 + 생성 중·분석 부족·실패 각 1개.
+    /// 준비 안 된 행은 제목 자리가 상태 문구이고 [레포트 보기] 가 없다(`canOpenReport: false`).
+    /// 제목 문구는 `Report.title(for:)` 이 만드는 값과 같게 맞춰 뒀다 — **프리뷰 전용** 픽스처다.
+    public static let statusPlaceholders: [Self] = [
+        .init(id: 1, dateText: "7월 11일 토", title: "백엔드 개발자 · 3년차"),
+        .init(id: 2, dateText: "7월 10일 금", title: "백엔드 개발자 · 3년차"),
+        .init(id: 3, dateText: "7월 9일 목", title: "레포트를 만들고 있어요", canOpenReport: false),
+        .init(
+            id: 4,
+            dateText: "7월 8일 수",
+            title: "분석할 답변이 부족해 레포트를 만들지 못했어요",
+            canOpenReport: false
+        ),
+        .init(
+            id: 5,
+            dateText: "7월 7일 화",
+            title: "레포트 생성에 실패했어요 · 횟수는 차감되지 않았어요",
+            canOpenReport: false
+        )
     ]
 }
