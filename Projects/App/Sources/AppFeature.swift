@@ -15,16 +15,11 @@ import Foundation
 
 // @lat: [[app]]
 // depends-on: [[auth]] — 로그인 전/후 루트 게이트. cross-feature 조립은 AppFeature 에서만.
-// depends-on: [[home]] — Home 을 탭으로 임베드(owner). cross-feature delegate 라우팅은 Feature 추가 시 이 자리에서 조립.
+// depends-on: [[home]] — Home 을 로그인 후 루트로 임베드(owner). cross-feature delegate 라우팅은 Feature 추가 시 이 자리에서 조립.
 // depends-on: [[interview]] — 온보딩 완주 delegate(.finished(sessionId)) 를 받아 면접 흐름을 present. 종료 두 신호(.finished/.closed)는 cover 를 닫고 홈을 다시 태운다.
 // depends-on: [[onboarding]] — dev 전용 진입(Home 버튼)으로 온보딩 위저드를 present. 조립은 여기서만 (온보딩 본체 통합 전 임시).
 @Reducer
 struct AppFeature {
-    /// 탭 식별자. 새 탭 추가 시: 여기 case → State 프로퍼티 → body Scope → AppView tabItem 순으로 확장.
-    enum Tab: Hashable {
-        case home
-    }
-
     /// 루트가 지금 무엇을 띄우는가. Bool 조합으로는 «재시도 가능한 판정 실패» 를 표현할 수 없어 값으로 둔다.
     /// 전이는 Splash 판정(`onAppear`) → auth 또는 home 단방향이고, 로그아웃·세션 만료만 되돌린다.
     enum Root: Equatable {
@@ -36,7 +31,7 @@ struct AppFeature {
         case updateRequired
         /// 로그인 전 또는 가입 플로우(약관·온보딩) 진행 중.
         case auth
-        /// 두 게이트 모두 통과 — 탭 화면.
+        /// 두 게이트 모두 통과 — 홈 화면.
         case home
     }
 
@@ -46,7 +41,6 @@ struct AppFeature {
         /// 루트가 무엇을 띄우는지 — 초기값은 Splash(판정 전).
         var root: Root = .splash
         var home = HomeFeature.State()
-        var selectedTab: Tab = .home
         /// 면접 흐름(Part2) — 온보딩 완주가 넘긴 sessionId 로 연다. 전면 몰입이라 fullScreenCover.
         @Presents var interview: InterviewFeature.State?
         /// 온보딩 위저드 — 「면접 시작」의 [시작하기]·[수정하기] 가 present 한다.

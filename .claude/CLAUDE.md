@@ -8,7 +8,7 @@ SwiftUI + TCA · **Tuist TMA** — `Core / Domain / Feature / Shared` 4 레이�
 Plugins/DependencyPlugin/ … Modules.swift    ← 모듈 레지스트리(ModulePath) — 새 모듈은 여기 먼저
 Tuist/                                       ← Project.makeModule + 타겟 팩토리 + scaffold 템플릿
 Projects/
-├── App/       composition root — AppFeature(탭 코디네이터) · Config/{Dev,QA,Prod}.xcconfig · DocC
+├── App/       composition root — AppFeature(화면 코디네이터) · Config/{Dev,QA,Prod}.xcconfig · DocC
 ├── Core/      Common · Network
 ├── Domain/    AppVersion · Auth · Common · Consent · FeedbackShare · GuestFeedback · Interview · InterviewReport · JD · Job · Permission · Portfolio · Recording · Speech · User    (모델 + Client)
 ├── Feature/   Auth · Common · GuestFeedback · Home · Interview · MyPage · Onboarding   (화면 — Interface 없음)

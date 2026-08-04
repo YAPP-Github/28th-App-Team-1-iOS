@@ -1,9 +1,9 @@
 # Domain Map
 
-도메인(=모듈) 간 큰 그림. 코드 한 줄 단위 연결은 `@lat` 주석, 전체 협업 그림은 이 문서. `refactor/#6` 은 스켈레톤이라 실 화면은 Home 탭과 FeatureCommon 의 NetworkExample(네트워킹 템플릿)뿐이고, 아래 Users↔Profile 등은 이관될 표준 패턴이다.
+도메인(=모듈) 간 큰 그림. 코드 한 줄 단위 연결은 `@lat` 주석, 전체 협업 그림은 이 문서. `refactor/#6` 은 스켈레톤이라 실 화면은 Home 과 FeatureCommon 의 NetworkExample(네트워킹 템플릿)뿐이고, 아래 Users↔Profile 등은 이관될 표준 패턴이다.
 
-## 탭 구조
-AppFeature 가 각 탭 Feature 를 보유하며 탭끼리는 서로를 모른다. 예정 탭 여럿 중 현재 실체는 Home. → [[home]] · [[app]]
+## 화면 구조
+AppFeature 가 각 Feature 를 보유하며 Feature 끼리는 서로를 모른다. 현재 실체는 Home 뿐이고 **탭바는 없다**(탭 하나뿐인 `TabView` 제거 — [[app#화면 구성]]). → [[home]] · [[app]]
 
 ## Users ↔ Profile
 가장 중요한 cross-feature 흐름이자 import 그래프엔 안 보이는 의존. **둘은 서로 import 하지 않는다** — 전부 delegate + AppFeature 중재. (이관 후 표준 예시)
