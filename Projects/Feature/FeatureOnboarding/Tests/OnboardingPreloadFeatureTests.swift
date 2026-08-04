@@ -47,7 +47,10 @@ struct OnboardingPreloadFeatureTests {
         await clock.advance(by: OnboardingPreloadFeature.stageDuration)
         await store.receive(\.inner.stageAdvanced) { $0.completedStages = 3 }
         await clock.advance(by: OnboardingPreloadFeature.finalCheckHold)
-        await store.receive(\.inner.finalCheckShown) { $0.phase = .completed }
+        await store.receive(\.inner.finalCheckShown) { $0.phase = .filling }
+        // 사면이 올라오는 동안은 글자 없는 구간 — 다 덮인 뒤에야 완료 문구가 나온다.
+        await clock.advance(by: .seconds(OnboardingPreloadFeature.fillSeconds))
+        await store.receive(\.inner.fillFinished) { $0.phase = .completed }
         await clock.advance(by: OnboardingPreloadFeature.completionHoldDuration)
         await store.receive(\.inner.completionHoldFinished)
         await store.receive(\.delegate.completed, 7)
@@ -84,7 +87,10 @@ struct OnboardingPreloadFeatureTests {
             $0.completedStages = 3
         }
         await clock.advance(by: OnboardingPreloadFeature.finalCheckHold)
-        await store.receive(\.inner.finalCheckShown) { $0.phase = .completed }
+        await store.receive(\.inner.finalCheckShown) { $0.phase = .filling }
+        // 사면이 올라오는 동안은 글자 없는 구간 — 다 덮인 뒤에야 완료 문구가 나온다.
+        await clock.advance(by: .seconds(OnboardingPreloadFeature.fillSeconds))
+        await store.receive(\.inner.fillFinished) { $0.phase = .completed }
         await clock.advance(by: OnboardingPreloadFeature.completionHoldDuration)
         await store.receive(\.inner.completionHoldFinished)
         await store.receive(\.delegate.completed, 7)
@@ -161,7 +167,10 @@ struct OnboardingPreloadFeatureTests {
         await clock.advance(by: OnboardingPreloadFeature.stageDuration)
         await store.receive(\.inner.stageAdvanced) { $0.completedStages = 3 }
         await clock.advance(by: OnboardingPreloadFeature.finalCheckHold)
-        await store.receive(\.inner.finalCheckShown) { $0.phase = .completed }
+        await store.receive(\.inner.finalCheckShown) { $0.phase = .filling }
+        // 사면이 올라오는 동안은 글자 없는 구간 — 다 덮인 뒤에야 완료 문구가 나온다.
+        await clock.advance(by: .seconds(OnboardingPreloadFeature.fillSeconds))
+        await store.receive(\.inner.fillFinished) { $0.phase = .completed }
         await clock.advance(by: OnboardingPreloadFeature.completionHoldDuration)
         await store.receive(\.inner.completionHoldFinished)
         await store.receive(\.delegate.completed, 7)
@@ -206,7 +215,10 @@ struct OnboardingPreloadFeatureTests {
         await clock.advance(by: OnboardingPreloadFeature.stageDuration)
         await store.receive(\.inner.stageAdvanced) { $0.completedStages = 3 }
         await clock.advance(by: OnboardingPreloadFeature.finalCheckHold)
-        await store.receive(\.inner.finalCheckShown) { $0.phase = .completed }
+        await store.receive(\.inner.finalCheckShown) { $0.phase = .filling }
+        // 사면이 올라오는 동안은 글자 없는 구간 — 다 덮인 뒤에야 완료 문구가 나온다.
+        await clock.advance(by: .seconds(OnboardingPreloadFeature.fillSeconds))
+        await store.receive(\.inner.fillFinished) { $0.phase = .completed }
         await clock.advance(by: OnboardingPreloadFeature.completionHoldDuration)
         await store.receive(\.inner.completionHoldFinished)
         await store.receive(\.delegate.completed, 7)

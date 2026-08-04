@@ -10,8 +10,11 @@ import SharedDesignSystemInterface
 import SwiftUI
 
 // Figma «Onboarding_preload» https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=443-9768
+//         준비 완료 판 https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=443-9881
 // 풀스크린 다크(HilitBlack.b800) 프리로드 화면 — 프로그레스 대시·뒤로가기 없음, 좌상단 닫기(X)만 있다.
 // 화면 아래쪽은 오른쪽으로 기운 그린 사면이 덮고, 그 위 가운데에 타이틀·서브·분석 체크리스트가 얹힌다.
+// 준비가 끝나면 그 사면이 위로 올라와 화면 전체를 덮고(443:9882 전면 그린), 글자는 먼저 사라진 뒤
+// 다 덮인 다음에 완료 문구가 올라온다.
 // @ViewAction 매크로가 send(_:) 를 제공한다 — View 는 store.send(.view(...)) 대신 send(.onAppear) 로만 방출.
 @ViewAction(for: OnboardingPreloadFeature.self)
 public struct OnboardingPreloadView: View {
@@ -22,22 +25,35 @@ public struct OnboardingPreloadView: View {
     }
 
     public var body: some View {
-        ZStack {
-            Color.HilitBlack.b800
-            greenSlope
-            content
-        }
-        // 시안 좌표가 상태바·홈 인디케이터를 포함한 375×812 프레임 기준이라 풀블리드로 놓고 잰다 —
-        // 그린 사면이 화면 바닥까지 닿아야 하고, 콘텐츠 중앙도 «프레임 중앙» 기준이다.
-        .ignoresSafeArea()
-        .hilitNavigationBar(
-            surface: .dark,
-            background: .filled,
-            allowsSwipeBack: false,   // 제출 중 이탈 = 세션 생성 버림
-            onClose: { send(.userTappedClose) }
-        )
-        .animation(.easeInOut(duration: 0.3), value: store.phase)
-        .onAppear { send(.onAppear) }
+        // 사면을 콘텐츠와 **형제로 두지 않는다** — ZStack 은 가장 큰 자식에 맞춰 커지므로, 화면보다
+        // 큰 사면을 형제로 넣으면 스택이 부풀어 사면이 아래로 밀리고(오른쪽 위에 검은 삼각형) 글자도
+        // 함께 처졌다. 배경 레이어는 부모 크기에 영향을 주지 않아 둘 다 사라진다.
+        content
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(alignment: .bottom) { greenSlope }
+            .background(Color.HilitBlack.b800)
+            // 시안 좌표가 상태바·홈 인디케이터를 포함한 375×812 프레임 기준이라 풀블리드로 놓고 잰다 —
+            // 그린 사면이 화면 바닥까지 닿아야 하고, 콘텐츠 중앙도 «프레임 중앙» 기준이다.
+            .ignoresSafeArea()
+            .hilitNavigationBar(
+                // 사면이 다 덮인 뒤에만 밝은 바닥용(검정 X)으로 바꾼다 — 채우는 중에 미리 바꾸면
+                // 아직 어두운 상단에서 아이콘이 묻는다. 실패 판(다크)은 흰 X 다.
+                surface: store.phase.isFullyGreen ? .light : .dark,
+                // 바가 바닥을 칠하지 않는다 — `.filled` 는 완료 톤에서 흰 판이라 초록이 상태바·네비바
+                // 높이만큼 잘려 보이고, 다크 구간에선 칠하던 색이 화면 배경(b800)과 같아 티가 없다.
+                background: .transparent,
+                allowsSwipeBack: false,   // 제출 중 이탈 = 세션 생성 버림
+                // 준비 중엔 슬롯을 비운다(사용자 결정 2026-08-04) — 기다리는 것 말곤 할 게 없는 화면.
+                // 실패 판만 X 를 살린다: 재시도가 없어(PRD §3.1) 이탈이 유일한 출구다.
+                leading: store.phase.showsCloseButton ? .close : .hidden,
+                onClose: { send(.userTappedClose) }
+            )
+            // 슬롯을 비우는 것만으론 부족해 바 자체를 감춘다 — 빈 leading 슬롯에도 iOS 26 이 글래스
+            // 캡슐을 그려 좌상단에 흐린 원이 남는다. 모디파이어를 갈아끼우지 않고 **값만** 바꿔
+            // 진행 중 애니메이션·@State 가 끊기지 않게 한다(HilitNavigationBar.Kind 주석과 같은 이유).
+            .toolbar(store.phase.showsCloseButton ? .visible : .hidden, for: .navigationBar)
+            .animation(.easeInOut(duration: 0.3), value: store.phase)
+            .onAppear { send(.onAppear) }
     }
 
     @ViewBuilder
@@ -46,6 +62,9 @@ public struct OnboardingPreloadView: View {
             switch store.phase {
             case .analyzing:
                 analyzingContent
+            case .filling:
+                // 채우는 중엔 글자가 없다 — 분석 텍스트는 사라지고 완료 문구는 아직 이르다.
+                EmptyView()
             case .completed:
                 completedContent
             case let .failed(message):
@@ -53,8 +72,9 @@ public struct OnboardingPreloadView: View {
             }
         }
         .padding(.horizontal, .ds(.p20))
-        // @ds(layout): top calc(50% - 29.5) — 콘텐츠 블록이 화면 세로 중앙보다 위 (443:9773)
-        .offset(y: -29.5)
+        // @ds(layout): top calc(50% - 29.5) 분석 중(443:9773) · calc(50% - 26.5) 완료(443:9885) —
+        // 두 판의 블록 높이가 달라 시안이 중앙 오프셋을 따로 준다.
+        .offset(y: store.phase.isFullyGreen ? -26.5 : -29.5)
     }
 
     // MARK: - 분석 중 (443:9773)
@@ -109,17 +129,42 @@ public struct OnboardingPreloadView: View {
         .frame(width: 16, height: 16)
     }
 
-    // MARK: - 그린 사면 (443:9769)
+    // MARK: - 그린 사면 (443:9769 → 올라와 덮으면 443:9882)
+
+    // @ds(layout): 284.5 — 왼쪽 변 기준 사면 높이 (375×812 시안, 화면 바닥 기준)
+    /// 분석 중 사면 높이 — 여기서 시작해 위로 올라온다.
+    private static let baseSlopeHeight: CGFloat = 284.5
 
     /// 화면 아래를 덮는 그린 사면 — 시안은 6.31° 기운 980×318 사각형이지만, 375 폭에서 보이는 것은
     /// «왼쪽 변이 바닥에서 284.5pt 인 빗변 아래 전부» 다. 회전 사각형을 그대로 옮기지 않고 폭에 맞춰
     /// 다시 그리는 Shape 로 두어 기기 폭이 달라져도 기울기·바닥 여백이 유지된다.
+    ///
+    /// 준비가 끝나면 **판을 갈아끼우지 않고 높이만 키운다** — 완료 시안(443:9882)도 같은 두 색
+    /// 그라데이션이라, 그라데이션이 판과 함께 늘어나면 색이 튀는 지점 없이 이어진다.
     private var greenSlope: some View {
-        PreloadSlope()
-            .fill(Self.slopeGradient)
-            // @ds(layout): 284.5 — 왼쪽 변 기준 사면 높이 (375×812 시안, 화면 바닥 기준)
-            .frame(height: 284.5)
-            .frame(maxHeight: .infinity, alignment: .bottom)
+        GeometryReader { proxy in
+            PreloadSlope()
+                .fill(Self.slopeGradient)
+                .frame(height: slopeHeight(in: proxy.size))
+                .frame(maxHeight: .infinity, alignment: .bottom)
+        }
+        // 루트의 0.3 교차보다 길게 — 글자가 먼저 사라지고 초록이 뒤따라 올라온다.
+        // 리듀서가 같은 fillSeconds 를 세고 나서 완료 문구를 띄운다.
+        .animation(.easeInOut(duration: OnboardingPreloadFeature.fillSeconds), value: store.phase)
+    }
+
+    /// 사면 높이 — 분석 중·실패는 시안 사면, 채우는 중·완료는 화면을 넉넉히 넘긴다.
+    ///
+    /// 1.5배로 넘기는 이유: 빗변이 상단 **밖으로** 완전히 빠져야 오른쪽 위 모서리까지 초록이다
+    /// (딱 화면 높이면 왼쪽 위만 닿고 오른쪽 위엔 검은 삼각형이 남는다). 배경 레이어라 넘친 만큼이
+    /// 레이아웃을 밀지 않으므로 넉넉히 줘도 부작용이 없다 — 완료 시안도 화면보다 큰 판(979×938)이다.
+    private func slopeHeight(in size: CGSize) -> CGFloat {
+        switch store.phase {
+        case .analyzing, .failed:
+            return Self.baseSlopeHeight
+        case .filling, .completed:
+            return size.height * 1.5
+        }
     }
 
     /// 시안의 189.47° 그라데이션에 사각형 회전 6.31° 를 더해 화면 좌표로 되돌린 것.
@@ -131,13 +176,20 @@ public struct OnboardingPreloadView: View {
         endPoint: UnitPoint(x: 0.566, y: 0.981)
     )
 
-    // MARK: - 분석 완료 (새 시안에 대응 노드 없음 — 분석 중 판의 헤더 규격을 따른다)
+    // MARK: - 준비 완료 (443:9885)
 
+    /// 전면 그린 위 완료 문구 — 바닥이 밝아 두 줄 다 b800 이다(시안은 서브까지 같은 색).
+    /// 분석 중 헤더와 규격이 달라(간격 12·색 반전·한 줄 타이틀) `header(...)` 를 재사용하지 않는다.
     private var completedContent: some View {
-        header(
-            title: "면접 환경을\n준비했어요",
-            subtitle: "이제부터 시작해볼까요?"
-        )
+        VStack(spacing: .ds(.p12)) {
+            Text("면접 환경을 준비했어요!")
+                .dsTypography(.head3)
+            Text("이제부터 시작해볼까요?")
+                .dsTypography(.sub8)
+        }
+        .foregroundStyle(Color.HilitBlack.b800)
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - 분석 실패 (세션 생성·폴링 실패 — 디자인 미정, 근사)
@@ -204,6 +256,31 @@ private struct PreloadSpinner: View {
     }
 }
 
+// MARK: - 표시용 파생
+
+private extension OnboardingPreloadFeature.State.Phase {
+    /// 사면이 화면을 다 덮은 뒤인가 — 네비바 톤·완료 문구 위치가 이걸로 갈린다.
+    /// 채우는 중(`filling`)은 아직 상단이 어두워 false 다.
+    var isFullyGreen: Bool {
+        switch self {
+        case .completed:
+            return true
+        case .analyzing, .filling, .failed:
+            return false
+        }
+    }
+
+    /// 네비바를 띄우는가 — 실패 판 전용(X 가 유일한 출구). 준비 구간은 바 자체를 감춘다.
+    var showsCloseButton: Bool {
+        switch self {
+        case .failed:
+            return true
+        case .analyzing, .filling, .completed:
+            return false
+        }
+    }
+}
+
 private extension Color {
     // @ds(color): #89E377 — 그린 사면 시작색. Figma 변수 미바인딩 raw 값이라 토큰화 보류 (color.md 규칙).
     static let preloadSlopeHead = Color(red: 137 / 255, green: 227 / 255, blue: 119 / 255)
@@ -239,7 +316,19 @@ private let previewData = OnboardingData(
     )
 }
 
-#Preview("분석 완료") {
+#Preview("채우는 중") {
+    var state = OnboardingPreloadFeature.State(data: previewData)
+    state.phase = .filling
+    state.hasStartedAnalysis = true
+    state.completedStages = 3
+    return OnboardingPreloadView(
+        store: Store(initialState: state) {
+            OnboardingPreloadFeature()
+        }
+    )
+}
+
+#Preview("준비 완료") {
     var state = OnboardingPreloadFeature.State(data: previewData)
     state.phase = .completed
     state.hasStartedAnalysis = true
