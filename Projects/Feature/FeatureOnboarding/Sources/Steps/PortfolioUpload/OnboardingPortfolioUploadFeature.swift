@@ -30,13 +30,13 @@ public struct OnboardingPortfolioUploadFeature {
         }
     }
 
-    // TODO: [#63 머지 후] 모달 표출이 cover 로 바뀌면 한 화면에 `.hilitModal` 을 두 번 못 붙인다 —
-    //       이 enum 과 State 의 `presentedModal` 파생값, View 의 `item:` 블록을 함께 살리고
-    //       Bool 두 개 표출을 지운다. (#63 = fix/#63_모달화면전환방식수정)
-    // enum PresentedModal: Equatable {
-    //     case existingPortfolio(ExistingPortfolio)
-    //     case deleteConfirm
-    // }
+    /// 이 화면의 모달 표출 자리 — 둘 중 하나만 뜬다.
+    /// `.hilitModal` 이 cover 표출이라(#63) 한 화면에 두 번 붙이면 둘째가 조용히 무시된다 — 표출 자리를
+    /// 하나로 좁히고 무엇을 띄울지는 `State.presentedModal` 이 정한다.
+    public enum PresentedModal: Equatable, Sendable {
+        case existingPortfolio(ExistingPortfolio)
+        case deleteConfirm
+    }
 
     /// 업로드 진행 하위 상태 — 화면 전환 없이 리스트 영역 렌더만 바꾼다.
     public enum UploadState: Equatable, Sendable {
@@ -99,13 +99,13 @@ public struct OnboardingPortfolioUploadFeature {
             if case .uploaded = upload { true } else { false }
         }
 
-        // TODO: [#63 머지 후] 위 `PresentedModal` 주석과 같이 살린다 — 표출 자리가 하나로 좁혀지면
-        //       조회 모달이 먼저다(진입 직후 뜨고, 그 판엔 파일 행 X 가 없다).
-        // var presentedModal: PresentedModal? {
-        //     if let existingPortfolio { return .existingPortfolio(existingPortfolio) }
-        //     if isDeleteConfirmPresented { return .deleteConfirm }
-        //     return nil
-        // }
+        /// 지금 띄울 모달 — 표출 자리가 하나뿐이라 우선순위를 여기서 정한다.
+        /// 기존 포폴 확인이 먼저다: 진입 직후 뜨고, 그 판엔 삭제를 부를 파일 행 X 가 아직 없다.
+        public var presentedModal: PresentedModal? {
+            if let existingPortfolio { return .existingPortfolio(existingPortfolio) }
+            if isDeleteConfirmPresented { return .deleteConfirm }
+            return nil
+        }
 
         public init(
             step: Int = 2,
