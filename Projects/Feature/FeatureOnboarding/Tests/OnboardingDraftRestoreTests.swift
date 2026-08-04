@@ -22,7 +22,7 @@ struct OnboardingDraftRestoreTests {
 
     /// 직군·연차는 가입 온보딩(FeatureAuth) 소관이라 위저드엔 주입값으로 들어온다.
     private func initialState() -> OnboardingFeature.State {
-        OnboardingFeature.State(userName: "재원", jobRole: "BACKEND", careerYears: 2)
+        OnboardingFeature.State(userName: "재원")
     }
 
     @Test("onAppear 는 TTL 안의 draft 로 값·위저드 위치를 복원한다")
@@ -31,8 +31,6 @@ struct OnboardingDraftRestoreTests {
         let draft = OnboardingDraft(
             data: OnboardingData(
                 userName: "재원",
-                jobRole: "BACKEND",
-                careerYears: 2,
                 jd: .link("https://job.com/1"),
                 portfolioId: portfolioId,
                 portfolioFileName: "포폴.pdf"
@@ -62,7 +60,7 @@ struct OnboardingDraftRestoreTests {
     func onAppearDiscardsExpiredDraft() async {
         let cleared = LockIsolated(false)
         let draft = OnboardingDraft(
-            data: OnboardingData(userName: "재원", jobRole: "BACKEND"),
+            data: OnboardingData(userName: "재원"),
             furthestStep: 2,
             savedAt: Self.draftSavedAt
         )
@@ -100,7 +98,7 @@ struct OnboardingDraftRestoreTests {
     @Test("복원 후 뒤로가기로 루트까지 pop 해도 onAppear 재발동 시 재복원하지 않는다")
     func onAppearDoesNotReRestoreAfterPopToRoot() async {
         let draft = OnboardingDraft(
-            data: OnboardingData(userName: "재원", jobRole: "BACKEND", careerYears: 2),
+            data: OnboardingData(userName: "재원"),
             furthestStep: 2,
             savedAt: Self.draftSavedAt
         )

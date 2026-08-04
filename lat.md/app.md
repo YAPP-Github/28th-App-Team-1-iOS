@@ -52,7 +52,7 @@
 5. 면접 `delegate(.finished)`(리포트 대기 → 홈)·`.closed`(중단·실패 닫기) → 둘 다 cover 닫고 홈 재조회 — 어느 쪽이든 잔여가 줄었다. 정상 종료의 리포트 상세(r1) 연결은 `InterviewReportFeature` 통합 후(TODO)
 6. 정상 종료(`.finished`)에서만 `onboardingDraftStore.clear()` — 온보딩 입력 draft 가 제 역할을 다한 지점이 여기다([[onboarding#입력 draft]]). 이탈(`.closed`)은 보존 — 같은 입력으로 다시 시작할 수 있어야 하고, 면접 도중 앱이 죽어도 값이 남는다
 
-⚠ 지금 `State()` 는 직군·연차를 안 넘긴다 — 두 값은 가입 온보딩이 받아 프로필에 있고 위저드는 주입만 받으므로(화면 삭제, 2026-08-02), 정식 배선 전까지 dev 진입은 프리로드의 세션 생성에서 실패한다. 배선 시 `State(userName:jobRole:careerYears:)` 로 프로필 값을 채워 넘긴다 → [[onboarding#코디네이터 연결]]
+`State(userName:)` 만 넘긴다 — 직군·연차는 위저드가 다루지 않는다(세션 생성이 서버 프로필 스냅샷을 쓴다, 2026-08-04). 예전엔 두 값을 주입받아야 프리로드가 세션을 만들 수 있었고 배선이 없어 항상 실패했다 → [[onboarding#프리로드]]
 
 → 큰 그림은 [[domain.map]].
 

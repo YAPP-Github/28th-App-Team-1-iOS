@@ -28,7 +28,7 @@
 | A3 재동의 | Part7 | MVP 미도안 — 분기 자리만 예약 | 🟡 |
 | 로그아웃·탈퇴 | Part 5 소유 (탈퇴 완료 → `AuthCreateAccount` 복귀만 계약) | 참고 | — |
 
-**기존 FeatureOnboarding 영향** (2026-08-02 반영 완료): 직군·연차 스텝은 **삭제**됐고 면접 위저드는 JD·포폴·대표 프로젝트 3스텝 + 프리로드로 남았다(`totalSteps = 3`, 루트가 JD). 두 값은 `OnboardingFeature.State(jobRole:careerYears:)` 로 **주입**받는다 — AppFeature 가 프로필에서 채워 넘기는 배선이 미결(§7)이고, nil 이면 프리로드의 세션 생성이 실패한다.
+**기존 FeatureOnboarding 영향** (2026-08-02 반영 완료): 직군·연차 스텝은 **삭제**됐고 면접 위저드는 JD·포폴·대표 프로젝트 3스텝 + 프리로드로 남았다(`totalSteps = 3`, 루트가 JD). 두 값은 위저드가 아예 다루지 않는다(2026-08-04) — 세션 생성 payload 에서 빠져 서버가 회원 프로필 스냅샷을 쓴다. 주입 시절엔 배선 미결로 프리로드가 세션 생성 전에 실패했다.
 
 ## 1. 전체 흐름 (iOS — A2 없음)
 
@@ -102,7 +102,7 @@ AuthTerms 제출 후 이어지는 4화면. AuthFeature 도메인 내부 내비(�
 | `AuthOnboardingRegister` | 등록 완료 | 신규 — PATCH 성공 시에만 진입, 완료 후 홈 (`delegate` → AppFeature) |
 
 - 이름·직군·연차 제출은 `UserClient.updateProfile` 일괄 ✅ — 연차 화면 CTA 시점, 성공해야 Register(2026-08-02 확정). 실패는 그 화면에 머물러 재탭 재시도.
-- 이관 완료 — 면접 위저드([[onboarding]])는 S0 두 스텝을 잃고 JD 부터 시작한다. 두 값의 주입원(프로필) 배선은 미결(§7).
+- 이관 완료 — 면접 위저드([[onboarding]])는 S0 두 스텝을 잃고 JD 부터 시작한다. 두 값은 서버 프로필 스냅샷이 쓰므로 위저드로 주입하지 않는다(2026-08-04).
 
 ### A3 재동의 — MVP 미도안 (서버만 고려)
 
@@ -146,7 +146,7 @@ AuthTerms 제출 후 이어지는 4화면. AuthFeature 도메인 내부 내비(�
 
 | 게이트 결과 | 행선지 | 조립 |
 |---|---|---|
-| 통과 | 온보딩 위저드 S1~ (직군·연차는 프로필에서 주입 — 배선 미결) → 세션 생성 → 면접 | cross-feature — 기존 dev 버튼 경로의 정식화 |
+| 통과 | 온보딩 위저드 S1~ (직군·연차는 서버 프로필 스냅샷 — 클라 미전송) → 세션 생성 → 면접 | cross-feature — 기존 dev 버튼 경로의 정식화 |
 | held 세션 | [이어서 진행] → 같은 session_id 로 Part 2 복귀 (`InterviewFeature.State(sessionId:)` — [ai-interview](ai-interview.md) 작업 D 와 합류) | cross-feature |
 | `NO_REMAINING` | «무료 횟수를 모두 사용했어요» 안내 (MVP 후 페이월 자리) | 홈 내부 |
 | `PORTFOLIO_NOT_READY` | 포폴 등록(S2) 라우팅 — 교체 소진 시 «다음 달 1일부터 업로드 가능» 병기 | cross-feature (S2 강제 라우팅 — [ai-interview](ai-interview.md) §2 표와 동일 메커니즘) |
