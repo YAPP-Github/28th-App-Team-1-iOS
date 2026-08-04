@@ -46,11 +46,15 @@ struct FeatureHomeExampleApp: App {
         remainingTicketCount: 2
     )
 
-    /// 가짜 기록 2건 — READY 1건(상세 진입 버튼 있음) + GENERATING 1건(상태 문구 행).
+    /// 가짜 기록 — `ReportStatus` 4종을 한 건씩 넣어 행 규칙을 한 화면에서 본다.
+    /// READY·INSUFFICIENT_ANALYSIS 는 같은 행([>] 로 상세 진입), FAILED 는 상세 없이 안내 문구가 붙은 행,
+    /// GENERATING 은 `Report.init?(summary:)` 가 nil 로 떨궈 **행이 안 그려진다** — 그려지는 건 3행이다.
     /// 빈 배열로 바꾸면 기록 없는 `HomeDefault` 를 볼 수 있다.
     private static let reports: [InterviewReportSummary] = [
         report(sessionId: 11, interviewedAt: Date(timeIntervalSince1970: 1_783_728_000), status: .ready),
-        report(sessionId: 12, interviewedAt: Date(timeIntervalSince1970: 1_783_641_600), status: .generating)
+        report(sessionId: 12, interviewedAt: Date(timeIntervalSince1970: 1_783_641_600), status: .generating),
+        report(sessionId: 13, interviewedAt: Date(timeIntervalSince1970: 1_783_555_200), status: .insufficientAnalysis),
+        report(sessionId: 14, interviewedAt: Date(timeIntervalSince1970: 1_783_468_800), status: .failed)
     ]
 
     private static func report(
