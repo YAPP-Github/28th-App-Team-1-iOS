@@ -114,6 +114,7 @@ public struct OnboardingPortfolioUploadView: View {
     // MARK: - 업로드 섹션
 
     /// Figma 443:9581 — 라벨 · 업로드 판 · (실패 시 안내 줄) · 첨부 목록을 간격 10 으로 쌓는다.
+    /// 완료(`.uploaded`)만 예외로 업로드 판이 빠지고 완료 행 하나만 남는다(마이페이지와 같은 규칙).
     private var uploadSection: some View {
         VStack(alignment: .leading, spacing: .ds(.p10)) {
             // @ds(color): #000000 → HilitBlack.b800 — 섹션 라벨(443:9583). 시안이 변수 미바인딩 순검정이다.
@@ -121,7 +122,12 @@ public struct OnboardingPortfolioUploadView: View {
                 .dsTypography(.body2)
                 .foregroundStyle(Color.HilitBlack.b800)
 
-            uploadCard
+            // 완료 상태에선 진입 판을 걷는다 — 올릴 게 없다(포폴 계정당 1개).
+            // 2회차 진입해 서버 포폴을 그대로 불러온 경우도 같은 `.uploaded` 라 같이 걸린다.
+            // 다시 올리려면 완료 판의 X → 삭제 확인 → `.idle` 이고, 그때 판이 돌아온다.
+            if !store.upload.isUploaded {
+                uploadCard
+            }
 
             if case let .failed(message) = store.upload {
                 // 시안 443:9641 은 자리표시 문구에 «서버에러메세지» 주석이 붙어 있다 — 문구는 서버 message 우선.
