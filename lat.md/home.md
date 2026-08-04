@@ -28,7 +28,7 @@ phase 와 **직교하는 두 번째 축** — 리포트 시트가 앉는 자리 
 
 홈 밖으로 나가는 4건은 delegate — `profileRequested`(마이페이지) · `reportDetailRequested(id:)`(리포트 상세) · `interviewStartRequested`·`interviewInfoEditRequested`(StartInterview 의 `startRequested`·`editInfoRequested` 를 올린 것). AppFeature 가 네 케이스를 명시로 받되 아직 `.none` + TODO 다 — 막힌 지점이 경계 한 곳에 모인다. 펼침 토글(`userTappedReportRow`)은 홈 내부 상태라 delegate 가 아니다.
 
-dev 계 임시 버튼은 1개(`HomeReportSheet` 빈 상태 소속) — `showsDevReset` 플래그로 게이팅하고 `delegate(.appDataResetRequested)`(로그아웃·Keychain·draft·UserDefaults 전체 삭제 후 Splash 판정 재실행 — [[app]])를 올린다. 2026-08-03 통합 전엔 온보딩 진입·디버그 로그아웃 두 버튼이었다.
+dev 계 임시 버튼은 1개(`HomeView` 인사말 옆 — 기록이 생기면 안 보이던 빈 상태 자리에서 2026-08-05 옮겼다) — `showsDevReset` 플래그로 게이팅하고 `delegate(.appDataResetRequested)`(로그아웃·Keychain·draft·UserDefaults 전체 삭제 후 Splash 판정 재실행 — [[app]])를 올린다. 2026-08-03 통합 전엔 온보딩 진입·디버그 로그아웃 두 버튼이었다.
 
 ## 진입 로드
 `view(.onAppear)` 가 **매 진입** 프로필·포폴·기록 목록을 재조회한다(첫 진입만이 아니다) — 포폴은 온보딩 S2·마이페이지가, 잔여·기록은 면접이 바꾸므로 캐시하면 무효화 신호를 AppFeature 로 돌려야 하고(Feature→Feature 금지) 1건짜리 GET 세 번보다 비싸다. 진실은 서버다([home-account](../docs/work/home-account.md) §3·§6).

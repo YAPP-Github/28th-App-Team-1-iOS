@@ -207,7 +207,7 @@ Onboarding --delegate(.finished(sessionId:))-▶ AppFeature → 면접 시작 �
 Interview --delegate(.finished/.closed)------▶ AppFeature → cover 닫고 홈 ✅ (2026-08-03)
 ```
 
-기존 dev 임시 진입(`showsOnboardingEntry`·`showsDebugLogout`)은 제거됐다(2026-08-03) — 온보딩 진입은 위젯①로 흡수됐고, 남은 dev 버튼은 «데이터 전부 삭제 후 재시작»(`showsDevReset`) 하나다. 정식 로그아웃은 마이페이지(Part 5) 몫.
+기존 dev 임시 진입(`showsOnboardingEntry`·`showsDebugLogout`)은 제거됐다(2026-08-03) — 온보딩 진입은 위젯①로 흡수됐고, 남은 dev 버튼은 «데이터 전부 삭제 후 재시작»(`showsDevReset`) 하나이고, 자리는 **인사말 옆**이다(2026-08-05 — 시트 빈 상태에 있어 기록이 생기면 사라졌다). 정식 로그아웃은 마이페이지(Part 5) 몫.
 
 **추가 (2026-08-03) — 면접 cover 는 이미 조립돼 있다.** `AppFeature` 에 `@Presents var interview` + `.ifLet` + `AppView` fullScreenCover 가 들어갔고(dev 게이트 없음 — 전 계에서 동작), 면접 중에는 전역 LoadingModal 을 끈다. `interviewStartRequested` 를 여는 사람은 **게이트 판정 후 `state.interview = InterviewFeature.State(sessionId:)` 한 줄만** 채우면 된다 — cover 제시·종료 라우팅은 재구현 대상이 아니다. `resumeInterviewRequested(sessionId:)` 도 같은 cover 를 재사용한다.
 
