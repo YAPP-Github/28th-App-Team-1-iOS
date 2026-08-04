@@ -73,8 +73,6 @@ public struct HomeView: View {
 
             greetingLayer
                 .opacity(1 - startProgress)
-                // 텍스트일 뿐이다 — 탭·드래그를 먹지 않는다(사용자 결정 2026-08-04).
-                .allowsHitTesting(false)
 
             HomeReportSheet(
                 store: store,
@@ -97,20 +95,43 @@ public struct HomeView: View {
 
     /// 배경 위 텍스트 두 줄 — 위쪽에 붙여 두고, 올라오는 시트가 아래에서부터 덮는다.
     /// 시트가 기본 자리에 앉을 때 두 줄이 안 잘리도록 `HomeSheetDrag.greenHeight` 가 자리를 남긴다.
+    ///
+    /// 텍스트는 탭·드래그를 먹지 않는다(사용자 결정 2026-08-04) — `allowsHitTesting(false)` 를
+    /// 겹 전체가 아니라 텍스트에만 건다. 옆에 붙는 dev 버튼은 눌려야 한다.
     private var greetingLayer: some View {
         VStack(spacing: 0) {
             if isGreetingVisible {
-                greeting
-                    // @ds(spacing): 54 — 내비바 하단 ~ 인사말 (spacing 토큰은 4~24 뿐)
-                    .padding(.top, 54)
+                HStack(alignment: .top, spacing: .ds(.p8)) {
+                    greeting
+                        .allowsHitTesting(false)
+                    devReset
+                }
+                // @ds(spacing): 54 — 내비바 하단 ~ 인사말 (spacing 토큰은 4~24 뿐)
+                .padding(.top, 54)
             }
             scrollHint
                 // @ds(spacing): 60 — 인사말 ~ 스크롤 안내 (인사말이 없으면 내비바 아래 54 를 그대로 쓴다)
                 .padding(.top, isGreetingVisible ? 60 : 54)
+                .allowsHitTesting(false)
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .clipped()
+    }
+
+    /// 시안에 없는 dev 전용 버튼 — 인사말 옆. 배포 계에선 플래그가 꺼져 숨는다.
+    /// 서버 로그아웃 + Keychain·온보딩 draft·UserDefaults 전체 삭제 후 Splash 부터 다시 태운다
+    /// (소셜 로그인 화면까지 나간다 — 재설치와 같은 자리).
+    @ViewBuilder
+    private var devReset: some View {
+        if store.showsDevReset {
+            Button("초기화\n(dev)") { send(.userTappedResetAppData) }
+                .buttonStyle(.bordered)
+                .tint(.red)
+                .font(.caption2)
+                .multilineTextAlignment(.center)
+                .padding(.trailing, .ds(.p20))
+        }
     }
 
     /// 인사말 표시 여부 — 기본 상태는 늘 띄우고, 리포트 상태는 변형이 정한다(`returning` 만).

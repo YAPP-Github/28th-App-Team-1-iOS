@@ -113,13 +113,10 @@ struct HomeReportSheet: View {
     private var content: some View {
         if isEmpty {
             // 빈 상태 판엔 스크롤이 없어 남은 자리 전체가 손잡이다(일러스트는 판 전체 overlay).
-            VStack(spacing: 0) {
-                devEntries
-                Spacer(minLength: 0)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(Rectangle())
-            .gesture(dragHandle.gesture)
+            Color.clear
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+                .gesture(dragHandle.gesture)
         } else {
             reportList
         }
@@ -236,22 +233,6 @@ struct HomeReportSheet: View {
         // @ds(layout): 76 — 하단 페이드 높이
         .frame(height: 76)
         .allowsHitTesting(false)
-    }
-
-    // MARK: - dev 임시 진입
-
-    /// 시안에 없는 dev 전용 버튼 — 배포 계에선 플래그가 꺼져 숨겨진다.
-    /// 서버 로그아웃 + 토큰·UserDefaults 전체 삭제 후 Splash 부터 다시 태운다(재설치와 같은 자리).
-    @ViewBuilder
-    private var devEntries: some View {
-        if store.showsDevReset {
-            Button("데이터 전부 삭제 후 재시작 (dev)", role: .destructive) {
-                send(.userTappedResetAppData)
-            }
-            .buttonStyle(.bordered)
-            .padding(.horizontal, .ds(.p20))
-            .padding(.top, .ds(.p8))
-        }
     }
 
     // MARK: - 시안 raw 값
