@@ -111,7 +111,7 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 
 ## Job
 
-`DomainJob` — `JobClient.jobs`. 가입 온보딩(`AuthOnboardingJob`)의 직군 선택지. `jobRole`(서버 Enum 값, 예: BACKEND)을 그대로 `InterviewConfig.jobRole` 로 전달한다 — 클라이언트에 직군 Enum 을 중복 정의하지 않는다. 네트워킹 화면 표준형(NetworkExampleFeature)의 시연 대상이기도 하다.
+`DomainJob` — `JobClient.jobs`. 가입 온보딩(`AuthOnboardingJob`)의 직군 선택지. 고른 `jobRole`(서버 Enum 값, 예: BACKEND)의 소비자는 **`UserClient.updateProfile`** 하나다 — 프로필에 올려 두고, 이후 세션 생성은 그 **서버 프로필 스냅샷**을 읽는다(`InterviewConfig` 에 직군·연차 필드가 없다 → `## Interview`). 서버 Enum 값을 그대로 실어 보내므로 클라이언트에 직군 Enum 을 중복 정의하지 않는다. 네트워킹 화면 표준형(NetworkExampleFeature)의 시연 대상이기도 하다.
 
 - GET `/api/v1/jobs`
 

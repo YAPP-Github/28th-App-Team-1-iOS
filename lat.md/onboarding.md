@@ -44,10 +44,12 @@ STEP 2 (필수). PDF 1개(최대 20Mb)를 fileImporter 로 받아 PortfolioClien
 - PRD 검증 분담(클라 선검증 = UX 용 빠른 차단, 최종 판정은 서버 실측): PDF 타입·20MB·**페이지 ≤30**(PDFKit pageCount)·**암호 PDF**(PDFDocument.isEncrypted) 선검증 ✅ — PortfolioFileReader 가 data+pageCount+isEncrypted 반환, register 전 차단. 페이지 수는 PortfolioUpload.pageCount 로 서버에 전달. 글자 수 ≥30 은 서버 전용(Tika) → FAILED_FILE 문구만.
 - **실패 문구는 서버 원문** (현행): 4xx 는 `PortfolioError.userMessage`(서버 message), 200 + FAILED_FILE/FAILED_SYSTEM 은 응답 `message` 를 배너에 그대로 싣고, 없을 때만 클라 폴백 문구를 쓴다. 코드별 클라 카피·PRD 문구 정책 미확정이라 임시(코드 TODO 표시).
 - **완료 판엔 업로드 진입 판이 없다** ✅ (2026-08-04): `uploaded` 에서 «파일을 업로드해주세요» 진입 판(`FileUpload(.before)`)을 걷고 완료 행(`Completed!`)만 남긴다 — 포폴은 계정당 1개라 올릴 게 없고, 판을 남기면 탭했을 때 갈 곳이 409 뿐이다. 2회차 «기존 포폴로 진행» 도 같은 `uploaded` 라 같이 걸린다. 다시 올리는 길은 X → 삭제 확인 → `idle` 하나뿐이고 그때 판이 돌아온다. 마이페이지 포폴 섹션(`empty` 에서만 진입 판)과 같은 규칙. 시안엔 완료 프레임이 없어 이 규칙이 근거다.
-- **X = 삭제 확인 모달**: 파일 행 X(`userTappedRemoveFile`)는 확인 모달만 띄우고(`isDeleteConfirmPresented`), 폴링 취소 + `delete` API 는 «네»(`userTappedDeleteConfirm`)에서만 나간다 — 실수 탭으로 서버 파일이 사라지지 않게. 카드는 마이페이지 삭제 모달(435:8892)과 같은 계열이고 버튼만 «아니요 / 네». 남은 삭제 횟수는 서버가 목록 응답에 안 줘서(deleteAvailable·nextDeleteAvailableAt 만) 안내줄이 «1번» 고정 — TODO.
+- **X = 삭제 확인 모달**: 파일 행 X(`userTappedRemoveFile`)는 확인 모달만 띄우고(`isDeleteConfirmPresented`), 폴링 취소 + `delete` API 는 «네»(`userTappedDeleteConfirm`)에서만 나간다 — 실수 탭으로 서버 파일이 사라지지 않게. 카드는 마이페이지 삭제 모달(435:8892)과 같은 계열이고 버튼만 «아니요 / 네». **남은 삭제 «1번» 은 하드코딩이다** — 서버 목록 응답이 주는 건 가능 여부·다음 가능 시점(`deleteAvailable`·`nextDeleteAvailableAt`)이고 잔여 횟수가 아니다. 파괴적 동작 바로 앞에서 숫자를 지어내면 오안내라, 횟수를 빼고 두 필드로 표현 가능한 문구(«이번 달 교체 가능» / «N월 N일부터 다시 가능»)로 바꿔야 한다 — 문구 확정 대기 TODO.
 - **2회차 이상 = 기존 포폴 확인 모달** ✅ (2026-08-03): 진입(`view(.onAppear)`)에 `PortfolioClient.list` 로 READY 를 찾으면 «기존에 있는 포트폴리오로 진행할까요?» 모달을 띄우고, «예» 가 재등록·폴링 없이 곧장 `uploaded` 로 앉힌다. **버튼이 하나인 건 고를 게 없어서다** — 포폴은 계정당 1개고 교체는 한 달 1회라 «아니요» 를 줘도 갈 곳이 없다(바꾸려면 완료 판 X → 삭제 확인 모달이 그 자리). 조회는 **빈 판 진입마다 1회** (2026-08-04 정정 — 이전 판은 «위저드 수명당 1회») — 서버 READY 는 위저드 밖에서 바뀌므로(마이페이지 업로드·삭제, PROCESSING 승격) 수명당 1회로 묶으면 두 번째 진입에서 재사용 대상을 놓치고 register 가 409 로 떨어진다. 코디네이터는 `portfolioStep(upload:)` 에서 `upload == .idle` 일 때만 `checksExisting` 을 켜고(이미 첨부된 판엔 물어볼 게 없다), 중복 호출 방지는 스텝 State 가 `onAppear` 첫 발동에 스스로 끄는 것으로 끝낸다. 첨부된 판으로 pop 복귀하는 경로엔 애초에 조회가 안 켜져서 «기존 포폴로 진행할까요?» 가 다시 뜨지 않는다. 화면에서 삭제(X → «네») 해 빈 판이 돼도 재조회는 하지 않는다 — 방금 지운 걸 다시 쓰라고 묻는 꼴이라. 실패·부재는 조용히 넘긴다(평소의 빈 판 = 1회차 흐름). 판정 키의 근거는 [home-account](../docs/work/home-account.md) §3 «회차 분기 판정 키».
 - **모달 표출 자리는 하나** — `.hilitModal` 은 cover 표출이라(#63) 한 화면에 두 번 붙이면 둘째가 조용히 무시된다. 두 모달(기존 포폴 확인·삭제 확인)은 `State.presentedModal` 파생값 하나로 좁혀 띄우고, 우선순위는 기존 포폴 확인이 먼저다 — 진입 직후 뜨고 그 판엔 삭제를 부를 파일 행 X 가 아직 없다.
-- **1개 제한 + 409 자동 복구 — 미구현 🔴** (2026-08-02 코드 대조로 정정. 이전 판이 ✅ 로 적어 뒀으나 리듀서엔 없다): register 가 `PORTFOLIO_ALREADY_EXISTS`(409)를 주면 지금은 서버 문구 배너와 함께 failed 로 떨어진다. 설계 의도는 `PortfolioClient.list().first`(계정당 1개라 first 가 곧 그 포폴)로 서버의 기존 포폴을 회수하는 것 — READY 면 uploaded 확정, PROCESSING 이면 폴링 이어받기, FAILED/부재면 삭제 후 재업로드 유도. draft 를 잃었지만(로그아웃·재설치·TTL 만료) 서버 포폴은 남은 경우를 투명 처리하려는 것이고, 원칙은 draft=재개 힌트·서버=진실([[onboarding#프리로드]] JD 복구와 같은 계) — 그쪽은 실제로 구현돼 있다. **폴링 상한**도 미구현.
+- **1개 제한은 사전 확인이 주 방어선** — 409 는 확인 모달이 못 막는 틈에만 온다. 진입 조회가 대부분을 걷어내므로 «올리다가 409» 는 평시 경로가 아니고, 남는 창구는 셋이다: ① **PROCESSING 포폴** — 조회 필터가 `status == .ready` 뿐이라 승격 전 포폴은 모달이 안 뜨고, 사용자가 새로 올리면 register 가 409 다(마이페이지에서 올린 직후 온보딩 진입). ② **조회↔등록 경합** — 모달이 안 뜬 사이 다른 기기·마이페이지가 등록. ③ **draft 복원 판** — 아래 항목. 창구가 좁다고 도달 불가는 아니라 복구는 여전히 TODO 다.
+- **draft 복원이 서버 검증 없이 완료 판으로 앉는다 🔴**: 진입 조회에는 게이트가 둘이다 — 코디네이터가 `portfolioStep(upload:)` 에서 `upload == .idle` 일 때만 `checksExisting` 을 켜고, 스텝도 `onAppear` 에서 `guard state.checksExisting, case .idle = state.upload` 로 한 번 더 막는다. 그래서 **draft 가 `portfolioId` 를 들고 오면 `.uploaded` 로 복원되고 조회는 아예 안 나간다**. 위저드 안에서만 보면 맞는 최적화지만(이미 첨부된 판엔 물어볼 게 없다), 위저드 밖에서 포폴이 사라진 경우(마이페이지 삭제)엔 죽은 id 가 그대로 프리로드까지 흘러 세션 생성이 깨진다. 복원 id 를 `list` 로 대조해 살아 있을 때만 `.uploaded` 로 앉히거나(부재면 `.idle` + 조회 켜기), [[onboarding#입력 draft]] 의 «포폴 삭제 시 clear» 를 구현해야 닫힌다.
+- **409 자동 복구 — 미구현 🔴** (2026-08-02 코드 대조로 정정. 이전 판이 ✅ 로 적어 뒀으나 리듀서엔 없다): register 가 `PORTFOLIO_ALREADY_EXISTS`(409)를 주면 지금은 서버 문구 배너와 함께 failed 로 떨어진다. 설계 의도는 `PortfolioClient.list().first`(계정당 1개라 first 가 곧 그 포폴)로 서버의 기존 포폴을 회수하는 것 — READY 면 uploaded 확정, PROCESSING 이면 폴링 이어받기, FAILED/부재면 삭제 후 재업로드 유도. draft 를 잃었지만(로그아웃·재설치·TTL 만료) 서버 포폴은 남은 경우를 투명 처리하려는 것이고, 원칙은 draft=재개 힌트·서버=진실([[onboarding#프리로드]] JD 복구와 같은 계) — 그쪽은 실제로 구현돼 있다. **폴링 상한**도 미구현.
 
 ## 대표 프로젝트
 
@@ -88,7 +90,7 @@ PRD §4.4 — 입력을 로컬 draft 로 자동 저장해 **앱 진짜 종료(ki
 
 ## 재진입 분기
 
-앱 종료 후 재진입은 [[onboarding#입력 draft]] 가 값·위저드 위치를 복원해 처리한다. draft 에 portfolioId 가 안 들어간 채(업로드는 끝났지만 «계속하기» 전에 죽음) 재진입해도 STEP2 진입 조회가 그 포폴을 찾아 확인 모달로 되살린다 — 대표 프로젝트로 자동 건너뛰지는 않는다. 포폴 0개(삭제됨) → 다음 진입 시 포폴 스텝 강제 라우팅은 AppFeature 몫 → [[app]].
+앱 종료 후 재진입은 [[onboarding#입력 draft]] 가 값·위저드 위치를 복원해 처리한다. draft 에 portfolioId 가 안 들어간 채(업로드는 끝났지만 «계속하기» 전에 죽음) 재진입해도 STEP2 진입 조회가 그 포폴을 찾아 확인 모달로 되살린다 — 대표 프로젝트로 자동 건너뛰지는 않는다. **반대 방향(draft 엔 id 가 있는데 서버엔 없음)은 아직 안 닫혔다** → [[onboarding#포트폴리오 업로드]] «draft 복원». 포폴 0개(삭제됨) → 다음 진입 시 포폴 스텝 강제 라우팅은 AppFeature 몫 → [[app]].
 
 ## 스텝 템플릿
 
@@ -98,8 +100,8 @@ OnboardingPlaceholderStepFeature/View — 스텝 골격(네비바·프로그레�
 
 홈 「면접 시작」의 [시작하기]·[수정하기] 신호를 AppFeature 가 받아 `fullScreenCover` 로 위저드를 연다 — 홈 탭 위에서만 열리므로 **로그인 이후**라 토큰을 보유한다(온보딩 API 는 인증 필요). dev 전용 임시 진입 버튼은 이 정식 경로가 생기며 제거됐다(2026-08-03). → [[app]]
 
-현재는 `OnboardingFeature.State(userName:)`(홈이 쥔 닉네임)로 열고 `.finished`·`.dismiss` 는 cover 를 닫기만 한다. 직군·연차는 넘길 것이 없다 — 세션 생성이 서버 프로필 스냅샷을 쓴다. 잔여 배선: delegate(.dismiss) → 중도 이탈(draft 보존), **delegate(.finished(sessionId:)) → Part 2 면접 바로 시작**(사용자 결정 2026-07-20, InterviewSessionFeature 생기면 fullScreenCover).
+`OnboardingFeature.State(userName:)`(홈이 쥔 닉네임)로 열고, 직군·연차는 넘길 것이 없다 — 세션 생성이 서버 프로필 스냅샷을 쓴다. 닫는 갈래 둘은 실제로 갈라져 있다(2026-08-04 배선): **delegate(.finished(sessionId:)) → 그 id 로 면접 cover 를 곧장 연다**(`InterviewFeature.State(sessionId:)`, 사용자 결정 2026-07-20 — 홈은 안 태운다, 어차피 면접에 가려진다) · **delegate(.dismiss) → 중도 이탈**(draft 보존 + 홈 `onAppear` 재조회 — STEP2 업로드는 끝났을 수 있어 «이전 정보 재사용» 카드가 옛 값으로 남으면 안 된다). draft 폐기는 이 자리가 아니라 면접 정상 종료다 → [[onboarding#입력 draft]].
 
-코디네이터 onAppear 가 draft 복원을 트리거하므로 OnboardingView 는 루트에 onAppear 를 발신한다. 단 루트 onAppear 는 SwiftUI 특성상 뒤로가기로 루트에 되돌아올 때마다 재발동하므로, 복원은 `didAttemptRestore` 로 1회만 수행한다(재복원=화면 튐 방지). Example 앱은 전체 위저드를 스텁 의존성으로 구동하며 ONBOARDING_START_STEP 환경변수로 특정 스텝부터 시작할 수 있다(draft 는 no-op 스텁). → [[app]]
+코디네이터 onAppear 가 draft 복원을 트리거하므로 OnboardingView 는 루트에 onAppear 를 발신한다. 단 루트 onAppear 는 SwiftUI 특성상 뒤로가기로 루트에 되돌아올 때마다 재발동하므로, 복원은 `didAttemptRestore` 로 1회만 수행한다(재복원=화면 튐 방지). Example 앱은 전체 위저드를 스텁 의존성으로 구동하며 ONBOARDING_START_STEP 환경변수로 특정 스텝부터 시작할 수 있다(draft 는 no-op 스텁). STEP3 이상으로 건너뛸 때는 포폴 픽스처(id·파일명)도 같이 채운다 — 안 채우면 프리로드가 `portfolioId` 부재로 세션 생성 전에 실패 화면으로 떨어진다. → [[app]]
 
 PRD §3.8 부록대로 Part1↔2 경계는 세션 생성 API 계약 — .finished 는 sessionId 만 실어 올리므로 요약 질문 등 payload 확장이 필요하다(서버 정합). 권한(카메라·마이크)은 iOS = 사용 시점 요청이라 온보딩이 아니라 Part 2 진입 직전.
