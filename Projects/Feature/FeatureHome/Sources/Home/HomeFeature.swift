@@ -117,8 +117,6 @@ public struct HomeFeature {
             case onAppear
             /// 시트 드래그가 끝나 자리가 정해졌다 — 판정은 뷰(`HomeSheetDrag`), 확정은 여기.
             case userSettledSheet(SheetDetent)
-            /// 스크롤 안내 문구 탭 — 끌지 않고 바로 면접 시작 자리로 보낸다.
-            case userTappedStartInterview
             /// 내비바 프로필 탭 — 마이페이지 진입 요청.
             case userTappedProfile
             /// 펼친 행의 [레포트 보기] 탭 — 리포트 상세 진입 요청.
@@ -193,9 +191,6 @@ public struct HomeFeature {
                 .cancellable(id: CancelID.entryLoad, cancelInFlight: true)
             case let .view(.userSettledSheet(detent)):
                 state.sheetDetent = detent
-                return .none
-            case .view(.userTappedStartInterview):
-                state.sheetDetent = .startInterview
                 return .none
             case .view(.userTappedProfile):
                 return .send(.delegate(.profileRequested))
