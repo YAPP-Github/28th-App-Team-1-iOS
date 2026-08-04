@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import CoreCommonInterface
 import DomainAppVersionInterface
 import DomainAuthInterface
 import DomainConsentInterface
@@ -57,6 +58,8 @@ struct AppFeature {
 
     enum Action: BindableAction {
         case onAppear
+        /// 첫 실행 정리가 끝났다 — 이제 세션 복구 판정을 시작해도 된다.
+        case firstLaunchResolved
         /// Splash 판정 실패 후 재시도.
         case retryLaunchRouting
         /// 버전 게이트 판정 결과 — 안내가 필요한 FORCE·OPTIONAL 만 도달한다.
@@ -101,6 +104,7 @@ struct AppFeature {
     @Dependency(\.appVersionClient) var appVersionClient
     @Dependency(\.authClient) var authClient
     @Dependency(\.consentClient) var consentClient
+    @Dependency(\.firstLaunchStore) var firstLaunchStore
     @Dependency(\.onboardingDraftStore) var draftStore
     @Dependency(\.openURL) var openURL
 
@@ -117,6 +121,14 @@ struct AppFeature {
             case .onAppear:
                 // dev 계에서만 Home 데이터 초기화 버튼을 노출한다.
                 state.home.showsDevReset = AppEnvironment.isDev
+                // 잔존 정리를 **판정보다 먼저** 끝낸다 — 순서를 지키려 판정을 effect 안에서 잇지 않고
+                // 별도 액션으로 갈라 놓는다.
+                return .run { send in
+                    clearIfFirstLaunch()
+                    await send(.firstLaunchResolved)
+                }
+
+            case .firstLaunchResolved:
                 return resolveLaunchRouting()
 
             case .retryLaunchRouting:
@@ -190,11 +202,13 @@ struct AppFeature {
                 // TODO: 리포트 상세(r1/최종) 제시 — `InterviewReportFeature` 통합 후 sessionId 로 배선.
                 return .none
             case .home(.delegate(.appDataResetRequested)):
-                // dev 전용 «재설치 흉내» — 서버 로그아웃(+토큰 Keychain 삭제) · 온보딩 draft ·
+                // dev 전용 «재설치 흉내» — 서버 로그아웃 · Keychain 전체 · 온보딩 draft ·
                 // 앱 UserDefaults 도메인 전체를 지운다. 서버 호출이 실패해도 로컬 정리는 그대로 진행한다.
+                // 첫 실행 마커까지 함께 날리는 건 의도다 — 다음 콜드 스타트가 재설치 직후와 같은 자리에서
+                // 정리를 한 번 더 돌게 된다(빈 저장소를 지우는 것이라 손해가 없다, [[app#첫 실행 정리]]).
                 return .run { send in
                     try? await authClient.logout()
-                    draftStore.clear()
+                    clearLocalData()
                     if let bundleId = Bundle.main.bundleIdentifier {
                         UserDefaults.standard.removePersistentDomain(forName: bundleId)
                     }
@@ -255,6 +269,31 @@ struct AppFeature {
             OnboardingFeature()
         }
         .ifLet(\.$updateAlert, action: \.updateAlert)
+    }
+
+    // MARK: - 첫 실행 정리 → [[app#첫 실행 정리]]
+
+    /// 이 설치의 첫 실행이면 잔존 로컬 데이터를 지운다 — 앱을 지워도 Keychain 은 남기 때문이다.
+    ///
+    /// 남는 게 토큰뿐이라 정리를 안 하면 재설치 직후가 «로그인된 상태» 로 판정된다. 삭제와 함께
+    /// 사라지는 UserDefaults 쪽(draft)은 이미 비어 있어 지워도 손해가 없다 — 판정 하나로 둘 다 맞춘다.
+    ///
+    /// 마커는 **정리 뒤에** 찍는다. 사이에서 앱이 죽으면 다음 실행이 다시 첫 실행으로 판정돼 정리를
+    /// 마치는데, 먼저 찍으면 지우다 만 상태로 굳는다.
+    private func clearIfFirstLaunch() {
+        guard firstLaunchStore.isFirstLaunch() else { return }
+        clearLocalData()
+        firstLaunchStore.markLaunched()
+    }
+
+    /// 로컬 저장소 정리 — 첫 실행 정리와 로그아웃이 공유한다. 서버 호출은 하지 않는다.
+    ///
+    /// Keychain 은 `tokenStore.clear()`(항목 하나)가 아니라 **전체**를 지운다 — 목적이 «앱이 남긴 것
+    /// 전부» 라 Keychain 항목이 늘어도 놓치지 않아야 한다. UserDefaults 는 도메인째 지우지 않는다:
+    /// 첫 실행 마커가 거기 있어 통째로 날리면 다음 실행이 다시 첫 실행으로 판정된다.
+    private func clearLocalData() {
+        KeychainWipe.wipeAll()
+        draftStore.clear()
     }
 
     // MARK: - Splash 세션 복구 판정 → [[auth#가입 플로우]]
