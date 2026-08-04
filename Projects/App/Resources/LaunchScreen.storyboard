@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  런치스크린 — SplashView 와 같은 로고·같은 좌표를 그려 앱 첫 프레임으로 넘어갈 때 깜빡임이 없게 한다.
+  SwiftUI 로는 만들 수 없다(앱 코드가 돌기 전 시스템이 그린다). plist 의 UILaunchScreen dict 는
+  이미지 크기·위치를 못 잡아 워드마크가 늘어나므로 storyboard 를 쓴다.
+
+  값 3개는 SplashView 와 짝이다 — 바꾸려면 양쪽을 같이 바꾼다:
+    로고 171×72 · 중심 y 오프셋 -50(화면 중심 기준) · 배경 #FFFFFF
+  로고 에셋도 짝이다 — 런치스크린은 앱이 실행되기 전 **메인 번들**에서 읽으므로 DesignSystem 번들의
+  logoHilit 을 쓸 수 없어 같은 SVG 를 App/Resources 에 복사해 둔다.
+-->
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="22505" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="LSC-vc-root">
+    <device id="retina6_12" orientation="portrait" appearance="light"/>
+    <dependencies>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="22504"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <scenes>
+        <!--Launch Screen-->
+        <scene sceneID="LSC-sc-root">
+            <objects>
+                <viewController id="LSC-vc-root" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="LSC-vw-root">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="logoHilit" translatesAutoresizingMaskIntoConstraints="NO" id="LSC-iv-logo">
+                                <rect key="frame" x="111" y="365" width="171" height="72"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="171" id="LSC-cn-width"/>
+                                    <constraint firstAttribute="height" constant="72" id="LSC-cn-height"/>
+                                </constraints>
+                            </imageView>
+                        </subviews>
+                        <viewLayoutGuide key="safeArea" id="LSC-lg-safeArea"/>
+                        <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <constraints>
+                            <constraint firstItem="LSC-iv-logo" firstAttribute="centerX" secondItem="LSC-vw-root" secondAttribute="centerX" id="LSC-cn-centerX"/>
+                            <constraint firstItem="LSC-iv-logo" firstAttribute="centerY" secondItem="LSC-vw-root" secondAttribute="centerY" constant="-50" id="LSC-cn-centerY"/>
+                        </constraints>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="LSC-ph-firstResponder" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="53" y="375"/>
+        </scene>
+    </scenes>
+    <resources>
+        <image name="logoHilit" width="57" height="24"/>
+    </resources>
+</document>
