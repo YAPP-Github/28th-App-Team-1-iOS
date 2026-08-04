@@ -54,6 +54,11 @@ public struct OnboardingPortfolioUploadFeature {
             if case .uploading = self { true } else { false }
         }
 
+        /// 완료 — 파일 선택 진입 판을 걷는 조건. 2회차 서버 포폴 불러오기도 같은 상태다.
+        public var isUploaded: Bool {
+            if case .uploaded = self { true } else { false }
+        }
+
         /// `FileUpload(.progressing)` 진행 바 비율(0~1) — **측정된 진행률이 아니라 단계 마커**다.
         /// `.uploading` 이 구분할 수 있는 단계는 둘뿐이라 값도 둘이다: register 응답 전
         /// (portfolioId == nil) `registeringProgress`, 접수돼 status 폴링 중(portfolioId != nil)
@@ -95,9 +100,7 @@ public struct OnboardingPortfolioUploadFeature {
         /// nil 이 곧 «모달 없음» 이다(별도 표시 플래그를 두면 둘이 어긋난다).
         var existingPortfolio: ExistingPortfolio?
 
-        public var isContinueEnabled: Bool {
-            if case .uploaded = upload { true } else { false }
-        }
+        public var isContinueEnabled: Bool { upload.isUploaded }
 
         /// 지금 띄울 모달 — 표출 자리가 하나뿐이라 우선순위를 여기서 정한다.
         /// 기존 포폴 확인이 먼저다: 진입 직후 뜨고, 그 판엔 삭제를 부를 파일 행 X 가 아직 없다.
