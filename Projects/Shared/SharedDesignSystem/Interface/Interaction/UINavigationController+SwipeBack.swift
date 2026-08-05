@@ -12,11 +12,11 @@ import UIKit
 ///
 /// `HilitNavigationBar` 모디파이어는 `navigationBarBackButtonHidden(true)` 를 걸어
 /// 시스템 백버튼을 숨기는데, UIKit 은 «백버튼이 안 보이면» `interactivePopGestureRecognizer`
-/// 를 스스로 꺼버린다(커스텀 내비 의도를 «pop 금지»로 확대 해석하는 오래된 안전장치).
+/// 를 스스로 꺼버린다(커스텀 네비 의도를 «pop 금지»로 확대 해석하는 오래된 안전장치).
 /// 이 화면이 보이는 동안만 제스처 delegate 를 점유해 되살리고, 사라질 때 원래 delegate 로 되돌린다.
 ///
 /// 왜 `UINavigationController` 전역 extension 이 아닌가: 기저 클래스 패치는
-/// `UIImagePickerController`·`PHPickerViewController` 등 시스템 내비까지 delegate 를
+/// `UIImagePickerController`·`PHPickerViewController` 등 시스템 네비까지 delegate 를
 /// 갈아치워 남의 제스처 처리를 오염시킨다(`fileImporter` 피커가 실제 경로).
 /// 화면 부착형은 우리 스택에 우리 화면이 떠 있는 동안만 유효하다.
 ///

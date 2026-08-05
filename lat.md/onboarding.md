@@ -4,6 +4,8 @@
 
 이 위저드가 「[PRD] AI 면접 Part 1 — 면접 전 입력 & 포트폴리오 등록」 v3 의 S0~S4 구현체 — PRD↔구현 매핑·잔여 개발 포인트는 [ai-interview](../docs/work/ai-interview.md) §5 가 단일 소스. PRD v3 확정 골자: 재시도·멱등성 전면 제외(실패=status 표시 후 재업로드), 비동기+폴링 확정, 개별 저장 API 없이 세션 생성이 S0~S3 일괄 수집, 직군 6종 화이트리스트, 태블릿 제외.
 
+⚠ 개편 예정(2026-07-31 확정): 직군(STEP1)·연차(STEP2)는 가입 온보딩(`FeatureAuth` — `AuthOnboardingJob`·`AuthOnboardingExperience`)으로 이관되고 이 위저드는 JD 부터 남는다. S0 스킵/프리필 처리는 미결 — [home-account](../docs/work/home-account.md) §0·§7 참조.
+
 ## 코디네이터
 
 OnboardingFeature 가 위저드 루트. STEP 1(직군 선택)을 NavigationStack 루트로 두고, 이후 스텝은 `path`(StackState)로 push 한다. 각 스텝의 delegate 만 매칭해 [[onboarding#수집 데이터]]를 누적하고 다음 스텝으로 전환한다 — 조립은 코디네이터에서만.
@@ -12,17 +14,19 @@ OnboardingFeature 가 위저드 루트. STEP 1(직군 선택)을 NavigationStack
 
 ## 직군 선택
 
-STEP 1 (필수). 진입 시 JobClient.jobs 로 선택지를 로드해 칩으로 나열하고, 하나를 고르면 '계속하기'가 활성화된다. 완료 시 선택 직군의 jobRole(서버 enum, 예 "BACKEND")을 delegate 로 올린다. 이 스텝만 하단 CTA 가 단일 버튼이다(첫 스텝 — 이전 없음).
+STEP 1 (필수). 진입 시 JobClient.jobs 로 선택지를 로드해 칩으로 나열하고, 하나를 고르면 '계속하기'가 활성화된다(고르기 전엔 그 버튼만 `.disabled` — 배색 변형이 아니라 상태다). 완료 시 선택 직군의 jobRole(서버 enum, 예 "BACKEND")을 delegate 로 올린다. 하단 CTA 는 다른 스텝과 같은 «이전으로 | 계속하기» 2분할이고, 루트라 pop 할 스텝이 없어 `backRequested` 는 코디네이터에서 닫기와 같은 dismiss 로 수렴한다(앞에 스텝이 생기면 그 한 줄만 popLast 로 바뀐다).
 
 - 실패 UX 미정: jobsLoadFailed 는 로딩 해제만 (TODO).
 
 ## 연차 입력
 
-STEP 2 (필수). 문장형 휠 피커 «내 경력은 [휠] 이다.» — 정수 연차 0~10년(`CareerOption { years: Int }`, 10="10년 이상", 라벨 신입/N년차/10년 이상). 휠은 native Picker 가 아니라 iOS 17 ScrollView(viewAligned + scrollPosition) 커스텀. 항상 값이 있어 CTA 상시 활성.
+STEP 2 (필수). 문장형 휠 피커 «내 경력은 [휠] 이다.» — 정수 연차 0~10년(`CareerOption { years: Int }`, 라벨 신입/N년 이상 — 최종 시안 3632:14460 표기, 10 은 "10년 이상"). 휠은 native Picker 가 아니라 iOS 17 ScrollView(viewAligned + scrollPosition) 커스텀. 항상 값이 있어 CTA 상시 활성.
 
 delegate 는 `continueRequested(careerYears: Int)` — 페이로드(`OnboardingData.careerYears`)·세션 입력(`InterviewConfig.careerYears`)에 정수 그대로 직결한다(잠정 매핑 없음). 레벨(주니어/미들/시니어)은 서버가 0-2/3-7/8+ 파생 — 클라 미관여.
 
-이 스텝부터 하단 CTA 가 «이전으로 | 계속하기» 2분할 바이고, 내비바에는 닫기(X)만 있다 — 뒤로가기는 하단 바 담당 (STEP 2~5 공통 골격). 바는 DS `ButtonLarge(.bottom, tone: .dark)` 가 그린다(배경·구분선·등폭·비활성 룩 전부 DS 소유) — 화면은 라벨과 액션만 넘긴다. 엣지 스와이프백은 기본 허용 — pop 전에 되물을 게 있는 화면만 차단한다(포트폴리오 업로드 중 `!isUploading`, 분석 화면 상시). 스와이프 pop 은 코디네이터에 `popFrom(id:)` 로 도착하며 `backRequested` 와 결과 동일(popLast 뿐)이라 별도 처리 없음 — back 경로에 로직을 넣게 되면 두 입구를 모두 살필 것.
+이 스텝부터 하단 CTA 가 «이전으로 | 계속하기» 2분할 바이고, 네비바에는 닫기(X)만 있다 — 뒤로가기는 하단 바 담당 (STEP 2~5 공통 골격). 바는 DS `ButtonLarge(.bottom, tone: .dark)` 가 그린다(배경·구분선·등폭·비활성 룩 전부 DS 소유) — 화면은 라벨과 액션만 넘긴다. 엣지 스와이프백은 기본 허용 — pop 전에 되물을 게 있는 화면만 차단한다(포트폴리오 업로드 중 `!isUploading`, 분석 화면 상시). 스와이프 pop 은 코디네이터에 `popFrom(id:)` 로 도착하며 `backRequested` 와 결과 동일(popLast 뿐)이라 별도 처리 없음 — back 경로에 로직을 넣게 되면 두 입구를 모두 살필 것.
+
+네비바는 DS `.hilitNavigationBar` = **시스템 네비바**라서 [[onboarding#코디네이터]]의 NavigationStack 에 렌더를 의존한다(2026-07-31 커스텀 바 폐기). 스택을 걷어내면 전 스텝의 바가 컴파일 성공 상태로 조용히 사라지므로, 위저드를 cover 단독 화면으로 재구성할 땐 스택을 유지하거나 `.hilitPresentedNavigationBar` 로 바꿔 단다.
 
 ## JD 링크
 
@@ -41,7 +45,8 @@ STEP 4 (필수). PDF 1개(최대 20Mb)를 fileImporter 로 받아 PortfolioClien
 
 - 완료 행 디자인 미확인(진행 스트립만 뺀 근사) · 진행률 이벤트 없어 스트립은 고정 비율 · 폴링 상한 없음 (전부 TODO).
 - PRD 검증 분담(클라 선검증 = UX 용 빠른 차단, 최종 판정은 서버 실측): PDF 타입·20MB·**페이지 ≤30**(PDFKit pageCount)·**암호 PDF**(PDFDocument.isEncrypted) 선검증 ✅ — PortfolioFileReader 가 data+pageCount+isEncrypted 반환, register 전 차단. 페이지 수는 PortfolioUpload.pageCount 로 서버에 전달. 글자 수 ≥30 은 서버 전용(Tika) → FAILED_FILE 문구만.
-- **1개 제한 + 409 자동 복구** ✅: register 가 `PORTFOLIO_ALREADY_EXISTS`(409)면 재업로드/실패로 끝내지 않고 `PortfolioClient.list().first`(계정당 1개라 first 가 곧 그 포폴)로 서버의 기존 포폴을 회수한다 — status 가 READY 면 그대로 uploaded 확정, PROCESSING 이면 폴링 이어받기, FAILED/부재면 삭제 후 재업로드 유도. draft 를 잃었지만(로그아웃·재설치·TTL 만료) 서버 포폴은 남은 경우를 투명 처리. 원칙: draft=재개 힌트·서버=진실([[onboarding#분석]] JD 복구와 같은 계). `uploadFile`/`pollStatus` 헬퍼로 최초 업로드와 복구가 effect 공유. **폴링 상한** 초과 시 FAILED_SYSTEM 취급 문구(초기값 tentative).
+- **실패 문구는 서버 원문** (현행): 4xx 는 `PortfolioError.userMessage`(서버 message), 200 + FAILED_FILE/FAILED_SYSTEM 은 응답 `message` 를 배너에 그대로 싣고, 없을 때만 클라 폴백 문구를 쓴다. 코드별 클라 카피·PRD 문구 정책 미확정이라 임시(코드 TODO 표시).
+- **1개 제한 + 409 자동 복구** (설계만, 미구현 — 현재는 409 서버 문구 배너로 끝): register 가 `PORTFOLIO_ALREADY_EXISTS`(409)면 재업로드/실패로 끝내지 않고 `PortfolioClient.list().first`(계정당 1개라 first 가 곧 그 포폴)로 서버의 기존 포폴을 회수한다 — status 가 READY 면 그대로 uploaded 확정, PROCESSING 이면 폴링 이어받기, FAILED/부재면 삭제 후 재업로드 유도. draft 를 잃었지만(로그아웃·재설치·TTL 만료) 서버 포폴은 남은 경우를 투명 처리. 원칙: draft=재개 힌트·서버=진실([[onboarding#분석]] JD 복구와 같은 계). `uploadFile`/`pollStatus` 헬퍼로 최초 업로드와 복구가 effect 공유. **폴링 상한** 초과 시 FAILED_SYSTEM 취급 문구(초기값 tentative).
 
 ## 집중 프로젝트
 
@@ -80,7 +85,7 @@ PRD §4.4 — S0~S3 입력을 로컬 draft 로 자동 저장해 **앱 진짜 종
 
 ## 스텝 템플릿
 
-OnboardingPlaceholderStepFeature/View — 스텝 골격(내비바·프로그레스 바·CTA) 템플릿. 실제 스텝 6개가 모두 붙으면서 코디네이터 Path 에서는 빠졌고, 새 스텝 추가 시 복사 출발점으로만 남아 있다 (view/inner/delegate 3분류, delegate 로 continue/back/close 만 통보).
+OnboardingPlaceholderStepFeature/View — 스텝 골격(네비바·프로그레스 바·CTA) 템플릿. 실제 스텝 6개가 모두 붙으면서 코디네이터 Path 에서는 빠졌고, 새 스텝 추가 시 복사 출발점으로만 남아 있다 (view/inner/delegate 3분류, delegate 로 continue/back/close 만 통보).
 
 ## 코디네이터 연결
 

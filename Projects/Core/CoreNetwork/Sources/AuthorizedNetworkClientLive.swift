@@ -60,14 +60,20 @@ final class AuthorizedEngine: Sendable {
         do {
             return try await networkClient.request(authorized)
         } catch let error as NetworkError {
-            guard allowsRefresh,
-                  case .statusCode(let status, let body) = error,
-                  let serverError = ServerError.decode(statusCode: status, body: body),
-                  Self.refreshTriggerCodes.contains(serverError.code)
-            else { throw error }
+            guard allowsRefresh, isTokenExpiry(error) else { throw error }
             try await refreshTokens()
             return try await perform(request, allowsRefresh: false)
         }
+    }
+
+    /// 액세스 토큰 만료 판정 — **모든 API 에서 403 = 만료**(서버 계약 2026-08-02)라 body 코드와 무관하게
+    /// 재발급을 트리거한다. 코드 기반 판정(TOKEN_EXPIRED·INVALID_TOKEN)은 403 이 아닌 상태로 내려오는
+    /// 케이스를 위해 유지한다.
+    private func isTokenExpiry(_ error: NetworkError) -> Bool {
+        guard case .statusCode(let status, let body) = error else { return false }
+        if status == 403 { return true }
+        guard let serverError = ServerError.decode(statusCode: status, body: body) else { return false }
+        return Self.refreshTriggerCodes.contains(serverError.code)
     }
 
     /// Rotation 재발급 — 성공 시 새 페어 저장. `LOGIN_EXPIRED`(리프레시도 만료)면 토큰 폐기 후 전파.

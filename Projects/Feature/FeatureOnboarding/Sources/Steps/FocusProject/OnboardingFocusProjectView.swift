@@ -10,7 +10,7 @@ import SharedDesignSystemInterface
 import SwiftUI
 
 // Figma «STEP 5_집중 프로젝트» (node 1609:10016) 구현.
-// 내비바는 닫기(X)만 — 뒤로가기는 하단 바의 «이전으로»가 담당한다 (이 스텝만의 이분할 CTA).
+// 네비바는 닫기(X)만 — 뒤로가기는 하단 바의 «이전으로»가 담당한다 (이 스텝만의 이분할 CTA).
 // @ViewAction 매크로가 send(_:) 를 제공한다 — View 는 send(.userTappedContinue) 식으로만 방출.
 @ViewAction(for: OnboardingFocusProjectFeature.self)
 public struct OnboardingFocusProjectView: View {
@@ -22,7 +22,7 @@ public struct OnboardingFocusProjectView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            progressBar
+            DashIndicator(count: store.totalSteps, current: store.step)
             ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
                     header
@@ -45,18 +45,6 @@ public struct OnboardingFocusProjectView: View {
             onClose: { send(.userTappedClose) }
         )
         .onAppear { send(.onAppear) }
-    }
-
-    private var progressBar: some View {
-        HStack(spacing: 2) {
-            ForEach(1...store.totalSteps, id: \.self) { step in
-                Rectangle()
-                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.GrayScale.g50)
-                    .frame(height: 4)
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 4)
     }
 
     private var header: some View {
@@ -167,7 +155,7 @@ public struct OnboardingFocusProjectView: View {
     }
 
     /// 하단 CTA — 이 스텝 고유의 이분할 바 («이전으로 | 계속하기»).
-    /// 선택 스텝이라 계속하기는 항상 활성. 뒤로가기는 내비바가 아닌 여기서 처리한다.
+    /// 선택 스텝이라 계속하기는 항상 활성. 뒤로가기는 네비바가 아닌 여기서 처리한다.
     private var bottomBar: some View {
         ButtonLarge(.bottom, tone: .dark) {
             Button("이전으로") { send(.userTappedBack) }

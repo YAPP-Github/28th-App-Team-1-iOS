@@ -5,12 +5,13 @@
 //  Created by EunseoKim on 26/07/31.
 //
 
-// Figma: «modal» 딤 — https://figma.com/design/ZG7FUxWCvITmnvzZi7fpTS/?node-id=2302-6098
+// Figma: «modal» 딤 — https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=2302-6080
 
 import SwiftUI
 
 public extension View {
-    /// 모달 오버레이 — 딤(블랙 60%) 위에 카드를 중앙 표출한다. 카드는 `Modal` 등 아무 뷰.
+    /// 모달 오버레이 — 딤(블랙 60%) 위에 카드를 중앙 표출한다.
+    /// 카드는 아무 뷰 — 시안의 세 모달 계열 `Modal`·`HomeModal`·`LoadingModal` 이 전부 이걸로 올라온다.
     ///
     /// ```swift
     /// .hilitModal(isPresented: store.isExitConfirmPresented) {
@@ -24,16 +25,16 @@ public extension View {
     ///
     /// 카드 좌우 여백 px24 를 여기서 준다(시안 327 = 화면 375 − 24×2) — 카드는 폭을 정하지 않는다.
     /// 시안의 backdrop blur 40 은 미포함 — 필요하면 호출부가 배경 콘텐츠 블러로 근사한다(InterviewSession 참조).
+    ///
+    /// 표출은 `fullScreenCover` 다 — 네비바(시스템 UIKit 바)까지 덮으려면 뷰 계층 안 `overlay` 로는
+    /// 안 되기 때문. 그래서 **한 화면에 두 번 붙이면 안 된다**(둘째 cover 가 조용히 무시됨) —
+    /// 모달 2개↑ 는 `hilitModal(item:)`. 앱 루트는 `hilitModalOverlay` 를 쓴다(아래 참조).
+    /// 상세 이유는 `HilitModalPresenter` 주석.
     func hilitModal<Content: View>(
         isPresented: Bool,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        overlay {
-            if isPresented {
-                HilitModalLayer { content() }
-            }
-        }
-        .animation(.easeInOut(duration: 0.2), value: isPresented)
+        modifier(HilitModalPresenter(card: isPresented ? content() : nil))
     }
 
     /// `hilitModal(isPresented:content:)` 의 분기 변형 — 한 화면에 모달이 2개 이상일 때
@@ -48,12 +49,25 @@ public extension View {
         item: Item?,
         @ViewBuilder content: (Item) -> Content
     ) -> some View {
+        modifier(HilitModalPresenter(card: item.map { content($0) }))
+    }
+
+    /// **앱 루트 전용** 표출 — 같은 딤·카드 층을 `overlay` 로 얹는다(presentation 을 새로 열지 않음).
+    /// 루트는 이미 NavigationStack 밖이라 overlay 만으로도 네비바 위에 깔린다.
+    ///
+    /// 화면에서 쓰면 안 된다 — 화면 안쪽 overlay 는 네비바 밑에 깔린다(그래서 `hilitModal` 은 cover).
+    /// 루트가 cover 를 쓰면 화면 모달과 presentation 자리를 다투므로 여기만 overlay 로 남긴다
+    /// (전역 로딩 = `AppView`). 대신 화면 모달이 떠 있는 동안엔 그 cover 아래로 가려진다.
+    func hilitModalOverlay<Content: View>(
+        isPresented: Bool,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
         overlay {
-            if let item {
-                HilitModalLayer { content(item) }
+            if isPresented {
+                HilitModalLayer { content() }
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: item)
+        .animation(.easeInOut(duration: 0.2), value: isPresented)
     }
 }
 
@@ -63,9 +77,42 @@ enum HilitDim {
     static let color = Color.black.opacity(0.6)
 }
 
-/// 딤 + 중앙 카드 열 — 두 변형이 공유하는 레이어.
+/// 표출 배관 — 두 변형이 공유한다. 카드가 `nil` 이면 안 뜬다.
+///
+/// **`overlay` 가 아니라 `fullScreenCover` 인 이유** — 네비바는 시스템 UIKit 바(`.toolbar`,
+/// `HilitNavigationBar`)라 SwiftUI 뷰 계층 **밖**에 그려진다. 뷰 안쪽 `overlay` 로는 딤이 바 밑에
+/// 깔려 X 만 환하게 남는다. 시스템 alert 이 바까지 덮는 건 별도 presentation 에 올라가기 때문이고,
+/// 이 모달도 같은 층을 쓴다(`.presentationBackground(.clear)` 로 cover 자체 배경만 지운다).
+///
+/// cover 의 기본 슬라이드업은 끄고(`disablesAnimations`) 전환은 딤·카드의 opacity 가 맡는다 —
+/// 전면 딤이 아래에서 밀려 올라오면 시안(2302:6080)의 페이드와 다른 물건이 된다.
+/// 그 트랜잭션은 **빈 호스트에만** 걸어 화면 콘텐츠 애니메이션(업로드 진행 바 등)에 번지지 않게 한다.
+/// 닫힘은 즉시다 — cover 해제에는 opacity 를 태울 자리가 없다(표출만 페이드 0.2).
+///
+/// 한 화면에 이 모디파이어를 **두 번 붙이면 안 된다** — 동시 표출 시 두 번째 cover 가 조용히 무시된다.
+/// 모달이 2개 이상인 화면은 `hilitModal(item:)` 에 enum 하나를 물린다.
+private struct HilitModalPresenter<Card: View>: ViewModifier {
+    let card: Card?
+
+    func body(content: Content) -> some View {
+        content.overlay {
+            Color.clear
+                .allowsHitTesting(false)
+                .fullScreenCover(isPresented: .init(get: { card != nil }, set: { _ in })) {
+                    HilitModalLayer { card }
+                        .presentationBackground(.clear)
+                }
+                .transaction { $0.disablesAnimations = true }
+        }
+    }
+}
+
+/// 딤 + 중앙 카드 열 — cover 안에서 그려진다.
 private struct HilitModalLayer<Card: View>: View {
     @ViewBuilder var card: Card
+
+    /// 표출 페이드용 — cover 자체 전환을 껐으므로 여기서 0.2 를 만든다.
+    @State private var isVisible = false
 
     var body: some View {
         ZStack {
@@ -73,6 +120,10 @@ private struct HilitModalLayer<Card: View>: View {
                 .ignoresSafeArea()
             card
                 .padding(.horizontal, .ds(.p24))
+        }
+        .opacity(isVisible ? 1 : 0)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.2)) { isVisible = true }
         }
     }
 }
@@ -91,6 +142,27 @@ private struct HilitModalLayer<Card: View>: View {
                     Button("나가기") { isPresented = false }
                 }
             }
+        }
+}
+
+#Preview("Bool — HomeModal 카드") {
+    Color.GrayScale.g50
+        .ignoresSafeArea()
+        .hilitModal(isPresented: true) {
+            HomeModal(
+                "title",
+                subTitle: "sub-title",
+                icon: Image.Img.oppO,
+                info: "텍스트를 입력해주세요"
+            )
+        }
+}
+
+#Preview("Bool — LoadingModal 카드") {
+    Color.GrayScale.g50
+        .ignoresSafeArea()
+        .hilitModal(isPresented: true) {
+            LoadingModal()
         }
 }
 

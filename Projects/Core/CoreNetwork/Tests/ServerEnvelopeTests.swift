@@ -39,7 +39,27 @@ final class ServerEnvelopeTests: XCTestCase {
         XCTAssertEqual(error, ServerError(code: "NO_REMAINING_TICKET", message: "남은 이용권이 없어요.", statusCode: 403))
     }
 
-    func test_ServerError_decode_envelope이_아니면_nil() {
+    func test_ServerError_decode_Spring기본포맷을_읽는다() {
+        // 서버가 코드로 승격하지 않은 에러 (2026-08-02 확인) — code 빈 문자열, message 에 error 원문.
+        let body = Data(#"{"timestamp": "2026-08-02T03:33:33.209+00:00", "status": 403, "error": "Forbidden", "path": "/api/v1/consents/pending"}"#.utf8)
+
+        let error = ServerError.decode(statusCode: 403, body: body)
+
+        XCTAssertEqual(error, ServerError(code: "", message: "Forbidden", statusCode: 403))
+    }
+
+    func test_ServerError_alert표기_정의코드와_Spring포맷이_다르다() {
+        // 임시 노출 규칙(2026-08-02): 정의 코드 «CODE(status)» / Spring 은 상태코드만.
+        let defined = ServerError(code: "INVALID_CONSENT_ITEM", message: "지원하지 않는 동의 항목이에요.", statusCode: 400)
+        XCTAssertEqual(defined.alertTitle, "INVALID_CONSENT_ITEM(400)")
+        XCTAssertEqual(defined.alertMessage, "지원하지 않는 동의 항목이에요.")
+
+        let spring = ServerError(code: "", message: "Forbidden", statusCode: 403)
+        XCTAssertEqual(spring.alertTitle, "403")
+        XCTAssertEqual(spring.alertMessage, "Forbidden")
+    }
+
+    func test_ServerError_decode_두_포맷_다_아니면_nil() {
         XCTAssertNil(ServerError.decode(statusCode: 500, body: Data("Internal Server Error".utf8)))
     }
 
@@ -54,5 +74,22 @@ final class ServerEnvelopeTests: XCTestCase {
 
         // 서버 LocalDateTime 은 KST 가정 — "2026-07-06T10:00:04"(KST) == "2026-07-06T01:00:04Z"(UTC)
         XCTAssertEqual(decoded.local, decoded.iso)
+    }
+
+    func test_JSONDecoder_api_소수점초_LocalDateTime을_초단위로_잘라_디코딩한다() throws {
+        struct Timestamps: Decodable {
+            let micro: Date
+            let milli: Date
+            let plain: Date
+        }
+        // Jackson 은 나노초가 있으면 소수점 초를 붙인다(자릿수 가변) — 2026-08-02 포트폴리오 uploadedAt 실응답 대응.
+        let json = Data(#"""
+        {"micro": "2026-07-06T10:00:04.123456", "milli": "2026-07-06T10:00:04.123", "plain": "2026-07-06T10:00:04"}
+        """#.utf8)
+
+        let decoded = try JSONDecoder.api.decode(Timestamps.self, from: json)
+
+        XCTAssertEqual(decoded.micro, decoded.plain)
+        XCTAssertEqual(decoded.milli, decoded.plain)
     }
 }

@@ -30,8 +30,14 @@ public extension View {
     /// 쓰기 경로가 없는데 Binding 을 받으면 API 가 거짓말을 한다.
     ///
     /// 시트 위치는 safe area 바닥(홈 인디케이터 위) — 판을 그 아래까지 깔려면 위 예시처럼
-    /// 배경 shape 에 `.ignoresSafeArea(edges: .bottom)`. 드래그 닫기 없음(시안에 없어서 —
-    /// 필요해지면 그때 추가).
+    /// 배경 shape 에 `.ignoresSafeArea(edges: .bottom)`.
+    ///
+    /// **드래그 없음 — 고정 높이 시트 전용.** 높이가 드래그로 바뀌어야 하면 `.hilitDetentSheet`
+    /// (시스템 `.sheet` + detent)를 쓴다. 오버레이로 제스처를 흉내내지 않는다.
+    ///
+    /// 표출은 `.hilitModal` 과 같은 `fullScreenCover` 다 — 네비바(시스템 UIKit 바)까지 덮어야 하므로.
+    /// 따라오는 제약도 같다: **한 화면에 두 번 붙이지 않는다**(둘째 cover 가 조용히 무시됨 — 시트
+    /// 2개↑ 는 `item:` 에 enum 하나), 닫힘 전환은 즉시. 이유는 `HilitModalPresenter` 주석.
     ///
     /// - Parameter onDimTap: 딤 탭 시 호출 — 보통 닫기 리듀서 액션. `nil`(기본)이면 딤 탭 무시.
     func hilitBottomSheet<Content: View>(
@@ -39,12 +45,10 @@ public extension View {
         onDimTap: (() -> Void)? = nil,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        overlay {
-            if isPresented {
-                HilitBottomSheetLayer(onDimTap: onDimTap) { content() }
-            }
-        }
-        .animation(.easeInOut(duration: 0.25), value: isPresented)
+        modifier(HilitBottomSheetPresenter(
+            sheet: isPresented ? content() : nil,
+            onDimTap: onDimTap
+        ))
     }
 
     /// `hilitBottomSheet(isPresented:onDimTap:content:)` 의 분기 변형 — 한 화면에 시트가 2개 이상일 때
@@ -60,29 +64,55 @@ public extension View {
         onDimTap: (() -> Void)? = nil,
         @ViewBuilder content: (Item) -> Content
     ) -> some View {
-        overlay {
-            if let item {
-                HilitBottomSheetLayer(onDimTap: onDimTap) { content(item) }
-            }
-        }
-        .animation(.easeInOut(duration: 0.25), value: item)
+        modifier(HilitBottomSheetPresenter(
+            sheet: item.map { content($0) },
+            onDimTap: onDimTap
+        ))
     }
 }
 
-/// 딤 + 바닥 시트 열 — 두 변형이 공유하는 레이어.
+/// 표출 배관 — 두 변형이 공유한다. 시트가 `nil` 이면 안 뜬다.
+/// cover 를 쓰는 이유·제약은 `HilitModalPresenter` 와 동일(네비바 위 표출, 화면당 하나, 닫힘 즉시).
+/// 슬라이드업(0.25)은 cover 기본 전환이 아니라 레이어가 직접 만든다 — 시스템 전환은 껐다.
+private struct HilitBottomSheetPresenter<Sheet: View>: ViewModifier {
+    let sheet: Sheet?
+    var onDimTap: (() -> Void)?
+
+    func body(content: Content) -> some View {
+        content.overlay {
+            Color.clear
+                .allowsHitTesting(false)
+                .fullScreenCover(isPresented: .init(get: { sheet != nil }, set: { _ in })) {
+                    HilitBottomSheetLayer(onDimTap: onDimTap) { sheet }
+                        .presentationBackground(.clear)
+                }
+                .transaction { $0.disablesAnimations = true }
+        }
+    }
+}
+
+/// 딤 + 바닥 시트 열 — cover 안에서 그려진다.
 private struct HilitBottomSheetLayer<Sheet: View>: View {
     var onDimTap: (() -> Void)?
     @ViewBuilder var sheet: Sheet
+
+    /// 표출 전환용 — cover 자체 전환을 껐으므로 딤 페이드·시트 슬라이드를 여기서 만든다.
+    @State private var isVisible = false
 
     var body: some View {
         ZStack(alignment: .bottom) {
             HilitDim.color
                 .ignoresSafeArea()
-                .transition(.opacity)
+                .opacity(isVisible ? 1 : 0)
                 .onTapGesture { onDimTap?() }
-            sheet
-                .frame(maxWidth: .infinity)
-                .transition(.move(edge: .bottom))
+            if isVisible {
+                sheet
+                    .frame(maxWidth: .infinity)
+                    .transition(.move(edge: .bottom))
+            }
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.25)) { isVisible = true }
         }
     }
 }

@@ -1,15 +1,16 @@
 # API — D14 서버 연동
 
-YAPP APP 1팀 백엔드(D14 API v1)와의 연동 지식. 서버 태그(Auth·Interview·Interview Report·JD·Job·Portfolio·User·Feedback Share·Guest Feedback)를 Domain 모듈로 1:1 미러링하고, 공통 규약(envelope·토큰)은 CoreNetwork 가 흡수한다. 인프라 계약은 [[domain.map#네트워킹 인프라]], 레이어 규칙은 [[architecture]].
+YAPP APP 1팀 백엔드(D14 API v1)와의 연동 지식. 서버 태그(AppVersion·Auth·Consent·Interview·Interview Report·JD·Job·Portfolio·User·Feedback Share·Guest Feedback)를 Domain 모듈로 1:1 미러링하고, 공통 규약(envelope·토큰)은 CoreNetwork 가 흡수한다. 인프라 계약은 [[domain.map#네트워킹 인프라]], 레이어 규칙은 [[architecture]].
 
-- Swagger: `http://43.202.34.84:8080/swagger-ui/index.html`
+- Swagger: `https://hilit.my/swagger-ui/index.html`
 - 스펙 원문: `GET /v3/api-docs` (OpenAPI 3.1)
 
 ## 서버와 환경
 
-개발 서버는 `http://43.202.34.84:8080` (HTTP + IP 직결). baseURL 은 계별 xcconfig `API_BASE_URL` → Info.plist → `NetworkClient.defaultBaseURL()` 로 흐른다 (→ DocC Environments). QA/Prod 값은 아직 자리표시자다.
+개발 서버는 `https://hilit.my` (같은 인스턴스에 `http://43.202.34.84:8080` 로 IP 직결도 가능). baseURL 은 계별 xcconfig `API_BASE_URL` → Info.plist → `NetworkClient.defaultBaseURL()` 로 흐른다 (→ DocC Environments). QA/Prod 값은 아직 자리표시자다.
 
-- HTTP 라서 ATS 전면 허용(`NSAllowsArbitraryLoads`)이 걸려 있다 — `Target+Templates.swift` 의 `.app()`/`feature(example:)`. 운영 HTTPS 전환 시 반드시 제거 (App Store 심사에서 사유 요구).
+- **도메인은 반드시 https** — `http://hilit.my` 로 붙으면 Caddy 가 308 로 https 에 넘기는데, scheme 이 바뀌어 origin 이 달라지므로 URLSession 이 `Authorization` 헤더를 떼고 재요청한다 → 전 API 403(익명 취급). body 로 자격증명을 싣는 재발급만 살아남아 «토큰은 멀쩡한데 전부 403» 로 보인다.
+- ATS 전면 허용(`NSAllowsArbitraryLoads`)은 IP 직결(HTTP) 디버깅 경로 때문에 남아 있다 — `Target+Templates.swift` 의 `.app()`/`feature(example:)`. IP 직결이 사라지면 제거 (App Store 심사에서 사유 요구).
 
 ## 공통 규약
 
@@ -17,17 +18,32 @@ YAPP APP 1팀 백엔드(D14 API v1)와의 연동 지식. 서버 태그(Auth·Int
 
 - Swagger 스키마 일부는 envelope 없이 표기돼 있다(annotation 누락) → `ServerEnvelope.unwrap` 이 직접 디코드 폴백을 가진다.
 - 날짜는 ISO8601 과 LocalDateTime(타임존 표기 없음)이 혼재 → `JSONDecoder.api` 가 KST 가정으로 파싱. 백엔드와 타임존 계약 확정 필요.
-- Domain 은 `ServerError.code` 로 도메인 에러를 매핑한다 — 서버 정의 에러 코드가 있는 모든 도메인이 자체 에러 enum 을 갖는다(AuthError·InterviewError·InterviewReportError·JDError·PortfolioError·UserError·FeedbackShareError·GuestFeedbackError). 케이스는 State 가 다르게 반응할 경우의 수만큼만. 매핑 공통부(토큰 만료 3코드 → sessionExpired, 미인식 5xx → serverUnavailable, transport → networkFailure, 취소 통과)는 `DomainCommonInterface` 의 `DomainAPIError` 프로토콜이 수행하고, 각 도메인 enum 은 고유 코드 매핑 `init?(serverCode:message:)` 만 구현한다 (Interview 만 미승격 4xx 폴백을 `server(code:message:)` 로 재정의, 무인증 GuestFeedback 은 `sessionExpired` 를 unexpected 별칭으로 충족). Implementation 은 `XxxError.mapping { }` 래퍼로 감싼다. 에러 코드가 없는 도메인(Job)만 ServerError/NetworkError 를 그대로 던진다.
+- 서버 에러 body 는 **두 포맷**(2026-08-02 확인) — 정의된 코드 `{success:false, code, message}` / 미정의(Spring 기본) `{timestamp, status, error, path}`. `ServerError.decode` 가 둘 다 읽는다(후자는 `code:""` + `message:error원문`).
+- Domain 은 `ServerError.code` 로 도메인 에러를 매핑한다 — 서버 정의 에러 코드가 있는 모든 도메인이 자체 에러 enum 을 갖는다(AppVersionError·AuthError·ConsentError·InterviewError·InterviewReportError·JDError·PortfolioError·UserError·FeedbackShareError·GuestFeedbackError). 케이스는 State 가 다르게 반응할 경우의 수만큼만. 매핑 공통부(토큰 만료 3코드 → sessionExpired, 미인식 5xx → serverUnavailable, transport → networkFailure, 취소 통과)는 `DomainCommonInterface` 의 `DomainAPIError` 프로토콜이 수행하고, 각 도메인 enum 은 고유 코드 매핑 `init?(serverCode:message:)` 만 구현한다 (Interview·Consent·Auth 는 미승격 4xx 폴백을 `server(…)` 케이스로 재정의해 원문을 화면까지 흘린다, 무인증 GuestFeedback·AppVersion 은 `sessionExpired` 를 unexpected 별칭으로 충족). Implementation 은 `XxxError.mapping { }` 래퍼로 감싼다. 에러 코드가 없는 도메인(Job)만 ServerError/NetworkError 를 그대로 던진다.
+- **미승격 에러 임시 노출 규칙(2026-08-02)** — 도메인 핸들링 확정 전까지 OS 기본 Alert 에 `ServerError.alertTitle/alertMessage` 로 노출: 정의 코드는 title «CODE(status)»·message 서버 문구, Spring 포맷은 title 상태코드·message `error` 원문. 도메인별 핸들링이 정해지면 전용 케이스 승격이 우선.
 - multipart(파일 업로드)는 `NetworkRequest.multipart(...)` 빌더 — 기존 NetworkRequest 계약(헤더+body) 위의 편의일 뿐이다.
 
 ## 토큰 수명주기
 
 JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째로 교체). 보관은 Keychain(`TokenStore`). Feature 는 토큰의 존재를 모른다.
 
-- 인증 필요 요청은 전부 `AuthorizedNetworkClient` 를 쓴다 — Bearer 첨부 후 `TOKEN_EXPIRED`/`INVALID_TOKEN` 이면 **단일 비행** 재발급 → 원요청 1회 재시도. (Rotation 이라 중복 재발급 = 로그아웃 사고 → actor 직렬화)
+- 인증 필요 요청은 전부 `AuthorizedNetworkClient` 를 쓴다 — Bearer 첨부 후 만료 감지 시 **단일 비행** 재발급 → 원요청 1회 재시도. (Rotation 이라 중복 재발급 = 로그아웃 사고 → actor 직렬화)
+- 만료 판정 2중: **HTTP 403 이면 body 와 무관하게 만료**(서버 계약 2026-08-02 — 모든 API 공통) + `TOKEN_EXPIRED`/`INVALID_TOKEN` 코드(403 이 아닌 상태로 오는 케이스 방어).
 - `LOGIN_EXPIRED` = Refresh 도 만료 → 토큰 폐기 후 전파. 앱 레벨 재로그인 라우팅 신호.
 - 로컬 토큰이 아예 없으면 요청 전에 `NotAuthenticatedError` — 로그인 화면 유도.
 - 저장(로그인)·삭제(로그아웃)는 [[api#Auth]] 의 AuthClient 책임.
+
+## AppVersion
+
+`DomainAppVersion` — `AppVersionClient.check`. 스플래시에서 현재 마케팅 버전을 보내 강제(FORCE)/권장(OPTIONAL)/최신(NONE) 판정을 받는다. 버전 비교 규칙은 전부 서버 책임 — 클라이언트는 `updateType` 만 따르고, 응답의 `storeUrl` 로 스토어를 연다. 무인증(로그인 전 호출)이라 `NetworkClient` 를 직접 쓴다.
+
+| 메서드 | 엔드포인트 | 비고 |
+|---|---|---|
+| `check` | GET `/api/v1/app-versions/check` | query `platform=IOS`·`version=x.x.x` (마케팅 버전) |
+
+에러는 `AppVersionError` — 고유 코드(INVALID_PLATFORM·INVALID_VERSION_FORMAT·APP_VERSION_POLICY_NOT_FOUND)는 정상 클라이언트에서 나올 수 없어 케이스 승격 없이 unexpected 폴백. 스플래시는 실패 시 fail-open(게이트 없이 진입)이 기본이라 공통 3케이스(networkFailure·serverUnavailable·unexpected)만 둔다.
+
+호출은 `AppFeature` 진입 판정의 첫 단계다 — 세션 판정보다 **앞**(FORCE 를 뒤에 두면 홈 진입 후에 막게 된다), 실패·버전 키 부재는 `nil` 로 삼켜 통과 → [[app#Splash 세션 복구]].
 
 ## Auth
 
@@ -35,29 +51,42 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 
 | 메서드 | 엔드포인트 | 비고 |
 |---|---|---|
-| `login` | POST `/api/v1/auth/social/login` | KAKAO=액세스 토큰 / APPLE=authorization code 를 credential 로 전송, 성공 시 토큰 저장 |
+| `login` | POST `/api/v1/auth/social/login` | KAKAO=액세스 토큰 / APPLE=authorization code 를 credential 로 전송. 성공 시 토큰 저장 + `LoginResult`(consentStatus·profileRegistered — 진입 게이트 판정값, [launch-routing](../docs/work/launch-routing.md)) 반환. 응답의 `newUser`·`userInfo` 는 소비자가 없어 디코딩하지 않는다 |
 | `refresh` | POST `/api/v1/auth/token/refresh` | 명시적 재발급 (자동은 AuthorizedNetworkClient) |
 | `logout` | DELETE `/api/v1/auth/logout` | 204. 로컬 토큰은 서버 응답과 무관하게 삭제 |
 | `check` | GET `/api/v1/auth/check` | 인증 동작 확인(테스트용) |
 
-실패는 `AuthError` 로 매핑된다 — INVALID_CREDENTIAL/SOCIAL_LOGIN_FAILED → invalidCredential, LOGIN_EXPIRED·TOKEN_EXPIRED·INVALID_TOKEN → sessionExpired, transport → networkFailure, 5xx → serverUnavailable.
+실패는 `AuthError` 로 매핑된다 — INVALID_CREDENTIAL/SOCIAL_LOGIN_FAILED → invalidCredential, LOGIN_EXPIRED·TOKEN_EXPIRED·INVALID_TOKEN → sessionExpired, transport → networkFailure, 5xx → serverUnavailable, 미승격 4xx → server(원문 동봉 — 임시 노출 규칙, [[api#공통 규약]]).
 
-## Interview
+## Consent
 
-`DomainInterview` — `InterviewClient`. 세션 준비(질문 Preload·요약 질문 TTS)는 서버 비동기 — 생성(202) 후 `sessionStatus` 를 3~5초 폴링하고, READY 에 `startedAt`·요약 질문(base64 TTS)이 동봉된다. FAILED 면 이용권 자동 환불. 계약 상세는 [[interview]].
+`DomainConsent` — `ConsentClient`. 온보딩 최초 동의와 약관 개정 재동의를 한 흐름으로 처리한다. `pending` 의 `consentStatus` 하나로 최초(NOT_SUBMITTED)/재동의(STALE)/최신(UP_TO_DATE)을 구분하고, 제출은 pending 이 내려준 `version` 을 그대로 보낸다. 첫 성공 제출 시 서버가 무료 이용권 3회를 부여한다.
 
 | 메서드 | 엔드포인트 | 비고 |
 |---|---|---|
-| `createSession` | POST `/api/v1/interview/sessions` | 이용권 무료 3회, `jdUrl`/`jdText` 상호 배타 |
+| `pending` | GET `/api/v1/consents/pending` | 신규 유저는 필수 5종 전체, 구버전 동의 유저는 바뀐 항목만. `profileRegistered`(게이트 ② 판정값)도 내려준다 — 세션 복구(Splash)가 login 응답 없이 분기하기 위함(2026-08-01 합의, 2026-08-02 배포 확인). 상태 키는 `consentStatus` |
+| `document` | GET `/api/v1/consents/{item}/versions/{version}` | 본문(마크다운) — 항목 탭 시 바텀시트. `hasDocument: false` 면 숨김 |
+| `submit` | POST `/api/v1/consents` | 필수 항목은 agreed: true 만, 선택 항목은 거부도 정상 제출 |
+
+에러는 `ConsentError` 로 매핑된다 — CONSENT_VERSION_MISMATCH → versionMismatch(400, 제출 중 개정 → pending 재조회 후 재시도), VALIDATION_ERROR 는 서버 문구를 실은 invalid(message:). REQUIRED_CONSENT_MISSING·INVALID_CONSENT_ITEM 은 UI 가 막는 클라이언트 결함이라 케이스 승격 없이 server 폴백(원문 Alert — 임시 노출 규칙, [[api#공통 규약]]).
+
+## Interview
+
+`DomainInterview` — `InterviewClient`. 세션 생성은 회원 프로필 스냅샷을 쓴다(직군·연차는 body 에서 제거, 미등록이면 `USER_PROFILE_NOT_REGISTERED`). 준비는 서버 비동기 — 202 후 `sessionStatus` 3~5초 폴링, READY 에 `startedAt`·요약 질문(base64 TTS) 동봉. FAILED 면 이용권 자동 환불. 계약 상세는 [[interview]].
+
+| 메서드 | 엔드포인트 | 비고 |
+|---|---|---|
+| `createSession` | POST `/api/v1/interview/sessions` | 이용권 무료 3회, `jdUrl`/`jdText` 상호 배타, 직군·연차는 프로필 스냅샷 |
 | `sessionStatus` | GET `/api/v1/interview/sessions/{id}/status` | 3~5초 폴링 |
-| `submitAnswer` | POST `/api/v1/interview/sessions/{id}/answers` | 현재 turnLevel=0 전용, 메타=query + 오디오=multipart(mp3) |
+| `submitAnswer` | POST `/api/v1/interview/sessions/{id}/answers` | 메타=query + 오디오=multipart. 503(`AI_TEMPORARILY_UNAVAILABLE`)은 같은 요청 재시도 계약 |
 | `questionAudioStream` | GET `.../questions/{qid}/audio/stream` | 아래 스트리밍 규약 |
+| `reportList` | GET `/api/v1/interview/sessions` | 내 레포트 목록(마이페이지) — envelope `{reports}` 는 liveValue 가 벗김 |
 
 질문 음성 스트리밍 규약: `audio/mpeg` + `Transfer-Encoding: chunked` (Content-Length 없음). 전부 받고 재생하지 말고 `AVURLAsset(url:options:[헤더])` → `AVPlayer` 점진 재생 — 그래서 계약이 Data 가 아니라 `InterviewAudioStream(url·headers)` 다. 중간 실패는 HTTP 로 안 잡힌다 — 재생 에러 콜백으로 감지하고 같은 questionId 로 재호출(TTS 처음부터 재생성).
 
-`endType` 계약(답변 제출): nil=정상 / SKIP(오디오 없음) / MANUAL_END(8:00 후 수동 종료) / HARD_CAP(12:00 강제) / EARLY_EXIT(8:00 전 이탈). `isWrapUp` 은 8:45 경과 여부 — 타이머 상태머신은 [ai-interview](../docs/work/ai-interview.md) §6.
+`endType` 은 요청·응답이 다른 집합이다. 요청(`AnswerEndType`): nil=정상 / SKIP(오디오 없음) / MANUAL_END(8:00 후 수동 종료) / HARD_CAP(12:00 강제) / BACK_EXIT(8:00 전 뒤로가기 이탈 — 구 EARLY_EXIT, 2026-08-03 서버 개명·오디오 선택). 응답(`SessionEndType`): MANUAL_END·HARD_CAP·BACK_EXIT + NORMAL_END(자연 종료) + **STT_RESET**(STT 30% 실패 — 판정은 서버, 이용권 환불·리포트 없음). ⚠️ 2026-08-03 스웨거부터 BACK_EXIT 도 리포트 생성을 트리거한다(이용권 HELD → 리포트 성공 시 차감 확정) — «이탈=리포트 없음» 전제의 클라 문구·라우팅은 PM 재확인 대상. 종료 응답은 `sessionEnded`·`wrapUpMessage{ttsAudio}`(base64 mp3 마무리 멘트)를 동봉하고 `reportId` 는 삭제됐다. `isWrapUp` 은 8:45 경과 여부(required — 항상 전송) — 타이머 상태머신은 [ai-interview](../docs/work/ai-interview.md) §6.
 
-에러는 `InterviewError` 로 매핑된다 — NO_REMAINING_TICKET → noRemainingTicket(403), PORTFOLIO_NOT_FOUND / PORTFOLIO_PROCESSING / PORTFOLIO_UPLOAD_FAILED / JD_NOT_VALIDATED / FREETEXT_NOT_RELEVANT (세션 생성 400·404), INTERVIEW_SESSION_NOT_FOUND / QUESTION_NOT_FOUND (404), ANSWER_ALREADY_SUBMITTED / SESSION_ALREADY_ENDED (409), 입력 검증군(VALIDATION_ERROR·INVALID_*)은 서버 문구를 실은 invalid(message:), 미승격 코드(4xx)는 server(code·message) 로 동봉 — 분기가 필요해지면 전용 케이스로 승격.
+에러는 `InterviewError` 로 매핑된다 — NO_REMAINING_TICKET → noRemainingTicket(403), PORTFOLIO_NOT_FOUND / PORTFOLIO_PROCESSING / PORTFOLIO_UPLOAD_FAILED / JD_NOT_VALIDATED / FREETEXT_NOT_RELEVANT / USER_PROFILE_NOT_REGISTERED (세션 생성 400·404), INTERVIEW_SESSION_NOT_FOUND / QUESTION_NOT_FOUND (404), ANSWER_ALREADY_SUBMITTED / SESSION_ALREADY_ENDED (409), AI_TEMPORARILY_UNAVAILABLE → aiTemporarilyUnavailable(503 — 코드 매핑이 5xx 판정보다 먼저라 serverUnavailable 에 선점되지 않음, 같은 요청 재시도), 입력 검증군(VALIDATION_ERROR·INVALID_*)은 서버 문구를 실은 invalid(message:), 미승격 코드(4xx)는 server(code·message) 로 동봉 — 분기가 필요해지면 전용 케이스로 승격.
 
 ## Interview Report
 
@@ -99,20 +128,21 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 | `status` | GET `/api/v1/portfolios/{id}/status` | 3~5초 폴링 |
 | `delete` | DELETE `/api/v1/portfolios/{id}` | 재등록 전 필수 (1개 제한) |
 
-에러는 `PortfolioError` 로 매핑된다 — 업로드 검증군 INVALID_FILE_TYPE / FILE_TOO_LARGE / PAGE_COUNT_EXCEEDED / INVALID_PDF_FILE (400), PORTFOLIO_ALREADY_EXISTS → alreadyExists(409), PORTFOLIO_NOT_FOUND → notFound(404).
+에러는 `PortfolioError` 로 매핑된다 — 업로드 검증군 INVALID_FILE_TYPE / FILE_TOO_LARGE / PAGE_COUNT_EXCEEDED / INVALID_PDF_FILE (400), PORTFOLIO_ALREADY_EXISTS → alreadyExists(409), PORTFOLIO_NOT_FOUND → notFound(404). 이 4xx 케이스들은 서버 한국어 `message` 를 associated value 로 보존한다(`userMessage`) — 클라 카피가 확정되지 않아 화면이 원문을 그대로 노출하기 때문(인프라 실패는 nil → 클라 폴백 문구).
 
 ## User
 
-`DomainUser` — `UserClient`. 회원 프로필 조회/수정과 이름 등록/중복 확인. 수정값은 이후 새로 생성하는 면접 세션부터 반영된다(과거 세션 스냅샷 불변) — 클라이언트가 이 조회값으로 세션 설정을 프리필한다. 로그인 응답의 `userInfo` 와 같은 형태다([[api#Auth]]).
+`DomainUser` — `UserClient`. 회원 프로필 조회/등록·수정과 회원 탈퇴. 조회(profile)와 수정(updateProfile)은 다른 화면(마이페이지 표시 vs 온보딩·프로필 편집)에서 따로 쓰는 전제로 읽기/쓰기 모델을 분리했다(UserProfile vs UserProfileUpdate). 수정값은 이후 새로 생성하는 면접 세션부터 반영된다(과거 세션 스냅샷 불변) — 클라이언트가 이 조회값으로 세션 설정을 프리필한다.
 
 | 메서드 | 엔드포인트 | 비고 |
 |---|---|---|
-| `profile` | GET `/api/v1/users/me/profile` | 이름·직무·연차·잔여 이용권 |
-| `updateProfile` | PATCH `/api/v1/users/me/profile` | 이름은 변경할 때만 body 에 포함 |
-| `registerName` | PATCH `/api/v1/users/me/name` | 1~20자, 등록 후 재변경 가능 |
-| `checkName` | GET `/api/v1/users/name/check` | 본인이 등록한 이름은 충돌 아님 |
+| `profile` | GET `/api/v1/users/me/profile` | 이름·이메일·제공자(KAKAO/APPLE)·직무·연차·잔여 이용권 |
+| `updateProfile` | PATCH `/api/v1/users/me/profile` | 온보딩 최초 등록과 재수정 공용. 이름(한글·영문 최대 5자)·직군·연차 매 호출 필수 |
+| `withdraw` | DELETE `/api/v1/users/me` | 204. 서버가 소셜 unlink/revoke 까지 수행, 성공 시 클라이언트 토큰도 삭제 |
 
-에러는 `UserError` 로 매핑된다 — USER_NOT_FOUND → userNotFound(404), NAME_ALREADY_TAKEN → nameAlreadyTaken(409), INVALID_JOB_ROLE → invalidJobRole(400), VALIDATION_ERROR·CONSTRAINT_VIOLATION 은 서버 문구를 실은 invalid(message:).
+이름 단독 등록(PATCH `/users/me/name`)은 서버에서 삭제 예정(프로필 API 로 통일), 이름 중복 확인(GET `/users/name/check`)은 스펙에서 제거됨 — 클라이언트에서 걷어냈다(이름은 더 이상 유일하지 않다).
+
+에러는 `UserError` 로 매핑된다 — USER_NOT_FOUND → userNotFound(404), INVALID_JOB_ROLE → invalidJobRole(400), SOCIAL_RECONNECT_REQUIRED → socialReconnectRequired(409, 재로그인 후 탈퇴 재시도), VALIDATION_ERROR·CONSTRAINT_VIOLATION 은 서버 문구를 실은 invalid(message:). 탈퇴 중 소셜 해제 실패(SOCIAL_UNLINK_FAILED, 502)는 5xx 공통 규칙으로 serverUnavailable.
 
 ## Feedback Share
 

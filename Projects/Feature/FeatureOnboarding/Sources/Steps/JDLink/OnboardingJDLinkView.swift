@@ -21,7 +21,7 @@ public struct OnboardingJDLinkView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            progressBar
+            DashIndicator(count: store.totalSteps, current: store.step)
             ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
                     header
@@ -46,18 +46,6 @@ public struct OnboardingJDLinkView: View {
     }
 
     // MARK: - 공통 골격 (STEP 1 과 동일 — 프로그레스 바)
-
-    private var progressBar: some View {
-        HStack(spacing: 2) {
-            ForEach(1...store.totalSteps, id: \.self) { step in
-                Rectangle()
-                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.GrayScale.g50)
-                    .frame(height: 4)
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 4)
-    }
 
     // MARK: - 헤더
 
@@ -321,7 +309,7 @@ public struct OnboardingJDLinkView: View {
 
     // MARK: - 하단 CTA (이전으로 | 계속하기)
 
-    /// 분할 CTA 바 — 뒤로가기가 내비바가 아니라 여기에 있다 (Figma 1609:9659).
+    /// 분할 CTA 바 — 뒤로가기가 네비바가 아니라 여기에 있다 (Figma 1609:9659).
     /// 한쪽만 비활성은 그 자식의 `.disabled` 로 표현한다 (DS 2버튼 규약).
     private var bottomBar: some View {
         ButtonLarge(.bottom, tone: .dark) {

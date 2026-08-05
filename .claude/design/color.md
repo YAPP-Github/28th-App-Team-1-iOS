@@ -41,6 +41,16 @@ Rectangle().fill(Color.GrayScale.g50)
 
 **생김새로 찾을 때**: 「형광 연두」→ `HilitGreen.g500`, 「연한 하늘 배경」→ `Positive.p200`, 「disabled 회색 글자」→ `GrayScale.g300` 처럼 위 표의 생김새 열을 훑는다. HEX 를 아는 경우 그대로 검색.
 
+## 팔레트 밖 — `Brand`
+
+외부 제공자 브랜드 색. HILIT 스케일에 자리가 없고 상대 가이드라인이 값을 고정하므로 **23색 팔레트와 섞지 않고** 따로 묶는다 — 카탈로그의 6그룹과 `ColorPaletteTests` 의 23색 불변식은 그대로 유지된다.
+
+| enum | 토큰 | HEX | 생김새 · 용도 |
+|---|---|---|---|
+| `Brand` | `kakao` | #FEE500 | 카카오 노랑 — 카카오 로그인 버튼 배경 (`ButtonLarge(_:login: .kakao)`) |
+
+에셋은 `Colors.xcassets/Brand/ColorFEE500`. 새 제공자 색(네이버 등)이 들어오면 같은 enum 에 추가하고 팔레트 표는 건드리지 않는다.
+
 ## 구현 노트
 
 - **에셋 로드**: 값은 `Interface/Resources/Colors.xcassets`(에셋명 = `Color<HEX>`), 로드는 Tuist 생성 접근자 `SharedDesignSystemInterfaceAsset.Colors.<name>.swiftUIColor` ([Color+Extension.swift](../../Projects/Shared/SharedDesignSystem/Interface/Color/Color+Extension.swift) 가 `Asset` 으로 축약해 감싼다). 에셋명이 HEX 라 생성 이름도 `color636777` — 의미를 입히는 게 팔레트 enum 의 일이다. 에셋을 지우거나 이름을 바꾸면 팔레트에서 컴파일 에러가 난다.
@@ -48,3 +58,4 @@ Rectangle().fill(Color.GrayScale.g50)
 - **Figma 주의**: Color Guide 의 positive 계열 HEX **텍스트 라벨**(주황 계열)은 오기 — 실제 스와치·바인딩 변수(청록, 위 표 값)가 확정이다. 라벨만 보고 옮기지 말 것 (디자이너 정정 요청 중).
 - **다크모드 미반영**: 각 토큰은 현재 단일 appearance(universal). 도입 결정 시 colorset 에 dark variant 추가.
 - **raw 값 보류 승격**: Figma 에서 변수 미바인딩 raw 값(예: 분석 밴드 #1A3C14)은 섣불리 토큰화하지 않는다 — 사용처 private 상수 + 주석으로 보류하고, 디자인 시스템에 변수가 생기면 승격.
+- **승격 대기 — 팔레트 공백**: `hilit green/200` #D2EFCC(`ReportCard` 접힌 줄 밴드)는 **이름 붙은 Figma 변수인데 대응 토큰이 없다** — 팔레트 그린이 g500·g600·g800 뿐이라 200 자리가 비어 있다. 위 raw 값 보류와 달리 승격 근거(이름 붙은 변수)가 이미 있어 **승격 후보**다(`ColorD2EFCC` + `HilitGreen.g200`). 그때까지 `ReportCard.swift` 파일 내부 private 상수.

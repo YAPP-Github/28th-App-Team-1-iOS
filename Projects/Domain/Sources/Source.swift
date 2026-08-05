@@ -2,7 +2,9 @@
 // 하위 서브모듈(Implementation)을 재노출(re-export)하는 역할만 한다.
 
 @_exported import DomainCommonImplementation
+@_exported import DomainAppVersionImplementation
 @_exported import DomainAuthImplementation
+@_exported import DomainConsentImplementation
 @_exported import DomainInterviewImplementation
 @_exported import DomainPermissionImplementation
 @_exported import DomainRecordingImplementation

@@ -16,21 +16,25 @@ public struct InterviewClient: Sendable {
     public var createSession: @Sendable (InterviewConfig) async throws -> InterviewSessionCreated
     /// GET /interview/sessions/{id}/status — 3~5초 간격 폴링. READY 면 요약 질문 TTS 동봉.
     public var sessionStatus: @Sendable (_ sessionId: Int) async throws -> InterviewSessionStatus
-    /// POST /interview/sessions/{id}/answers — 현재 turnLevel=0(첫 턴) 전용. 중복 제출은 `ANSWER_ALREADY_SUBMITTED`.
+    /// POST /interview/sessions/{id}/answers — 중복 제출은 `ANSWER_ALREADY_SUBMITTED`, 503 은 같은 요청 재시도 계약.
     public var submitAnswer: @Sendable (_ sessionId: Int, AnswerSubmission) async throws -> AnswerResult
     /// GET /interview/sessions/{id}/questions/{qid}/audio/stream 재생 정보 — AVPlayer 점진 재생용.
     public var questionAudioStream: @Sendable (_ sessionId: Int, _ questionId: Int) async throws -> InterviewAudioStream
+    /// GET /interview/sessions — 내 면접 레포트 목록(마이페이지용). envelope `{ reports }` 는 Live 가 벗긴다.
+    public var reportList: @Sendable () async throws -> [InterviewReportSummary]
 
     public init(
         createSession: @escaping @Sendable (InterviewConfig) async throws -> InterviewSessionCreated,
         sessionStatus: @escaping @Sendable (_ sessionId: Int) async throws -> InterviewSessionStatus,
         submitAnswer: @escaping @Sendable (_ sessionId: Int, AnswerSubmission) async throws -> AnswerResult,
-        questionAudioStream: @escaping @Sendable (_ sessionId: Int, _ questionId: Int) async throws -> InterviewAudioStream
+        questionAudioStream: @escaping @Sendable (_ sessionId: Int, _ questionId: Int) async throws -> InterviewAudioStream,
+        reportList: @escaping @Sendable () async throws -> [InterviewReportSummary]
     ) {
         self.createSession = createSession
         self.sessionStatus = sessionStatus
         self.submitAnswer = submitAnswer
         self.questionAudioStream = questionAudioStream
+        self.reportList = reportList
     }
 }
 
@@ -41,7 +45,8 @@ extension InterviewClient: TestDependencyKey {
             createSession: unimplemented("InterviewClient.createSession"),
             sessionStatus: unimplemented("InterviewClient.sessionStatus"),
             submitAnswer: unimplemented("InterviewClient.submitAnswer"),
-            questionAudioStream: unimplemented("InterviewClient.questionAudioStream")
+            questionAudioStream: unimplemented("InterviewClient.questionAudioStream"),
+            reportList: unimplemented("InterviewClient.reportList")
         )
     }
 
@@ -62,8 +67,9 @@ extension InterviewClient: TestDependencyKey {
                 AnswerResult(
                     answerId: 12,
                     nextQuestion: NextQuestion(questionId: 13, isLast: false, turn: TurnInfo(turnLevel: 1, depthLevel: 1)),
+                    sessionEnded: false,
                     wrapUpMessage: nil,
-                    reportId: nil
+                    endType: nil
                 )
             },
             questionAudioStream: { sessionId, questionId in
@@ -71,6 +77,20 @@ extension InterviewClient: TestDependencyKey {
                     url: URL(string: "preview://interview/\(sessionId)/questions/\(questionId)")!,
                     headers: [:]
                 )
+            },
+            reportList: {
+                [InterviewReportSummary(
+                    sessionId: 1,
+                    jobType: "BACKEND",
+                    jobTypeLabel: "백엔드 개발자",
+                    careerYears: 3,
+                    interviewedAt: Date(timeIntervalSince1970: 1_782_000_000),
+                    portfolioFileName: "portfolio.pdf",
+                    portfolioDeleted: false,
+                    jdUrl: nil,
+                    reportStatus: .ready,
+                    feedbackAvailable: true
+                )]
             }
         )
     }

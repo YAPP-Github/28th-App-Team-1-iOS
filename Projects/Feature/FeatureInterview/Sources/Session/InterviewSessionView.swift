@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import DomainInterviewInterface
 import SharedDesignSystemInterface
 import SwiftUI
 
@@ -20,42 +21,40 @@ public struct InterviewSessionView: View {
     // 카메라 backdrop 은 InterviewView(코디네이터 뷰) 상주 — 화면 교체 시 프리뷰 레이어 재생성 방지.
     // 모달 딤의 배경(카메라) 블러도 InterviewView 가 세션 상태를 읽어 함께 건다.
     public var body: some View {
-        ZStack {
-            CameraGuideFrame()
-
-            VStack(spacing: 0) {
-                timerChip
-                    .padding(.top, 51)
-                Spacer(minLength: 0)
-                bottomBand
-            }
+        VStack(spacing: 0) {
+            timerChip
+                // 시간 칩은 Figma y94 — 네비바(h44)가 43~87 을 먹으므로 남는 값 7 (94 − 87).
+                .padding(.top, 7)
+            Spacer(minLength: 0)
+            bottomBand
         }
-        .overlay(alignment: .topLeading) {
-            // 이탈 동선 표기는 «협의 가능»(PRD §3.7) — 임시 X. 시안 확정 시 교체.
-            Button {
-                send(.userTappedClose)
-            } label: {
-                Image.Cancel.default24
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, .ds(.p20))
-            .frame(height: 54)
+        // 좌상단 뒤로가기 — 글리프만 X 에서 `<` 로 바뀌고 배관은 그대로다(Figma «[Part2. 면접 녹화]»
+        // 전 프레임 공통, ExitConfirm·이탈 경고 모달은 시안에 살아 있다). 8:00 전이면 이탈 경고,
+        // 8:00 후면 종료 확인 모달로 갈리는 판정은 그대로 리듀서(`userTappedClose`)가 소유한다.
+        .hilitPresentedNavigationBar(
+            surface: .dark,
+            leading: .back,
+            onClose: { send(.userTappedClose) }
+        )
+        // 브래킷은 네비바 inset 밖 — 안에 두면 콘텐츠가 44 밀려 327 정방형 중심이 22 내려간다.
+        .background {
+            CameraGuideFrame()
         }
         // 카메라 위 다크 판 — 하위 `.mini` 버튼 팔레트가 이 선언을 따라 전환된다 (design/component.md).
         .hilitSurface(.dark)
-        // Figma ExitConfirm 딤: black 60% + backdrop blur — 배경 콘텐츠를 블러해 근사한다.
-        .blur(radius: (store.isExitConfirmPresented || store.isEarlyExitWarningPresented) ? 20 : 0)
-        .overlay {
-            if store.isExitConfirmPresented {
-                exitConfirmOverlay
-            } else if store.isEarlyExitWarningPresented {
-                earlyExitWarningOverlay
+        // Figma ExitConfirm 딤: black 60%(.hilitModal 몫) + backdrop blur — 배경 콘텐츠를 블러해 근사한다.
+        .blur(radius: presentedModal != nil ? 20 : 0)
+        // 블러 전환은 여기서 직접 몬다 — 모달 페이드(0.2)는 `.hilitModal` 이 cover 안쪽에서 처리하므로
+        // 배경 블러까지 끌고 오지 않는다. 값·시간을 모달 쪽과 같게 맞춰 한 동작으로 보이게 한다.
+        .animation(.easeInOut(duration: 0.2), value: presentedModal)
+        .hilitModal(item: presentedModal) { modal in
+            switch modal {
+            case .exitConfirm: exitConfirmModal
+            case .earlyExitWarning: earlyExitWarningModal
             }
         }
         .animation(.easeInOut(duration: 0.3), value: store.phase)
         .animation(.easeInOut(duration: 0.3), value: store.toast)
-        .animation(.easeInOut(duration: 0.2), value: store.isExitConfirmPresented)
-        .animation(.easeInOut(duration: 0.2), value: store.isEarlyExitWarningPresented)
         .onAppear { send(.onAppear) }
     }
 
@@ -87,7 +86,7 @@ public struct InterviewSessionView: View {
     private var statusArea: some View {
         switch store.phase {
         case .asking:
-            VStack(spacing: 4) {
+            VStack(spacing: .ds(.p4)) {
                 HighlightedText("질문 듣는 중", typography: .body2)
                     .hilightColor(.green)
                 Text("끝까지 듣고 대답해 주세요")
@@ -108,7 +107,7 @@ public struct InterviewSessionView: View {
     }
 
     private func toastView(_ toast: InterviewSessionFeature.State.Toast) -> some View {
-        // 꼬리는 아래 «면접 종료하기» 버튼을 가리킨다 (Figma BubbleField status=bottom).
+        // 꼬리가 아래 «면접 종료하기» 버튼을 가리킨다 (Figma BubbleField status=bottom).
         BubbleField(toast.message, .wide(tail: toast.hasTail ? .bottom : .none))
     }
 
@@ -125,35 +124,57 @@ public struct InterviewSessionView: View {
                 Button("면접 종료하기") {
                     send(.userTappedExit)
                 }
-                .buttonStyle(.mini(.white))
+                .buttonStyle(.mini(.filled))
             }
         }
         .frame(minHeight: 34)
     }
 
-    private var exitConfirmOverlay: some View {
-        ZStack {
-            Color.black.opacity(0.6)
-                .ignoresSafeArea()
-            InterviewExitConfirmModal(
-                onContinue: { send(.userTappedContinueInterview) },
-                onFinish: { send(.userTappedFinishInterview) }
-            )
+    // MARK: - 종료 확인·이탈 경고 모달 (DS Modal + .hilitModal)
+
+    /// 리듀서의 표출 Bool 2개를 뷰에서 enum 으로 접는다 — `.hilitModal(item:)` 규약(동시 표출 차단).
+    private enum PresentedModal: Equatable {
+        case exitConfirm
+        case earlyExitWarning
+    }
+
+    private var presentedModal: PresentedModal? {
+        if store.isExitConfirmPresented {
+            .exitConfirm
+        } else if store.isEarlyExitWarningPresented {
+            .earlyExitWarning
+        } else {
+            nil
         }
     }
 
-    /// 8분 전 중도 이탈 경고 (Interview_EarlyExitWarning) — 차감 사실만, 리포트 언급 금지 (PRD §3.7).
-    private var earlyExitWarningOverlay: some View {
-        ZStack {
-            Color.black.opacity(0.6)
-                .ignoresSafeArea()
-            InterviewExitConfirmModal(
-                title: "지금 나가면 이용권 1회가 차감돼요",
-                message: nil,
-                finishLabel: "나가기",
-                onContinue: { send(.userTappedContinueInterview) },
-                onFinish: { send(.userTappedLeaveInterview) }
-            )
+    /// 면접 종료 확인 — Figma «modal»(2555:7739) 1:1, 아이콘은 «finish/74px»(3951:210), 문구는 부록 C 확정.
+    private var exitConfirmModal: some View {
+        Modal(
+            "면접을 마칠까요?",
+            subText: "마치기를 클릭하는 즉시 면접이 종료됩니다.\n지금까지 답변으로 분석을 시작해요.",
+            icon: Image.Img.finish
+        ) {
+            ButtonLarge(.modal, tone: .twoColor) {
+                Button("계속하기") { send(.userTappedContinueInterview) }
+            } trailing: {
+                Button("마치기") { send(.userTappedFinishInterview) }
+            }
+        }
+    }
+
+    /// 8분 전 중도 이탈 경고 — Figma «modal»(3907:890): 아이콘 없음, «면접 계속하기»가 강조(검정) 쪽.
+    /// 차감 사실만, 리포트 언급 금지 (PRD §3.7).
+    private var earlyExitWarningModal: some View {
+        Modal(
+            "다음에 면접을 다시 진행할까요?",
+            subText: "지금 나가면 방금 쓴 이용권 한장이 사라져요."
+        ) {
+            ButtonLarge(.modal, tone: .twoColor) {
+                Button("그대로 나가기") { send(.userTappedLeaveInterview) }
+            } trailing: {
+                Button("면접 계속하기") { send(.userTappedContinueInterview) }
+            }
         }
     }
 }
@@ -164,7 +185,10 @@ public struct InterviewSessionView: View {
 private func sessionPreview(
     _ mutate: (inout InterviewSessionFeature.State) -> Void = { _ in }
 ) -> some View {
-    var state = InterviewSessionFeature.State()
+    var state = InterviewSessionFeature.State(
+        sessionId: 1,
+        summaryQuestion: SummaryQuestion(questionId: 1, ttsAudio: nil, turn: TurnInfo(turnLevel: 0, depthLevel: 0))
+    )
     state.hasStarted = true   // onAppear 의 세션 시계를 막고 상태만 본다.
     mutate(&state)
     return ZStack {

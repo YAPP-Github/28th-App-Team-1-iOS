@@ -10,7 +10,7 @@ import SharedDesignSystemInterface
 import SwiftUI
 
 // Figma «[2] Interview_SttFailure»(2550:7504) · «[2] Interview_NetworkFailure»(2638:17018) 구현.
-// 흰 배경 · 좌상단 X 내비바 · 중앙(배지 54 + 타이틀/본문 + 이용권 안내) · 하단 버튼은 kind 별 분기(STT 다시 시작하기 / 네트워크 홈으로 / 질문 준비 처음으로).
+// 흰 배경 · 좌상단 X 네비바 · 중앙(배지 54 + 타이틀/본문 + 이용권 안내) · 하단 버튼은 kind 별 분기(STT 다시 시작하기 / 네트워크 홈으로 / 질문 준비 처음으로).
 // 질문 준비 실패(Interview_QuestionPrepFailure)는 시안 미출 — 동일 레이아웃 임시.
 // @ViewAction 매크로가 send(_:) 를 제공한다 — View 는 store.send(.view(...)) 대신 send(.onAppear) 로만 방출.
 @ViewAction(for: InterviewFailureFeature.self)
@@ -23,28 +23,14 @@ public struct InterviewFailureView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            navigationBar
             Spacer(minLength: 0)
             content
             Spacer(minLength: 0)
             bottomButton
         }
         .background(Color.BlackWhite.white.ignoresSafeArea())
-        .navigationBarBackButtonHidden(true)
-    }
-
-    private var navigationBar: some View {
-        HStack(spacing: 0) {
-            Button {
-                send(.userTappedClose)
-            } label: {
-                Image.Cancel.default24
-            }
-            .buttonStyle(.plain)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, .ds(.p20))
-        .frame(height: 54)
+        // 시안 «component/navigationbar»(X만) — 실패 화면은 스와이프 pop 이 리듀서 닫기 로직을 우회하므로 끈다.
+        .hilitNavigationBar(allowsSwipeBack: false, onClose: { send(.userTappedClose) })
     }
 
     // MARK: - 중앙 콘텐츠 (배지 + title-box + info-field, gap 24)
@@ -85,18 +71,10 @@ public struct InterviewFailureView: View {
         .hilightColor(.red)
     }
 
+    /// 시안 «info-field» 인스턴스 — DS `InfoField(.gray)` 1:1. 좌우 여백 20 은 화면 몫.
     private var infoField: some View {
-        HStack(spacing: .ds(.p8)) {
-            Image.Info.default
-            Text(ticketNotice)
-                .dsTypography(.body9)
-                .foregroundStyle(Color.GrayScale.g700)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(.horizontal, .ds(.p14))
-        .padding(.vertical, .ds(.p12))
-        .background(Color.GrayScale.g100)
-        .padding(.horizontal, .ds(.p20))
+        InfoField(ticketNotice)
+            .padding(.horizontal, .ds(.p20))
     }
 
     /// PRD §3.9 STT = 재시작 유도 · §3.7 네트워크 = 홈으로만 · §3.2 질문 준비 = 처음으로만(재시도 없음).

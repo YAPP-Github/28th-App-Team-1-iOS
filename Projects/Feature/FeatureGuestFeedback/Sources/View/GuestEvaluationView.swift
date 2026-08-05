@@ -92,18 +92,14 @@ struct GuestEvaluationView: View {
         .animation(.easeOut(duration: 0.35), value: store.phase)
     }
 
-    /// 몰입 모드 하단 그라디언트 스크림 — Figma Rectangle 761489 실측(node 2148:4365, h 521):
-    /// 위 투명 → 아래 블랙 선형 그라디언트 × fill-opacity 0.6 (그라디언트 종점이 rect 밖 749.5 라
-    /// rect 하단 실효값 ≈ 블랙 42%). 세그먼트 바의 background 로 붙어 Flow 1 슬라이드업에 함께 참여하고,
-    /// 로딩(starting) 중엔 시안대로 안 보인다(opacity 0 매칭 레이어). 시안의 bg blur 40 은 근사 생략.
+    /// 몰입 모드 하단 그라디언트 스크림 — DS `VideoOverlay(.darkOpen)`(Figma «video overlay»
+    /// dark/open 435:847, 375×523). 세그먼트 바의 background 로 붙어 Flow 1 슬라이드업에 함께
+    /// 참여하고, 로딩(starting) 중엔 시안대로 안 보인다(opacity 0 매칭 레이어).
+    /// 화면 전용 그라디언트(node 2148:4365 실측 521pt, 하단 실효 블랙 42%)를 걷어내고 DS 컴포넌트로
+    /// 갈았다 — 램프가 시안 확정값(3스톱, 90.895% 에서 b900 도달)으로 바뀌어 하단이 더 진해진다.
+    /// 시안의 bg blur 40 은 근사 생략(DS 컴포넌트도 반영하지 않는다).
     private var immersiveBottomScrim: some View {
-        LinearGradient(
-            colors: [Color.black.opacity(0), Color.black.opacity(0.42)],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .frame(height: 521)
-        .allowsHitTesting(false)
+        VideoOverlay(.darkOpen)
     }
 
     /// level 이 채워진 축 코드 집합 — 세그먼트 «완료» 표시(green 텍스트)를 구동한다.
@@ -160,9 +156,9 @@ struct GuestEvaluationView: View {
     private func scaleBlock(_ axis: AttitudeAxis) -> some View {
         VStack(alignment: .leading, spacing: .ds(.p8)) {
             HStack(spacing: 0) {
-                TagLabel("좋았어요", foreground: Color.Positive.p800, background: Color.Positive.p200)
+                TagLabel("좋았어요", style: .blueBlue)
                 Spacer()
-                TagLabel("아쉬웠어요", foreground: Color.Error.e500, background: Color.Error.e200)
+                TagLabel("아쉬웠어요", style: .redRed)
             }
             HStack(spacing: .ds(.p8)) {
                 let labels = AxisScaleCopy.labels(for: axis.code)
@@ -196,25 +192,24 @@ struct GuestEvaluationView: View {
         .buttonStyle(.plain)
     }
 
+    /// Figma «button-optional»(439:10206, 라벨 2227:4460) — padding-12 균일 · gap8 ·
+    /// plus/16px/default · Medium14(body6) g900 라벨 · 회색 tag · outline-m 점선 테두리(g100, radius 0).
     private var emptyCommentLabel: some View {
         HStack(spacing: .ds(.p8)) {
-            Image(systemName: "plus")
-                .font(.ds(.body6))
-                .foregroundStyle(Color.GrayScale.g900)
+            Image.Plus.default16
             Text("왜 그렇게 느꼈나요?")
                 .dsTypography(.body6)
                 .foregroundStyle(Color.GrayScale.g900)
             TagLabel("선택")
             Spacer(minLength: 0)
         }
-        .padding(.ds(.p8))
+        .padding(.ds(.p12))
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(
-            // Figma button-optional(2227:4511) — 시안이 직사각형(radius 0) 점선 테두리.
             Rectangle()
                 .strokeBorder(
                     Color.GrayScale.g100,
-                    style: StrokeStyle(lineWidth: .ds(.small), dash: [4])
+                    style: StrokeStyle(lineWidth: .ds(.medium), dash: [4])
                 )
         )
     }
@@ -235,7 +230,7 @@ struct GuestEvaluationView: View {
                 .foregroundStyle(Color.GrayScale.g600)
                 .underline()
         }
-        .padding(.ds(.p8))                  // 빈 상태와 같은 패딩 — 두 상태의 행 높이 일치.
+        .padding(.ds(.p8))                  // Figma quote-field/green2(435:1357) py8 — 나머지 값은 미대조(보고서 참조).
         .padding(.leading, .ds(.large))     // 액센트 바(4pt) 폭만큼 텍스트를 안쪽으로.
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(
