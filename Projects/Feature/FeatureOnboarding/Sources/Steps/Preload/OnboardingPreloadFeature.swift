@@ -1,5 +1,5 @@
 //
-//  OnboardingAnalysisFeature.swift
+//  OnboardingPreloadFeature.swift
 //  FeatureOnboarding
 //
 //  Created by EunSeo on 26/07/19.
@@ -9,23 +9,31 @@ import ComposableArchitecture
 import DomainInterviewInterface
 import DomainJDInterface
 
-// @lat: [[onboarding#분석]]
-/// 온보딩 STEP 6 — 분석 중/분석 완료 (Figma «6. 분석 중» 1609:9019 · «6.1 분석 완료» 1609:9075).
+// @lat: [[onboarding#프리로드]]
+/// 온보딩 마지막 스텝 프리로드 — 분석 중/분석 완료 (Figma «Onboarding_preload» 443:9768).
+/// 진행 대시 밖에 있는 종착 화면이라 step/totalSteps 를 받지 않는다.
 /// 앞선 스텝들이 채운 OnboardingData 를 InterviewConfig 로 변환해 세션 생성(PRD §3.8 — S0~S3 일괄 수집)을
 /// 요청하고, PROCESSING 이면 status 를 폴링해 READY 를 기다린다.
 /// 체크리스트 3행은 순차 진행 — 1·2행은 가짜 타이머로 차례로 체크되고, 마지막 행만 실제 세션 READY 에
-/// 묶인다(가짜 2행 완료 AND READY). 3행 체크를 잠깐 보여준 뒤 완료 화면 → 유지 시간 경과 →
-/// delegate(.completed(sessionId:))로 세션을 코디네이터에 넘긴다 — dismiss·Part2 진입은 코디네이터 몫.
+/// 묶인다(가짜 2행 완료 AND READY). 3행 체크를 잠깐 보여준 뒤 **그린 사면이 위로 올라와 화면을 덮는
+/// 전환**(filling)을 거쳐 완료 화면 → 유지 시간 경과 → delegate(.completed(sessionId:))로 세션을
+/// 코디네이터에 넘긴다 — dismiss·Part2 진입은 코디네이터 몫. READY 를 받자마자 넘기지 않는 이유가
+/// 이 전환이다.
 @Reducer
-public struct OnboardingAnalysisFeature {
+public struct OnboardingPreloadFeature {
     /// 세션 준비 상태 폴링 주기 — InterviewClient 가이드(3~5초)의 하한.
     static let pollInterval: Duration = .seconds(3)
     /// 완료 화면 노출 유지 시간 — 지나면 자동으로 delegate(.completed)를 올린다.
     static let completionHoldDuration: Duration = .seconds(2)
-    /// 가짜 진행 스테이지(1·2행) 각각의 유지 시간 — API 진행률이 없어 연출로 채운다 (포폴 업로드 스트립과 같은 패턴).
+    /// 가짜 진행 스테이지(1·2행) 각각의 유지 시간 — API 진행률이 없어 연출로 채운다.
+    /// 포폴 업로드 진행 바는 이제 연출을 걷고 단계 마커(`UploadState.phaseProgress`)를 쓴다 — 다른 계다.
+    /// 여기서 연출이 남는 이유: 이 화면은 «준비 중» 자체가 콘텐츠라 정지하면 화면이 죽는다.
     static let stageDuration: Duration = .milliseconds(1200)
-    /// 3행이 체크로 바뀐 상태의 노출 유지 — 지나면 완료 화면으로 전환한다.
+    /// 3행이 체크로 바뀐 상태의 노출 유지 — 지나면 그린 사면 채우기로 넘어간다.
     static let finalCheckHold: Duration = .milliseconds(500)
+    /// 그린 사면이 올라와 화면을 덮는 시간. View 의 사면 애니메이션과 **같은 값을 써야** 완료 문구가
+    /// 다 덮인 뒤에 나온다 — 그래서 Duration 이 아니라 초(Double)로 두고 양쪽이 공유한다.
+    static let fillSeconds: Double = 0.9
     /// 세션 생성/폴링 실패 문구 — 재시도 없음(PRD §3.1), X 로 이탈해 처음부터.
     static let failureMessage = "면접 준비에 실패했어요.\n잠시 후 다시 시도해 주세요."
     /// 수집 데이터가 불완전해 세션 입력을 만들지 못한 경우 — 위저드 순서상 정상 진입이면 발생하지 않는다.
@@ -33,9 +41,11 @@ public struct OnboardingAnalysisFeature {
 
     @ObservableState
     public struct State: Equatable {
-        /// 화면 하위 상태 — 분석 중 → 완료 / 실패. 별도 화면 push 없이 이 값으로 전환한다.
+        /// 화면 하위 상태 — 분석 중 → 채우기 → 완료 / 실패. 별도 화면 push 없이 이 값으로 전환한다.
         public enum Phase: Equatable, Sendable {
             case analyzing
+            /// 그린 사면이 올라와 화면을 덮는 구간 — 분석 텍스트는 사라지고 완료 문구는 아직 없다.
+            case filling
             case completed
             /// 세션 생성·폴링 실패. 사용자 노출 문구를 동봉한다.
             case failed(message: String)
@@ -89,8 +99,10 @@ public struct OnboardingAnalysisFeature {
             case sessionRetryRequested
             /// 가짜 진행 타이머 틱 — 1·2행을 차례로 체크로 바꾼다.
             case stageAdvanced
-            /// 3행 체크 노출 유지 경과 — 완료 화면으로 전환할 시점.
+            /// 3행 체크 노출 유지 경과 — 그린 사면 채우기를 시작할 시점.
             case finalCheckShown
+            /// 사면이 화면을 다 덮은 시점 — 완료 문구를 띄운다.
+            case fillFinished
             /// 완료 화면 유지 시간 경과 — 온보딩 완료 신호를 올릴 시점.
             case completionHoldFinished
         }
@@ -188,6 +200,14 @@ public struct OnboardingAnalysisFeature {
             return completeFinalStageIfReady(&state)
 
         case .finalCheckShown:
+            state.phase = .filling
+            return .run { send in
+                try await clock.sleep(for: .seconds(Self.fillSeconds))
+                await send(.inner(.fillFinished))
+            }
+            .cancellable(id: CancelID.session)
+
+        case .fillFinished:
             state.phase = .completed
             return .run { send in
                 try await clock.sleep(for: Self.completionHoldDuration)

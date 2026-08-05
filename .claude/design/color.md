@@ -57,5 +57,5 @@ Rectangle().fill(Color.GrayScale.g50)
 - **스펙 검증**: `ColorPaletteTests` 가 토큰 → 에셋 RGB 를 Figma 확정 HEX 와 1:1 대조. static-library 모드의 번들(`Bundle.module`) 파손도 여기서 잡힌다.
 - **Figma 주의**: Color Guide 의 positive 계열 HEX **텍스트 라벨**(주황 계열)은 오기 — 실제 스와치·바인딩 변수(청록, 위 표 값)가 확정이다. 라벨만 보고 옮기지 말 것 (디자이너 정정 요청 중).
 - **다크모드 미반영**: 각 토큰은 현재 단일 appearance(universal). 도입 결정 시 colorset 에 dark variant 추가.
-- **raw 값 보류 승격**: Figma 에서 변수 미바인딩 raw 값(예: 분석 밴드 #1A3C14)은 섣불리 토큰화하지 않는다 — 사용처 private 상수 + 주석으로 보류하고, 디자인 시스템에 변수가 생기면 승격.
+- **raw 값 보류 승격**: Figma 에서 변수 미바인딩 raw 값(예: 프리로드 하단 초록 사면의 그라데이션 #89E377·#60D549)은 섣불리 토큰화하지 않는다 — 사용처 private 상수 + 주석으로 보류하고, 디자인 시스템에 변수가 생기면 승격.
 - **승격 대기 — 팔레트 공백**: `hilit green/200` #D2EFCC(`ReportCard` 접힌 줄 밴드)는 **이름 붙은 Figma 변수인데 대응 토큰이 없다** — 팔레트 그린이 g500·g600·g800 뿐이라 200 자리가 비어 있다. 위 raw 값 보류와 달리 승격 근거(이름 붙은 변수)가 이미 있어 **승격 후보**다(`ColorD2EFCC` + `HilitGreen.g200`). 그때까지 `ReportCard.swift` 파일 내부 private 상수.

@@ -9,9 +9,11 @@ import SwiftUI
 
 /// 「밑으로 스크롤해서 면접을 시작해 보세요!」 — 시안 문구가 약속한 전환의 제스처 쪽 절반.
 /// 리포트 시트를 끌어 자리(`HomeFeature.SheetDetent`)를 바꾸는 규칙(치수·임계값·착지 판정)을
-/// 한 곳에 둬 두 phase 뷰(`HomeDefaultView`·`HomeReportView`)가 같은 판정을 쓰게 한다.
+/// 한 곳에 둬 씬(`HomeView`)과 판(`HomeReportSheet`)이 같은 판정을 쓰게 한다.
 ///
-/// 손잡이(그래버·헤더)에만 드래그를 건다 — 목록은 `ScrollView` 라 같은 축의 드래그가 겹친다.
+/// 드래그를 받는 자리는 자리별로 갈린다 — 기본 자리는 그래버·헤더 + **목록 판 전체**(스크롤을 끄고
+/// 위 스와이프를 «시트 올리기» 로 쓴다), 확장 자리는 그래버 없이 헤더만(목록이 스크롤을 가져간다).
+/// 스크롤과 시트 드래그는 같은 축이라 한 자리에서 둘을 동시에 살리면 서로 먹는다.
 // TODO: 모션 시안 수령 후 임계값·스프링 확정 (지금 값은 구현자 판단 — 시안·모션 근거 없음).
 enum HomeSheetDrag {
     /// 기본 자리의 시트 높이 — 시안 812 중 하단 481.
@@ -26,6 +28,9 @@ enum HomeSheetDrag {
     static let travelThreshold: CGFloat = 60
     /// 드래그로 인정하는 최소 이동 — 이보다 작으면 탭이다.
     static let minimumDistance: CGFloat = 10
+    /// 착지 판정에 얹는 관성 비율(0 = 관성 무시, 1 = `predictedEndTranslation` 그대로).
+    /// 1 이면 살짝 튕기기만 해도 자리가 넘어가서 «조금 올렸는데 다 올라간다» 가 된다.
+    static let velocityAssist: CGFloat = 0.1
     /// 시트를 다 내렸을 때 **홈 인디케이터 띠까지** 화면 밖으로 빼기 위한 여유 이동량.
     /// 판 배경이 하단 안전영역(최대 34)을 덮으므로 그만큼 더 내려야 아래 겹(면접 시작 CTA)이 안 가린다.
     /// 안전영역 실측을 뷰로 흘리는 대신 상한을 넉넉히 잡는다 — 더 내려가 봐야 이미 화면 밖이다.
@@ -118,7 +123,7 @@ enum HomeSheetDrag {
 struct HomeSheetDragHandle {
     /// 끄는 중 — 세로 이동량(아래가 +)을 그대로 흘린다.
     let onChanged: (CGFloat) -> Void
-    /// 손을 뗌 — 관성 포함 예상 종료 이동량을 넘긴다.
+    /// 손을 뗌 — 실제 이동량 + 관성 보정(`velocityAssist`)을 넘긴다.
     let onEnded: (CGFloat) -> Void
 
     /// 좌표계는 **global** — 손잡이는 드래그를 따라 움직이는 뷰라, 기본(local)로 재면 판이 Δ 내려갈 때
@@ -126,6 +131,13 @@ struct HomeSheetDragHandle {
     var gesture: some Gesture {
         DragGesture(minimumDistance: HomeSheetDrag.minimumDistance, coordinateSpace: .global)
             .onChanged { onChanged($0.translation.height) }
-            .onEnded { onEnded($0.predictedEndTranslation.height) }
+            .onEnded { value in
+                // 관성을 그대로 쓰면(`predictedEndTranslation`) 10~20pt 만 튕겨도 예상 종료가 임계값을
+                // 넘어 «살짝 올렸는데 확 올라간다» — 손가락이 실제로 간 거리를 기준으로 삼고
+                // 속도는 보조로만 얹는다(사용자 결정 2026-08-05).
+                let actual = value.translation.height
+                let inertia = value.predictedEndTranslation.height - actual
+                onEnded(actual + inertia * HomeSheetDrag.velocityAssist)
+            }
     }
 }

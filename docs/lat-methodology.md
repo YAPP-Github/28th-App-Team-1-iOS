@@ -95,7 +95,7 @@ lat check                      # 끊긴 링크·코드 ref 검증 (작업 후 �
 |---|---|
 | [`architecture.md`](../lat.md/architecture.md) | 시스템 총론 — 레이어·의존 방향·핵심 결정 |
 | [`domain.map.md`](../lat.md/domain.map.md) | 도메인(=모듈) 간 관계도, cross-feature 숨은 의존 |
-| [`app.md`](../lat.md/app.md) | AppFeature 코디네이터 — 탭 구성 + cross-feature 라우팅 |
+| [`app.md`](../lat.md/app.md) | AppFeature 코디네이터 — 화면 구성 + cross-feature 라우팅 |
 | [`home.md`](../lat.md/home.md) | 도메인 설명서 (흐름 + 주의사항). 현재 유일한 실 Feature — Users·Profile 등은 이관되며 추가 |
 | [`lat-labeling.md`](lat-labeling.md) | 방법론 문서 — `@lat` 코드 주석 컨벤션 |
 

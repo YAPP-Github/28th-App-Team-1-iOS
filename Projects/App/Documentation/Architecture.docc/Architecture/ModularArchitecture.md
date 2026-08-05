@@ -83,7 +83,7 @@ Domain  Implementation → .core(interface: .network)     # 인프라 계약만
 
 ```text
 App  (composition root: 레이어 umbrella link + AppFeature 코디네이터)
-└── AppFeature  (TabView 코디네이터 + cross-feature 라우팅)
+└── AppFeature  (루트 화면 코디네이터 + cross-feature 라우팅)
     │
     ├── Feature 레이어 ── FeatureHome (단일 모듈)
     │                     FeatureCommon ──┐ .domain(interface:)

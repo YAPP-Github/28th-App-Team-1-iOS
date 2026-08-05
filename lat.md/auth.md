@@ -56,7 +56,7 @@ PRD Part 6·7 확정(2026-07-31)으로 FeatureAuth 가 로그인 단일 화면�
 
 ## AppFeature 통합
 
-Splash 판정 → `State.root`(splash·splashFailed·auth·home)로 분기한다. auth 면 `AuthView`(가입 플로우 스택) 전체화면, home 이면 TabView. → [[app#Splash 세션 복구]]
+Splash 판정 → `State.root`(splash·splashFailed·auth·home)로 분기한다. auth 면 `AuthView`(가입 플로우 스택) 전체화면, home 이면 `NavigationStack` 안의 홈(탭바 없음). → [[app#Splash 세션 복구]]
 
 `AuthFeature`(코디네이터)가 가입 완료 또는 기존 회원 로그인 시 `delegate(.signedIn)`을 올리면 AppFeature 가 수신해 전환한다(cross-feature 조립은 AppFeature에서만).
 

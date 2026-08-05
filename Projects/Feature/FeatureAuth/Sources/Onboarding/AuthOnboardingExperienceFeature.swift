@@ -8,8 +8,8 @@
 import ComposableArchitecture
 
 /// 연차 선택지 — 정수 연차(0~10년, 10 = "10년 이상").
-/// FeatureOnboarding `CareerOption` 의 복제본 — 가입·면접 위저드가 같은 선택지를 쓰지만
-/// Feature 간 코드 공유가 금지라 복사(원본 [[onboarding#연차 입력]], 위저드 정리 시 원본 제거 예정).
+/// 면접 위저드의 `CareerOption` 에서 왔고, 그쪽 화면이 삭제되며 여기가 단일 소스가 됐다.
+/// 값은 `InterviewConfig.careerYears` 로 그대로 흘러간다 → [[onboarding#수집 데이터]].
 public struct ExperienceOption: Hashable, Sendable, Identifiable {
     /// 상한 — 10 은 "10년 이상"을 뜻한다.
     public static let maxYears = 10
@@ -33,7 +33,8 @@ public struct ExperienceOption: Hashable, Sendable, Identifiable {
 }
 
 // @lat: [[auth#가입 플로우]]
-/// 가입 온보딩 3 — 연차 선택. FeatureOnboarding STEP2(OnboardingCareerInputFeature)의 복사본.
+/// 가입 온보딩 3 — 연차 선택. 면접 위저드 STEP2 에서 옮겨 왔고, 원본은 위저드 재편 때 삭제돼
+/// 여기가 단일 소스다. → [[onboarding#코디네이터]]
 /// 문장형 휠("내 경력은 [연차] 이다.")로 연차를 고른다 — 휠 특성상 항상 선택값이 있어 CTA 상시 활성.
 @Reducer
 public struct AuthOnboardingExperienceFeature {

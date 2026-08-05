@@ -10,7 +10,7 @@
 - [[auth]] — Auth 도메인 (카카오·애플 소셜 로그인 + 서버 세션 교환)
 - [[interview]] — Interview 도메인 (InterviewClient — 면접 세션 API)
 - [[feedback]] — Feedback 도메인 (G4 게스트 평가 — 무인증 토큰 진입·태도 척도 제출)
-- [[onboarding]] — 온보딩 도메인 (신규 사용자 셋업 위저드 — STEP 1 직군 선택)
+- [[onboarding]] — 온보딩 도메인 (면접 재료 수집 위저드 — JD·포폴·대표 프로젝트 + 프리로드)
 - [[mypage]] — 마이페이지 도메인 (프로필·포트폴리오 한 달 한 번 규칙·면접 레포트 목록)
 - [[report]] — 리포트 도메인 (AI 면접 리포트 — 화면 4종 골격, 디자인 연결 전)
 
