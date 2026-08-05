@@ -5,6 +5,7 @@
 //  Created by EunseoKim on 26/07/23.
 //
 
+import CoreNetworkInterface
 import DomainCommonInterface
 
 /// Interview API 에러 — State 가 다르게 반응해야 하는 경우의 수만큼만 둔다 (AuthError 와 같은 원칙).
@@ -23,6 +24,8 @@ public enum InterviewError: Error, Equatable, Sendable {
     case jdNotValidated
     /// FREETEXT_NOT_RELEVANT (400) — 집중 프로젝트가 포트폴리오와 연관성 부족(코사인 < 0.6). 재작성 유도.
     case freeTextNotRelevant
+    /// USER_PROFILE_NOT_REGISTERED (400) — 회원 프로필 미등록 상태로 세션 생성. 프로필 등록 유도.
+    case userProfileNotRegistered
     /// INTERVIEW_SESSION_NOT_FOUND (404)
     case sessionNotFound
     /// QUESTION_NOT_FOUND (404)
@@ -31,6 +34,9 @@ public enum InterviewError: Error, Equatable, Sendable {
     case answerAlreadySubmitted
     /// SESSION_ALREADY_ENDED (409) — 이미 종료된 세션. 보고서 화면으로 이탈.
     case sessionAlreadyEnded
+    /// AI_TEMPORARILY_UNAVAILABLE (503) — 서버에 아무것도 저장되지 않음. **같은 요청 그대로 재시도** 계약.
+    /// 코드 매핑이 5xx 판정보다 먼저라 `serverUnavailable` 에 선점되지 않는다(envelope 없는 503 만 그쪽).
+    case aiTemporarilyUnavailable
     /// VALIDATION_ERROR·INVALID_JOB_ROLE·INVALID_CAREER_YEARS·INVALID_JD_LENGTH·
     /// INVALID_FREETEXT_LENGTH·INVALID_PLAYBACK_RANGE·INVALID_ANSWER_RANGE·
     /// INVALID_END_TYPE·INVALID_AUDIO_PRESENCE (400) — `message` 는 그대로 사용자 노출 가능.
@@ -56,10 +62,12 @@ extension InterviewError: DomainAPIError {
         case "PORTFOLIO_UPLOAD_FAILED": self = .portfolioUploadFailed
         case "JD_NOT_VALIDATED": self = .jdNotValidated
         case "FREETEXT_NOT_RELEVANT": self = .freeTextNotRelevant
+        case "USER_PROFILE_NOT_REGISTERED": self = .userProfileNotRegistered
         case "INTERVIEW_SESSION_NOT_FOUND": self = .sessionNotFound
         case "QUESTION_NOT_FOUND": self = .questionNotFound
         case "ANSWER_ALREADY_SUBMITTED": self = .answerAlreadySubmitted
         case "SESSION_ALREADY_ENDED": self = .sessionAlreadyEnded
+        case "AI_TEMPORARILY_UNAVAILABLE": self = .aiTemporarilyUnavailable
         case "VALIDATION_ERROR", "INVALID_JOB_ROLE", "INVALID_CAREER_YEARS",
              "INVALID_JD_LENGTH", "INVALID_FREETEXT_LENGTH", "INVALID_PLAYBACK_RANGE",
              "INVALID_ANSWER_RANGE", "INVALID_END_TYPE", "INVALID_AUDIO_PRESENCE":
@@ -70,7 +78,7 @@ extension InterviewError: DomainAPIError {
     }
 
     /// 미승격 코드는 원문 그대로 동봉 — 분기가 필요해지면 전용 케이스로 승격.
-    public static func fallback(unrecognizedCode code: String, message: String) -> InterviewError {
-        .server(code: code, message: message)
+    public static func fallback(unrecognized error: ServerError) -> InterviewError {
+        .server(code: error.code, message: error.message)
     }
 }

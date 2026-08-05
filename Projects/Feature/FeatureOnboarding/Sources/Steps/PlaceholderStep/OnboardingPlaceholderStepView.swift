@@ -9,7 +9,7 @@ import ComposableArchitecture
 import SharedDesignSystemInterface
 import SwiftUI
 
-// 온보딩 STEP 2+ 자리표시 뷰. 직군 선택과 같은 골격(내비바·프로그레스 바·하단 CTA)만 두고
+// 온보딩 STEP 2+ 자리표시 뷰. 직군 선택과 같은 골격(네비바·프로그레스 바·하단 CTA)만 두고
 // 본문은 비워 뒀다 — 실제 스텝 Figma 가 오면 OnboardingJobSelectionView 처럼 채운다.
 @ViewAction(for: OnboardingPlaceholderStepFeature.self)
 public struct OnboardingPlaceholderStepView: View {
@@ -21,7 +21,7 @@ public struct OnboardingPlaceholderStepView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            progressBar
+            DashIndicator(count: store.totalSteps, current: store.step)
             Spacer()
             Text(store.title)
                 .dsTypography(.head3)
@@ -36,18 +36,6 @@ public struct OnboardingPlaceholderStepView: View {
         .background(Color.BlackWhite.white.ignoresSafeArea())
         // 최종 시안은 뒤로 버튼 없음(X 통일) — 뒤로는 스와이프백·하단 바 몫.
         .hilitNavigationBar(background: .filled, onClose: { send(.userTappedClose) })
-    }
-
-    private var progressBar: some View {
-        HStack(spacing: 2) {
-            ForEach(1...store.totalSteps, id: \.self) { step in
-                Rectangle()
-                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.GrayScale.g50)
-                    .frame(height: 4)
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 4)
     }
 
     private var continueButton: some View {

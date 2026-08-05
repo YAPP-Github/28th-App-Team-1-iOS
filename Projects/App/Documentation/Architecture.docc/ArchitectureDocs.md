@@ -25,7 +25,7 @@ modular architecture 스펙트럼 안에서 이 프로젝트는 **Level 3+ (Tuis
 
 | 도메인 | Feature | 책임 | 상태 |
 |---|---|---|---|
-| Home | ``HomeFeature`` | 홈 화면 (외부 IO 없는 Feature 예시) | ✅ 구현 |
+| Home | ``HomeFeature`` | 홈 화면 (진입 시 프로필·포트폴리오 로드) | ✅ 구현 |
 | Users | `UsersFeature` | 목록 → 상세 (자체 NavigationStack). 편집은 앱 레벨 sheet 로 위임 | 이관 대기 |
 | Profile | `ProfileFeature` | 내 프로필 편집 (재사용) | 이관 대기 |
 

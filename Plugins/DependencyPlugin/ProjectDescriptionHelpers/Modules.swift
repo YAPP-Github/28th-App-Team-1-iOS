@@ -11,6 +11,7 @@ public enum ModulePath {
         case guestFeedback = "GuestFeedback"
         case onboarding = "Onboarding"
         case interview = "Interview"
+        case myPage = "MyPage"
         case report = "Report"
 
         public static let name = "Feature"
@@ -27,6 +28,8 @@ public enum ModulePath {
         // 디바이스 측 IO — 마이크 캡처·발화 감지, 추후 TTS/STT (SpeechClient)
         case speech = "Speech"
         // D14 서버 API 도메인 미러링 — [[api]]
+        case appVersion = "AppVersion"
+        case consent = "Consent"
         case jd = "JD"
         case job = "Job"
         case portfolio = "Portfolio"

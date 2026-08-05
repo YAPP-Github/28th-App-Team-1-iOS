@@ -7,11 +7,14 @@
 
 import ComposableArchitecture
 import DomainAuthInterface
+import DomainConsentInterface
+import DomainJobInterface
+import DomainUserInterface
 import FeatureAuthImplementation
 import SwiftUI
 
 /// Example 전용 미니 루트. 실제 앱에서 AppFeature(루트 게이트)가 하는 delegate 수신을 흉내내
-/// 로그인 성공을 눈으로 확인할 수 있게 한다 — 없으면 delegate가 허공에 방출돼 화면 변화가 없다.
+/// 가입 플로우 완주(소셜 로그인 → 약관 → 이름 → 직군 → 연차 → 등록 완료)를 눈으로 확인한다.
 @Reducer
 struct ExampleRoot {
     @ObservableState
@@ -49,11 +52,13 @@ struct ExampleRootView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.largeTitle)
                     .foregroundStyle(.green)
-                Text("로그인 성공")
+                Text("가입 플로우 완료")
                     .font(.headline)
-                Text("실제 앱은 여기서 provider가 발급한 자격증명을 signIn 반환값으로 받는다 (Example은 스텁)")
+                Text("실제 앱은 AppFeature 가 delegate(.signedIn)을 받아 홈으로 전환한다 (Example은 스텁)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
             }
         } else {
             AuthView(store: store.scope(state: \.auth, action: \.auth))
@@ -88,6 +93,21 @@ struct FeatureAuthExampleApp: App {
                         }
                     }
                     $0.authClient = authClient
+                    // 약관 화면(A1)이 진입 시 항목을 조회하고 제출까지 한다 — 네트워크 없이 도는 스텁.
+                    $0.consentClient = .previewValue
+                    // 가입 온보딩 직군 선택 — 네트워크 없이 도는 고정 목록.
+                    $0.jobClient = JobClient(jobs: {
+                        [
+                            Job(jobId: 1, jobRole: "BACKEND", label: "백엔드"),
+                            Job(jobId: 2, jobRole: "ANDROID", label: "Android"),
+                            Job(jobId: 3, jobRole: "IOS", label: "iOS"),
+                            Job(jobId: 4, jobRole: "FRONTEND", label: "프론트엔드"),
+                            Job(jobId: 5, jobRole: "DATA_ENGINEER", label: "데이터 엔지니어"),
+                            Job(jobId: 6, jobRole: "INFRA_SRE", label: "인프라 ⋅ SRE")
+                        ]
+                    })
+                    // 연차 CTA 의 프로필 일괄 PATCH — 항상 성공하는 스텁(등록 완료까지 완주 확인).
+                    $0.userClient = .previewValue
                 }
             )
         }

@@ -39,8 +39,8 @@ private enum FallbackStubError: DomainAPIError, Equatable {
 
     init?(serverCode code: String, message: String) { nil }
 
-    static func fallback(unrecognizedCode code: String, message: String) -> FallbackStubError {
-        .server(code: code, message: message)
+    static func fallback(unrecognized error: ServerError) -> FallbackStubError {
+        .server(code: error.code, message: error.message)
     }
 }
 

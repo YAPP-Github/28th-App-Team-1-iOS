@@ -12,4 +12,11 @@ enum AppEnvironment {
     static var isDev: Bool {
         (Bundle.main.object(forInfoDictionaryKey: "APP_ENV") as? String) == "dev"
     }
+
+    /// 마케팅 버전(`CFBundleShortVersionString`, 예 "1.0.0") — 버전 게이트가 서버에 보내는 값.
+    /// 키가 없으면 nil 을 돌려 게이트를 건너뛴다 — 임의값("0.0.0")을 보내면 서버가 FORCE 로 답해
+    /// 앱이 스스로를 잠근다.
+    static var marketingVersion: String? {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+    }
 }

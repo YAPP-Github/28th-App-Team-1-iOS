@@ -39,7 +39,8 @@ public struct GuestFeedbackFeature {
         public var savingAxisCode: String?
         // 객관식 전 축 완료 토스트(«모든 평가가 끝났어요!») 표출 — 마지막 축 평가 시 켜지고 2초 뒤 자동 해제.
         public var isCompletionToastVisible = false
-        @Presents public var confirmDialog: ConfirmationDialogState<ConfirmDialog>?
+        // 제출 불가역 확인 모달(DS Modal + .hilitModal) 표출 — 시스템 confirmationDialog 대신 DS 컴포넌트.
+        public var isSubmitConfirmPresented = false
         @Presents public var alert: AlertState<Alert>?
 
         public init(token: String) {
@@ -91,10 +92,6 @@ public struct GuestFeedbackFeature {
         case unknown
     }
 
-    public enum ConfirmDialog: Equatable, Sendable {
-        case confirmSubmit
-    }
-
     public enum Alert: Equatable, Sendable {
         case retryEnter
     }
@@ -104,7 +101,6 @@ public struct GuestFeedbackFeature {
         case inner(Inner)
         case delegate(Delegate)
         // TCA 구조적 액션 — 3분류 밖의 presentation 전용 케이스.
-        case confirmDialog(PresentationAction<ConfirmDialog>)
         case alert(PresentationAction<Alert>)
 
         /// 사용자 입력·생명주기. View 의 send(...) 로만 방출된다.
@@ -124,7 +120,9 @@ public struct GuestFeedbackFeature {
             case reviewTapped                 // 평가 → summary
             case summaryCardTapped(AttitudeAxis) // 요약 카드 탭 → 해당 축 수정(평가 카드 모드)
             case rewatchTapped                // 요약 «영상 다시보기» → 평가 몰입 시청
-            case submitTapped                 // summary 전송 → 확인 다이얼로그
+            case submitTapped                 // summary 전송 → 확인 모달 표출
+            case submitConfirmTapped          // 확인 모달 «제출하기» → 제출 실행
+            case submitConfirmDismissed       // 확인 모달 «취소» → summary 유지
         }
 
         /// effect 결과·내부 신호. 리듀서만 방출한다.
@@ -158,10 +156,6 @@ public struct GuestFeedbackFeature {
                 return reduceView(&state, viewAction)
             case .inner(let innerAction):
                 return reduceInner(&state, innerAction)
-            case .confirmDialog(.presented(.confirmSubmit)):
-                return submit(&state)
-            case .confirmDialog:
-                return .none
             case .alert(.presented(.retryEnter)):
                 return enter(&state)
             case .alert:
@@ -170,7 +164,6 @@ public struct GuestFeedbackFeature {
                 return .none
             }
         }
-        .ifLet(\.$confirmDialog, action: \.confirmDialog)
         .ifLet(\.$alert, action: \.alert)
     }
 }

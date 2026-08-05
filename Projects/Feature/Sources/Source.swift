@@ -8,4 +8,5 @@
 @_exported import FeatureGuestFeedbackImplementation
 @_exported import FeatureOnboardingImplementation
 @_exported import FeatureInterviewImplementation
+@_exported import FeatureMyPageImplementation
 @_exported import FeatureReportImplementation

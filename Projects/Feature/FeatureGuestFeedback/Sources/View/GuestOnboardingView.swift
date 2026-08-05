@@ -74,34 +74,29 @@ struct GuestOnboardingView: View {
 
     private var guideRows: some View {
         VStack(alignment: .leading, spacing: .ds(.p20)) {
-            // SF 심볼은 잠정 — Figma 안내 아이콘은 빈 플레이스홀더 타일이라 의미에 맞는 심볼로 대체.
             guideRow(
-                icon: "eye",
+                icon: Image.Img.person,          // Figma icon1 = person/40px (435:656)
                 title: "AI가 못 보는 것도 있어요",
                 subtitle: "눈빛, 말투 같은 순간은 당신만 알아요"
             )
             guideRow(
-                icon: "bubble.left.and.bubble.right",
+                icon: Image.Img.talk,            // Figma icon2 = talk/40px (435:652)
                 title: "면접은 외우기가 아니라 대화예요",
                 subtitle: "정해진 답보다 얼마나 자연스러운지를 봐주세요"
             )
         }
     }
 
-    private func guideRow(icon: String, title: String, subtitle: String) -> some View {
+    /// Figma «onboarding text with graphic»(439:10628) — 40×40 타일 + gap12 + 텍스트 블록(gap2).
+    /// 타일은 b800 배경 + 그린(g500) 24pt 글리프가 **에셋에 구워져** 있다(코너 0) — 감싸는 도형·틴트 없이 그대로 쓴다.
+    private func guideRow(icon: Image, title: String, subtitle: String) -> some View {
         HStack(spacing: .ds(.p12)) {
-            RoundedRectangle(cornerRadius: 8) // 아이콘 타일 자리 — 실 에셋 도착 시 이미지로 교체.
-                .fill(Color.GrayScale.g100)
-                .frame(width: 44, height: 44)
-                .overlay {
-                    Image(systemName: icon)
-                        .imageScale(.medium)
-                        .foregroundStyle(Color.GrayScale.g400)
-                }
-            VStack(alignment: .leading, spacing: .ds(.p4)) {
+            icon
+            // @ds(spacing): 2 — Figma 텍스트 블록 gap 2 (spacing 토큰은 4 부터 시작)
+            VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .dsTypography(.body2)
-                    .foregroundStyle(Color.GrayScale.g900)
+                    .foregroundStyle(Color.HilitBlack.b800)
                 Text(subtitle)
                     .dsTypography(.body7)
                     .foregroundStyle(Color.GrayScale.g500)

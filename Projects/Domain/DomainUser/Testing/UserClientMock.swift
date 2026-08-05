@@ -14,7 +14,10 @@ public extension UserClient {
         UserClient(
             profile: {
                 UserProfile(
+                    userId: UUID(uuidString: "550E8400-E29B-41D4-A716-446655440000"),
                     name: "히릿",
+                    email: "hilit@kakao.com",
+                    provider: "KAKAO",
                     jobRole: "BACKEND",
                     jobRoleLabel: "백엔드",
                     careerYears: 3,
@@ -22,8 +25,7 @@ public extension UserClient {
                 )
             },
             updateProfile: { _ in },
-            registerName: { _ in },
-            checkName: { _ in true }
+            withdraw: {}
         )
     }
 }

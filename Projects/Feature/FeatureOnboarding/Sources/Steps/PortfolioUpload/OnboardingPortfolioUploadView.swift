@@ -26,7 +26,7 @@ public struct OnboardingPortfolioUploadView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            progressBar
+            DashIndicator(count: store.totalSteps, current: store.step)
             ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
                     header
@@ -89,18 +89,6 @@ public struct OnboardingPortfolioUploadView: View {
     }
 
     // MARK: - 공통 골격 (STEP 1 과 동일)
-
-    private var progressBar: some View {
-        HStack(spacing: 2) {
-            ForEach(1...store.totalSteps, id: \.self) { step in
-                Rectangle()
-                    .fill(step <= store.step ? Color.HilitBlack.b800 : Color.GrayScale.g50)
-                    .frame(height: 4)
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 4)
-    }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
