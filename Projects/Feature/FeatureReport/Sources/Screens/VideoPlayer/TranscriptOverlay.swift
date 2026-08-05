@@ -8,7 +8,7 @@
 import SharedDesignSystemInterface
 import SwiftUI
 
-/// 플레이어의 대본 오버레이 — Figma «Report_VideoPlayer_TranscriptOverlay»(2121:5998).
+/// 플레이어의 대본 오버레이 — Figma «Report_VideoPlayer_TranscriptOverlay»(443:7902).
 /// 하단에서 올라오는 그라데이션 위에 답변 대본을 쌓고, 현재 재생 중인 답변만 흰색으로 띄운다.
 /// 하이라이트 구간의 색·밴드·부분 탭은 공용 `TranscriptText` 가 담당한다(리포트 카드와 같은 규약).
 struct TranscriptOverlay: View {
@@ -31,7 +31,7 @@ struct TranscriptOverlay: View {
     private var transcript: some View {
         ScrollViewReader { proxy in
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: Self.lineSpacing) {
+                VStack(alignment: .leading, spacing: .ds(.p20)) {
                     ForEach(lines) { line in
                         TranscriptText(
                             transcript: line.text,
@@ -47,6 +47,8 @@ struct TranscriptOverlay: View {
                 }
                 .padding(.horizontal, .ds(.p20))
                 .padding(.vertical, .ds(.p24))
+                // 대본이 하단 바(진행바 + 대본 버튼) 밑으로 흘러 글자가 겹치지 않게 비운다.
+                .padding(.bottom, Self.bottomBarClearance)
             }
             // 재생이 다음 답변으로 넘어가면 그 줄로 따라간다.
             .onChange(of: currentLineID) { _, id in
@@ -56,7 +58,8 @@ struct TranscriptOverlay: View {
         }
     }
 
-    /// Figma 그라데이션 (투명 → 56% → b900).
+    /// Figma «video-overlay/dark/open» 435:847 그라데이션 (투명 → 56% → b900).
+    // @ds(color): #121316 0% → 56%@33.1% → 100%@90.9% — 대본 배경 스크림. 그라데이션 토큰 없음
     private static let backgroundGradient = LinearGradient(
         stops: [
             .init(color: Color.HilitBlack.b900.opacity(0), location: 0),
@@ -67,7 +70,8 @@ struct TranscriptOverlay: View {
         endPoint: .bottom
     )
 
-    /// 위쪽 대본이 흐려지며 사라지는 마스크.
+    /// 위쪽 대본이 흐려지며 사라지는 마스크 — 시안은 맨 위 줄에만 텍스트 그라데이션(443:7916)을
+    /// 걸었지만, 줄 수가 유동이라 오버레이 상단 16% 에 마스크로 걸어 같은 효과를 만든다.
     private static let fadeMask = LinearGradient(
         stops: [
             .init(color: .clear, location: 0),
@@ -77,7 +81,9 @@ struct TranscriptOverlay: View {
         endPoint: .bottom
     )
 
-    /// 대본이 차지하는 높이 (Figma 524/812).
+    // @ds(layout): 524 — 대본이 차지하는 높이 (Figma 443:7904, 524/812)
     private static let overlayHeight: CGFloat = 524
-    private static let lineSpacing: CGFloat = 20
+    // @ds(layout): 78 — 하단 바가 덮는 높이(진행바 6 + 간격 16 + 버튼 44 + 아래 여백 12).
+    // 플레이어 하단 바 수치의 합이라 토큰 하나로 대응되지 않는다
+    private static let bottomBarClearance: CGFloat = 78
 }

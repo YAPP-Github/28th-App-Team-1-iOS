@@ -98,32 +98,40 @@ struct ReportVideoPlayerFeatureTests {
         }
     }
 
-    @Test("건너뛰기는 영상 범위를 벗어나지 않는다")
-    func skipClampsToVideoBounds() async {
+    @Test("좌우 화살표는 초가 아니라 진행바 한 칸(대본 구간)씩 움직인다")
+    func chunkArrowsStepOneSegment() async {
         let clock = TestClock()
         var state = ReportVideoPlayerFeature.State(videoURL: Self.videoURL, cards: Self.cards)
         state.duration = 12
         state.currentTime = 5
         let store = makeStore(clock: clock, state: state)
+        #expect(store.state.progressChunks.map(\.start) == [0, 3.4, 6.4, 9.1])
 
-        await store.send(.view(.userTappedSkipBackward)) {
+        // 5초는 둘째 칸(3.4~6.4) — 왼쪽 화살표는 첫 칸 시작으로.
+        await store.send(.view(.userTappedPreviousChunk)) {
             $0.currentTime = 0
-            $0.seekTarget = 0
             $0.seekToken = 1
             $0.isSeeking = true
         }
-        await store.send(.view(.userTappedSkipForward)) {
-            $0.currentTime = 10
-            $0.seekTarget = 10
+        await store.send(.view(.userTappedNextChunk)) {
+            $0.currentTime = 3.4
+            $0.seekTarget = 3.4
             $0.seekToken = 2
+        }
+        // 셋째 칸은 둘째 카드의 첫 구간 — 대본의 «현재 줄» 도 같이 넘어간다.
+        await store.send(.view(.userTappedNextChunk)) {
+            $0.currentTime = 6.4
+            $0.seekTarget = 6.4
+            $0.seekToken = 3
             $0.currentLineID = 1
         }
-        await store.send(.view(.userTappedSkipForward)) {
-            $0.currentTime = 12
-            $0.seekTarget = 12
-            $0.seekToken = 3
-            $0.currentLineID = nil
+        await store.send(.view(.userTappedNextChunk)) {
+            $0.currentTime = 9.1
+            $0.seekTarget = 9.1
+            $0.seekToken = 4
         }
+        // 마지막 칸에선 갈 곳이 없다 — 탭이 아무 일도 하지 않는다(영상 끝으로 튀지 않게).
+        await store.send(.view(.userTappedNextChunk))
         await clock.advance(by: .seconds(3))
         await store.receive(\.inner.controlsHideElapsed) {
             $0.areControlsVisible = false
@@ -209,9 +217,13 @@ struct ReportVideoPlayerFeatureTests {
             cards: [InterviewReportFixtures.lowResolutionCard]
         )
         state.duration = 30
+        state.currentTime = 12
 
         #expect(state.progressChunks.count == 1)
         #expect(state.progressChunks[0].end == 30)
+        // 칸이 하나뿐이라 왼쪽 화살표는 처음으로 되돌리고, 오른쪽은 갈 곳이 없다.
+        #expect(state.previousChunkStart == 0)
+        #expect(state.nextChunkStart == nil)
     }
 
     @Test("하이라이트를 누르면 영상이 멈추고 시트가 올라온다")
