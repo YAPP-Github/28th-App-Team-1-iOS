@@ -11,7 +11,8 @@ import DomainInterviewReportInterface
 import SharedDesignSystemInterface
 import SwiftUI
 
-// 영상 플레이어 — Figma «Report_VideoPlayer» (3033:14446 기본 · 2121:5998 대본 오버레이).
+// Figma «Report_VideoPlayer» https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS
+//   443:7804 기본(딤 없음) · 443:7852 컨트롤 노출(딤 65% + video-control) · 443:7902 대본 올림
 // 시스템 컨트롤을 쓰지 않고 AVPlayerLayer 를 직접 얹는다(Figma 컨트롤이 커스텀이라).
 // AVPlayer 자체는 뷰 로컬이고, 재생 여부·시각은 리듀서가 소유한다 — 자세한 배경은 리듀서 주석.
 @ViewAction(for: ReportVideoPlayerFeature.self)
@@ -29,9 +30,10 @@ public struct ReportVideoPlayerView: View {
             // 영상·딤은 화면 끝까지 번지고, 상단 X·하단 바는 세이프에어리어를 지킨다.
             Color.HilitBlack.b900.ignoresSafeArea()
             videoSurface.ignoresSafeArea()
-            // 컨트롤을 띄우는 동안만 영상을 눌러 어둡게 한다 (Figma «hilit opacity/dark/65%»).
+            // 컨트롤을 띄우는 동안만 영상을 눌러 어둡게 한다.
             if store.isPlaybackControlVisible {
-                Color.HilitBlack.b900.opacity(Self.dimOpacity).ignoresSafeArea()
+                // @ds(color): «hilit opacity/dark/65%» #000000 65% — 컨트롤 딤. 팔레트에 검정 토큰이 없다(BlackWhite 는 white 뿐)
+                Color.black.opacity(Self.dimOpacity).ignoresSafeArea()
             }
             if store.isTranscriptVisible {
                 TranscriptOverlay(
@@ -51,7 +53,9 @@ public struct ReportVideoPlayerView: View {
             chrome
         }
         // 영상 풀블리드 위 투명 바(기본값) — X 는 플레이어를 닫고 리포트로 (리듀서 소유).
-        .hilitNavigationBar(theme: .dark, onClose: { send(.userTappedBack) })
+        // 바닥이 어두운 영상이라 `surface: .dark`(흰 X). 시안은 `cancel/24px/dark`(검정 X)를
+        // 얹었지만 DS 는 «다크 바닥 + 검정 X» 를 표현 불가로 못박았고, 딤 65% 위에선 안 보인다.
+        .hilitNavigationBar(surface: .dark, onClose: { send(.userTappedBack) })
         .contentShape(Rectangle())
         .onTapGesture { send(.userTappedSurface) }
         .onAppear {
@@ -142,6 +146,8 @@ public struct ReportVideoPlayerView: View {
         }
     }
 
+    /// Figma 443:7855 — 좌우 20, 진행바와 버튼 줄 사이 16, 버튼 줄은 오른쪽 정렬.
+    /// 시안 버튼 줄 왼쪽에 빈 44×44 슬롯(443:7867)이 하나 더 있지만 내용이 없어 그리지 않는다.
     private var bottomBar: some View {
         VStack(spacing: .ds(.p16)) {
             PlaybackProgressBar(store: store)
@@ -156,6 +162,8 @@ public struct ReportVideoPlayerView: View {
 
     /// 아이콘만 있는 정사각 버튼은 DS 버튼 카탈로그(large/medium/mini/sub/tag)에 없는 티어라
     /// 여기서 만든다 — 플레이어 컨트롤 전용이고 두 번째 사용처가 없다(승격 규칙 ③ 미충족).
+    /// 대본을 켜면 같은 자리가 닫기 X 로 바뀐다 (Figma 443:7939 `cancel/20px/white`).
+    // @ds(component): 44×44 g800 판(모서리 0) + 20pt 흰 글리프 — 아이콘 정사각 버튼 공용 컴포넌트 없음
     private var transcriptToggle: some View {
         Button {
             send(.userTappedTranscriptToggle)
@@ -163,7 +171,7 @@ public struct ReportVideoPlayerView: View {
             (store.isTranscriptVisible ? Image.Cancel.white20 : Image.Script.white20)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 20, height: 20)
+                .frame(width: Self.toggleGlyphSize, height: Self.toggleGlyphSize)
                 .frame(width: Self.controlSize, height: Self.controlSize)
                 .background(Color.GrayScale.g800)
         }
@@ -172,15 +180,17 @@ public struct ReportVideoPlayerView: View {
 
     // MARK: - 재생 컨트롤
 
+    /// Figma «video-control/play» 435:830 — 화살표 44 · 간격 46 · 가운데 74 정사각.
+    /// 화살표는 초 단위가 아니라 진행바 한 칸씩 움직인다(이동 단위는 리듀서 소유).
     private var playbackControls: some View {
         HStack(spacing: Self.controlsSpacing) {
-            skipButton(Image.SkipL.white34) { send(.userTappedSkipBackward) }
+            chunkStepButton(Image.SkipL.white34) { send(.userTappedPreviousChunk) }
             playPauseButton
-            skipButton(Image.SkipR.white34) { send(.userTappedSkipForward) }
+            chunkStepButton(Image.SkipR.white34) { send(.userTappedNextChunk) }
         }
     }
 
-    private func skipButton(_ icon: Image, action: @escaping () -> Void) -> some View {
+    private func chunkStepButton(_ icon: Image, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             icon
                 .resizable()
@@ -191,6 +201,8 @@ public struct ReportVideoPlayerView: View {
         .buttonStyle(.plain)
     }
 
+    /// 연한 초록 정사각 판 + 짙은 초록 글리프 (Figma 435:833 — 모서리 0, p20).
+    /// 시안엔 판 뒤 backdrop-blur 11.5 가 걸려 있지만 판이 불투명 g500 이라 보이지 않아 옮기지 않았다.
     private var playPauseButton: some View {
         Button {
             send(.userTappedPlayPause)
@@ -220,11 +232,15 @@ public struct ReportVideoPlayerView: View {
 
     // MARK: - 수치 (Figma 스케일에 없는 컴포넌트 고유값은 여기 상수로 모은다)
 
-    /// «hilit opacity/dark/65%».
+    /// Figma 변수 «hilit opacity/dark/65%» — 딤 불투명도.
     private static let dimOpacity: Double = 0.65
-    /// 컨트롤 터치 영역 44 · 글리프 34 (Figma video-control).
+    // @ds(layout): 44 — 컨트롤 버튼 한 변(화살표·대본 토글 슬롯). spacing 스케일(4~40)에 44 가 없다
     private static let controlSize: CGFloat = 44
+    // @ds(icon): 34 — skip/pause/play 글리프. 에셋 원본 크기라 늘이지 않는다(image.md 크기 규칙)
     private static let glyphSize: CGFloat = 34
+    // @ds(icon): 20 — script/cancel 글리프. 같은 이유로 에셋 원본 크기
+    private static let toggleGlyphSize: CGFloat = 20
+    // @ds(spacing): 46 — 화살표 ↔ 재생 버튼 간격(video-control gap). 스케일에 46 이 없다
     private static let controlsSpacing: CGFloat = 46
     private static let timescale: CMTimeScale = 600
 }

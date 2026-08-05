@@ -21,8 +21,6 @@ import Foundation
 /// 이 화면은 재생 실패(네트워크·코덱)만 표시한다.
 @Reducer
 public struct ReportVideoPlayerFeature {
-    /// 건너뛰기 폭 — iOS 플레이어 관례.
-    static let skipInterval: TimeInterval = 10
     /// 컨트롤 자동 숨김까지 기다리는 시간. 손대지 않으면 영상만 남는다.
     static let controlsHideDelay: Duration = .seconds(3)
     /// 이동이 «닿았다» 고 보는 오차(초) — AVPlayer 보고 간격(0.2초)보다 넉넉하게.
@@ -84,8 +82,10 @@ public struct ReportVideoPlayerFeature {
             /// 영상 아무 곳 — 컨트롤 표시 토글.
             case userTappedSurface
             case userTappedPlayPause
-            case userTappedSkipBackward
-            case userTappedSkipForward
+            /// 왼쪽 화살표 — 진행바 한 칸(대본 구간) 되돌리기. 초 단위가 아니다.
+            case userTappedPreviousChunk
+            /// 오른쪽 화살표 — 진행바 한 칸(대본 구간) 앞으로.
+            case userTappedNextChunk
             /// 하단 아이콘 — 대본 오버레이 토글.
             case userTappedTranscriptToggle
             /// 진행바 칸 — 그 구간 시작으로 이동.
@@ -179,11 +179,15 @@ public struct ReportVideoPlayerFeature {
             // 멈춰 둔 채로는 컨트롤을 숨기지 않는다 — 다시 재생할 방법이 사라진다.
             return state.isPlaying ? startControlsHideTimer() : .cancel(id: CancelID.controlsHide)
 
-        case .userTappedSkipBackward:
-            return seek(&state, to: state.currentTime - Self.skipInterval)
+        // 화살표는 «구간 = 이동 단위» 규약을 그대로 따른다 — 진행바 칸과 같은 눈금으로 움직여서
+        // 어디로 가는지 하단 바가 미리 보여준다(초 단위 건너뛰기면 칸과 어긋난다).
+        case .userTappedPreviousChunk:
+            guard let start = state.previousChunkStart else { return .none }
+            return seek(&state, to: start)
 
-        case .userTappedSkipForward:
-            return seek(&state, to: state.currentTime + Self.skipInterval)
+        case .userTappedNextChunk:
+            guard let start = state.nextChunkStart else { return .none }
+            return seek(&state, to: start)
 
         case .userTappedTranscriptToggle:
             state.isTranscriptVisible.toggle()
@@ -281,6 +285,27 @@ extension ReportVideoPlayerFeature.State {
     var progressChunks: [VideoTranscript.Chunk] {
         guard transcript.chunks.isEmpty else { return transcript.chunks }
         return [VideoTranscript.Chunk(id: 0, start: 0, end: max(duration, 1))]
+    }
+
+    /// 지금 재생 위치가 걸린 진행바 칸. 첫 칸보다 앞이면 첫 칸으로 본다.
+    var currentChunkIndex: Int? {
+        let chunks = progressChunks
+        guard !chunks.isEmpty else { return nil }
+        return chunks.lastIndex(where: { $0.start <= currentTime }) ?? 0
+    }
+
+    /// 왼쪽 화살표가 갈 시각 — 한 칸 앞 칸의 시작. 첫 칸에서 누르면 그 칸을 다시 처음부터.
+    var previousChunkStart: TimeInterval? {
+        let chunks = progressChunks
+        guard let index = currentChunkIndex else { return nil }
+        return chunks[max(0, index - 1)].start
+    }
+
+    /// 오른쪽 화살표가 갈 시각 — 다음 칸의 시작. 마지막 칸에선 갈 곳이 없어 nil(탭 무반응).
+    var nextChunkStart: TimeInterval? {
+        let chunks = progressChunks
+        guard let index = currentChunkIndex, chunks.indices.contains(index + 1) else { return nil }
+        return chunks[index + 1].start
     }
 
     /// 오버레이 대본 줄.
