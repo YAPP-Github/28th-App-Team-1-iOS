@@ -93,6 +93,9 @@ struct TranscriptText: View {
 
     /// 미지 톤은 강조하지 않는다 — 모르는 값을 개선으로 오인해 빨갛게 칠하지 않기 위해서.
     /// 본문 색을 그대로 물려받아야 «강조 없음» 이 된다(플레이어 오버레이는 줄마다 본문 색이 다르다).
+    ///
+    /// 잘함은 `p500` 고정이다(2026-08-05 확정). `p800`(#008A9F) 로 보이는 시안이 있다는 관측이 있었지만
+    /// 확인된 프레임엔 톤 글자색이 없었다 — 시안이 바뀌면 그때 옮긴다. 임의로 되돌리지 않는다.
     private func color(for tone: HighlightTone) -> Color {
         switch tone {
         case .good: Color.Positive.p500
