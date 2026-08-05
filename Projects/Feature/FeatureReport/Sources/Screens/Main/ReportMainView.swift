@@ -215,7 +215,8 @@ public struct ReportMainView: View {
 
     // MARK: - 지인 피드백
 
-    /// 아직 아무도 안 남겼으면 «보내기» 카드, 한 명이라도 남겼으면 그 사람들의 평가를 보여준다.
+    /// 도착한 평가가 있으면 그 위에 얹고, **«보내기» 카드는 항상 남긴다** — 정원(4명)이 차기 전까지
+    /// 다음 지인에게 또 보낼 수 있어야 해서다(시안 443:7102 는 평가 목록 아래 «1/4» 카드를 함께 그린다).
     private var peerFeedbackSection: some View {
         VStack(alignment: .leading, spacing: store.hasGuestFeedback ? .ds(.p10) : .ds(.p16)) {
             Text("지인 피드백")
@@ -230,13 +231,13 @@ public struct ReportMainView: View {
                     onSelectGuest: { send(.userTappedGuestTab($0)) },
                     onToggleComment: { send(.userTappedAttitudeComment(axisCode: $0)) }
                 )
-            } else {
-                PeerFeedbackCard(
-                    participantCount: store.guestParticipantCount,
-                    maxCount: ReportMainFeature.maxGuestCount,
-                    onTap: { send(.userTappedPeerFeedback) }
-                )
             }
+
+            PeerFeedbackCard(
+                participantCount: store.guestParticipantCount,
+                maxCount: ReportMainFeature.maxGuestCount,
+                onTap: { send(.userTappedPeerFeedback) }
+            )
         }
     }
 

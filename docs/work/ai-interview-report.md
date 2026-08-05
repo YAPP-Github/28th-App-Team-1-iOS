@@ -27,16 +27,15 @@
 
 ## 0-2. 범위
 
-`FeatureReport` 는 **화면 4개 + 메인 위 바텀시트 1개**로 구성한다.
+`FeatureReport` 는 **화면 3개 + 메인 위 바텀시트 1개**로 구성한다.
 
 | # | 화면 | 이 문서가 정의하는가 |
 |---|---|---|
 | 1 | 1차 리포트 `ReportMain` (+ 바텀시트 `ReportHighlightDetail`) | ✅ 전량 |
 | 2 | 영상 플레이어 `ReportVideoPlayer` | ✅ 전량 |
-| 3 | 지인 피드백 `ReportPeerFeedback` | ❌ 스펙 대기 (Part 4.5) — 화면 자리와 진입 경로만 확정 |
-| 4 | 최종 보고서 `ReportFinal` | ❌ 스펙 대기 (Part 4.6) — 화면 자리와 진입 경로만 확정 |
+| 3 | 지인 피드백 `ReportPeerFeedback` | ✅ 시안대로 구현 (443:8006) |
 
-3·4 는 Part 3 PRD 범위 밖이라 자리표시 골격을 유지한다. 관련 계약은 이미 존재한다 — 사용자측 링크 생성 `DomainFeedbackShare`, 게스트 제출측 `FeatureGuestFeedback`, 최종 보고서 데이터 `InterviewReport.guestFeedback`.
+**«최종 보고서» 화면은 만들지 않는다** (2026-08-06 확정, 자리표시 골격 삭제). 지인 피드백이 도착한 뒤 상태는 **메인의 «지인 피드백» 섹션이 이름 탭 + 태도 평가 목록으로 자라서** 보여준다(443:7102) — 별 화면으로 나가지 않는다. 관련 계약: 링크 생성 `DomainFeedbackShare`, 게스트 제출측 `FeatureGuestFeedback`, 평가 데이터 `InterviewReport.guestFeedback`.
 
 **MVP 제외**: 말하기 습관 지표(말속도·군말·침묵) — 측정·저장 자체를 제외한다(PRD §5). 관련 필드를 모델에 만들지 않는다.
 
@@ -49,20 +48,19 @@
 | 1차 리포트 (첫 화면 = 상세) | `ReportMainFeature` / `ReportMainView` | 골격(빈 State) | 코디네이터 root |
 | 하이라이트 상세 시트 | `ReportHighlightDetailFeature` / `…View` | **신규** | 리포트·플레이어 양쪽에서 `.sheet` (화면 아님 — 위에 얹는 바텀시트) |
 | 영상 플레이어 | `ReportVideoPlayerFeature` / `…View` | 골격(빈 State) | 메인 `[영상 다시보기]` · 시트 `[이 장면 영상으로 보기]` |
-| 지인 피드백 | `ReportPeerFeedbackFeature` / `…View` | 골격 유지 — 스펙 대기 | 메인 `[지인에게 면접 영상 보내기]` |
-| 최종 보고서 | `ReportFinalFeature` / `…View` | 골격 유지 — 스펙 대기 | 지인 피드백 도착 후 (4.6 확정 시) |
+| 지인 피드백 | `ReportPeerFeedbackFeature` / `…View` | 시안대로 구현 | 메인 `[지인에게 면접 영상 보내기]` (피드백 도착 후에도 «1/4» 로 남는다) |
 
 ### 1-1. 고쳐야 할 것 — 선형 체인 → 허브
 
-현 골격은 `메인 →(계속) 영상 →(계속) 피드백 →(계속) 최종` 으로 네 화면을 한 줄로 엮었다. PRD 와 충돌한다: 영상은 리포트의 **종속 화면**이지 지인 피드백의 앞 단계가 아니고, 사용자가 영상을 보지 않고 바로 지인에게 보낼 수 있어야 한다.
+옛 골격은 `메인 →(계속) 영상 →(계속) 피드백 →(계속) 최종` 으로 네 화면을 한 줄로 엮었다. PRD 와 충돌한다: 영상은 리포트의 **종속 화면**이지 지인 피드백의 앞 단계가 아니고, 사용자가 영상을 보지 않고 바로 지인에게 보낼 수 있어야 한다.
 
-**메인이 허브**다. Path 케이스 3개는 그대로 두고 push 트리거만 바꾼다.
+**메인이 허브**다. Path 는 두 케이스뿐이고 진입은 메인의 개별 delegate 가 트리거한다.
 
 ```
 ReportMain ─[영상 다시보기]─────────────→ ReportVideoPlayer
     │      ─[지인에게 면접 영상 보내기]──→ ReportPeerFeedback
     │      ─(하이라이트 탭)─────────────→ .sheet ReportHighlightDetail ─[이 장면 영상으로]→ ReportVideoPlayer
-    └──────(지인 피드백 도착 후)─────────→ ReportFinal
+    └──────(지인 피드백 도착)───────────→ 메인 «지인 피드백» 섹션이 자란다 (별 화면 없음)
 ```
 
 각 화면의 `continueRequested`(다음 화면으로 밀어내는 신호)를 목적별 delegate 로 쪼갠다 — 자리표시가 남긴 "계속하기" 체인이 그대로 굳는 걸 막는다.
@@ -101,8 +99,7 @@ Path 케이스 3개는 유지, **트리거만 §1-1 허브형으로 교체**한�
 ```swift
 @Reducer public enum Path {
     case videoPlayer(ReportVideoPlayerFeature)
-    case peerFeedback(ReportPeerFeedbackFeature)   // 유지 — 스펙 대기
-    case final(ReportFinalFeature)                 // 유지 — 스펙 대기
+    case peerFeedback(ReportPeerFeedbackFeature)
 }
 
 @ObservableState public struct State: Equatable {
@@ -113,8 +110,7 @@ Path 케이스 3개는 유지, **트리거만 §1-1 허브형으로 교체**한�
 @CasePathable public enum Delegate: Equatable, Sendable {
     case retryRequested    // 신규 — 분석 부족 시 다음 면접(면접 셋업으로)
     case closeRequested    // 유지
-    // 지인 피드백·최종 보고서는 모듈 안에서 push 하므로 부모로 올리지 않는다.
-    // finished 는 4.6 확정 시 재정의 — 현재 미사용.
+    // 지인 피드백은 모듈 안에서 push 하므로 부모로 올리지 않는다.
 }
 ```
 
@@ -466,11 +462,9 @@ Domain 추가분에 `TranscriptSegment`·`TranscriptWord`(서버 타임스탬프
 - **폴링 간격·상한** 수치 (PM) — 상한 존재는 확정, 값은 미정
 - **`status == .failed` UX** — PRD 에 분기 없음. 채점 실패 시 화면·재시도 정책 필요
 - **STT 부분 실패(30% 미만) 경고** — 별도 「STT 실패 처리 기획서」 대기. PRD §3 상태표의 '경고' 상태
-- **`words` 활용 범위** — 단어 강조(노래방식)를 쓸지 미정. 쓰더라도 말속도·군말 지표 산출은 MVP 제외(§0-2) 라 금지
 - **radius 토큰** — 여전히 없음(다크 화면은 Figma 가 모서리 0 이라 필요가 없었다). 라이트 화면에서 필요해지면 `DSRadius` 신설
-- **`guestFeedback` 섹션 표시** — 4.6 최종 보고서 소관
-- **`ReportPeerFeedbackFeature`·`ReportFinalFeature`** — 화면 자리·진입 경로만 확정, 내용은 Part 4.5/4.6 스펙 대기(현재 자리표시 골격)
-- **`ReportFinal` 진입 조건** — "지인 피드백 도착 후"를 무엇으로 판정할지 미정(`guestFeedback.participantCount` ≥ N? 푸시? 재조회?)
+- **지인 평가 판정 문구** — 시안(443:7102)은 표정 1단계를 «밝아요.» 로 쓰는데 코드는 잠정 문구 «좋아요.» 다. 4단계 전체가 시안에 없어 한 칸만 못 바꾼다 — 축별 4단계 문구 확정 필요(`GuestAttitudeCopy`)
+- **지인 피드백 도착 후 메인 갱신 트리거** — 링크 복사 후 재조회·푸시 여부 미정(현재는 재진입 시 `onAppear` 재조회에 의존)
 - ~~**24시간 보관 안내 문구 위치**~~ — 해결: 플레이어가 아니라 메인의 영상 카드가 남은 시청 시간을 카운트다운으로 보여준다
 - **회차 비교("지난 회차 대비")·반복 키워드 습관 안내** — MVP 이후
 - **말하기 습관 지표** — MVP 제외(측정·저장 포함). 도입 시 지표 정의·스키마 동시 설계

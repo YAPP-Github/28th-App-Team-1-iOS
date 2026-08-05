@@ -10,7 +10,8 @@ import SharedDesignSystemInterface
 import SwiftUI
 
 /// 지인 피드백 패널 — 지인 이름 탭 + 고른 지인의 태도 평가.
-/// 피드백이 한 건이라도 있을 때 «지인에게 보내기» 요청 카드 자리를 대신한다.
+/// 피드백이 한 건이라도 있을 때 «지인에게 보내기» 요청 카드 **위에** 얹힌다(카드를 대체하지 않는다 —
+/// 정원이 차기 전까지 다음 지인에게 또 보낼 수 있어야 한다).
 struct GuestFeedbackPanel: View {
     let guests: [GuestReview]
     let selectedIndex: Int

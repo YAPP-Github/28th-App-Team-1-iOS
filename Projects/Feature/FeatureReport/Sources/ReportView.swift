@@ -30,8 +30,6 @@ public struct ReportView: View {
                 ReportVideoPlayerView(store: store)
             case let .peerFeedback(store):
                 ReportPeerFeedbackView(store: store)
-            case let .final(store):
-                ReportFinalView(store: store)
             }
         }
     }
