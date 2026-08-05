@@ -55,6 +55,26 @@ extension InterviewClient: @retroactive DependencyKey {
                     return InterviewAudioStream(url: resource.url, headers: resource.headers)
                 }
             },
+            videoUploadURL: { sessionId in
+                try await InterviewError.mapping {
+                    try await network.api(
+                        NetworkRequest(method: .post, path: "/api/v1/interview/sessions/\(sessionId)/video/upload-url")
+                    )
+                }
+            },
+            completeVideoUpload: { sessionId, wrapUp in
+                try await InterviewError.mapping {
+                    let path = "/api/v1/interview/sessions/\(sessionId)/video/complete"
+                    // 계약: 마무리 멘트가 없으면 바디 자체를 생략한다 (빈 JSON 아님).
+                    let request: NetworkRequest
+                    if let wrapUp {
+                        request = try .json(method: .post, path: path, body: wrapUp, encoder: .api)
+                    } else {
+                        request = NetworkRequest(method: .post, path: path)
+                    }
+                    try await network.api(request)
+                }
+            },
             reportList: {
                 try await InterviewError.mapping {
                     let response: ReportListResponse = try await network.api(

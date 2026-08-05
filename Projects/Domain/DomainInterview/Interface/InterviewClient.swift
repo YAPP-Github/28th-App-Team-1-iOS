@@ -20,6 +20,12 @@ public struct InterviewClient: Sendable {
     public var submitAnswer: @Sendable (_ sessionId: Int, AnswerSubmission) async throws -> AnswerResult
     /// GET /interview/sessions/{id}/questions/{qid}/audio/stream 재생 정보 — AVPlayer 점진 재생용.
     public var questionAudioStream: @Sendable (_ sessionId: Int, _ questionId: Int) async throws -> InterviewAudioStream
+    /// POST /interview/sessions/{id}/video/upload-url — S3 presigned PUT 대상 발급.
+    /// `expiresInSeconds` 안에만 유효(만료 시 재발급). 저장 위치는 세션당 하나(재업로드 = 덮어쓰기).
+    public var videoUploadURL: @Sendable (_ sessionId: Int) async throws -> InterviewVideoUploadTarget
+    /// POST /interview/sessions/{id}/video/complete — 업로드 완료 확정. **S3 PUT 성공 후에만 호출**(호출처 책임). 멱등.
+    /// `wrapUp == nil` 이면 바디 생략(조기 종료 등 마무리 멘트 없음).
+    public var completeVideoUpload: @Sendable (_ sessionId: Int, _ wrapUp: InterviewVideoWrapUpSpan?) async throws -> Void
     /// GET /interview/sessions — 내 면접 레포트 목록(마이페이지용). envelope `{ reports }` 는 Live 가 벗긴다.
     public var reportList: @Sendable () async throws -> [InterviewReportSummary]
 
@@ -28,12 +34,16 @@ public struct InterviewClient: Sendable {
         sessionStatus: @escaping @Sendable (_ sessionId: Int) async throws -> InterviewSessionStatus,
         submitAnswer: @escaping @Sendable (_ sessionId: Int, AnswerSubmission) async throws -> AnswerResult,
         questionAudioStream: @escaping @Sendable (_ sessionId: Int, _ questionId: Int) async throws -> InterviewAudioStream,
+        videoUploadURL: @escaping @Sendable (_ sessionId: Int) async throws -> InterviewVideoUploadTarget,
+        completeVideoUpload: @escaping @Sendable (_ sessionId: Int, _ wrapUp: InterviewVideoWrapUpSpan?) async throws -> Void,
         reportList: @escaping @Sendable () async throws -> [InterviewReportSummary]
     ) {
         self.createSession = createSession
         self.sessionStatus = sessionStatus
         self.submitAnswer = submitAnswer
         self.questionAudioStream = questionAudioStream
+        self.videoUploadURL = videoUploadURL
+        self.completeVideoUpload = completeVideoUpload
         self.reportList = reportList
     }
 }
@@ -46,6 +56,8 @@ extension InterviewClient: TestDependencyKey {
             sessionStatus: unimplemented("InterviewClient.sessionStatus"),
             submitAnswer: unimplemented("InterviewClient.submitAnswer"),
             questionAudioStream: unimplemented("InterviewClient.questionAudioStream"),
+            videoUploadURL: unimplemented("InterviewClient.videoUploadURL"),
+            completeVideoUpload: unimplemented("InterviewClient.completeVideoUpload"),
             reportList: unimplemented("InterviewClient.reportList")
         )
     }
@@ -78,6 +90,14 @@ extension InterviewClient: TestDependencyKey {
                     headers: [:]
                 )
             },
+            videoUploadURL: { sessionId in
+                InterviewVideoUploadTarget(
+                    uploadUrl: "preview://interview/\(sessionId)/video/upload",
+                    contentType: "video/mp4",
+                    expiresInSeconds: 600
+                )
+            },
+            completeVideoUpload: { _, _ in },
             reportList: {
                 [InterviewReportSummary(
                     sessionId: 1,
