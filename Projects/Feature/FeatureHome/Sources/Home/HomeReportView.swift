@@ -8,6 +8,7 @@
 // Figma: «Home_Report» https://figma.com/design/ZG7FUxWCvITmnvzZi7fpTS/?node-id=3368-17266
 
 import ComposableArchitecture
+import DomainInterviewInterface
 import SharedDesignSystemInterface
 import SwiftUI
 
@@ -243,6 +244,8 @@ struct HomeReportView: View {
                 )
             ) {
                 HomeFeature()
+            } withDependencies: {
+                $0.interviewClient.reportList = HomeFeature.Report.previewKeepingFixtures
             }
         )
     }
@@ -258,6 +261,8 @@ struct HomeReportView: View {
                 )
             ) {
                 HomeFeature()
+            } withDependencies: {
+                $0.interviewClient.reportList = HomeFeature.Report.previewKeepingFixtures
             }
         )
     }

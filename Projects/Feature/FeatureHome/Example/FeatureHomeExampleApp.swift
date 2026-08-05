@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import DomainInterviewInterface
 import DomainPortfolioInterface
 import DomainUserInterface
 import FeatureHomeImplementation
@@ -22,10 +23,11 @@ struct FeatureHomeExampleApp: App {
                     store: Store(initialState: HomeFeature.State()) {
                         HomeFeature()
                     } withDependencies: {
-                        // Example 은 Implementation 을 link 하지 않는다 — 진입 로드 2종을 가짜로 채워
+                        // Example 은 Implementation 을 link 하지 않는다 — 진입 로드 3종을 가짜로 채워
                         // 네트워크 없이 홈을 돈다(안 채우면 liveValue 부재로 unimplemented 트랩).
                         $0.userClient.profile = { Self.profile }
                         $0.portfolioClient.list = { Self.portfolios }
+                        $0.interviewClient.reportList = { Self.reports }
                     }
                 )
             }
@@ -43,6 +45,35 @@ struct FeatureHomeExampleApp: App {
         careerYears: 3,
         remainingTicketCount: 2
     )
+
+    /// 가짜 기록 2건 — 홈이 `report` phase 로 떠 바텀시트 목록을 그린다(빈 배열이면 `default` 시안).
+    /// 날짜는 고정값이라 데모가 흔들리지 않는다(2026-07-31·07-28 KST 00:00).
+    private static let reports = [
+        InterviewReportSummary(
+            sessionId: 12,
+            jobType: "BACKEND",
+            jobTypeLabel: "백엔드 개발자",
+            careerYears: 3,
+            interviewedAt: Date(timeIntervalSince1970: 1_785_423_600),
+            portfolioFileName: "포트폴리오.pdf",
+            portfolioDeleted: false,
+            jdUrl: nil,
+            reportStatus: .ready,
+            feedbackAvailable: true
+        ),
+        InterviewReportSummary(
+            sessionId: 9,
+            jobType: "BACKEND",
+            jobTypeLabel: "백엔드 개발자",
+            careerYears: 3,
+            interviewedAt: Date(timeIntervalSince1970: 1_785_164_400),
+            portfolioFileName: "포트폴리오.pdf",
+            portfolioDeleted: false,
+            jdUrl: nil,
+            reportStatus: .ready,
+            feedbackAvailable: false
+        )
+    ]
 
     /// 가짜 포폴 1건(READY) — 면접 시작 카드가 «이전 정보 재사용» 변형으로 뜬다.
     /// 빈 배열로 바꾸면 «처음» 변형을 볼 수 있다.

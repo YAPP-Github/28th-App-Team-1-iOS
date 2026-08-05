@@ -51,6 +51,13 @@ struct AppView: View {
                 ) { interviewStore in
                     InterviewView(store: interviewStore)
                 }
+                // AI 면접 리포트 — 홈 위젯②의 [레포트 보기] 가 세션 id 로 연다. 자체 NavigationStack 을
+                // 갖고 좌상단 X 로 나가는 전면 흐름이라 sheet 가 아니라 cover 다.
+                .fullScreenCover(
+                    item: $store.scope(state: \.report, action: \.report)
+                ) { reportStore in
+                    ReportView(store: reportStore)
+                }
             case .auth:
                 // 로그인 전 + 가입 플로우(약관·온보딩) — 세션 복구가 게이트에 걸린 경우도 여기로 온다.
                 AuthView(store: store.scope(state: \.auth, action: \.auth))
@@ -74,6 +81,9 @@ struct AppView: View {
         // 면접은 자체 진행 표시(상태 칩·초읽기)로 대기를 말한다 — 답변 제출·질문 스트림마다 전역 딤이
         // 덮이면 면접이 끊겨 보이고, 타이머가 도는 화면을 잠그는 것 자체가 오동작이다.
         guard store.interview == nil else { return false }
+        // 리포트도 같은 이유로 끈다 — 채점 대기 중엔 4초마다 재조회가 나가서(폴링) 전역 딤이 깜빡이고,
+        // 그 대기는 리포트 화면이 자체 상태(`loadState`)로 이미 말하고 있다.
+        guard store.report == nil else { return false }
         // `default` 를 두지 않는다 — 루트가 늘면 여기서 컴파일이 깨져 판단을 강제한다.
         return switch store.root {
         case .splash, .splashFailed, .updateRequired: false
