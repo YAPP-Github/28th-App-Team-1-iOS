@@ -90,7 +90,10 @@ public extension Target {
         f.product = .app
         f.bundleId = f.bundleId ?? "\(Project.Environment.bundlePrefix)$(BUNDLE_ID_SUFFIX)"
         f.infoPlist = f.infoPlist ?? .extendingDefault(with: [
-            "UILaunchScreen": [:],
+            // 런치스크린은 storyboard 다 — `UILaunchScreen` dict 는 이미지 크기·위치를 못 잡아 로고가
+            // 늘어난다. SplashView 와 같은 로고·좌표를 그려 첫 프레임 전환에 깜빡임이 없게 한다
+            // (App/Resources/LaunchScreen.storyboard 주석 참조). 두 키를 같이 두면 dict 가 이긴다.
+            "UILaunchStoryboardName": "LaunchScreen",
             // xcconfig → Info.plist 치환. NetworkClient.defaultBaseURL()(API_BASE_URL)·AppSecrets(카카오 키)가 여기서 읽는다.
             "UIUserInterfaceStyle": "Light",
             "APP_ENV": "$(APP_ENV)",

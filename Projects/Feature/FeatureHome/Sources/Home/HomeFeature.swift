@@ -49,20 +49,31 @@ public struct HomeFeature {
         case expanded
     }
 
-    /// 리포트 행 표시 모델 — 위젯② 면접 기록 한 줄. 목록 응답(`InterviewReportSummary`)에서 만든다.
-    /// `dateText` 는 이미 포맷된 문자열이다(«7월 11일 월» 포맷은 `init(summary:)` 몫).
-    ///
-    /// **`id` 는 세션 id** 다 — [레포트 보기] 가 그대로 리포트 상세(`ReportFeature.State(sessionId:)`)를
-    /// 여는 열쇠라 표시용 UUID 를 따로 만들면 매핑 표가 하나 더 생긴다.
+    /// 리포트 행 표시 모델 — 위젯② 면접 기록 한 줄. `id` 는 **세션 id** 라 그대로 리포트 상세
+    /// (`ReportFeature.State(sessionId:)`) 인자가 된다 — 표시용 UUID 를 따로 만들면 매핑 표가 하나 더 생긴다.
+    /// `dateText` 는 이미 포맷된 문자열이다(«7월 11일 월» 포맷은 목록을 만드는 쪽 몫).
     public struct Report: Identifiable, Equatable, Sendable {
         public let id: Int
         public let dateText: String
         public let title: String
+        /// 제목 아래 회색 보조 문구 — 지금은 생성 실패 행의 «이용권 횟수는 차감되지 않아요» 하나다.
+        public let subtitle: String?
+        /// [레포트 보기] 노출 여부 — 생성 실패 세션은 열 상세가 없다
+        /// (docs/work/home-account.md §3 위젯② 행 상태 표).
+        public let canOpenReport: Bool
 
-        public init(id: Int, dateText: String, title: String) {
+        public init(
+            id: Int,
+            dateText: String,
+            title: String,
+            subtitle: String? = nil,
+            canOpenReport: Bool = true
+        ) {
             self.id = id
             self.dateText = dateText
             self.title = title
+            self.subtitle = subtitle
+            self.canOpenReport = canOpenReport
         }
     }
 
@@ -76,33 +87,35 @@ public struct HomeFeature {
         public var userName: String
         /// 리포트 목록 — 최신순. 개수는 여기서 파생한다(`reports.count`), 따로 들지 않는다.
         public var reports: IdentifiedArrayOf<Report>
-        /// 펼친 행 — 시안은 최신 1개가 펼쳐진 상태다. nil 이면 전부 접힘.
-        public var expandedReportID: Report.ID?
+        /// 펼친 행들 — **여러 행을 동시에 펼쳐 둘 수 있다**(사용자 결정 2026-08-05).
+        /// 진입 시엔 시안대로 최신 1개만 펼쳐져 있고, 행을 탭할 때마다 토글된다.
+        public var expandedReportIDs: Set<Report.ID>
+        /// 목록 갱신 후 남길 펼침 — 사라진 세션은 버리고, 전부 사라졌으면 최신 1개를 펼친다.
+        static func expanded(keeping previous: Set<Report.ID>, in reports: [Report]) -> Set<Report.ID> {
+            let kept = previous.intersection(reports.map(\.id))
+            return kept.isEmpty ? Set(reports.first.map { [$0.id] } ?? []) : kept
+        }
         /// 시트가 지금 앉아 있는 자리. 홈에 다시 들어오면 기본으로 돌아온다(`onAppear`).
         public var sheetDetent: SheetDetent = .report
         /// 면접 시작 화면 — 시트 **뒤에 늘 깔려 있다**. present 가 아닌 이유는 `SheetDetent` 주석 참조.
         /// 잔여·포폴·변형은 홈 진입 로드가 채운다 — 진실은 탭 시점 게이트(`checkStartEligibility`) 재검증이다.
         public var startInterview: StartInterviewFeature.State
-        /// dev 진입점 노출 여부 — AppFeature 가 dev 빌드에서만 켠다 (온보딩 본체 통합 전 임시 진입).
-        public var showsOnboardingEntry: Bool
-        /// dev 디버그 로그아웃 버튼 노출 여부 — AppFeature 가 dev 빌드에서만 켠다.
-        public var showsDebugLogout: Bool
+        /// dev 데이터 초기화 버튼 노출 여부 — AppFeature 가 dev 빌드에서만 켠다.
+        public var showsDevReset: Bool
 
         public init(
             phase: Phase = .default,
             userName: String = "",
             reports: [Report] = [],
             startVariant: StartInterviewFeature.Variant = .first,
-            showsOnboardingEntry: Bool = false,
-            showsDebugLogout: Bool = false
+            showsDevReset: Bool = false
         ) {
             self.phase = phase
             self.userName = userName
             self.reports = IdentifiedArray(uniqueElements: reports)
-            self.expandedReportID = reports.first?.id
+            self.expandedReportIDs = Set(reports.first.map { [$0.id] } ?? [])
             self.startInterview = StartInterviewFeature.State(variant: startVariant, userName: userName)
-            self.showsOnboardingEntry = showsOnboardingEntry
-            self.showsDebugLogout = showsDebugLogout
+            self.showsDevReset = showsDevReset
         }
     }
 
@@ -114,23 +127,19 @@ public struct HomeFeature {
 
         /// 사용자 입력·생명주기. View 의 send(...) 로만 방출된다.
         public enum View: Sendable {
-            // 홈 진입 로드 — 프로필·포폴(`inner(.entryLoaded)`) + 기록 리스트(`inner(.reportsLoaded)`).
-            // TODO: 남은 1종(진행 중 세션 → 위젯① [이어서 진행])은 계약 확정 후(미결 6-3).
+            // 홈 진입 로드 — 프로필·포폴은 `inner(.entryLoaded)`, 기록 목록은 `inner(.reportsLoaded)`.
+            // TODO: 남은 1종(진행 중 held 세션 → 위젯① [이어서 진행])은 계약 확정 후(미결 6-3).
             case onAppear
             /// 시트 드래그가 끝나 자리가 정해졌다 — 판정은 뷰(`HomeSheetDrag`), 확정은 여기.
             case userSettledSheet(SheetDetent)
-            /// 스크롤 안내 문구 탭 — 끌지 않고 바로 면접 시작 자리로 보낸다.
-            case userTappedStartInterview
             /// 내비바 프로필 탭 — 마이페이지 진입 요청.
             case userTappedProfile
-            /// 펼친 행의 [레포트 보기] 탭 — 리포트 상세 진입 요청. `id` 가 곧 세션 id 다.
+            /// 펼친 행의 [레포트 보기](>) 탭 — 리포트 상세 진입 요청. `id` 가 곧 세션 id 다.
             case userTappedReport(id: Report.ID)
-            /// 리포트 행 탭 — 펼침 토글(홈 내부 상태, 화면 전환 아님).
+            /// 리포트 행 탭 — 펼침 토글(홈 내부 상태, 화면 전환 아님). 펼친 행 본문 탭이면 접힌다.
             case userTappedReportRow(id: Report.ID)
-            /// dev 진입 버튼 탭 — 온보딩 시작 요청.
-            case userTappedOnboarding
-            /// dev 디버그 로그아웃 탭 — 세션·토큰·draft 전체 삭제 요청.
-            case userTappedLogout
+            /// dev 데이터 초기화 탭 — 로컬·세션 데이터를 전부 지우고 앱을 처음부터 다시 태운다.
+            case userTappedResetAppData
         }
 
         /// effect 결과·리듀서 내부 신호. 리듀서만 방출한다.
@@ -141,9 +150,9 @@ public struct HomeFeature {
             /// 홈 진입 로드 결과 — 실패한 쪽만 nil 이다(부분 실패 허용, 성공한 값은 그대로 반영).
             /// 묶음 API(미결 6-1)로 바뀌어도 갈아끼울 자리는 이 한 케이스다.
             case entryLoaded(profile: UserProfile?, portfolios: [DomainPortfolioInterface.Portfolio]?)
-            /// 기록 리스트 로드 결과 — 목록과 phase 를 함께 갱신한다. 표시 모델 변환은 리듀서 몫이다
-            /// (`entryLoaded` 와 같은 규칙 — 도메인 모델을 그대로 싣는다). 실패하면 오지 않는다.
-            case reportsLoaded([InterviewReportSummary])
+            /// 기록 리스트 로드 결과 — 목록과 phase 를 함께 갱신한다.
+            /// nil 은 «모른다»(호출 실패) — 직전 목록을 지우지 않는다. 빈 배열은 «기록이 없다» 로 다르다.
+            case reportsLoaded([Report]?)
         }
 
         /// 부모(AppFeature) 통보. 부모는 이것만 매칭한다 (D1).
@@ -157,10 +166,8 @@ public struct HomeFeature {
             case interviewStartRequested
             /// 면접 정보 수정 요청 — 면접 시작 화면의 [수정하기] 가 발원지. 전환은 AppFeature.
             case interviewInfoEditRequested
-            /// dev 온보딩 진입 요청 — 조립은 AppFeature 가 한다 (Feature→Feature 금지).
-            case onboardingRequested
-            /// dev 디버그 로그아웃 요청 — orchestration(logout API·draft clear·State 리셋)은 AppFeature.
-            case logoutRequested
+            /// dev 데이터 초기화 요청 — orchestration(logout API·저장소 삭제·State 리셋·재판정)은 AppFeature.
+            case appDataResetRequested
         }
     }
 
@@ -180,28 +187,36 @@ public struct HomeFeature {
                 // 홈 밖에 다녀오면 시트는 기본 자리로 — 남의 화면에서 돌아왔는데 면접 시작이
                 // 떠 있거나 목록이 펼쳐진 채면 «홈에 왔다» 는 신호가 사라진다.
                 state.sheetDetent = .report
-                // 첫 진입만이 아니라 **매 진입 재조회** — 포폴은 온보딩 S2·마이페이지가, 잔여는 면접이
-                // 바꾼다. 캐시하면 무효화 신호를 AppFeature 로 돌려야 하는데(Feature→Feature 금지)
-                // 1건짜리 GET 두 번보다 비싸다. 진실은 서버(docs/work/home-account.md §3·§6).
+                // 첫 진입만이 아니라 **매 진입 재조회** — 포폴은 온보딩 S2·마이페이지가, 잔여·기록은
+                // 면접이 바꾼다. 캐시하면 무효화 신호를 AppFeature 로 돌려야 하는데(Feature→Feature 금지)
+                // 1건짜리 GET 세 번보다 비싸다. 진실은 서버(docs/work/home-account.md §3·§6).
                 // 값은 지우지 않고 덮어쓰기만 한다 — 재진입마다 화면이 비면 깜빡인다.
-                return .run { send in
-                    // 한쪽이 죽어도 다른 쪽은 그린다 — 포폴 실패로 인사말·잔여까지 날리지 않는다.
-                    async let profile = try? await userClient.profile()
-                    async let portfolios = try? await portfolioClient.list()
-                    async let reports = try? await interviewClient.reportList()
-                    await send(.inner(.entryLoaded(profile: await profile, portfolios: await portfolios)))
-                    // 목록은 **성공했을 때만** 올린다 — 빈 배열이 «기록 없음»(phase 를 `.default` 로
-                    // 되돌린다) 이라, 실패를 빈 배열로 뭉개면 목록이 있는 사용자의 시트가 비어 버린다.
-                    if let reports = await reports {
-                        await send(.inner(.reportsLoaded(reports)))
+                return .merge(
+                    .run { send in
+                        // 한쪽이 죽어도 다른 쪽은 그린다 — 포폴 실패로 인사말·잔여까지 날리지 않는다.
+                        async let profile = try? await userClient.profile()
+                        async let portfolioList = try? await portfolioClient.list()
+                        await send(.inner(.entryLoaded(
+                            profile: await profile,
+                            portfolios: await portfolioList?.portfolios
+                        )))
+                    },
+                    // 기록 목록은 별도 effect — 목록이 느려도 인사말·면접 시작 카드는 먼저 그린다.
+                    .run { send in
+                        let summaries = try? await interviewClient.reportList()
+                        // 최신순으로 다시 세운다 — 응답 순서는 계약에 없고, 시안은 맨 위가 최근 면접이다
+                        // (펼치는 행도 «최신 1개» 라 순서가 흔들리면 엉뚱한 행이 펼쳐진다).
+                        // compactMap — 생성 중 세션은 행을 만들지 않는다(Report.init?(summary:)).
+                        await send(.inner(.reportsLoaded(
+                            summaries?
+                                .sorted { $0.interviewedAt > $1.interviewedAt }
+                                .compactMap(Report.init(summary:))
+                        )))
                     }
-                }
+                )
                 .cancellable(id: CancelID.entryLoad, cancelInFlight: true)
             case let .view(.userSettledSheet(detent)):
                 state.sheetDetent = detent
-                return .none
-            case .view(.userTappedStartInterview):
-                state.sheetDetent = .startInterview
                 return .none
             case .view(.userTappedProfile):
                 return .send(.delegate(.profileRequested))
@@ -209,12 +224,15 @@ public struct HomeFeature {
                 return .send(.delegate(.reportDetailRequested(sessionId: id)))
             case let .view(.userTappedReportRow(id)):
                 // 재탭이면 접는다 — foldable 행은 홈 내부 상태다(docs/work/home-account.md §3 위젯②).
-                state.expandedReportID = state.expandedReportID == id ? nil : id
+                // 다른 행을 닫지 않는다 — 여러 행을 펼쳐 둔 채 비교할 수 있다(사용자 결정 2026-08-05).
+                if state.expandedReportIDs.contains(id) {
+                    state.expandedReportIDs.remove(id)
+                } else {
+                    state.expandedReportIDs.insert(id)
+                }
                 return .none
-            case .view(.userTappedOnboarding):
-                return .send(.delegate(.onboardingRequested))
-            case .view(.userTappedLogout):
-                return .send(.delegate(.logoutRequested))
+            case .view(.userTappedResetAppData):
+                return .send(.delegate(.appDataResetRequested))
 
             case let .inner(.entryLoaded(profile, portfolios)):
                 if let profile {
@@ -234,24 +252,21 @@ public struct HomeFeature {
                 )
                 return .none
 
-            case let .inner(.reportsLoaded(summaries)):
-                // 최신순으로 다시 세운다 — 응답 순서는 계약에 없고, 시안은 맨 위가 최근 면접이다
-                // (펼치는 행도 «최신 1개» 라 순서가 흔들리면 엉뚱한 행이 펼쳐진다).
-                let reports = summaries
-                    .sorted { $0.interviewedAt > $1.interviewedAt }
-                    .map(Report.init(summary:))
+            case let .inner(.reportsLoaded(loaded)):
+                // 실패(nil)면 아무것도 건드리지 않는다 — 목록을 비우면 «기록이 없어졌다» 로 읽힌다.
+                guard let reports = loaded else { return .none }
                 state.reports = IdentifiedArray(uniqueElements: reports)
-                state.expandedReportID = reports.first?.id
-                // 인사말 변형(returning/recent) 판정 재료는 목록에 없다 — 목록 유무만 반영하고 변형은 유지한다.
-                switch (reports.isEmpty, state.phase) {
-                case (true, _):
+                // 재조회로 사라진 세션의 펼침만 버린다 — 남은 펼침은 그대로 둔다(깜빡임 방지).
+                state.expandedReportIDs = State.expanded(keeping: state.expandedReportIDs, in: reports)
+                // 기록이 있으면 **인사말을 띄운다**(`returning`) — «오랜만/최근» 을 가를 재료(마지막 방문 시각)가
+                // 서버에도 목록에도 없는데 `recent` 로 두면 인사말이 영원히 안 보인다(사용자 결정 2026-08-04).
+                // TODO: 마지막 방문·면접 시각 계약이 생기면 그때 `recent` 판정을 되살린다(미결 6-1).
+                if reports.isEmpty {
                     state.phase = .default
                     // 펼칠 목록이 사라졌으면 확장 자리도 성립하지 않는다.
                     if state.sheetDetent == .expanded { state.sheetDetent = .report }
-                case (false, .report):
-                    break
-                case (false, .default):
-                    state.phase = .report(.recent)
+                } else {
+                    state.phase = .report(.returning)
                 }
                 return .none
 
@@ -293,6 +308,11 @@ private extension HomeFeature {
     /// 면접 시작 카드 변형 — 잔여 0 이 최우선(소진 안내), 다음이 재사용할 포폴 유무.
     /// 서버 판정의 표시일 뿐이다 — 시작 가능 여부의 진실은 탭 시점 게이트다.
     ///
+    /// **포폴 유무가 곧 «회차» 판정 키다**(docs/work/home-account.md §3 «회차 분기 판정 키»).
+    /// 서버에 면접 이력 필드를 두지 않는다 — 이 분기가 묻는 건 «불러올 포폴이 있나» 이고,
+    /// 포폴은 계정당 1개라 READY 한 건이 곧 재사용 대상이다. 지운 사용자가 `first` 로
+    /// 떨어지는 것도 의도다 — 올릴 게 없으면 S2 부터다.
+    ///
     /// **잔여를 모르면(nil) 소진이 아니다** — 프로필이 죽었을 뿐인데 «무료 횟수를 모두 사용했어요»
     /// 를 띄우면 시작 경로가 [홈으로] 하나로 막힌다. 모를 땐 포폴 유무로만 가른다.
     static func startVariant(
@@ -304,31 +324,34 @@ private extension HomeFeature {
     }
 }
 
-// MARK: - 목록 응답 → 행
+// MARK: - 목록 응답 → 표시 행
 
 extension HomeFeature.Report {
-    /// 기록 리스트 응답 한 건 → 행 하나.
+    /// GET /interview/sessions 한 건 → 행 하나. `id` 는 세션 id 그대로다(상세 진입 인자).
     ///
-    /// 제목은 **세션 스냅샷(직군·연차)** 으로 세운다 — 목록 응답엔 리포트 한 줄 요약(`headline`)이 없고
-    /// 그건 세션별 상세(`InterviewReportClient.report`)에만 있다. 행마다 상세를 때리면 목록 한 번에
-    /// N+1 호출이 붙는다. 표기는 DS «card» 의 «직군명 · n년차 면접» 규칙을 따른다.
-    // TODO: 목록 응답에 headline 이 생기면 제목을 그 값으로 바꾼다 (시안 문구가 요약문 — 서버 협의).
-    // TODO: 생성 실패·삭제된 포폴 표기(`reportStatus`·`portfolioDeleted`)는 홈 시안에 자리가 없어
-    //       흘리지 않는다 — 시안 확정 후 행에 태그를 붙인다(docs/work/home-account.md §6).
-    init(summary: InterviewReportSummary) {
+    /// **GENERATING 은 행을 만들지 않는다**(nil) — 채점이 끝나기 전 세션은 목록에서 빼기로 확정했다
+    /// (사용자 결정 2026-08-04, PRD 위젯② 행 상태 표에 없던 자리). 홈은 폴링하지 않으므로
+    /// 생성이 끝난 행은 다음 홈 진입 재조회 때 나타난다.
+    init?(summary: InterviewReportSummary) {
+        guard summary.reportStatus != .generating else { return nil }
+        let isFailed = summary.reportStatus == .failed
         self.init(
             id: summary.sessionId,
-            dateText: Self.dateFormatter.string(from: summary.interviewedAt),
-            title: Self.title(for: summary)
+            dateText: Self.dateText(summary.interviewedAt),
+            title: Self.title(for: summary),
+            subtitle: isFailed ? Self.failureSubtitle : nil,
+            // 실패 세션은 열 상세가 없다. INSUFFICIENT_ANALYSIS 는 채점된 카드만이라도 있는
+            // 리포트라 READY 와 같은 행이다(사용자 결정 2026-08-04).
+            canOpenReport: !isFailed
         )
     }
 
-    /// 행 날짜 «7월 11일 월» — 시안 표기를 그대로 옮긴 고정 포맷이라 로케일에 흔들리지 않게 둔다.
+    /// 날짜 표기 «7월 11일 월» — 시안 표기를 그대로 옮긴 고정 포맷이라 기기 로케일에 흔들리지 않게 둔다.
     ///
-    /// 타임존도 **KST 고정**이다 — 서버가 타임존 없는 LocalDateTime 을 주고 디코더가 그걸 KST 로
-    /// 읽는데(`JSONDecoder.api`), 표시만 기기 로컬로 두면 UTC 서쪽 기기에서 하루 밀린 날짜가 뜬다
-    /// (「면접 시작」 카드의 업로드일 표기와 같은 규칙).
-    private static let dateFormatter: DateFormatter = {
+    /// 타임존도 **KST 고정**이다 — 서버가 타임존 없는 LocalDateTime 을 주고 디코더가 그걸 KST 로 읽는데
+    /// (`JSONDecoder.api`), 표시만 기기 로컬로 두면 UTC 서쪽 기기에서 하루 밀린 날짜가 뜬다
+    /// (포폴 업로드일 표기와 같은 규칙 — `StartInterviewView.uploadedAtFormatter`).
+    private static let interviewedAtFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "ko_KR")
         formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
@@ -336,14 +359,26 @@ extension HomeFeature.Report {
         return formatter
     }()
 
-    /// 제목 «백엔드 개발자 · 3년차 면접» — 없는 조각은 뺀다(가짜 «0년차» 를 만들지 않는다).
+    private static func dateText(_ date: Date) -> String {
+        interviewedAtFormatter.string(from: date)
+    }
+
+    /// 생성 실패 행 보조 문구 — 실패해도 이용권은 안 깎인다는 게 이 행이 전할 전부다(시안 2026-08-05).
+    static let failureSubtitle = "이용권 횟수는 차감되지 않아요"
+
+    /// 행 제목 — 실패만 상태 문구고, READY·INSUFFICIENT_ANALYSIS 는 세션 스냅샷(직군·연차)이다
+    /// (시안처럼 «답변 한 줄 요약» 을 띄우고 싶지만 목록 응답에 그 문장이 없다).
+    // TODO: 목록 응답에 요약 문장 필드 추가 요청(미결 6-1) → 오면 스냅샷 갈래만 갈아끼운다.
+    private static func title(for summary: InterviewReportSummary) -> String {
+        summary.reportStatus == .failed ? "레포트 생성에 실패했어요" : snapshotTitle(for: summary)
+    }
+
+    /// 세션 스냅샷 제목 — 없는 조각은 뺀다(가짜 «0년차» 를 만들지 않는다).
     /// 연차 표기(0 = 신입, 상한 10 = «10년 이상»)는 온보딩 연차 휠(`CareerOption.label`)과 같은 규칙인데
     /// 그 타입은 다른 Feature 라 가져오지 못한다(Feature→Feature 금지) — 규칙만 옮겨 적는다.
-    private static func title(for summary: InterviewReportSummary) -> String {
-        let head = [summary.jobTypeLabel, summary.careerYears.map(Self.careerText)]
-            .compactMap { $0 }
-            .joined(separator: " · ")
-        return head.isEmpty ? "면접 리포트" : "\(head) 면접"
+    private static func snapshotTitle(for summary: InterviewReportSummary) -> String {
+        let pieces = [summary.jobTypeLabel, summary.careerYears.map(Self.careerText)].compactMap(\.self)
+        return pieces.isEmpty ? "면접 레포트가 준비됐어요" : pieces.joined(separator: " · ")
     }
 
     private static func careerText(_ years: Int) -> String {
@@ -366,6 +401,21 @@ extension HomeFeature.Report {
         .init(id: 3, dateText: "7월 10일 월", title: "경험을 시간순으로 정리해 전달했어요"),
         .init(id: 4, dateText: "7월 10일 월", title: "트레이드오프를 먼저 말하고 선택 이유를 덧붙였어요"),
         .init(id: 5, dateText: "7월 10일 월", title: "성능 개선 결과를 지표로 설명했어요")
+    ]
+
+    /// 세션 스냅샷 제목 목록 — 요약 문장 필드가 오기 전 실제 행이 어떻게 보이는지 확인하는 **프리뷰 전용** 픽스처.
+    /// 제목은 `Report.title(for:)` 이 만드는 값과 같게 맞췄다(직군 · 연차).
+    public static let snapshotPlaceholders: [Self] = [
+        .init(id: 1, dateText: "7월 11일 토", title: "백엔드 개발자 · 3년차"),
+        .init(id: 2, dateText: "7월 10일 금", title: "프론트엔드 개발자 · 1년차"),
+        .init(id: 3, dateText: "7월 9일 목", title: "백엔드 개발자"),
+        .init(
+            id: 4,
+            dateText: "7월 8일 수",
+            title: "레포트 생성에 실패했어요",
+            subtitle: failureSubtitle,
+            canOpenReport: false
+        )
     ]
 
     /// 프리뷰 전용 목록 스텁 — 진입 재조회를 «실패» 로 두어 위 픽스처(또는 «기록 없음»)를 지킨다.

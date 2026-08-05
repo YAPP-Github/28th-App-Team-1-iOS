@@ -15,17 +15,12 @@ import Foundation
 
 // @lat: [[app]]
 // depends-on: [[auth]] — 로그인 전/후 루트 게이트. cross-feature 조립은 AppFeature 에서만.
-// depends-on: [[home]] — Home 을 탭으로 임베드(owner). cross-feature delegate 라우팅은 Feature 추가 시 이 자리에서 조립.
+// depends-on: [[home]] — Home 을 로그인 후 루트로 임베드(owner). cross-feature delegate 라우팅은 Feature 추가 시 이 자리에서 조립.
 // depends-on: [[interview]] — 온보딩 완주 delegate(.finished(sessionId)) 를 받아 면접 흐름을 present. 종료 두 신호(.finished/.closed)는 cover 를 닫고 홈을 다시 태운다.
 // depends-on: [[onboarding]] — dev 전용 진입(Home 버튼)으로 온보딩 위저드를 present. 조립은 여기서만 (온보딩 본체 통합 전 임시).
 // depends-on: [[report]] — 홈 위젯②의 [레포트 보기] delegate 를 받아 리포트 커버를 세션 id 로 present. 리포트의 두 신호(닫기·다시 연습)도 여기서 받는다.
 @Reducer
 struct AppFeature {
-    /// 탭 식별자. 새 탭 추가 시: 여기 case → State 프로퍼티 → body Scope → AppView tabItem 순으로 확장.
-    enum Tab: Hashable {
-        case home
-    }
-
     /// 루트가 지금 무엇을 띄우는가. Bool 조합으로는 «재시도 가능한 판정 실패» 를 표현할 수 없어 값으로 둔다.
     /// 전이는 Splash 판정(`onAppear`) → auth 또는 home 단방향이고, 로그아웃·세션 만료만 되돌린다.
     enum Root: Equatable {
@@ -37,7 +32,7 @@ struct AppFeature {
         case updateRequired
         /// 로그인 전 또는 가입 플로우(약관·온보딩) 진행 중.
         case auth
-        /// 두 게이트 모두 통과 — 탭 화면.
+        /// 두 게이트 모두 통과 — 홈 화면.
         case home
     }
 
@@ -47,10 +42,9 @@ struct AppFeature {
         /// 루트가 무엇을 띄우는지 — 초기값은 Splash(판정 전).
         var root: Root = .splash
         var home = HomeFeature.State()
-        var selectedTab: Tab = .home
         /// 면접 흐름(Part2) — 온보딩 완주가 넘긴 sessionId 로 연다. 전면 몰입이라 fullScreenCover.
         @Presents var interview: InterviewFeature.State?
-        /// dev 전용 온보딩 위저드 — Home 진입 버튼으로 present (온보딩 본체 통합 전 임시).
+        /// 온보딩 위저드 — 「면접 시작」의 [시작하기]·[수정하기] 가 present 한다.
         @Presents var onboarding: OnboardingFeature.State?
         /// AI 면접 리포트 — 홈 위젯②의 [레포트 보기] 가 세션 id 로 연다. 자체 NavigationStack 을 가진 전면 흐름이라 cover.
         @Presents var report: ReportFeature.State?
@@ -77,8 +71,8 @@ struct AppFeature {
         case interview(PresentationAction<InterviewFeature.Action>)
         case onboarding(PresentationAction<OnboardingFeature.Action>)
         case report(PresentationAction<ReportFeature.Action>)
-        /// 로그아웃 정리(서버·토큰·draft) 완료 — 초기 State 로 리셋해 로그인 화면으로 돌아간다.
-        case sessionCleared
+        /// dev 데이터 초기화 완료 — 초기 State 로 리셋하고 Splash 판정부터 다시 태운다.
+        case appDataCleared
         case binding(BindingAction<State>)
 
         /// 업데이트 알럿 버튼. 강제(FORCE)일 땐 «나중에» 를 만들지 않아 도달하지 않는다.
@@ -123,9 +117,8 @@ struct AppFeature {
         Reduce { state, action in
             switch action {
             case .onAppear:
-                // dev 계에서만 Home 온보딩 진입·디버그 로그아웃 버튼을 노출한다.
-                state.home.showsOnboardingEntry = AppEnvironment.isDev
-                state.home.showsDebugLogout = AppEnvironment.isDev
+                // dev 계에서만 Home 데이터 초기화 버튼을 노출한다.
+                state.home.showsDevReset = AppEnvironment.isDev
                 // 잔존 정리를 **판정보다 먼저** 끝낸다 — 순서를 지키려 판정을 effect 안에서 잇지 않고
                 // 별도 액션으로 갈라 놓는다.
                 return .run { send in
@@ -171,18 +164,16 @@ struct AppFeature {
                 // 새 로그인 = 새 세션. 이전 사용자가 하던 화면·데이터를 전부 버리고 초기 State 에서 시작한다.
                 state = State()
                 state.root = .home
-                state.home.showsOnboardingEntry = AppEnvironment.isDev
-                state.home.showsDebugLogout = AppEnvironment.isDev
+                state.home.showsDevReset = AppEnvironment.isDev
                 return .none
             case .auth:
-                return .none
-            case .home(.delegate(.onboardingRequested)):
-                state.onboarding = OnboardingFeature.State(userName: state.home.userName)
                 return .none
             case .home(.delegate(.interviewStartRequested)):
                 // 면접에 필요한 정보(직군·연차·JD·포폴)를 모으는 게 온보딩 위저드다 — 첫 면접은 거기부터다.
                 // 면접 화면은 **세션 id 로만** 열리는데(`InterviewFeature.State(sessionId:)`) 그 id 를 만드는
                 // 건 위저드의 세션 생성뿐이라, 재사용 경로도 지금은 같은 위저드를 태운다.
+                // 변형은 곧 회차다 — `first` = 1회차, `hasPortfolio` = 2회차 이상(판정 키는 READY 포폴
+                // 보유 하나 — docs/work/home-account.md §3 «회차 분기 판정 키»).
                 switch state.home.startInterview.variant {
                 case .first:
                     state.onboarding = OnboardingFeature.State(userName: state.home.userName)
@@ -209,26 +200,20 @@ struct AppFeature {
                 // 위젯② [레포트 보기] — 행 id = 세션 id. 채점 미완(404·GENERATING)도 그냥 연다(폴링은 리포트 몫 — [[report#1차 리포트]]).
                 state.report = ReportFeature.State(sessionId: sessionId)
                 return .none
-            case .home(.delegate(.logoutRequested)):
-                // 서버 로그아웃 후 로컬 정리. 서버 호출이 실패해도 로컬은 그대로 지운다.
+            case .home(.delegate(.appDataResetRequested)):
+                // dev 전용 «재설치 흉내» — 서버 로그아웃 · Keychain 전체 · 온보딩 draft ·
+                // 앱 UserDefaults 도메인 전체를 지운다. 서버 호출이 실패해도 로컬 정리는 그대로 진행한다.
+                // 첫 실행 마커까지 함께 날리는 건 의도다 — 다음 콜드 스타트가 재설치 직후와 같은 자리에서
+                // 정리를 한 번 더 돌게 된다(빈 저장소를 지우는 것이라 손해가 없다, [[app#첫 실행 정리]]).
                 return .run { send in
                     try? await authClient.logout()
                     clearLocalData()
-                    await send(.sessionCleared)
+                    if let bundleId = Bundle.main.bundleIdentifier {
+                        UserDefaults.standard.removePersistentDomain(forName: bundleId)
+                    }
+                    await send(.appDataCleared)
                 }
             case .home:
-                return .none
-            // 면접 종료 — 두 신호 모두 cover 를 닫고 홈을 다시 태운다: 어느 쪽이든 잔여가 줄었고,
-            // 리포트도 늘었을 수 있다(BACK_EXIT 이탈도 생성 트리거 — 2026-08-03 서버 계약).
-            // 케이스를 합치지 않는 건 곧 갈라지기 때문이다: 정상 종료엔 리포트 상세(r1) 라우팅이 붙는다.
-            // TODO: 정상 종료 → r1 직행. 커버(`state.report`)는 이미 있어 `finished` 가 sessionId 만 실어 주면 된다.
-            case .interview(.presented(.delegate(.finished))):
-                state.interview = nil
-                return .send(.home(.view(.onAppear)))
-            case .interview(.presented(.delegate(.closed))):
-                state.interview = nil
-                return .send(.home(.view(.onAppear)))
-            case .interview:
                 return .none
             // 온보딩 완주 = 분석까지 끝나 세션이 준비된 상태 — 위저드를 닫고 그 세션으로 면접을 연다.
             // 홈은 안 태운다 — 어차피 면접에 가려지고, 갱신 시점은 면접이 끝나 돌아올 때다(위 두 갈래).
@@ -245,6 +230,26 @@ struct AppFeature {
                 return .send(.home(.view(.onAppear)))
             case .onboarding:
                 return .none
+            // 면접 종료·이탈 모두 cover 를 닫고 홈을 다시 태운다 — 어느 쪽이든 잔여가 줄었고,
+            // 리포트도 늘었을 수 있다(BACK_EXIT 이탈도 생성 트리거 — 2026-08-03 서버 계약).
+            // 케이스를 합치지 않는 건 곧 갈라지기 때문이다: 정상 종료엔 리포트 상세(r1) 라우팅이 붙는다.
+            // TODO: 정상 종료 → r1 직행. 커버(`state.report`)는 이미 있어 `finished` 가 sessionId 만 실어 주면 된다.
+            //
+            // 정상 종료 = 온보딩이 모은 입력이 제 역할을 다한 지점 — 여기서 온보딩 draft 를 폐기한다(PRD §4.4).
+            // 세션 생성 시점에 지우지 않는 이유: 그 사이 앱이 죽거나 면접에서 이탈하면 값이 다시 필요하고,
+            // 홈의 «이전 정보 재사용»·[수정하기] 도 draft 복원에 얹혀 있다.
+            case .interview(.presented(.delegate(.finished))):
+                state.interview = nil
+                return .merge(
+                    .run { [draftStore] _ in draftStore.clear() },
+                    .send(.home(.view(.onAppear)))
+                )
+            // 이탈은 draft 보존 — 같은 입력으로 다시 시작할 수 있어야 한다.
+            case .interview(.presented(.delegate(.closed))):
+                state.interview = nil
+                return .send(.home(.view(.onAppear)))
+            case .interview:
+                return .none
             // 리포트가 올리는 두 신호 — 둘 다 커버만 닫고(홈 재조회 없음), «다시 연습» 만 면접 시작과 같은 위저드로 잇는다.
             case .report(.presented(.delegate(.closeRequested))):
                 state.report = nil
@@ -255,14 +260,12 @@ struct AppFeature {
                 return .none
             case .report:
                 return .none
-            case .sessionCleared:
-                // 로그아웃 정리 완료 — 초기 State 로 리셋하고 첫 소셜 로그인 화면으로.
-                // Splash 로 되돌리지 않는다 — 로그아웃 복귀는 판정이 아니라 확정 상태다.
+            case .appDataCleared:
+                // 초기 State 로 되돌리고 **Splash 판정부터 다시** — 지운 게 세션만이 아니라 로컬 저장소
+                // 전부라, 재설치 직후와 같은 자리에서 시작해야 버전 게이트·동의·프로필 게이트가 모두 다시 돈다.
                 state = State()
-                state.root = .auth
-                state.home.showsOnboardingEntry = AppEnvironment.isDev
-                state.home.showsDebugLogout = AppEnvironment.isDev
-                return .none
+                state.home.showsDevReset = AppEnvironment.isDev
+                return resolveLaunchRouting()
             case .binding:
                 return .none
             }
