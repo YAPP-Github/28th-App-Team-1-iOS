@@ -6,6 +6,7 @@
 > 절대 규칙: **Feature→Feature 의존 0 · Repository(Client)는 Domain 모듈 Interface/Implementation 분리 · cross-feature 조립은 [[app]](AppFeature)에서만.**
 > 시스템 전체 그림·Client 분리(D3)는 [[architecture]], 도메인 큰 그림 [[domain.map]], Part1/2 설계 [ai-interview](ai-interview.md).
 > 출처: 「Part3. AI 분석 보고서 & 면접 영상 다시보기」 PDF (기준일 2026-06-15)
+> ⚠️ **서버 계약은 `lat.md/api.md` «Interview Report» 가 현행** — 이 문서의 응답 스키마·에러 코드는 2026-06-15 기획 기준이라 어긋난 부분이 있다 (전면 개정은 Part 3 착수 몫).
 
 ## 0. 제품 → 레이어 매핑
 
