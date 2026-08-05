@@ -84,7 +84,7 @@ public struct ReportMainView: View {
     }
 
     /// 한 줄 요약 — 서버 소유 문구. nil 이면 분석 부족 폴백만 쓴다 (정의서 §6).
-    /// 시안의 «title-box» 인스턴스라 DS `TitleBox` 를 쓴다 — 뱃지·서브 없이 타이틀 한 줄뿐이고,
+    /// 시안의 «title-box» 인스턴스라 DS `TitleBox`(뱃지·서브 없이 타이틀 한 줄)를 쓰고,
     /// 글자색은 화면이 선언한 `.hilitSurface(.dark)` 가 흰색으로 정한다.
     private var headline: some View {
         TitleBox([.init(store.report?.headline ?? ReportMainView.headlineFallback)])
@@ -128,7 +128,6 @@ public struct ReportMainView: View {
     }
 
     /// 제목 + 레드플래그 느낌표. 툴팁은 오버레이라 열고 닫아도 아래 내용이 밀리지 않는다.
-    ///
     /// 느낌표·툴팁은 **레드플래그가 있을 때만** 함께 나타난다 — 없으면 둘 다 그리지 않는다 (정의서 §2-4).
     private var detailReportHeader: some View {
         HStack(spacing: .ds(.p8)) {
