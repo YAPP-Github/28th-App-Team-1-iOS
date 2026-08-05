@@ -67,7 +67,8 @@ public struct ReportHighlightDetailFeature {
         @CasePathable
         public enum Delegate: Equatable, Sendable {
             /// 영상으로 이동 — 시트를 닫고 영상으로 넘기는 건 부모 몫.
-            /// `at` 이 nil 이면 근거 시각을 모른다는 뜻이라 처음부터 재생한다 (서버 timestamp 확장 대기).
+            /// `at` 이 nil 이면 근거 시각을 모른다는 뜻이라 처음부터 재생한다
+            /// (`startSec` 도 발화 오프셋 폴백도 없던 경우).
             case videoJumpRequested(at: TimeInterval?)
         }
     }
@@ -99,9 +100,9 @@ public extension ReportHighlightDetailFeature.State {
 
     /// 다음 대비 블록 — 없으면 제목까지 통째로 감춘다.
     ///
-    /// 톤이 시안을 가르지만(부정=대조 / 긍정=후속 질문) 두 값 다 서버 확장 대기라 실제 분기는
-    /// **온 데이터**가 정한다 — 확장 전후로 코드 경로가 갈리지 않는다. 둘이 함께 오는 톤은 없어
-    /// 우선순위는 사실상 무의미하지만, 온다면 톤 전용 판인 대조를 먼저 본다.
+    /// 어느 판인지는 구간의 `reason` 이 정한다(OFF_INTENT=대조 / PROBE_WORTHY=후속 질문 —
+    /// `HighlightContext.init(card:span:)` 이 문지기). SHALLOW·SUFFICIENT 는 둘 다 비어 블록이 없다.
+    /// 서버 계약상 둘이 함께 오지 않지만, 온다면 부정 전용 판인 대조를 먼저 본다.
     var nextPreparation: ReportHighlightDetailFeature.NextPreparation? {
         if let intentReview = context.intentReview { return .intentReview(intentReview) }
         guard !context.followUpQuestions.isEmpty else { return nil }

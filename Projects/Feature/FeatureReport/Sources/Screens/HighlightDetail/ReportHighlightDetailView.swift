@@ -91,12 +91,12 @@ public struct ReportHighlightDetailView: View {
                     baseColor: Color.GrayScale.g600
                 )
                 if let analysis = store.context.analysis {
-                    // 볼드 한 줄(Figma «명확한 원인과 구조 설명» / «질문 의도와 다르게 답변») = 행동형
-                    // 키워드 — 서버 확장 전에는 nil 이라 카드가 그 줄만 빼고 그린다.
+                    // 볼드 한 줄(Figma «명확한 원인과 구조 설명» / «질문 의도와 다르게 답변»)
+                    // = 서버 `span.title`. nil 이면 카드가 그 줄만 빼고 그린다.
                     MessageCard(
                         .detail(
                             subtitle: store.analysisLabel,
-                            title: store.context.keyword,
+                            title: store.context.span.title,
                             contents: analysis
                         ),
                         icon: analysisIcon

@@ -93,7 +93,8 @@ public struct ReportFeature {
             state.path.append(.videoPlayer(ReportVideoPlayerFeature.State(
                 videoURL: url,
                 startAt: startAt,
-                cards: state.main.cards
+                cards: state.main.cards,
+                script: state.main.report?.script ?? []
             )))
             return .none
 

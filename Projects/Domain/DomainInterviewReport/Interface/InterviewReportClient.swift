@@ -32,7 +32,6 @@ extension InterviewReportClient: TestDependencyKey {
                 InterviewReport(
                     status: .ready,
                     headline: "캐시 도입 결정의 이유와 한계까지 구체적인 수치로 설명해주셨어요.",
-                    redFlagNotices: nil,
                     video: InterviewReportVideo(
                         url: nil,
                         expired: false,
@@ -49,11 +48,14 @@ extension InterviewReportClient: TestDependencyKey {
                                     startIndex: 0,
                                     endIndex: 20,
                                     tone: "GOOD",
+                                    reason: "SUFFICIENT",
+                                    title: "구체적 수치로 문제 설명",
                                     analysis: "구체적인 수치를 근거로 문제를 설명했습니다."
                                 )
                             ],
                             resolutionNotice: nil,
                             cardRedFlagNotices: nil,
+                            questionIntentTitle: "성능 저하 인지 수준",
                             questionIntent: "성능 문제를 얼마나 구체적으로 인지했는지 확인하는 질문입니다."
                         )
                     ],

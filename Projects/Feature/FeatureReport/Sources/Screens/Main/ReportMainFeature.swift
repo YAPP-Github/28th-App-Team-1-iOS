@@ -272,8 +272,9 @@ public extension ReportMainFeature.State {
     var isInsufficient: Bool { report?.status == .insufficientAnalysis }
 
     /// 한 줄 요약 아래 안내 줄 — 최대 2줄로 절단한다.
+    /// 보고서 단위 필드가 없어 걸린 카드들의 `cardRedFlagNotices` 를 카드 순서대로 모은다.
     var visibleRedFlagNotices: [RedFlagNotice] {
-        Array((report?.redFlagNotices ?? []).prefix(ReportMainFeature.maxRedFlagNotices))
+        Array(cards.flatMap { $0.cardRedFlagNotices ?? [] }.prefix(ReportMainFeature.maxRedFlagNotices))
     }
 
     var cards: [InterviewReportCard] { report?.cards ?? [] }
