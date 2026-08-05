@@ -8,10 +8,9 @@ let project = Project.makeModule(
         // D3: Feature 는 Interface 를 두지 않는다 (단일 Implementation). → DocC FeatureInterface / architecture.md D3
         .feature(implements: "Onboarding", factory: .init(dependencies: [
             .composableArchitecture,
-            .domain(interface: .job),
             .domain(interface: .jd),
             .domain(interface: .portfolio),
-            .domain(interface: .interview),   // 분석 스텝: 세션 생성(S0~S3 일괄 수집)
+            .domain(interface: .interview),   // 프리로드: 세션 생성(S0~S3 일괄 수집)
             .shared(interface: .designSystem)
         ])),
         .feature(testing: "Onboarding"),
@@ -19,7 +18,6 @@ let project = Project.makeModule(
         // 누락 시 따뜻한 DerivedData에서만 우연히 빌드되는 거짓 성공이 난다.
         .feature(tests: "Onboarding", factory: .init(dependencies: [
             .composableArchitecture,
-            .domain(interface: .job),
             .domain(interface: .jd),
             .domain(interface: .portfolio),
             .domain(interface: .interview)
@@ -46,7 +44,6 @@ let project = Project.makeModule(
             resources: ["Resources/**"],
             dependencies: [
                 .composableArchitecture,
-                .domain(interface: .job),
                 .domain(interface: .jd),
                 .domain(interface: .portfolio),
                 .domain(interface: .interview)

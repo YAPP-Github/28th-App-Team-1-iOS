@@ -36,7 +36,8 @@ public struct AuthOnboardingNamingView: View {
 
             Spacer(minLength: 0)
 
-            ButtonLarge("다음", .bottom) { send(.userTappedContinue) }
+            // 앞 스텝이 없어 단일 버튼 — 라벨은 2버튼 오른쪽과 같은 «계속하기» 로 맞춘다(온보딩 공통 카피).
+            ButtonLarge("계속하기", .bottom) { send(.userTappedContinue) }
                 .disabled(!store.isContinueEnabled)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)

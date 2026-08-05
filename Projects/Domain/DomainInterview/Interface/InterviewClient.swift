@@ -20,7 +20,7 @@ public struct InterviewClient: Sendable {
     public var submitAnswer: @Sendable (_ sessionId: Int, AnswerSubmission) async throws -> AnswerResult
     /// GET /interview/sessions/{id}/questions/{qid}/audio/stream 재생 정보 — AVPlayer 점진 재생용.
     public var questionAudioStream: @Sendable (_ sessionId: Int, _ questionId: Int) async throws -> InterviewAudioStream
-    /// GET /interview/sessions — 내 면접 레포트 목록(마이페이지용). envelope `{ reports }` 는 Live 가 벗긴다.
+    /// GET /interview/sessions — 내 면접 레포트 목록(홈 위젯②·마이페이지). envelope `{ reports }` 는 Live 가 벗긴다.
     public var reportList: @Sendable () async throws -> [InterviewReportSummary]
 
     public init(
@@ -78,21 +78,32 @@ extension InterviewClient: TestDependencyKey {
                     headers: [:]
                 )
             },
-            reportList: {
-                [InterviewReportSummary(
-                    sessionId: 1,
-                    jobType: "BACKEND",
-                    jobTypeLabel: "백엔드 개발자",
-                    careerYears: 3,
-                    interviewedAt: Date(timeIntervalSince1970: 1_782_000_000),
-                    portfolioFileName: "portfolio.pdf",
-                    portfolioDeleted: false,
-                    jdUrl: nil,
-                    reportStatus: .ready,
-                    feedbackAvailable: true
-                )]
-            }
+            // 목록은 **여러 건**을 준다 — 홈 위젯② 는 펼친 행 1 + 접힌 행 N 이 시안이라 1건만 주면
+            // 프리뷰가 접힌 행·스크롤·확장 자리를 못 보여준다. 상태도 섞어 상태 문구 행까지 그린다.
+            reportList: { previewReports }
         )
+    }
+
+    /// 프리뷰 목록 5건 — 최신순, 상태 4종(준비·생성 중·분석 부족·실패)을 한 화면에서 본다.
+    /// 시각은 KST 09:00 고정값이다(2026-07-11 → 07-07) — 프리뷰가 날마다 달라지지 않게.
+    private static var previewReports: [InterviewReportSummary] {
+        let day: TimeInterval = 86_400
+        let latest: TimeInterval = 1_783_728_000
+        let statuses: [ReportStatus] = [.ready, .ready, .generating, .insufficientAnalysis, .failed]
+        return statuses.enumerated().map { index, status in
+            InterviewReportSummary(
+                sessionId: index + 1,
+                jobType: "BACKEND",
+                jobTypeLabel: "백엔드 개발자",
+                careerYears: 3,
+                interviewedAt: Date(timeIntervalSince1970: latest - day * TimeInterval(index)),
+                portfolioFileName: "portfolio.pdf",
+                portfolioDeleted: false,
+                jdUrl: nil,
+                reportStatus: status,
+                feedbackAvailable: status == .ready
+            )
+        }
     }
 }
 

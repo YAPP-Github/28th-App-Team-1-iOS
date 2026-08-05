@@ -14,7 +14,7 @@ import SharedDesignSystemInterface
 import SwiftUI
 
 /// 가입 온보딩 2 — 직군 선택. 선택 상태는 칩 색(gray↔green)으로만 갈리고,
-/// 하단 CTA 의 활성/비활성 룩은 DS(`ButtonLarge`)가 `isEnabled` 에서 파생한다.
+/// 하단 «계속하기» 의 활성/비활성 룩은 DS(`ButtonLarge`)가 `isEnabled` 에서 파생한다.
 @ViewAction(for: AuthOnboardingJobFeature.self)
 public struct AuthOnboardingJobView: View {
     @Bindable public var store: StoreOf<AuthOnboardingJobFeature>
@@ -33,7 +33,7 @@ public struct AuthOnboardingJobView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            continueButton
+            bottomBar
         }
         .background(Color.BlackWhite.white.ignoresSafeArea())
         .hilitNavigationBar(background: .filled, onClose: { send(.userTappedClose) })
@@ -84,12 +84,17 @@ public struct AuthOnboardingJobView: View {
         .buttonStyle(.medium(store.selectedJobID == job.id ? .green : .gray))
     }
 
-    // MARK: - 하단 CTA
+    // MARK: - 하단 바
 
-    /// 단일 CTA — 뒤로는 스와이프백·내비바 X 몫. 비활성 룩(g50 판·g300 글자)은 DS 가 소유한다.
-    private var continueButton: some View {
-        ButtonLarge("다음", .bottom) { send(.userTappedContinue) }
-            .disabled(!store.isContinueEnabled)
+    /// 하단 «이전으로 | 계속하기» 바 — 배경·구분선·등폭 배치·눌림은 `ButtonLarge(.bottom, tone: .dark)` 가 소유.
+    /// 직군을 고르기 전엔 «계속하기» 만 비활성 — 한쪽 비활성은 배색이 아니라 상태라 자식에 `.disabled` 를 건다.
+    private var bottomBar: some View {
+        ButtonLarge(.bottom, tone: .dark) {
+            Button("이전으로") { send(.userTappedBack) }
+        } trailing: {
+            Button("계속하기") { send(.userTappedContinue) }
+                .disabled(!store.isContinueEnabled)
+        }
     }
 }
 

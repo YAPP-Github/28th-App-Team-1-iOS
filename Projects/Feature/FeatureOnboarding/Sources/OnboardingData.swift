@@ -25,10 +25,6 @@ public enum JDSubmission: Codable, Equatable, Sendable {
 public struct OnboardingData: Codable, Equatable, Sendable {
     /// 타이틀 등에 쓰는 닉네임 — 진입 시 코디네이터(AppFeature)가 주입.
     public var userName: String
-    /// STEP 1 직군 선택 결과 — 서버 enum 값(예: "BACKEND"). 미선택 시 nil.
-    public var jobRole: String?
-    /// STEP 2 연차 입력 결과 — 정수 연차(년). 그대로 `InterviewConfig.careerYears`.
-    public var careerYears: Int?
     /// STEP 3 JD 결과 — 스킵 시 nil.
     public var jd: JDSubmission?
     /// STEP 4 포트폴리오 업로드 결과 — 서버 등록 완료된 포트폴리오 id.
@@ -40,16 +36,12 @@ public struct OnboardingData: Codable, Equatable, Sendable {
 
     public init(
         userName: String = "",
-        jobRole: String? = nil,
-        careerYears: Int? = nil,
         jd: JDSubmission? = nil,
         portfolioId: UUID? = nil,
         portfolioFileName: String? = nil,
         freeText: String? = nil
     ) {
         self.userName = userName
-        self.jobRole = jobRole
-        self.careerYears = careerYears
         self.jd = jd
         self.portfolioId = portfolioId
         self.portfolioFileName = portfolioFileName
@@ -128,11 +120,11 @@ public extension DependencyValues {
 
 public extension OnboardingData {
     /// 분석 스텝의 세션 생성 입력(InterviewConfig)으로 변환한다 (PRD §3.8 — 개별 저장 없이 세션 생성이 S0~S3 일괄 수집).
-    /// 필수 3종(직군·연차·포트폴리오)이 하나라도 없으면 nil — 위저드 순서상 분석 진입 시엔 항상 채워져 있다.
-    /// 직군·연차는 존재 확인만 하고 payload 에서 뺀다 — 서버가 회원 프로필 스냅샷을 쓴다(2026-08-02 스펙).
+    /// 필수는 포트폴리오뿐 — 없으면 nil(위저드 순서상 분석 진입 시엔 항상 채워져 있다).
+    /// 직군·연차는 이 위저드가 들고 다니지 않는다 — 서버가 회원 프로필 스냅샷을 쓴다(2026-08-02 스펙).
     /// JD·집중 프로젝트는 nullable. JDSubmission(.link/.text) → JobDescriptionInput(.url/.text) 대응.
     func interviewConfig() -> InterviewConfig? {
-        guard jobRole != nil, careerYears != nil, let portfolioId else { return nil }
+        guard let portfolioId else { return nil }
         let jobDescription: JobDescriptionInput? = switch jd {
         case let .link(url): .url(url)
         case let .text(text): .text(text)

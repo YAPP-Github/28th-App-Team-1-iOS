@@ -18,7 +18,7 @@ Splash 는 **버전 게이트**를 먼저 통과한 뒤 refreshToken 유무로 �
 |---|---|
 | 정리가 **세션 판정보다 먼저** | 판정이 옛 토큰을 보기 전에 지워야 한다. `onAppear` 는 정리 effect 만 돌리고 `firstLaunchResolved` 로 갈라 그때 판정을 시작한다 |
 | 마커는 **정리를 마친 뒤** 찍는다 | 사이에서 앱이 죽으면 다음 실행이 다시 첫 실행으로 판정돼 정리를 끝낸다. 먼저 찍으면 지우다 만 상태로 굳는다 |
-| 정리 대상 선택은 **코디네이터 몫** | 스토어 계약은 판정만 맡는다. 대상은 Keychain 전체·온보딩 draft (`AppFeature.clearLocalData()` — 디버그 로그아웃과 공유) |
+| 정리 대상 선택은 **코디네이터 몫** | 스토어 계약은 판정만 맡는다. 대상은 Keychain 전체·온보딩 draft (`AppFeature.clearLocalData()` — dev 데이터 초기화 버튼과 공유) |
 | Keychain 은 **클래스 단위로 전부** 지운다 | `tokenStore.clear()` 는 `account: "auth-tokens"` 한 항목뿐이라 항목이 늘면 잔존물이 생긴다. App 타겟 `KeychainWipe.wipeAll()` 이 아이템 클래스 5종을 비운다 |
 | UserDefaults 는 **도메인째 지우지 않는다** | 첫 실행 마커가 거기 있다 — 통째로 날리면 다음 실행이 다시 첫 실행으로 판정된다 |
 
@@ -49,7 +49,7 @@ flowchart TD
     terms --> submit["POST /consents<br/>동의 제출"]
     submit --> gate2
 
-    gate2{"프로필 게이트<br/>profileRegistered"} -- "true" --> home["홈 TabView"]
+    gate2{"프로필 게이트<br/>profileRegistered"} -- "true" --> home["홈 NavigationStack"]
     gate2 -- "false" --> onboarding["온보딩 — 이름부터<br/>Naming → Job → Experience → Register"]
     onboarding --> home
 ```

@@ -1,5 +1,5 @@
 //
-//  OnboardingJDLinkFeatureTests.swift
+//  OnboardingJobDescriptionUploadFeatureTests.swift
 //  FeatureOnboardingTests
 //
 //  Created by EunSeo on 26/07/19.
@@ -13,14 +13,14 @@ import Testing
 @testable import FeatureOnboardingImplementation
 
 @MainActor
-struct OnboardingJDLinkFeatureTests {
+struct OnboardingJobDescriptionUploadFeatureTests {
     private let link = "https://recruit.hilit.dev/jobs/123"
 
     @Test("링크 입력 후 디바운스가 지나면 검증을 시작하고 성공을 반영한다")
     func linkTypingDebouncesThenValidates() async {
         let clock = TestClock()
-        let store = TestStore(initialState: OnboardingJDLinkFeature.State()) {
-            OnboardingJDLinkFeature()
+        let store = TestStore(initialState: OnboardingJobDescriptionUploadFeature.State()) {
+            OnboardingJobDescriptionUploadFeature()
         } withDependencies: {
             $0.continuousClock = clock
             $0.jdClient.validate = { _ in JDValidation(valid: true, reason: nil, message: nil) }
@@ -29,20 +29,23 @@ struct OnboardingJDLinkFeatureTests {
         await store.send(\.view.binding.linkText, link) {
             $0.linkText = self.link
         }
-        await clock.advance(by: OnboardingJDLinkFeature.validationDebounce)
+        await clock.advance(by: OnboardingJobDescriptionUploadFeature.validationDebounce)
         await store.receive(\.inner.validationStarted) {
             $0.linkValidation = .loading
         }
         await store.receive(\.inner.linkValidated) {
             $0.linkValidation = .success
         }
+        // 자동 진행은 없다 — 성공은 계속하기를 열어 주기만 한다(전환은 사용자 탭).
+        #expect(store.state.isContinueEnabled)
+        await store.finish()
     }
 
     @Test("입력이 이어지면 이전 디바운스 예약을 취소하고 마지막 값만 검증한다")
     func retypingCancelsPendingValidation() async {
         let clock = TestClock()
-        let store = TestStore(initialState: OnboardingJDLinkFeature.State()) {
-            OnboardingJDLinkFeature()
+        let store = TestStore(initialState: OnboardingJobDescriptionUploadFeature.State()) {
+            OnboardingJobDescriptionUploadFeature()
         } withDependencies: {
             $0.continuousClock = clock
             $0.jdClient.validate = { [link] url in
@@ -59,7 +62,7 @@ struct OnboardingJDLinkFeatureTests {
         await store.send(\.view.binding.linkText, link) {
             $0.linkText = self.link
         }
-        await clock.advance(by: OnboardingJDLinkFeature.validationDebounce)
+        await clock.advance(by: OnboardingJobDescriptionUploadFeature.validationDebounce)
         await store.receive(\.inner.validationStarted) {
             $0.linkValidation = .loading
         }
@@ -70,11 +73,11 @@ struct OnboardingJDLinkFeatureTests {
 
     @Test("링크를 비우면 검증 예약 없이 대기 상태로 돌아간다")
     func emptyingLinkReturnsToIdle() async {
-        var initialState = OnboardingJDLinkFeature.State()
+        var initialState = OnboardingJobDescriptionUploadFeature.State()
         initialState.linkText = link
         initialState.linkValidation = .failure(message: "x")
         let store = TestStore(initialState: initialState) {
-            OnboardingJDLinkFeature()
+            OnboardingJobDescriptionUploadFeature()
         }
 
         await store.send(\.view.binding.linkText, "") {
@@ -85,8 +88,8 @@ struct OnboardingJDLinkFeatureTests {
 
     @Test("서버가 유효하지 않다고 응답하면 서버 메시지로 에러 상태가 된다")
     func invalidLinkShowsServerMessage() async {
-        let store = TestStore(initialState: OnboardingJDLinkFeature.State()) {
-            OnboardingJDLinkFeature()
+        let store = TestStore(initialState: OnboardingJobDescriptionUploadFeature.State()) {
+            OnboardingJobDescriptionUploadFeature()
         } withDependencies: {
             $0.continuousClock = ImmediateClock()
             $0.jdClient.validate = { _ in
@@ -107,8 +110,8 @@ struct OnboardingJDLinkFeatureTests {
 
     @Test("검증 네트워크 오류는 기본 문구의 에러 상태가 된다")
     func validationNetworkFailureShowsFallbackMessage() async {
-        let store = TestStore(initialState: OnboardingJDLinkFeature.State()) {
-            OnboardingJDLinkFeature()
+        let store = TestStore(initialState: OnboardingJobDescriptionUploadFeature.State()) {
+            OnboardingJobDescriptionUploadFeature()
         } withDependencies: {
             $0.continuousClock = ImmediateClock()
             $0.jdClient.validate = { _ in throw NSError(domain: "test", code: -1) }
@@ -121,7 +124,7 @@ struct OnboardingJDLinkFeatureTests {
             $0.linkValidation = .loading
         }
         await store.receive(\.inner.linkValidationFailed) {
-            $0.linkValidation = .failure(message: OnboardingJDLinkFeature.fallbackErrorMessage)
+            $0.linkValidation = .failure(message: OnboardingJobDescriptionUploadFeature.fallbackErrorMessage)
         }
     }
 
@@ -129,8 +132,8 @@ struct OnboardingJDLinkFeatureTests {
     func invalidFormatFailsWithoutServerCall() async {
         let clock = TestClock()
         // jdClient.validate 를 스텁하지 않는다 — 서버 호출이 일어나면 unimplemented 로 테스트가 실패한다.
-        let store = TestStore(initialState: OnboardingJDLinkFeature.State()) {
-            OnboardingJDLinkFeature()
+        let store = TestStore(initialState: OnboardingJobDescriptionUploadFeature.State()) {
+            OnboardingJobDescriptionUploadFeature()
         } withDependencies: {
             $0.continuousClock = clock
         }
@@ -139,28 +142,28 @@ struct OnboardingJDLinkFeatureTests {
         await store.send(\.view.binding.linkText, pastedBody) {
             $0.linkText = pastedBody
         }
-        await clock.advance(by: OnboardingJDLinkFeature.validationDebounce)
+        await clock.advance(by: OnboardingJobDescriptionUploadFeature.validationDebounce)
         await store.receive(\.inner.validationStarted) {
-            $0.linkValidation = .failure(message: OnboardingJDLinkFeature.invalidFormatMessage)
+            $0.linkValidation = .failure(message: OnboardingJobDescriptionUploadFeature.invalidFormatMessage)
         }
     }
 
     @Test("URL 형식 1차 검사 — http(s) 스킴 + 호스트만 통과한다")
     func linkFormatValidation() {
-        #expect(OnboardingJDLinkFeature.isValidLinkFormat("https://recruit.hilit.dev/jobs/123"))
-        #expect(OnboardingJDLinkFeature.isValidLinkFormat("http://43.202.34.84:8080/jd"))
-        #expect(!OnboardingJDLinkFeature.isValidLinkFormat("recruit.hilit.dev/jobs/123"))   // 스킴 없음
-        #expect(!OnboardingJDLinkFeature.isValidLinkFormat("ftp://recruit.hilit.dev"))      // 비 http(s)
-        #expect(!OnboardingJDLinkFeature.isValidLinkFormat("https://"))                     // 호스트 없음
-        #expect(!OnboardingJDLinkFeature.isValidLinkFormat("채용공고 본문 텍스트"))            // URL 아님
+        #expect(OnboardingJobDescriptionUploadFeature.isValidLinkFormat("https://recruit.hilit.dev/jobs/123"))
+        #expect(OnboardingJobDescriptionUploadFeature.isValidLinkFormat("http://43.202.34.84:8080/jd"))
+        #expect(!OnboardingJobDescriptionUploadFeature.isValidLinkFormat("recruit.hilit.dev/jobs/123"))   // 스킴 없음
+        #expect(!OnboardingJobDescriptionUploadFeature.isValidLinkFormat("ftp://recruit.hilit.dev"))      // 비 http(s)
+        #expect(!OnboardingJobDescriptionUploadFeature.isValidLinkFormat("https://"))                     // 호스트 없음
+        #expect(!OnboardingJobDescriptionUploadFeature.isValidLinkFormat("채용공고 본문 텍스트"))            // URL 아님
     }
 
     @Test("키보드 제출은 디바운스 없이 즉시 검증을 시작한다")
     func submitValidatesImmediately() async {
-        var initialState = OnboardingJDLinkFeature.State()
+        var initialState = OnboardingJobDescriptionUploadFeature.State()
         initialState.linkText = link
         let store = TestStore(initialState: initialState) {
-            OnboardingJDLinkFeature()
+            OnboardingJobDescriptionUploadFeature()
         } withDependencies: {
             $0.jdClient.validate = { _ in JDValidation(valid: true, reason: nil, message: nil) }
         }
@@ -176,11 +179,11 @@ struct OnboardingJDLinkFeatureTests {
 
     @Test("링크 클리어는 입력과 검증 상태를 초기화한다")
     func clearLinkResetsValidation() async {
-        var initialState = OnboardingJDLinkFeature.State()
+        var initialState = OnboardingJobDescriptionUploadFeature.State()
         initialState.linkText = link
         initialState.linkValidation = .failure(message: "x")
         let store = TestStore(initialState: initialState) {
-            OnboardingJDLinkFeature()
+            OnboardingJobDescriptionUploadFeature()
         }
 
         await store.send(.view(.userTappedClearLink)) {
@@ -191,49 +194,71 @@ struct OnboardingJDLinkFeatureTests {
 
     @Test("검증 성공 상태의 계속하기는 링크 페이로드를 delegate 로 올린다")
     func continueWithValidatedLinkEmitsLinkPayload() async {
-        var initialState = OnboardingJDLinkFeature.State()
+        var initialState = OnboardingJobDescriptionUploadFeature.State()
         initialState.linkText = link
         initialState.linkValidation = .success
         let store = TestStore(initialState: initialState) {
-            OnboardingJDLinkFeature()
+            OnboardingJobDescriptionUploadFeature()
         }
 
         await store.send(.view(.userTappedContinue))
         await store.receive(\.delegate.continueRequested, .link(link))
     }
 
-    @Test("미검증 링크의 계속하기는 스킵(nil)으로 올린다")
-    func continueWithUnvalidatedLinkSkips() async {
-        var initialState = OnboardingJDLinkFeature.State()
-        initialState.linkText = link
-        let store = TestStore(initialState: initialState) {
-            OnboardingJDLinkFeature()
+    @Test("빈 링크의 계속하기는 활성이고 스킵(nil)으로 올린다")
+    func continueWithEmptyLinkSkips() async {
+        let store = TestStore(initialState: OnboardingJobDescriptionUploadFeature.State()) {
+            OnboardingJobDescriptionUploadFeature()
         }
 
+        #expect(store.state.isContinueEnabled)
         await store.send(.view(.userTappedContinue))
         await store.receive(\.delegate.continueRequested, nil)
     }
 
-    @Test("분석 중에는 계속하기를 무시한다")
-    func continueIsIgnoredWhileLoading() async {
-        var initialState = OnboardingJDLinkFeature.State()
+    @Test("링크를 넣은 뒤 검증 성공 전까지는 계속하기가 비활성이고 탭도 무시된다", arguments: [
+        OnboardingJobDescriptionUploadFeature.LinkValidation.idle,
+        .loading,
+        .failure(message: "링크를 분석하지 못했어요. 링크를 확인해 주세요.")
+    ])
+    func continueIsDisabledUntilLinkValidated(
+        _ validation: OnboardingJobDescriptionUploadFeature.LinkValidation
+    ) async {
+        var initialState = OnboardingJobDescriptionUploadFeature.State()
+        initialState.linkText = link
+        initialState.linkValidation = validation
+        let store = TestStore(initialState: initialState) {
+            OnboardingJobDescriptionUploadFeature()
+        }
+
+        #expect(!store.state.isContinueEnabled)
+        // 비활성이라 눌릴 일이 없지만, 눌려도 delegate 방출 없이 무시된다.
+        await store.send(.view(.userTappedContinue))
+    }
+
+    @Test("건너뛰기는 검증 중이어도 예약을 취소하고 스킵(nil)으로 올린다")
+    func skipCancelsPendingValidation() async {
+        var initialState = OnboardingJobDescriptionUploadFeature.State()
         initialState.linkText = link
         initialState.linkValidation = .loading
         let store = TestStore(initialState: initialState) {
-            OnboardingJDLinkFeature()
+            OnboardingJobDescriptionUploadFeature()
         }
 
-        await store.send(.view(.userTappedContinue))
+        // 취소가 없으면 화면을 떠난 뒤 도착한 응답이 상태를 뒤늦게 뒤집는다(다음 진입에 남는 성공·에러 판).
+        await store.send(.view(.userTappedSkip))
+        await store.receive(\.delegate.continueRequested, nil)
+        await store.finish()
     }
 
     @Test("유효 길이(200~3,000자) 직접 입력의 계속하기는 text 페이로드로 올린다")
     func continueWithDirectTextEmitsTextPayload() async {
-        let body = String(repeating: "가", count: OnboardingJDLinkFeature.State.minDirectTextLength)
-        var initialState = OnboardingJDLinkFeature.State()
+        let body = String(repeating: "가", count: OnboardingJobDescriptionUploadFeature.State.minDirectTextLength)
+        var initialState = OnboardingJobDescriptionUploadFeature.State()
         initialState.mode = .directText
         initialState.directText = "  \(body)  "   // 앞뒤 공백은 제거돼 올라간다.
         let store = TestStore(initialState: initialState) {
-            OnboardingJDLinkFeature()
+            OnboardingJobDescriptionUploadFeature()
         }
 
         await store.send(.view(.userTappedContinue))
@@ -242,10 +267,10 @@ struct OnboardingJDLinkFeatureTests {
 
     @Test("직접 입력이 비어 있으면 계속하기는 스킵(nil)으로 올린다")
     func continueWithEmptyDirectTextSkips() async {
-        var initialState = OnboardingJDLinkFeature.State()
+        var initialState = OnboardingJobDescriptionUploadFeature.State()
         initialState.mode = .directText
         let store = TestStore(initialState: initialState) {
-            OnboardingJDLinkFeature()
+            OnboardingJobDescriptionUploadFeature()
         }
 
         await store.send(.view(.userTappedContinue))
@@ -254,11 +279,11 @@ struct OnboardingJDLinkFeatureTests {
 
     @Test("200자 미만 직접 입력의 계속하기는 무시된다 (다음 꺼짐)")
     func continueWithTooShortDirectTextIsIgnored() async {
-        var initialState = OnboardingJDLinkFeature.State()
+        var initialState = OnboardingJobDescriptionUploadFeature.State()
         initialState.mode = .directText
-        initialState.directText = String(repeating: "가", count: OnboardingJDLinkFeature.State.minDirectTextLength - 1)
+        initialState.directText = String(repeating: "가", count: OnboardingJobDescriptionUploadFeature.State.minDirectTextLength - 1)
         let store = TestStore(initialState: initialState) {
-            OnboardingJDLinkFeature()
+            OnboardingJobDescriptionUploadFeature()
         }
 
         #expect(!store.state.isContinueEnabled)
@@ -268,11 +293,11 @@ struct OnboardingJDLinkFeatureTests {
 
     @Test("직접 입력 길이별 검증 상태 — 활성/카운터/안내")
     func directTextValidationState() {
-        let min = OnboardingJDLinkFeature.State.minDirectTextLength
-        let max = OnboardingJDLinkFeature.State.maxDirectTextLength
+        let min = OnboardingJobDescriptionUploadFeature.State.minDirectTextLength
+        let max = OnboardingJobDescriptionUploadFeature.State.maxDirectTextLength
 
-        func state(_ length: Int) -> OnboardingJDLinkFeature.State {
-            var s = OnboardingJDLinkFeature.State()
+        func state(_ length: Int) -> OnboardingJobDescriptionUploadFeature.State {
+            var s = OnboardingJobDescriptionUploadFeature.State()
             s.mode = .directText
             s.directText = String(repeating: "가", count: length)
             return s
@@ -303,8 +328,8 @@ struct OnboardingJDLinkFeatureTests {
 
     @Test("탭 전환은 입력 모드를 바꾼다")
     func selectingModeSwitchesTab() async {
-        let store = TestStore(initialState: OnboardingJDLinkFeature.State()) {
-            OnboardingJDLinkFeature()
+        let store = TestStore(initialState: OnboardingJobDescriptionUploadFeature.State()) {
+            OnboardingJobDescriptionUploadFeature()
         }
 
         await store.send(.view(.userSelectedMode(.directText))) {
@@ -317,11 +342,11 @@ struct OnboardingJDLinkFeatureTests {
 
     @Test("검증 성공 후에는 직접 입력 탭 전환이 막힌다")
     func directTextTabIsDisabledAfterSuccess() async {
-        var initialState = OnboardingJDLinkFeature.State()
+        var initialState = OnboardingJobDescriptionUploadFeature.State()
         initialState.linkText = link
         initialState.linkValidation = .success
         let store = TestStore(initialState: initialState) {
-            OnboardingJDLinkFeature()
+            OnboardingJobDescriptionUploadFeature()
         }
 
         await store.send(.view(.userSelectedMode(.directText)))
@@ -329,8 +354,8 @@ struct OnboardingJDLinkFeatureTests {
 
     @Test("이전으로 탭은 delegate 로 코디네이터에 위임한다")
     func backDelegatesToCoordinator() async {
-        let store = TestStore(initialState: OnboardingJDLinkFeature.State()) {
-            OnboardingJDLinkFeature()
+        let store = TestStore(initialState: OnboardingJobDescriptionUploadFeature.State()) {
+            OnboardingJobDescriptionUploadFeature()
         }
 
         await store.send(.view(.userTappedBack))
@@ -339,8 +364,8 @@ struct OnboardingJDLinkFeatureTests {
 
     @Test("닫기 탭은 delegate 로 코디네이터에 위임한다")
     func closeDelegatesToCoordinator() async {
-        let store = TestStore(initialState: OnboardingJDLinkFeature.State()) {
-            OnboardingJDLinkFeature()
+        let store = TestStore(initialState: OnboardingJobDescriptionUploadFeature.State()) {
+            OnboardingJobDescriptionUploadFeature()
         }
 
         await store.send(.view(.userTappedClose))
@@ -351,15 +376,15 @@ struct OnboardingJDLinkFeatureTests {
     func tooltipExpiresAfterDelay() async {
         let clock = TestClock()
         // jdClient 스텁 없음 — onAppear 툴팁 타이머는 서버 호출과 무관하다.
-        let store = TestStore(initialState: OnboardingJDLinkFeature.State()) {
-            OnboardingJDLinkFeature()
+        let store = TestStore(initialState: OnboardingJobDescriptionUploadFeature.State()) {
+            OnboardingJobDescriptionUploadFeature()
         } withDependencies: {
             $0.continuousClock = clock
         }
 
         #expect(store.state.showsSkipTooltip)   // 진입 직후(빈 링크 탭)엔 노출.
         await store.send(.view(.onAppear))
-        await clock.advance(by: OnboardingJDLinkFeature.tooltipDuration)
+        await clock.advance(by: OnboardingJobDescriptionUploadFeature.tooltipDuration)
         await store.receive(\.inner.tooltipExpired) {
             $0.isTooltipExpired = true
         }

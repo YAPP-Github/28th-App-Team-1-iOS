@@ -6,7 +6,6 @@
 //
 
 import ComposableArchitecture
-import DomainJobInterface
 import Foundation
 import Testing
 
@@ -18,14 +17,28 @@ import Testing
 struct OnboardingDraftRestoreTests {
     private static let draftSavedAt = Date(timeIntervalSince1970: 1_782_000_000)
 
+    /// 위저드 총 스텝 수 — 프로덕션 상수를 그대로 써서 스텝 수가 바뀌면 테스트도 따라간다.
+    private let total = OnboardingFeature.totalSteps
+
+    /// 직군·연차는 가입 온보딩(FeatureAuth) 소관이라 위저드엔 주입값으로 들어온다.
+    private func initialState() -> OnboardingFeature.State {
+        OnboardingFeature.State(userName: "재원")
+    }
+
     @Test("onAppear 는 TTL 안의 draft 로 값·위저드 위치를 복원한다")
     func onAppearRestoresDraft() async {
+        let portfolioId = UUID(uuidString: "00000000-0000-0000-0000-0000000000f1")!
         let draft = OnboardingDraft(
-            data: OnboardingData(userName: "재원", jobRole: "BACKEND", careerYears: 2, jd: .link("https://job.com/1")),
-            furthestStep: 3,
+            data: OnboardingData(
+                userName: "재원",
+                jd: .link("https://job.com/1"),
+                portfolioId: portfolioId,
+                portfolioFileName: "포폴.pdf"
+            ),
+            furthestStep: 2,
             savedAt: Self.draftSavedAt
         )
-        let store = TestStore(initialState: OnboardingFeature.State(userName: "재원")) {
+        let store = TestStore(initialState: initialState()) {
             OnboardingFeature()
         } withDependencies: {
             $0.onboardingDraftStore = OnboardingDraftStore(load: { draft }, save: { _ in }, clear: {})
@@ -35,9 +48,11 @@ struct OnboardingDraftRestoreTests {
         await store.send(.onAppear) {
             $0.didAttemptRestore = true
             $0.data = draft.data
-            $0.jobSelection.preselectedJobRole = "BACKEND"
-            $0.path.append(.careerInput(.init(step: 2, totalSteps: 5, selectedCareer: CareerOption(years: 2))))
-            $0.path.append(.jdLink(.init(step: 3, totalSteps: 5, restoring: .link("https://job.com/1"))))
+            $0.jobDescriptionUpload = .init(step: 1, totalSteps: self.total, restoring: .link("https://job.com/1"))
+            $0.path.append(.portfolioUpload(.init(
+                step: 2, totalSteps: self.total,
+                upload: .uploaded(fileName: "포폴.pdf", portfolioId: portfolioId)
+            )))
         }
     }
 
@@ -45,11 +60,11 @@ struct OnboardingDraftRestoreTests {
     func onAppearDiscardsExpiredDraft() async {
         let cleared = LockIsolated(false)
         let draft = OnboardingDraft(
-            data: OnboardingData(userName: "재원", jobRole: "BACKEND"),
+            data: OnboardingData(userName: "재원"),
             furthestStep: 2,
             savedAt: Self.draftSavedAt
         )
-        let store = TestStore(initialState: OnboardingFeature.State(userName: "재원")) {
+        let store = TestStore(initialState: initialState()) {
             OnboardingFeature()
         } withDependencies: {
             $0.onboardingDraftStore = OnboardingDraftStore(
@@ -65,13 +80,13 @@ struct OnboardingDraftRestoreTests {
 
     @Test("이미 스텝이 쌓여 있으면 onAppear 는 복원하지 않는다")
     func onAppearSkipsRestoreWhenPathNotEmpty() async {
-        var initialState = OnboardingFeature.State(userName: "재원")
-        initialState.path.append(.careerInput(.init(step: 2, totalSteps: 5)))
-        let store = TestStore(initialState: initialState) {
+        var state = initialState()
+        state.path.append(.portfolioUpload(.init(step: 2, totalSteps: total)))
+        let store = TestStore(initialState: state) {
             OnboardingFeature()
         } withDependencies: {
             $0.onboardingDraftStore = OnboardingDraftStore(
-                load: { OnboardingDraft(data: OnboardingData(), furthestStep: 5, savedAt: Self.draftSavedAt) },
+                load: { OnboardingDraft(data: OnboardingData(), furthestStep: 3, savedAt: Self.draftSavedAt) },
                 save: { _ in }, clear: {}
             )
             $0.date = .constant(Self.draftSavedAt)
@@ -83,11 +98,11 @@ struct OnboardingDraftRestoreTests {
     @Test("복원 후 뒤로가기로 루트까지 pop 해도 onAppear 재발동 시 재복원하지 않는다")
     func onAppearDoesNotReRestoreAfterPopToRoot() async {
         let draft = OnboardingDraft(
-            data: OnboardingData(userName: "재원", jobRole: "BACKEND", careerYears: 2),
+            data: OnboardingData(userName: "재원"),
             furthestStep: 2,
             savedAt: Self.draftSavedAt
         )
-        let store = TestStore(initialState: OnboardingFeature.State(userName: "재원")) {
+        let store = TestStore(initialState: initialState()) {
             OnboardingFeature()
         } withDependencies: {
             $0.onboardingDraftStore = OnboardingDraftStore(load: { draft }, save: { _ in }, clear: {})
@@ -98,13 +113,13 @@ struct OnboardingDraftRestoreTests {
         await store.send(.onAppear) {
             $0.didAttemptRestore = true
             $0.data = draft.data
-            $0.jobSelection.preselectedJobRole = "BACKEND"
-            $0.path.append(.careerInput(.init(step: 2, totalSteps: 5, selectedCareer: CareerOption(years: 2))))
+            $0.jobDescriptionUpload = .init(step: 1, totalSteps: self.total, restoring: nil)
+            $0.path.append(.portfolioUpload(.init(step: 2, totalSteps: self.total, checksExisting: true)))
         }
 
         // 2) 뒤로가기로 루트까지 pop → path 다시 빔
         let stepId = store.state.path.ids.first!
-        await store.send(.path(.element(id: stepId, action: .careerInput(.delegate(.backRequested))))) {
+        await store.send(.path(.element(id: stepId, action: .portfolioUpload(.delegate(.backRequested))))) {
             $0.path.removeLast()
         }
 
@@ -116,38 +131,41 @@ struct OnboardingDraftRestoreTests {
     @Test("스텝 완료는 draft(데이터·재개 지점)를 저장한다")
     func stepCompletionSavesDraft() async {
         let saved = LockIsolated<OnboardingDraft?>(nil)
-        let store = TestStore(initialState: OnboardingFeature.State(userName: "재원")) {
+        let store = TestStore(initialState: initialState()) {
             OnboardingFeature()
         } withDependencies: {
             $0.onboardingDraftStore = OnboardingDraftStore(load: { nil }, save: { saved.setValue($0) }, clear: {})
             $0.date = .constant(Self.draftSavedAt)
         }
 
-        await store.send(.jobSelection(.delegate(.continueRequested(jobRole: "BACKEND")))) {
-            $0.data.jobRole = "BACKEND"
-            $0.path.append(.careerInput(.init(step: 2, totalSteps: 5)))
+        await store.send(.jobDescriptionUpload(.delegate(.continueRequested(.link("https://job.com/1"))))) {
+            $0.data.jd = .link("https://job.com/1")
+            $0.path.append(.portfolioUpload(.init(step: 2, totalSteps: self.total, checksExisting: true)))
         }
         await store.finish()
-        #expect(saved.value?.data.jobRole == "BACKEND")
+        #expect(saved.value?.data.jd == .link("https://job.com/1"))
         #expect(saved.value?.furthestStep == 2)
     }
 
-    @Test("분석 완료는 draft 를 폐기한다")
-    func analysisCompletionClearsDraft() async {
+    /// 세션 생성은 면접의 시작일 뿐 — 폐기는 인터뷰 세션 완료 시점(AppFeature)이다.
+    @Test("프리로드 완료는 draft 를 남긴다")
+    func preloadCompletionKeepsDraft() async {
         let cleared = LockIsolated(false)
-        var initialState = OnboardingFeature.State(userName: "재원")
-        initialState.path.append(.analysis(.init(data: initialState.data)))
-        let store = TestStore(initialState: initialState) {
+        var state = initialState()
+        state.path.append(.preload(.init(data: state.data)))
+        let store = TestStore(initialState: state) {
             OnboardingFeature()
         } withDependencies: {
-            $0.onboardingDraftStore = OnboardingDraftStore(load: { nil }, save: { _ in }, clear: { cleared.setValue(true) })
+            $0.onboardingDraftStore = OnboardingDraftStore(
+                load: { nil }, save: { _ in }, clear: { cleared.setValue(true) }
+            )
             $0.date = .constant(Self.draftSavedAt)
         }
 
         let id = store.state.path.ids[0]
-        await store.send(.path(.element(id: id, action: .analysis(.delegate(.completed(sessionId: 1))))))
+        await store.send(.path(.element(id: id, action: .preload(.delegate(.completed(sessionId: 1))))))
         await store.receive(\.delegate.finished, 1)
         await store.finish()
-        #expect(cleared.value)
+        #expect(!cleared.value)
     }
 }
