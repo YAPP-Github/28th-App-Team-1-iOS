@@ -70,11 +70,16 @@ public struct OnboardingPortfolioUploadView: View {
     // MARK: - 기존 포트폴리오 확인 모달
 
     /// 2회차 이상 진입 — 서버에 READY 포폴이 있으면 그걸 쓸 거라고 알린다.
-    /// **버튼이 하나인 건 고를 게 없어서다** — 포폴은 계정당 1개고 교체는 한 달 1회라
-    /// «아니요» 를 줘도 갈 곳이 없다. 바꾸려면 완료 판의 X → 삭제 확인 모달이 그 자리다.
+    /// **두 버튼이 같은 액션인 건 결과가 하나뿐이라서다** — 포폴은 계정당 1개고 교체는 한 달 1회라
+    /// «취소» 도 갈 곳이 없다(서버에 READY 가 있으면 그걸 불러오는 것 말고 할 게 없다).
+    /// 둘 다 모달을 닫고 기존 포폴을 완료 판에 앉힌다. 바꾸려면 완료 판의 X → 삭제 확인 모달이 그 자리다.
     private var existingPortfolioModal: some View {
         Modal("기존에 있는 포트폴리오로\n진행할까요?", icon: Image.Img.book) {
-            ButtonLarge("예", .modal) { send(.userTappedUseExisting) }
+            ButtonLarge(.modal, tone: .twoColor) {
+                Button("취소") { send(.userTappedUseExisting) }
+            } trailing: {
+                Button("진행할게요") { send(.userTappedUseExisting) }
+            }
         }
     }
 

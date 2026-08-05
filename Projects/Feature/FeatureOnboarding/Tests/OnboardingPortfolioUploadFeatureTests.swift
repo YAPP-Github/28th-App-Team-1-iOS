@@ -340,7 +340,7 @@ struct OnboardingPortfolioUploadFeatureTests {
         await store.send(.view(.onAppear))
     }
 
-    @Test("확인 모달 «예» 는 기존 포폴을 완료 상태로 앉힌다")
+    @Test("확인 모달 두 버튼(«취소»/«진행할게요») 은 기존 포폴을 완료 상태로 앉힌다")
     func useExistingMovesToUploaded() async {
         var initialState = OnboardingPortfolioUploadFeature.State()
         initialState.existingPortfolio = .init(portfolioId: Self.portfolioId, fileName: "포트폴리오.pdf")
