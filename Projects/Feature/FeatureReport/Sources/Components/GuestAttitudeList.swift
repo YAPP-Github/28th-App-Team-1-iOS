@@ -58,9 +58,7 @@ struct GuestAttitudeList: View {
         VStack(alignment: .leading, spacing: 19) {
             ForEach(Array(ratings.enumerated()), id: \.offset) { index, rating in
                 if index > 0 {
-                    Rectangle()
-                        .fill(Color.GrayScale.g800)
-                        .frame(height: .ds(.small))
+                    HilitDivider()
                 }
                 row(rating)
             }
@@ -72,7 +70,7 @@ struct GuestAttitudeList: View {
         if let axis = rating.axisKind {
             VStack(alignment: .leading, spacing: .ds(.p12)) {
                 HStack(spacing: .ds(.p4)) {
-                    GuestAttitudeCopy.icon(for: axis)
+                    GuestAttitudeCopy.icon20(for: axis)
                         .resizable()
                         .scaledToFit()
                         .frame(width: 20, height: 20)
@@ -155,13 +153,26 @@ enum GuestAttitudeCopy {
         }
     }
 
-    static func icon(for axis: AttitudeAxisKind) -> Image {
+    /// 20pt 판 — 리포트 메인의 태도 평가 목록.
+    /// 크기별로 다시 그려진 별도 에셋이라 `.frame` 으로 늘리지 않고 크기마다 골라 쓴다 (`design/image.md`).
+    static func icon20(for axis: AttitudeAxisKind) -> Image {
         switch axis {
         case .gaze: Image.Feedback.eyes20
         case .expression: Image.Feedback.face20
         case .posture: Image.Feedback.body20
         case .gesture: Image.Feedback.hand20
         case .voice: Image.Feedback.voice20
+        }
+    }
+
+    /// 28pt 판 — 지인 피드백 항목 선택 화면(Figma `feedback/28px/*`).
+    static func icon28(for axis: AttitudeAxisKind) -> Image {
+        switch axis {
+        case .gaze: Image.Feedback.eyes28
+        case .expression: Image.Feedback.face28
+        case .posture: Image.Feedback.body28
+        case .gesture: Image.Feedback.hand28
+        case .voice: Image.Feedback.voice28
         }
     }
 

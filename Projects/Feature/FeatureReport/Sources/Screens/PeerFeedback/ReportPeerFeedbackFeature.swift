@@ -11,7 +11,7 @@ import DomainInterviewReportInterface
 
 // @lat: [[report#지인 피드백]]
 /// 지인 피드백 요청 — 리포트 메인의 «지인에게 면접 영상 보내기» 로 진입한다.
-/// 지인에게 평가받을 태도 항목을 골라 공유 링크를 만드는 화면 (Figma «Report_PeerFeedback_RequestItems» 1964:727).
+/// 지인에게 평가받을 태도 항목을 골라 공유 링크를 만드는 화면 (Figma «Report_PeerFeedback_RequestItems» 443:8006).
 ///
 /// 지인에게 넘기는 payload 는 영상과 질문 경계까지다. AI 피드백(하이라이트·진단·다음 대비)은
 /// 넘기지 않는다 — 지인 평가가 AI 평가에 오염되면 4.6 의 «지인 vs AI» 2축 비교가 무의미해진다.
@@ -29,7 +29,7 @@ public struct ReportPeerFeedbackFeature {
         public var isCreating = false
         /// 생성된 공유 링크 — 생성 성공 후엔 항상 남는다 (항목이 잠겨 재생성이 없으므로).
         public var createdLink: String?
-        /// 완료 모달 표시 여부 (Figma 3165:15392). 복사를 누르면 닫힌다.
+        /// 완료 모달 표시 여부 (Figma 443:8082 의 모달 443:8121). 복사를 누르면 닫힌다.
         public var isCompletionModalVisible = false
         /// 시스템 공유 시트 — 복사 직후 이어서 뜬다 (복사 + 바로 보내기 겸용).
         public var isShareSheetPresented = false
@@ -58,6 +58,7 @@ public struct ReportPeerFeedbackFeature {
         public enum Inner: Equatable, Sendable {
             case shareLinkCreated(token: String)
             case shareLinkFailed(message: String)
+            case shareSheetRequested
             case toastDismissed
         }
 
@@ -69,6 +70,10 @@ public struct ReportPeerFeedbackFeature {
     }
 
     private enum CancelID { case toast }
+
+    /// 완료 모달이 닫히고 공유 시트가 올라오기까지 벌려 두는 간격.
+    /// 모달은 `fullScreenCover`(`.hilitModal`)라 닫히는 도중에 시트를 올리면 시스템이 둘째 표출을 삼킨다.
+    private static let modalDismissGap: Duration = .milliseconds(400)
 
     /// 토스트가 떠 있는 시간.
     private static let toastDuration: Duration = .seconds(2)
@@ -138,10 +143,13 @@ public struct ReportPeerFeedbackFeature {
             // 복사 + 시스템 공유 시트를 이어서 연다 — 붙여넣기와 바로 보내기 둘 다 지원.
             // 모달은 닫고 화면은 남는다 (링크는 이미 만들어졌고 항목은 잠겼다).
             state.isCompletionModalVisible = false
-            state.isShareSheetPresented = true
             return .merge(
                 .run { _ in pasteboard.copy(link) },
-                showToast("링크를 복사했어요.", &state)
+                showToast("링크를 복사했어요.", &state),
+                .run { send in
+                    try await clock.sleep(for: Self.modalDismissGap)
+                    await send(.inner(.shareSheetRequested))
+                }
             )
         }
     }
@@ -157,6 +165,10 @@ public struct ReportPeerFeedbackFeature {
         case let .shareLinkFailed(message):
             state.isCreating = false
             return showToast(message, &state)
+
+        case .shareSheetRequested:
+            state.isShareSheetPresented = true
+            return .none
 
         case .toastDismissed:
             state.toast = nil

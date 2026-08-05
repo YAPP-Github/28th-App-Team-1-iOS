@@ -98,10 +98,14 @@ struct ReportPeerFeedbackFeatureTests {
 
         await store.send(.view(.userTappedCopyLink)) {
             $0.isCompletionModalVisible = false
-            $0.isShareSheetPresented = true
             $0.toast = "링크를 복사했어요."
         }
-        await clock.advance(by: .seconds(2))
+        // 모달(cover)이 닫히는 동안엔 시트를 올리지 않는다 — 한 틱 뒤에 올라온다.
+        await clock.advance(by: .milliseconds(400))
+        await store.receive(\.inner.shareSheetRequested) {
+            $0.isShareSheetPresented = true
+        }
+        await clock.advance(by: .milliseconds(1600))
         await store.receive(\.inner.toastDismissed) {
             $0.toast = nil
         }
