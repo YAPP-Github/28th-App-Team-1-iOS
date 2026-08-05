@@ -1,6 +1,6 @@
 # Home 도메인
 
-홈 탭. 단일 Feature 모듈(`FeatureHome`) — 진입 로드가 붙으면서 `.domain(interface: .portfolio)`·`.domain(interface: .user)` 를 의존한다(«외부 IO 없는 Feature 예시» 였던 전제는 2026-08-02 깨졌다).
+홈 탭. 단일 Feature 모듈(`FeatureHome`) — 진입 로드가 붙으면서 `.domain(interface: .interview)`·`.domain(interface: .portfolio)`·`.domain(interface: .user)` 를 의존한다(«외부 IO 없는 Feature 예시» 였던 전제는 2026-08-02 깨졌다).
 
 개편 진행 중 — PRD Part 6(홈)·Part 7(회원가입·계정 상태) 매핑(위젯 3종·잔여 표시·시작 게이트·A4 정지 안내)은 [home-account](../docs/work/home-account.md) 가 단일 소스.
 
@@ -24,18 +24,22 @@ phase 와 **직교하는 두 번째 축** — 리포트 시트가 앉는 자리 
 
 「면접 시작」 진입은 두 경로다 — 시트를 끌어 내리기(`view(.userSettledSheet(.startInterview))`) + 스크롤 안내 문구 탭(`view(.userTappedStartInterview)` — 끌지 않는 지름길). 되돌리기는 내비바 X 와 소진 시안의 «홈으로» CTA 둘 다 기본 자리로 보낸다. 내비바는 두 phase 뷰가 같은 바라 `HomeView` 가 한 번만 붙인다(프로필 탭 → `view(.userTappedProfile)`).
 
-홈 밖으로 나가는 4건은 delegate — `profileRequested`(마이페이지) · `reportDetailRequested(id:)`(리포트 상세) · `interviewStartRequested`·`interviewInfoEditRequested`(StartInterview 의 `startRequested`·`editInfoRequested` 를 올린 것). AppFeature 가 네 케이스를 명시로 받되 아직 `.none` + TODO 다 — 막힌 지점이 경계 한 곳에 모인다. 펼침 토글(`userTappedReportRow`)은 홈 내부 상태라 delegate 가 아니다.
+홈 밖으로 나가는 4건은 delegate — `profileRequested`(마이페이지) · `reportDetailRequested(sessionId:)`(리포트 상세) · `interviewStartRequested`·`interviewInfoEditRequested`(StartInterview 의 `startRequested`·`editInfoRequested` 를 올린 것). AppFeature 가 네 케이스를 명시로 받는다 — 리포트·면접 시작·정보 수정은 배선됐고(→ [[app#Cross-feature Routing]]) 마이페이지만 `.none` + TODO 다(Part 5 대기). 펼침 토글(`userTappedReportRow`)은 홈 내부 상태라 delegate 가 아니다.
 
 dev 계 임시 버튼 2개(HomeDefaultView 소속)는 `showsOnboardingEntry`·`showsDebugLogout` 플래그로 게이팅 — `delegate(.onboardingRequested)`(온보딩 진입)·`delegate(.logoutRequested)`(세션·토큰·draft 전체 삭제).
 
 ## 진입 로드
-`view(.onAppear)` 가 **매 진입** 프로필·포폴을 재조회한다(첫 진입만이 아니다) — 포폴은 온보딩 S2·마이페이지가, 잔여는 면접이 바꾸므로 캐시하면 무효화 신호를 AppFeature 로 돌려야 하고(Feature→Feature 금지) 1건짜리 GET 두 번보다 비싸다. 진실은 서버다([home-account](../docs/work/home-account.md) §3·§6).
+`view(.onAppear)` 가 **매 진입** 프로필·포폴·기록 리스트를 재조회한다(첫 진입만이 아니다) — 포폴은 온보딩 S2·마이페이지가, 잔여·기록은 면접이 바꾸므로 캐시하면 무효화 신호를 AppFeature 로 돌려야 하고(Feature→Feature 금지) 1건짜리 GET 세 번보다 비싸다. 진실은 서버다([home-account](../docs/work/home-account.md) §3·§6).
 
-두 호출은 `async let` 로 동시에 나가고 결과는 `inner(.entryLoaded(profile:portfolios:))` **한 케이스**로 돌아온다 — 묶음 API(미결 6-1)로 바뀌어도 갈아끼울 자리가 하나다. 각각 `try?` 라 **부분 실패 허용**(포폴이 죽어도 인사말·잔여는 그린다), 실패한 쪽은 nil 이라 직전 값을 지우지 않는다. `cancellable(cancelInFlight:)` 로 탭을 빠르게 오갈 때의 응답 역전을 막는다. 값은 덮어쓰기만 한다 — 재진입마다 비우면 깜빡인다.
+세 호출은 `async let` 로 동시에 나가고, 프로필·포폴 결과는 `inner(.entryLoaded(profile:portfolios:))` **한 케이스**로 돌아온다 — 묶음 API(미결 6-1)로 바뀌어도 갈아끼울 자리가 하나다. 각각 `try?` 라 **부분 실패 허용**(포폴이 죽어도 인사말·잔여는 그린다), 실패한 쪽은 nil 이라 직전 값을 지우지 않는다. `cancellable(cancelInFlight:)` 로 탭을 빠르게 오갈 때의 응답 역전을 막는다. 값은 덮어쓰기만 한다 — 재진입마다 비우면 깜빡인다.
 
-로드값 → 표시 매핑은 `HomeFeature` 의 두 헬퍼가 전담한다. `reusablePortfolio` 는 **READY 만** 고르고(PROCESSING 을 걸면 시작 시점에 게이트가 뒤집는다 — 폴링 승격은 TODO), `startVariant` 는 잔여 0 을 최우선(`exhausted`)으로 포폴 유무를 갈라 시안 3종을 정한다 — **잔여 nil(프로필 실패·응답 전)은 0 이 아니다**: 모른다고 소진 시안을 띄우면 시작 경로가 [홈으로] 하나로 막힌다. 나머지 2종(기록 리스트 → `inner(.reportsLoaded([Report]))` · held 세션)은 계약 대기라 미배선 — 응답 자리만 잡혀 있다. phase 는 서버 판정의 표시일 뿐, 진실은 탭 시점 게이트 재검증이다.
+기록 리스트(`InterviewClient.reportList` — GET /interview/sessions)만 별 케이스 `inner(.reportsLoaded([InterviewReportSummary]))` 인데, **성공했을 때만 보낸다**: 빈 배열이 «기록 없음»(phase 를 `.default` 로 되돌리고 확장 자리를 푼다)이라, 실패를 빈 배열로 뭉개면 기록이 있는 사용자의 시트가 비어 버린다.
 
-**표시 데이터는 전부 State 소유** — 뷰에 하드코딩·`@State` 를 두지 않는다(예외는 진행 중 드래그 이동량 하나 — «시트 자리» 참조). `userName`(인사말) · `reports: IdentifiedArrayOf<Report>`(위젯② 목록, 개수는 `reports.count` 파생 — 따로 들지 않는다) · `expandedReportID`(펼친 행 1개, 재탭이면 접힘). `Report` 는 `HomeFeature` 안의 표시 모델이고 `DomainInterviewReport` 이관은 목록 계약 확정 후다(TODO). 면접 시작 카드 값(`userName`·`remainingChances`·`portfolio`)은 `StartInterviewFeature.State` 소유, 표기 포맷(«3.2mb»)은 뷰 몫이고 잔여·날짜·용량은 서버가 안 줄 수 있어 옵셔널이다(없는 조각만 뺀다 — 가짜 «0회»·«1970.01.01» 을 만들지 않는다).
+로드값 → 표시 매핑은 `HomeFeature` 의 두 헬퍼가 전담한다. `reusablePortfolio` 는 **READY 만** 고르고(PROCESSING 을 걸면 시작 시점에 게이트가 뒤집는다 — 폴링 승격은 TODO), `startVariant` 는 잔여 0 을 최우선(`exhausted`)으로 포폴 유무를 갈라 시안 3종을 정한다 — **잔여 nil(프로필 실패·응답 전)은 0 이 아니다**: 모른다고 소진 시안을 띄우면 시작 경로가 [홈으로] 하나로 막힌다. 남은 1종(held 세션 → 위젯① [이어서 진행])은 계약 대기라 미배선이다. phase 는 서버 판정의 표시일 뿐, 진실은 탭 시점 게이트 재검증이다.
+
+목록 응답 → 행 매핑은 `Report.init(summary:)` 다. **`id` 는 세션 id** 라 [레포트 보기] 가 그대로 리포트 상세를 연다(표시용 UUID 를 만들면 매핑 표가 하나 더 생긴다). 순서는 리듀서가 `interviewedAt` 내림차순으로 **다시 세운다** — 응답 순서는 계약에 없고 «펼치는 행은 최신 1개» 라 순서가 흔들리면 엉뚱한 행이 펼쳐진다. 제목은 세션 스냅샷(«백엔드 개발자 · 3년차 면접»)으로 세운다: 목록엔 리포트 한 줄 요약(`headline`)이 없고 그건 세션별 상세에만 있어, 행마다 상세를 때리면 목록 한 번에 N+1 호출이 붙는다(시안 문구가 요약문이라 서버 확장 시 교체 — TODO). 날짜는 «7월 11일 월» 고정 포맷 + **KST 고정**(서버가 타임존 없는 LocalDateTime 을 주고 디코더가 KST 로 읽는다 — 「면접 시작」 업로드일과 같은 규칙). 생성 실패·삭제된 포폴 표기는 홈 시안에 자리가 없어 흘리지 않는다(TODO).
+
+**표시 데이터는 전부 State 소유** — 뷰에 하드코딩·`@State` 를 두지 않는다(예외는 진행 중 드래그 이동량 하나 — «시트 자리» 참조). `userName`(인사말) · `reports: IdentifiedArrayOf<Report>`(위젯② 목록, 개수는 `reports.count` 파생 — 따로 들지 않는다) · `expandedReportID`(펼친 행 1개, 재탭이면 접힘). `Report` 는 `HomeFeature` 안의 표시 모델이다 — 도메인 모델(`InterviewReportSummary`)을 그대로 State 에 담지 않는 건 뷰가 쓰는 게 포맷된 날짜·제목 두 줄뿐이라서고, 변환은 «진입 로드» 의 `init(summary:)` 가 한다. 면접 시작 카드 값(`userName`·`remainingChances`·`portfolio`)은 `StartInterviewFeature.State` 소유, 표기 포맷(«3.2mb»)은 뷰 몫이고 잔여·날짜·용량은 서버가 안 줄 수 있어 옵셔널이다(없는 조각만 뺀다 — 가짜 «0회»·«1970.01.01» 을 만들지 않는다).
 
 **사람 이름을 기본값에 박지 않는다** — `userName` 기본값은 빈 문자열이고 비어 있는 동안 뷰가 이름 줄을 뺀다(«오랜만이에요!»). 시안 값(«재원»)을 기본값에 두면 프로필 응답이 늦을 때 모든 사용자가 남의 이름을 읽는다. 같은 이유로 `StartInterviewFeature.State` 기본값도 전부 중립(0회·포폴 없음)이고, 시안대로 보고 싶은 프리뷰가 픽스처를 명시로 넘긴다.
 

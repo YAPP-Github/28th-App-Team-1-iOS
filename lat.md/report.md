@@ -6,6 +6,8 @@ AI 면접 리포트 Feature(`FeatureReport`)의 도메인 노드. 화면 4개 + 
 
 `ReportFeature` — 1차 리포트를 루트로 두고 나머지 화면을 `path`(StackState)로 push 한다. 각 화면의 delegate 만 매칭한다(D5). 부모(AppFeature)로 올리는 것은 `retryRequested`(분석 부족 → 다음 면접)·`closeRequested` 둘뿐 — 나머지 전환은 모듈 안에서 끝난다.
 
+**진입은 홈 위젯②의 [레포트 보기]** 다(2026-08-05 배선) — AppFeature 가 세션 id 로 fullScreenCover 를 세우고 두 신호를 받는다 → [[app#Cross-feature Routing]]. 면접 정상 종료에서 곧장 잇는 경로는 아직 없다(면접은 리포트 대기 화면에서 홈으로 돌아간다 — [[interview#코디네이터]]).
+
 **메인이 허브다.** 화면들은 한 줄로 이어지지 않는다: 영상 플레이어는 리포트의 종속 화면이지 지인 피드백의 앞 단계가 아니고, 영상을 보지 않고 바로 지인에게 보낼 수 있어야 한다. 그래서 각 화면 진입은 메인의 개별 delegate(`videoRequested`·`peerFeedbackRequested`)가 트리거한다.
 
 ## 1차 리포트

@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import DomainInterviewInterface
 import SharedDesignSystemInterface
 import SwiftUI
 
@@ -154,6 +155,9 @@ public struct HomeView: View {
         HomeView(
             store: Store(initialState: HomeFeature.State(showsOnboardingEntry: true, showsDebugLogout: true)) {
                 HomeFeature()
+            } withDependencies: {
+                // 목록이 한 건이라도 오면 report phase 로 넘어가 «기본» 시안이 아니게 된다.
+                $0.interviewClient.reportList = HomeFeature.Report.previewKeepingFixtures
             }
         )
     }
@@ -169,6 +173,9 @@ public struct HomeView: View {
                 )
             ) {
                 HomeFeature()
+            } withDependencies: {
+                // 진입 재조회가 시안 픽스처를 덮지 않게 막는다 — 이유는 `previewKeepingFixtures`.
+                $0.interviewClient.reportList = HomeFeature.Report.previewKeepingFixtures
             }
         )
     }
@@ -184,6 +191,8 @@ public struct HomeView: View {
                 )
             ) {
                 HomeFeature()
+            } withDependencies: {
+                $0.interviewClient.reportList = HomeFeature.Report.previewKeepingFixtures
             }
         )
     }

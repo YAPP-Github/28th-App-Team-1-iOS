@@ -18,6 +18,7 @@ import Foundation
 // depends-on: [[home]] — Home 을 탭으로 임베드(owner). cross-feature delegate 라우팅은 Feature 추가 시 이 자리에서 조립.
 // depends-on: [[interview]] — 온보딩 완주 delegate(.finished(sessionId)) 를 받아 면접 흐름을 present. 종료 두 신호(.finished/.closed)는 cover 를 닫고 홈을 다시 태운다.
 // depends-on: [[onboarding]] — dev 전용 진입(Home 버튼)으로 온보딩 위저드를 present. 조립은 여기서만 (온보딩 본체 통합 전 임시).
+// depends-on: [[report]] — 홈 위젯②의 [레포트 보기] delegate 를 받아 리포트 커버를 세션 id 로 present. 리포트의 두 신호(닫기·다시 연습)도 여기서 받는다.
 @Reducer
 struct AppFeature {
     /// 탭 식별자. 새 탭 추가 시: 여기 case → State 프로퍼티 → body Scope → AppView tabItem 순으로 확장.
@@ -51,6 +52,8 @@ struct AppFeature {
         @Presents var interview: InterviewFeature.State?
         /// dev 전용 온보딩 위저드 — Home 진입 버튼으로 present (온보딩 본체 통합 전 임시).
         @Presents var onboarding: OnboardingFeature.State?
+        /// AI 면접 리포트 — 홈 위젯②의 [레포트 보기] 가 세션 id 로 연다. 자체 NavigationStack 을 가진 전면 흐름이라 cover.
+        @Presents var report: ReportFeature.State?
         /// 업데이트 안내(강제·권장)의 근거 — «업데이트» 가 열 `storeUrl` 과 강제 여부를 여기서 읽는다.
         var updatePolicy: AppVersionPolicy?
         @Presents var updateAlert: AlertState<Action.UpdateAlert>?
@@ -73,6 +76,7 @@ struct AppFeature {
         case home(HomeFeature.Action)
         case interview(PresentationAction<InterviewFeature.Action>)
         case onboarding(PresentationAction<OnboardingFeature.Action>)
+        case report(PresentationAction<ReportFeature.Action>)
         /// 로그아웃 정리(서버·토큰·draft) 완료 — 초기 State 로 리셋해 로그인 화면으로 돌아간다.
         case sessionCleared
         case binding(BindingAction<State>)
@@ -201,8 +205,9 @@ struct AppFeature {
             case .home(.delegate(.profileRequested)):
                 // TODO: 마이페이지 진입 — Part 5 Feature 가 생기면 조립한다(docs/work/home-account.md §4).
                 return .none
-            case .home(.delegate(.reportDetailRequested)):
-                // TODO: 리포트 상세(r1/최종) 제시 — `InterviewReportFeature` 통합 후 sessionId 로 배선.
+            case let .home(.delegate(.reportDetailRequested(sessionId))):
+                // 위젯② [레포트 보기] — 행 id = 세션 id. 채점 미완(404·GENERATING)도 그냥 연다(폴링은 리포트 몫 — [[report#1차 리포트]]).
+                state.report = ReportFeature.State(sessionId: sessionId)
                 return .none
             case .home(.delegate(.logoutRequested)):
                 // 서버 로그아웃 후 로컬 정리. 서버 호출이 실패해도 로컬은 그대로 지운다.
@@ -216,8 +221,7 @@ struct AppFeature {
             // 면접 종료 — 두 신호 모두 cover 를 닫고 홈을 다시 태운다: 어느 쪽이든 잔여가 줄었고,
             // 리포트도 늘었을 수 있다(BACK_EXIT 이탈도 생성 트리거 — 2026-08-03 서버 계약).
             // 케이스를 합치지 않는 건 곧 갈라지기 때문이다: 정상 종료엔 리포트 상세(r1) 라우팅이 붙는다.
-            // TODO: 정상 종료를 리포트 상세(r1)로 잇는다 — `InterviewReportFeature` 통합 후
-            //       sessionId 로 배선 (docs/work/home-account.md §4).
+            // TODO: 정상 종료 → r1 직행. 커버(`state.report`)는 이미 있어 `finished` 가 sessionId 만 실어 주면 된다.
             case .interview(.presented(.delegate(.finished))):
                 state.interview = nil
                 return .send(.home(.view(.onAppear)))
@@ -241,6 +245,16 @@ struct AppFeature {
                 return .send(.home(.view(.onAppear)))
             case .onboarding:
                 return .none
+            // 리포트가 올리는 두 신호 — 둘 다 커버만 닫고(홈 재조회 없음), «다시 연습» 만 면접 시작과 같은 위저드로 잇는다.
+            case .report(.presented(.delegate(.closeRequested))):
+                state.report = nil
+                return .none
+            case .report(.presented(.delegate(.retryRequested))):
+                state.report = nil
+                state.onboarding = OnboardingFeature.State(userName: state.home.userName)
+                return .none
+            case .report:
+                return .none
             case .sessionCleared:
                 // 로그아웃 정리 완료 — 초기 State 로 리셋하고 첫 소셜 로그인 화면으로.
                 // Splash 로 되돌리지 않는다 — 로그아웃 복귀는 판정이 아니라 확정 상태다.
@@ -258,6 +272,9 @@ struct AppFeature {
         }
         .ifLet(\.$onboarding, action: \.onboarding) {
             OnboardingFeature()
+        }
+        .ifLet(\.$report, action: \.report) {
+            ReportFeature()
         }
         .ifLet(\.$updateAlert, action: \.updateAlert)
     }

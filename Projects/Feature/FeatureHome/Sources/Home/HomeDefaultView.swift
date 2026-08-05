@@ -8,6 +8,7 @@
 // Figma: «Home / Home_Default» https://www.figma.com/design/ZG7FUxWCvITmnvzZi7fpTS/?node-id=3368-16965
 
 import ComposableArchitecture
+import DomainInterviewInterface
 import SharedDesignSystemInterface
 import SwiftUI
 
@@ -180,6 +181,9 @@ struct HomeDefaultView: View {
         HomeView(
             store: Store(initialState: HomeFeature.State()) {
                 HomeFeature()
+            } withDependencies: {
+                // 목록이 한 건이라도 오면 report phase 로 넘어가 «기본» 시안이 아니게 된다.
+                $0.interviewClient.reportList = HomeFeature.Report.previewKeepingFixtures
             }
         )
     }
@@ -190,6 +194,8 @@ struct HomeDefaultView: View {
         HomeView(
             store: Store(initialState: HomeFeature.State(showsOnboardingEntry: true, showsDebugLogout: true)) {
                 HomeFeature()
+            } withDependencies: {
+                $0.interviewClient.reportList = HomeFeature.Report.previewKeepingFixtures
             }
         )
     }

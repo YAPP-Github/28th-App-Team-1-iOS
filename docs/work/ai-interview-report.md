@@ -431,8 +431,8 @@ Domain 추가분에 `TranscriptSegment`·`TranscriptWord`(서버 타임스탬프
 4. **상세 시트** — `ReportHighlightDetailFeature` + `.sheet` 패턴 확립. 확장 전이므로 depth 1 설명까지.
 5. **영상 플레이어 1단계** — 통짜 재생 + 재생 실패 표시. 코디네이터 라우팅 허브화(§1-1)와 함께.
 6. **[확장 후] 2단계** — ✅ timestamp(`segments`) → 구간 seek·대본 오버레이·`[영상 보러가기]`. depth 2(후속 질문)·키워드 태그는 서버 필드 대기라 «비면 렌더 안 함» 상태로 남아 있다.
-7. **[Part 2 이후] AppFeature 배선** — `retryRequested` → 면접 셋업 · `closeRequested` → dismiss. `// depends-on:` 라벨 필수(import 에 안 보임).
-   **선행 조건**: 현재 AppFeature 는 home·auth·onboarding 뿐이고 면접 진행(Part 2) Feature 가 없어 리포트에 `sessionId` 를 넘길 상위가 없다(온보딩 `finished(sessionId:)` 도 지금은 dismiss 만 한다). 그때까지 1~5단계 검증은 **Example 앱**(sessionId 하드코딩 + `interviewReportClient` fixture 주입)으로 한다.
+7. **AppFeature 배선** — ✅ 2026-08-05. 진입은 **홈 위젯② [레포트 보기]** 다: `home(.delegate(.reportDetailRequested(sessionId:)))` → `state.report = ReportFeature.State(sessionId:)` fullScreenCover, `closeRequested` → dismiss, `retryRequested` → dismiss + 온보딩 위저드(면접 셋업). `// depends-on: [[report]]` 라벨 붙였다. 리포트 커버 중에는 전역 LoadingModal 을 끈다(폴링마다 딤이 깜빡인다).
+   남은 경로: **면접 정상 종료 → r1 직행** 은 여전히 미배선이다 — 면접은 리포트 대기 화면에서 홈으로 돌아가고, 홈 재진입이 목록을 재조회한다.
 8. **문서 동기화** — `[[report]]` 노드를 실제 구조로 갱신(현재 "4화면 골격·임시 선형" 서술은 이 정의서 적용 시 거짓이 된다), `@lat` 라벨 재부착, `lat check` 통과.
 
 ## 12. 테스트 항목 (TestStore)
