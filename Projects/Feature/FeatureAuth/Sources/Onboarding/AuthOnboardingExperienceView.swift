@@ -143,13 +143,13 @@ public struct AuthOnboardingExperienceView: View {
 
     // MARK: - 하단 바
 
-    /// 하단 «이전 | 다음» 바 — 배경·구분선·등폭 배치·눌림은 `ButtonLarge(.bottom, tone: .dark)` 가 소유.
-    /// 휠은 항상 선택값을 가지므로 «다음» 은 상시 활성이다.
+    /// 하단 «이전으로 | 계속하기» 바 — 배경·구분선·등폭 배치·눌림은 `ButtonLarge(.bottom, tone: .dark)` 가 소유.
+    /// 휠은 항상 선택값을 가지므로 «계속하기» 는 상시 활성이다.
     private var bottomBar: some View {
         ButtonLarge(.bottom, tone: .dark) {
-            Button("이전") { send(.userTappedBack) }
+            Button("이전으로") { send(.userTappedBack) }
         } trailing: {
-            Button("다음") { send(.userTappedContinue) }
+            Button("계속하기") { send(.userTappedContinue) }
         }
     }
 }

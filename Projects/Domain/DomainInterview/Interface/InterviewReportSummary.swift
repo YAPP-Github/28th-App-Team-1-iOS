@@ -15,7 +15,7 @@ public enum ReportStatus: String, Decodable, Equatable, Sendable {
     case failed = "FAILED"
 }
 
-/// 내 면접 레포트 목록 항목 — 마이페이지 배선(후속)용. 응답 envelope `{ reports: [...] }` 는 Live 가 벗긴다.
+/// 내 면접 레포트 목록 항목 — 홈 위젯② 배선 완료(2026-08-04), 마이페이지는 후속. 응답 envelope `{ reports: [...] }` 는 Live 가 벗긴다.
 public struct InterviewReportSummary: Decodable, Equatable, Sendable, Identifiable {
     public var id: Int { sessionId }
 

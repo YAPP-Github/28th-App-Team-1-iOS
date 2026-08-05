@@ -18,20 +18,29 @@ extension InterviewClient: @retroactive DependencyKey {
         @Dependency(\.authorizedNetworkClient) var network
 
         return InterviewClient(
+            // 세션 생성·상태 폴링은 전역 로딩에서 뺀다 — 이 둘을 기다리는 화면이 곧 온보딩
+            // 프리로드(체크리스트 3행 + 진행 스피너)라, 그게 대기 표시 그 자체다. 모달을 덮으면
+            // 브랜드 대기 화면만 가린다 (AppView 가 Splash 를 제외하는 것과 같은 이유).
             createSession: { config in
-                try await InterviewError.mapping {
-                    let request = try NetworkRequest.json(
-                        method: .post,
-                        path: "/api/v1/interview/sessions",
-                        body: SessionCreateBody(config),
-                        encoder: .api
-                    )
-                    return try await network.api(request)
+                try await GlobalLoadingSuppression.run {
+                    try await InterviewError.mapping {
+                        let request = try NetworkRequest.json(
+                            method: .post,
+                            path: "/api/v1/interview/sessions",
+                            body: SessionCreateBody(config),
+                            encoder: .api
+                        )
+                        return try await network.api(request)
+                    }
                 }
             },
             sessionStatus: { sessionId in
-                try await InterviewError.mapping {
-                    try await network.api(NetworkRequest(path: "/api/v1/interview/sessions/\(sessionId)/status"))
+                try await GlobalLoadingSuppression.run {
+                    try await InterviewError.mapping {
+                        try await network.api(
+                            NetworkRequest(path: "/api/v1/interview/sessions/\(sessionId)/status")
+                        )
+                    }
                 }
             },
             submitAnswer: { sessionId, submission in

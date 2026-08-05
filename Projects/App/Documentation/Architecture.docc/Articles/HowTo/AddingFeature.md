@@ -204,20 +204,20 @@ tuist install && tuist generate
 
 ## Step 6 — 호스트에 연결
 
-### (a) 새 탭으로 추가
+### (a) 루트 화면으로 추가
 
 호스트가 `AppFeature` 가 된다.
 
 ```swift
 // AppFeature.State
 public var profile: ProfileFeature.State
-// AppFeature.Tab
-case home, users, activity, profile
 // AppFeature.body
 Scope(state: \.profile, action: \.profile) { ProfileFeature() }
 ```
 
-`AppView` 의 `TabView` 에 `.tabItem` + `.tag` 한 쌍을 추가하면 끝. (App 은 `.feature` umbrella 를 link 하므로 `ProfileFeature` 구체 타입을 안다.)
+`AppView` 에서 그 화면을 제시하면 끝. (App 은 `.feature` umbrella 를 link 하므로 `ProfileFeature` 구체 타입을 안다.)
+
+> 현재 앱엔 **탭바가 없다** — 탭이 홈 하나뿐이라 `TabView` 를 두면 바 자리만 차지하고 홈 배경 그라디언트가 반투명 바로 새어 나왔다. 둘째 탭이 실제로 생기는 시점에 `Tab` enum · `State.selectedTab` · `AppView` 의 `TabView`(+ `.tabItem`/`.tag`)를 함께 되살린다.
 
 ### (b) 다른 Feature 에서 진입 (cross-feature)
 

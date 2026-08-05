@@ -404,7 +404,7 @@ private extension CatalogComponentView {
     var fileUpload: some View {
         CatalogGroup("FileUpload — status 4종(before / empty / progressing / completed)") {
             VStack(spacing: .ds(.p12)) {
-                FileUpload(.before(title: "파일을 업로드해주세요", guidance: "1개 파일, 최대 20Mb까지 가능합니다"))
+                FileUpload(.before())
                 FileUpload(.empty(message: "아직 첨부된 포트폴리오가 없어요"))
                 FileUpload(
                     .progressing(.init(name: "{파일명}.pdf", statusText: "Processing...", actionTitle: "버튼"), progress: 0.16),
