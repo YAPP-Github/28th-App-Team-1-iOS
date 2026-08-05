@@ -15,6 +15,9 @@ import Foundation
 /// **메인이 허브다.** 화면들은 한 줄로 이어지지 않는다 — 영상 플레이어는 리포트의 종속 화면이지
 /// 지인 피드백의 앞 단계가 아니고, 영상을 보지 않고 바로 지인에게 보낼 수 있어야 한다.
 /// 그래서 각 화면 진입은 메인의 개별 delegate 가 트리거한다 (정의서 §1-1).
+///
+/// **지인 피드백 도착 후에도 화면이 늘지 않는다** — 결과는 메인의 «지인 피드백» 섹션이 이름 탭 +
+/// 태도 평가 목록으로 자라서 보여준다(시안 443:7102). 별도 «최종 보고서» 화면은 없다.
 @Reducer
 public struct ReportFeature {
     @Reducer
@@ -23,8 +26,6 @@ public struct ReportFeature {
         case videoPlayer(ReportVideoPlayerFeature)
         /// 지인 피드백 요청 — 메인 CTA. 태도 항목 지정 + 공유 링크 생성.
         case peerFeedback(ReportPeerFeedbackFeature)
-        /// 최종 보고서 — 지인 피드백 도착 후 (Part 4.6 스펙 대기)
-        case final(ReportFinalFeature)
     }
 
     // @Reducer enum 이 생성하는 Path.State 는 Equatable 을 자동 채택하지 않는다 —
@@ -114,16 +115,12 @@ public struct ReportFeature {
 
     private func reducePath(_ state: inout State, _ action: StackActionOf<Path>) -> Effect<Action> {
         switch action {
-        // 뒤로 — 어느 화면에서든 pop.
+        // 뒤로 — 어느 화면에서든 pop. 두 화면 다 X 가 «뒤로» 라서 이탈 신호는 없다
+        // (리포트 이탈은 메인의 X 만 담당한다).
         case .element(id: _, action: .videoPlayer(.delegate(.backRequested))),
-             .element(id: _, action: .peerFeedback(.delegate(.backRequested))),
-             .element(id: _, action: .final(.delegate(.backRequested))):
+             .element(id: _, action: .peerFeedback(.delegate(.backRequested))):
             _ = state.path.popLast()
             return .none
-
-        // 이탈(X) — 어느 화면에서든 부모 통보. 플레이어·지인 피드백은 X 가 «뒤로» 라 여기 없다.
-        case .element(id: _, action: .final(.delegate(.closeRequested))):
-            return .send(.delegate(.closeRequested))
 
         default:
             return .none
