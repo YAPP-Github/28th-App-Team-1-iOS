@@ -21,12 +21,19 @@ import SwiftUI
 //   Log Message 액션(«🔑 @tokens.accessToken@», Automatically continue)을 걸면 API 호출마다
 //   콘솔에 나온다. 그 한 줄을 통째로 복사 (Bearer 접두 없이 원문만, 커밋되는 코드 0줄).
 //   ⚠️ tuist generate 가 스킴을 재생성하면 환경변수가 사라진다 — 재입력 필요.
+// • video smoke — 토큰에 더해 `HILIT_VIDEO_SMOKE` 도 있으면 영상 API 스모크(VideoAPISmoke)로 대체.
+//   upload-url·PUT·complete·expiry·리포트 새 스키마의 liveValue 디코딩을 기존 세션으로 검증
+//   (세션 선택·주의사항은 VideoAPISmoke 헤더 주석).
 @main
 struct FeatureInterviewExampleApp: App {
     var body: some Scene {
         WindowGroup {
             if let token = ProcessInfo.processInfo.environment["HILIT_ACCESS_TOKEN"], !token.isEmpty {
-                LiveInterviewBootstrap(accessToken: token)
+                if ProcessInfo.processInfo.environment["HILIT_VIDEO_SMOKE"] != nil {
+                    VideoAPISmoke(accessToken: token)
+                } else {
+                    LiveInterviewBootstrap(accessToken: token)
+                }
             } else {
                 InterviewView(
                     store: Store(initialState: InterviewFeature.State(sessionId: 1)) {

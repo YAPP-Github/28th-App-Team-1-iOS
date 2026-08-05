@@ -45,6 +45,7 @@ let project = Project.makeModule(
                 .composableArchitecture,
                 .core(interface: .network),       // live 하네스 — TokenStore(inMemory)·AuthTokens
                 .domain(interface: .interview),
+                .domain(interface: .interviewReport),   // 영상 스모크 — expiry·리포트 새 스키마 디코딩
                 .domain(interface: .portfolio),   // live 부트스트랩 — 첫 포트폴리오 조회
                 .domain(interface: .speech),      // live 하네스 — answerAudio 오버라이드
                 .domain(interface: .user),        // live 부트스트랩 — 프로필·잔여 이용권 진단
@@ -52,6 +53,8 @@ let project = Project.makeModule(
                 .project(target: "CoreNetworkImplementation", path: .core(.network)),
                 // live 하네스 실 IO — InterviewClient liveValue (실서버 세션 생성·턴 루프).
                 .project(target: "DomainInterviewImplementation", path: .domain(.interview)),
+                // 영상 스모크 실 IO — InterviewReportClient liveValue (expiry·리포트 새 스키마 디코딩).
+                .project(target: "DomainInterviewReportImplementation", path: .domain(.interviewReport)),
                 // 권한만 실물 IO — 준비 화면의 요청→거부 alert→설정 이동 흐름 검증용 (liveValue 활성화).
                 .project(target: "DomainPermissionImplementation", path: .domain(.permission)),
                 // live 하네스 실 IO — PortfolioClient liveValue (부트스트랩 목록 조회).
