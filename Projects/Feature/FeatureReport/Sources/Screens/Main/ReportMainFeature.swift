@@ -34,8 +34,9 @@ public struct ReportMainFeature {
         public var pollTickCount = 0
         /// 상세 리포트에서 보고 있는 카드(질문 탭) 위치.
         public var selectedCardIndex = 0
-        /// 레드플래그 툴팁 노출 여부 — 느낌표를 눌러 토글한다(기본은 접힘, 대본을 가리지 않게).
-        public var isRedFlagTooltipVisible = false
+        /// 레드플래그 툴팁 노출 여부 — 시안(443:7264)이 느낌표와 툴팁을 **함께** 띄우므로 기본 펼침이고,
+        /// 느낌표를 눌러 접을 수 있다. 레드플래그가 없으면 이 값과 무관하게 뷰가 둘 다 그리지 않는다.
+        public var isRedFlagTooltipVisible = true
         /// 지인 피드백에서 보고 있는 지인(탭) 위치.
         public var selectedGuestIndex = 0
         /// 코멘트를 펼쳐 둔 태도 항목 코드 — 지인을 바꾸면 비운다.

@@ -250,8 +250,10 @@ struct ReportMainFeatureTests {
         }
         #expect(store.state.hasRedFlagNotices)
 
-        await store.send(.view(.userTappedRedFlagInfo)) { $0.isRedFlagTooltipVisible = true }
+        // 시안이 느낌표·툴팁을 함께 띄우므로 기본이 펼침이다 — 첫 탭이 접는 쪽이고,
+        // 이 단정이 통과하는 것 자체가 기본값이 true 임을 확인한다.
         await store.send(.view(.userTappedRedFlagInfo)) { $0.isRedFlagTooltipVisible = false }
+        await store.send(.view(.userTappedRedFlagInfo)) { $0.isRedFlagTooltipVisible = true }
     }
 
     @Test("지인을 바꾸면 펼쳐 둔 코멘트를 접는다")
