@@ -22,6 +22,9 @@ struct TranscriptText: View {
     let spans: [HighlightSpan]
     /// 하이라이트가 아닌 본문 색 — 메인은 gray50, 시트는 gray600(하이라이트를 도드라지게).
     let baseColor: Color
+    /// 하이라이트 구간 밴드 색 — 판이 다르면 밴드도 한 단 움직인다
+    /// (리포트 카드 g800 / 플레이어 대본 오버레이 g900 — 시안 443:7301 vs 443:7906).
+    let bandColor: Color
     /// 하이라이트 구간 탭 (구간 인덱스). nil 이면 탭 비활성 — 시트 안처럼 이미 그 구간을 보고 있을 때.
     let onTapSpan: ((Int) -> Void)?
 
@@ -29,11 +32,13 @@ struct TranscriptText: View {
         transcript: String,
         spans: [HighlightSpan],
         baseColor: Color = Color.GrayScale.g50,
+        bandColor: Color = Color.GrayScale.g800,
         onTapSpan: ((Int) -> Void)? = nil
     ) {
         self.transcript = transcript
         self.spans = spans
         self.baseColor = baseColor
+        self.bandColor = bandColor
         self.onTapSpan = onTapSpan
     }
 
@@ -63,7 +68,7 @@ struct TranscriptText: View {
             else { continue }
 
             result[range].foregroundColor = color(for: span.highlightTone)
-            result[range].backgroundColor = Color.GrayScale.g800
+            result[range].backgroundColor = bandColor
             if onTapSpan != nil {
                 result[range].link = URL(string: "\(Self.scheme):\(index)")
             }

@@ -40,6 +40,8 @@ struct TranscriptOverlay: View {
                             baseColor: line.id == currentLineID
                                 ? Color.BlackWhite.white
                                 : Color.GrayScale.g400,
+                            // 오버레이는 영상 위 어두운 판이라 밴드가 카드보다 한 단 어둡다(시안 443:7906).
+                            bandColor: Color.GrayScale.g900,
                             onTapSpan: { spanIndex in onHighlightTap(line.id, spanIndex) }
                         )
                         .id(line.id)
