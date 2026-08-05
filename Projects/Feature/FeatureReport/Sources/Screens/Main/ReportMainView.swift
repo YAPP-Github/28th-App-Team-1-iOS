@@ -5,12 +5,15 @@
 //  Created by EunSeo on 26/07/25.
 //
 
+// Figma: «Report_Main_Default» https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=443-7264
+//        지인 피드백 도착 상태 https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=443-7102
+
 import ComposableArchitecture
 import DomainInterviewReportInterface
 import SharedDesignSystemInterface
 import SwiftUI
 
-/// 1차 리포트 — Figma «Report_Main_Default»(3165:14385). 다크 화면(b900) 기준.
+/// 1차 리포트 — Figma «Report_Main_Default» 443:7264(기본) · 443:7102(지인 피드백 도착). 다크 화면(b900) 기준.
 ///
 /// 세로 구성: 한 줄 요약 → 영상 카드 → 상세 리포트(질문 탭 + 선택 카드) → 지인 피드백.
 /// 카드를 세로로 늘어놓지 않고 **질문 탭으로 한 장씩** 보여준다 — 대본이 길어 전부 펼치면 스크롤이 무너진다.
@@ -30,7 +33,7 @@ public struct ReportMainView: View {
             // 다크 판 선언 — 하위 `.mini`(재시도 버튼·지인 이름 탭)의 팔레트가 다크용으로 바뀐다.
             .hilitSurface(.dark)
             // X = 리포트 닫기(플로우 종료) — 기본 pop 이 아니라 리듀서가 소유한다.
-            .hilitNavigationBar(theme: .dark, onClose: { send(.userTappedClose) })
+            .hilitNavigationBar(surface: .dark, onClose: { send(.userTappedClose) })
             .onAppear { send(.onAppear) }
         .sheet(item: $store.scope(state: \.highlightDetail, action: \.highlightDetail)) { store in
             ReportHighlightDetailView(store: store)
@@ -58,15 +61,20 @@ public struct ReportMainView: View {
 
     private var reportBody: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 36) {
+            // 시안은 «title-box(pt10)» 다음 블록이 pt24 로 시작한다 — 요약과 본문 사이만 24,
+            // 본문 섹션 사이는 36 이라 두 열로 나눈다.
+            VStack(alignment: .leading, spacing: 0) {
                 headline
-                videoSection
-                divider
-                detailReportSection
-                peerFeedbackSection
-                if store.isInsufficient {
-                    retryButton
+                VStack(alignment: .leading, spacing: Metric.sectionSpacing) {
+                    videoSection
+                    HilitDivider()
+                    detailReportSection
+                    peerFeedbackSection
+                    if store.isInsufficient {
+                        retryButton
+                    }
                 }
+                .padding(.top, .ds(.p24))
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, .ds(.p20))
@@ -76,18 +84,10 @@ public struct ReportMainView: View {
     }
 
     /// 한 줄 요약 — 서버 소유 문구. nil 이면 분석 부족 폴백만 쓴다 (정의서 §6).
+    /// 시안의 «title-box» 인스턴스라 DS `TitleBox` 를 쓴다 — 뱃지·서브 없이 타이틀 한 줄뿐이고,
+    /// 글자색은 화면이 선언한 `.hilitSurface(.dark)` 가 흰색으로 정한다.
     private var headline: some View {
-        Text(store.report?.headline ?? ReportMainView.headlineFallback)
-            .dsTypography(.head3)
-            .foregroundStyle(Color.BlackWhite.white)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var divider: some View {
-        Rectangle()
-            .fill(Color.GrayScale.g800)
-            .frame(height: .ds(.small))
+        TitleBox([.init(store.report?.headline ?? ReportMainView.headlineFallback)])
     }
 
     // MARK: - 영상
@@ -112,7 +112,7 @@ public struct ReportMainView: View {
     // MARK: - 상세 리포트
 
     private var detailReportSection: some View {
-        VStack(alignment: .leading, spacing: 34) {
+        VStack(alignment: .leading, spacing: Metric.detailSpacing) {
             VStack(alignment: .leading, spacing: .ds(.p10)) {
                 detailReportHeader
                 QuestionTabBar(
@@ -128,6 +128,8 @@ public struct ReportMainView: View {
     }
 
     /// 제목 + 레드플래그 느낌표. 툴팁은 오버레이라 열고 닫아도 아래 내용이 밀리지 않는다.
+    ///
+    /// 느낌표·툴팁은 **레드플래그가 있을 때만** 함께 나타난다 — 없으면 둘 다 그리지 않는다 (정의서 §2-4).
     private var detailReportHeader: some View {
         HStack(spacing: .ds(.p8)) {
             Text("상세 리포트")
@@ -141,20 +143,22 @@ public struct ReportMainView: View {
                     Image.Issue.error16
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 16, height: 16)
+                        .frame(width: Metric.issueIconSide, height: Metric.issueIconSide)
                 }
                 .buttonStyle(.plain)
             }
             Spacer(minLength: 0)
         }
-        .overlay(alignment: .topLeading) {
+        // 시안은 말풍선을 섹션 오른쪽 끝에 맞춰 놓는다(왼쪽 80 = 오른쪽 여백 20 기준 274 폭의 시작점).
+        .overlay(alignment: .topTrailing) {
             if store.hasRedFlagNotices, store.isRedFlagTooltipVisible {
                 BubbleField(store.redFlagTooltipMessage, .mini(mood: .dark))
-                    // 가로는 섹션 폭에 맞추고 세로만 내용대로 늘린다 — 안내 문구가 길어 한 줄로 두면
-                    // 말풍선이 화면 밖으로 나간다(툴팁 변형은 내용 폭이라 스스로 줄바꿈하지 않는다).
+                    // 폭 274 는 시안 주석 값. DS `.wide` 와 같은 수치지만 이 자리는 세로 패딩 8·
+                    // 좌하단 꼬리인 `.mini` 티어라 폭만 따로 주고, 세로는 내용대로 늘려 줄바꿈시킨다.
+                    .frame(width: Metric.tooltipWidth)
                     .fixedSize(horizontal: false, vertical: true)
-                    // 말풍선 아래끝이 제목 위에 오도록 자기 높이만큼 끌어올린다 (Figma 오버레이 배치).
-                    .alignmentGuide(.top) { $0[.bottom] + .ds(.p4) }
+                    // 말풍선 아래끝이 제목 위 8 에 오도록 자기 높이만큼 끌어올린다 (시안 주석 «gap 8px»).
+                    .alignmentGuide(.top) { $0[.bottom] + .ds(.p8) }
             }
         }
     }
@@ -198,7 +202,7 @@ public struct ReportMainView: View {
                 Image.Q.default
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 20, height: 20)
+                    .frame(width: Metric.questionBadgeSide, height: Metric.questionBadgeSide)
 
                 Text(questionText)
                     .dsTypography(.body3)
@@ -288,11 +292,26 @@ public struct ReportMainView: View {
         }
     }
 
+    private enum Metric {
+        // @ds(spacing): 34 — 질문 탭 줄과 선택 카드 사이
+        static let detailSpacing: CGFloat = 34
+        /// 레드플래그 느낌표 한 변 16 — Figma `issue/16px/error`.
+        static let issueIconSide: CGFloat = 16
+        /// 질문 배지 한 변 20 — Figma `Q` 배지.
+        static let questionBadgeSide: CGFloat = 20
+        // @ds(spacing): 36 — 본문 섹션 사이
+        static let sectionSpacing: CGFloat = 36
+        // @ds(layout): 274 — 레드플래그 툴팁 폭 (시안 주석)
+        static let tooltipWidth: CGFloat = 274
+    }
+
     /// 서버 `headline` 이 비었을 때의 폴백 (정의서 §6).
     static let headlineFallback = "이번 면접의 답변이 충분하지 않아요. 다음 면접 연습 때는 조금 더 충분한 답변을 말씀해주세요."
     /// 영상 카드 아래 안내 — 클라 소유 문구.
     static let videoExtensionNotice = "* 지인 1명이라도 피드백이 완료될 시 시청 시간이 최대로 연장됩니다."
 }
+
+// MARK: - Previews
 
 #Preview("1차 리포트") {
     ReportMainView(
@@ -300,6 +319,82 @@ public struct ReportMainView: View {
             ReportMainFeature()
         } withDependencies: {
             $0.interviewReportClient = .previewValue
+        }
+    )
+}
+
+#Preview("레드플래그 · 영상 만료 — 443:7264") {
+    reportMainPreview(
+        redFlagNotices: [
+            RedFlagNotice(type: "LOW_RESOLUTION", message: "영상 해상도가 낮아 분석율이 떨어질 수 있어요.")
+        ],
+        video: InterviewReportVideo(url: nil, expired: true, expiresAt: nil)
+    )
+}
+
+#Preview("지인 피드백 도착 — 443:7102") {
+    reportMainPreview(
+        video: InterviewReportVideo(
+            url: "https://example.com/interview.mp4",
+            expired: false,
+            expiresAt: Date().addingTimeInterval(86_373)
+        ),
+        guestFeedback: GuestFeedbackSection(
+            participantCount: 4,
+            guests: ["허자연", "박민주", "노영진", "유노유노"].map {
+                GuestReview(alias: $0, attitudeRatings: previewAttitudeRatings)
+            }
+        )
+    )
+}
+
+/// 시안 «지인 피드백 도착» 의 다섯 축 — 코멘트 없음·한 줄·말줄임(펼치기) 세 경우를 모두 담는다.
+private let previewAttitudeRatings = [
+    GuestAttitudeRating(axis: "GAZE", level: 3, comment: "꼬리질문에서 눈빛이 흔들려서 자신감이 없어 보였어요."),
+    GuestAttitudeRating(
+        axis: "EXPRESSION",
+        level: 1,
+        comment: "꼬리질문에서 눈빛이 흔들려서 자신감이 없어 보였어요. 그래서 조금 아쉬웠습니다."
+    ),
+    GuestAttitudeRating(axis: "POSTURE", level: 1, comment: nil),
+    GuestAttitudeRating(axis: "GESTURE", level: 1, comment: nil),
+    GuestAttitudeRating(axis: "VOICE", level: 1, comment: "꼬리질문에서 눈빛이 흔들려서 자신감이 없어 보였어요.")
+]
+
+/// 시안 대조용 화면 — 상태를 가르는 세 필드(레드플래그·영상·지인 피드백)만 바꿔 끼운다.
+@ViewBuilder
+private func reportMainPreview(
+    redFlagNotices: [RedFlagNotice]? = nil,
+    video: InterviewReportVideo,
+    guestFeedback: GuestFeedbackSection? = nil
+) -> some View {
+    let report = InterviewReport(
+        status: .ready,
+        headline: "캐시 도입 결정의 이유와 한계까지 구체적인 수치로 설명해 주셨어요",
+        redFlagNotices: redFlagNotices,
+        video: video,
+        cards: (1...5).map { depth in
+            InterviewReportCard(
+                axisOrder: 1,
+                depthLevel: depth,
+                questionText: "트래픽이 10배일 때 가장 치명적인 지점과, 그 임계치를 어떻게 생각하시나요?",
+                transcript: "음.. 어릴 적부터 맡은 일은 끝까지 해내야 직성이 풀리는 성격이라, 대학교에서는 시각디자인을 전공하며 여러 공모전에 도전했습니다.",
+                highlightSpans: [
+                    HighlightSpan(startIndex: 40, endIndex: 62, tone: "IMPROVE", analysis: nil)
+                ],
+                resolutionNotice: nil,
+                cardRedFlagNotices: nil,
+                questionIntent: "트래픽이 증가했을 때 발생할 병목 지점과 시스템의 한계, 그리고 이를 어떻게 판단할지 설명하는 질문입니다."
+            )
+        },
+        guestFeedback: guestFeedback
+    )
+
+    ReportMainView(
+        store: Store(initialState: ReportMainFeature.State(sessionId: 1)) {
+            ReportMainFeature()
+        } withDependencies: {
+            $0.interviewReportClient = InterviewReportClient(report: { _ in report })
         }
     )
 }
