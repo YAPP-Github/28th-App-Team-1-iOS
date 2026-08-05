@@ -37,6 +37,14 @@ public extension InterviewClient {
                     headers: [:]
                 )
             },
+            videoUploadURL: { sessionId in
+                InterviewVideoUploadTarget(
+                    uploadUrl: "mock://interview/\(sessionId)/video/upload",
+                    contentType: "video/mp4",
+                    expiresInSeconds: 600
+                )
+            },
+            completeVideoUpload: { _, _ in },
             reportList: { [] }
         )
     }

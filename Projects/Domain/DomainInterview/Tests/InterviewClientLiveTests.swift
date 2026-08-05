@@ -292,6 +292,70 @@ final class InterviewClientLiveTests: XCTestCase {
         XCTAssertEqual(stream.headers["Authorization"], "Bearer stub-token")
     }
 
+    // MARK: - 영상 업로드
+
+    func test_videoUploadURL_presigned_PUT_대상을_디코딩한다() async throws {
+        let client = makeClient { request in
+            XCTAssertEqual(request.path, "/api/v1/interview/sessions/7/video/upload-url")
+            XCTAssertEqual(request.method, .post)
+            XCTAssertNil(request.body)   // 요청 바디 없음
+            return Data("""
+            {"success": true, "data": {
+                "uploadUrl": "https://bucket.s3.ap-northeast-2.amazonaws.com/users/1/sessions/42/recording/raw.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=600",
+                "contentType": "video/mp4",
+                "expiresInSeconds": 600
+            }}
+            """.utf8)
+        }
+
+        let target = try await client.videoUploadURL(7)
+
+        XCTAssertTrue(target.uploadUrl.hasPrefix("https://bucket.s3.ap-northeast-2.amazonaws.com/"))
+        XCTAssertEqual(target.contentType, "video/mp4")
+        XCTAssertEqual(target.expiresInSeconds, 600)
+    }
+
+    func test_completeVideoUpload_마무리멘트_구간을_JSON바디로_인코딩한다() async throws {
+        let client = makeClient { request in
+            XCTAssertEqual(request.path, "/api/v1/interview/sessions/7/video/complete")
+            XCTAssertEqual(request.method, .post)
+            XCTAssertEqual(request.headers["Content-Type"], "application/json")
+            let body = try JSONSerialization.jsonObject(with: XCTUnwrap(request.body)) as? [String: Any]
+            XCTAssertEqual(body?["wrapUpStartSec"] as? Double, 512.4)
+            XCTAssertEqual(body?["wrapUpEndSec"] as? Double, 515.8)
+            return Data(#"{"success": true}"#.utf8)
+        }
+
+        try await client.completeVideoUpload(7, InterviewVideoWrapUpSpan(wrapUpStartSec: 512.4, wrapUpEndSec: 515.8))
+    }
+
+    func test_completeVideoUpload_마무리멘트가_없으면_바디를_생략한다() async throws {
+        let client = makeClient { request in
+            XCTAssertEqual(request.path, "/api/v1/interview/sessions/7/video/complete")
+            XCTAssertEqual(request.method, .post)
+            XCTAssertNil(request.body)   // 계약: wrapUp 없으면 바디 생략
+            XCTAssertNil(request.headers["Content-Type"])
+            return Data(#"{"success": true}"#.utf8)
+        }
+
+        try await client.completeVideoUpload(7, nil)
+    }
+
+    func test_videoUploadURL_세션없음404를_sessionNotFound로_매핑한다() async {
+        let client = makeClient { _ in
+            throw NetworkError.statusCode(404, Data(
+                #"{"success": false, "code": "INTERVIEW_SESSION_NOT_FOUND", "message": "면접 세션을 찾을 수 없어요."}"#.utf8
+            ))
+        }
+
+        do {
+            _ = try await client.videoUploadURL(7)
+            XCTFail("에러가 던져져야 한다")
+        } catch {
+            XCTAssertEqual(error as? InterviewError, .sessionNotFound)
+        }
+    }
+
     // MARK: - 레포트 목록
 
     func test_reportList_envelope의_reports를_벗겨_목록을_디코딩한다() async throws {
