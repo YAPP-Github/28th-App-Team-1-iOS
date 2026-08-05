@@ -16,7 +16,6 @@ public extension InterviewReportClient {
                 InterviewReport(
                     status: .ready,
                     headline: "mock 보고서",
-                    redFlagNotices: nil,
                     video: nil,
                     cards: [],
                     guestFeedback: nil

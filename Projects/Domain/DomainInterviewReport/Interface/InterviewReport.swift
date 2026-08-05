@@ -22,7 +22,8 @@ public enum InterviewReportPhase: String, Decodable, Equatable, Sendable {
 // MARK: - 구성 요소
 
 /// 레드플래그 안내 (저장 5종 중 노출 3종 — 지어냄·모순·무결점 서사 — 만 중립 문구로 내려온다).
-/// 심각한 레드플래그 유무는 `status` 가 아니라 이 배열이 비어 있는지로 판단한다.
+/// 보고서 단위 안내 줄은 없다 — **걸린 카드의 `cardRedFlagNotices` 로만** 노출된다.
+/// 심각한 레드플래그가 있으면 `headline` 이 칭찬 없는 중립 사실 요약으로 대체된다.
 public struct RedFlagNotice: Decodable, Equatable, Sendable {
     /// 서버 분류 코드 (예: "CONTRADICTION")
     public let type: String?
@@ -49,36 +50,59 @@ public struct InterviewReportVideo: Decodable, Equatable, Sendable {
 }
 
 /// 대본 위에 칠할 하이라이트 구간 (잘함/개선).
+///
+/// `reason` 이 뒤따르는 필드의 유무를 정한다 — 파고들 여지(`PROBE_WORTHY`)면 `followUpQuestions`,
+/// 딴 답(`OFF_INTENT`)이면 `answerTopicTitle`·`questionIntentTitle`·`questionIntent` 가 채워지고
+/// 그 외 이유에서는 셋 다 비어 온다. 시트의 «다음 대비» 블록이 이 분기를 그대로 따른다.
 public struct HighlightSpan: Decodable, Equatable, Sendable {
     /// `transcript` 문자열 기준 시작/끝 인덱스
     public let startIndex: Int
     public let endIndex: Int
-    /// 톤 — 스웨거 예시상 "GOOD" (개선 톤 문자열은 서버 예시 미제공, String 유지)
+    /// 톤 — 잘함 "GOOD" / 개선 "IMPROVE". 미지 값은 `highlightTone` 이 흡수한다.
     public let tone: String?
+    /// 개선 유형 — `HighlightReason` 이 좁혀 받는다.
+    public let reason: String?
+    /// 하이라이트 한 줄 제목 (시트 진단 카드의 볼드 줄).
+    public let title: String?
     /// 구간에 대한 분석 문구
     public let analysis: String?
-    /// 이 구간이 영상에서 시작·끝나는 시각(초). 문자 인덱스만으로는 시간축을 알 수 없어
-    /// 서버가 따로 내려준다 — 없으면 카드의 `segments` 에서 문장을 찾아 대신 쓴다
+    /// 꼬리질문 — `reason=PROBE_WORTHY` 일 때만 채워진다(그 외엔 빈 배열).
+    public let followUpQuestions: [String]?
+    /// 이 구간이 영상에서 시작하는 시각(초). 문자 인덱스만으로는 시간축을 알 수 없어
+    /// 서버가 따로 내려준다 — 없으면 카드의 `scriptSegments` 에서 문장을 찾아 대신 쓴다
     /// (`InterviewReportCard.evidenceTime(for:)`).
-    ///
-    /// 이름은 정의서 §9-1 확장 요청서에 백엔드로 전달한 것을 따른다 (docs/work/ai-interview-report.md).
-    public let evidenceStartAt: TimeInterval?
-    public let evidenceEndAt: TimeInterval?
+    public let startSec: TimeInterval?
+    /// 내 답변이 실제로 다룬 주제 명사구 — `reason=OFF_INTENT` 전용.
+    public let answerTopicTitle: String?
+    /// 질문이 물었던 것 — `reason=OFF_INTENT` 전용. 카드의 같은 이름 필드를 복사한 값이라
+    /// «질문 의도 ↔ 내 답변» 대조를 구간 하나만 보고 세울 수 있다.
+    public let questionIntentTitle: String?
+    public let questionIntent: String?
 
     public init(
         startIndex: Int,
         endIndex: Int,
         tone: String?,
+        reason: String? = nil,
+        title: String? = nil,
         analysis: String?,
-        evidenceStartAt: TimeInterval? = nil,
-        evidenceEndAt: TimeInterval? = nil
+        followUpQuestions: [String]? = nil,
+        startSec: TimeInterval? = nil,
+        answerTopicTitle: String? = nil,
+        questionIntentTitle: String? = nil,
+        questionIntent: String? = nil
     ) {
         self.startIndex = startIndex
         self.endIndex = endIndex
         self.tone = tone
+        self.reason = reason
+        self.title = title
         self.analysis = analysis
-        self.evidenceStartAt = evidenceStartAt
-        self.evidenceEndAt = evidenceEndAt
+        self.followUpQuestions = followUpQuestions
+        self.startSec = startSec
+        self.answerTopicTitle = answerTopicTitle
+        self.questionIntentTitle = questionIntentTitle
+        self.questionIntent = questionIntent
     }
 }
 
@@ -94,12 +118,13 @@ public struct InterviewReportCard: Decodable, Equatable, Sendable {
     /// 있으면 해상도 낮음 — 능력 판단성 분석 보류 상태, `highlightSpans` 는 빈 배열
     public let resolutionNotice: String?
     public let cardRedFlagNotices: [RedFlagNotice]?
+    /// 질문 의도 제목 — 짧은 명사구(«장애 탐지 우선순위»).
+    public let questionIntentTitle: String?
     /// 질문 의도 설명
     public let questionIntent: String?
-    /// 대본의 구간 단위 타임스탬프 — 플레이어 진행바의 칸·구간 이동 단위.
-    public let segments: [TranscriptSegment]?
-    /// 단어 단위 타임스탬프 — 계약만 보존(현재 화면 미사용).
-    public let words: [TranscriptWord]?
+    /// 이 질문 턴의 발화들 — 면접관 질문과 면접자 답변이 `role` 로 섞여 온다.
+    /// 플레이어 진행바의 칸·구간 이동 단위는 이 중 면접자 발화다(`orderedSegments`).
+    public let scriptSegments: [ScriptSegment]?
 
     public init(
         axisOrder: Int,
@@ -109,9 +134,9 @@ public struct InterviewReportCard: Decodable, Equatable, Sendable {
         highlightSpans: [HighlightSpan]?,
         resolutionNotice: String?,
         cardRedFlagNotices: [RedFlagNotice]?,
+        questionIntentTitle: String? = nil,
         questionIntent: String?,
-        segments: [TranscriptSegment]? = nil,
-        words: [TranscriptWord]? = nil
+        scriptSegments: [ScriptSegment]? = nil
     ) {
         self.axisOrder = axisOrder
         self.depthLevel = depthLevel
@@ -120,9 +145,9 @@ public struct InterviewReportCard: Decodable, Equatable, Sendable {
         self.highlightSpans = highlightSpans
         self.resolutionNotice = resolutionNotice
         self.cardRedFlagNotices = cardRedFlagNotices
+        self.questionIntentTitle = questionIntentTitle
         self.questionIntent = questionIntent
-        self.segments = segments
-        self.words = words
+        self.scriptSegments = scriptSegments
     }
 }
 
@@ -169,26 +194,28 @@ public struct GuestFeedbackSection: Decodable, Equatable, Sendable {
 /// 사용자용 화면(한 줄 요약 + 항목 카드 + 영상 메타 + 지인 피드백) 형태로 내려온다.
 public struct InterviewReport: Decodable, Equatable, Sendable {
     public let status: InterviewReportPhase
-    /// 한 줄 요약. READY 인데 `redFlagNotices` 가 있으면 중립 사실 요약으로 대체된다.
+    /// 한 줄 요약. READY 인데 심각 레드플래그가 있으면 중립 사실 요약으로 대체된다.
     public let headline: String?
-    public let redFlagNotices: [RedFlagNotice]?
     public let video: InterviewReportVideo?
     public let cards: [InterviewReportCard]?
+    /// 세션 전체 발화 타임라인 — 첫 면접관 멘트부터 마무리까지 `startSec` 오름차순 한 배열.
+    /// 카드의 `scriptSegments` 가 그 턴 안의 문장만 담는 것과 달리 이건 인사·마무리까지 들어 있다.
+    public let script: [ScriptSegment]?
     public let guestFeedback: GuestFeedbackSection?
 
     public init(
         status: InterviewReportPhase,
         headline: String?,
-        redFlagNotices: [RedFlagNotice]?,
         video: InterviewReportVideo?,
         cards: [InterviewReportCard]?,
+        script: [ScriptSegment]? = nil,
         guestFeedback: GuestFeedbackSection?
     ) {
         self.status = status
         self.headline = headline
-        self.redFlagNotices = redFlagNotices
         self.video = video
         self.cards = cards
+        self.script = script
         self.guestFeedback = guestFeedback
     }
 }

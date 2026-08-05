@@ -7,15 +7,19 @@
 
 ## 0-1. 착수 전 차단 이슈 (🔴 먼저 읽는다)
 
-**개정 2026-07-29 — 시간축 차단은 풀렸다.** 서버가 대본 타임스탬프를 두 해상도로 내려주기로 확정했다: 구간 `segments[{text,start,end}]` · 단어 `words[{word,start,end}]`. 이걸로 §9-1 의 1·5번(seek·턴 경계)이 해결돼 플레이어 2단계(§8)를 구현했다. **남은 차단은 상세 시트 재료(행동형 키워드·다음 대비 질문)와 `tone` 허용값**뿐이다.
+**개정 2026-08-06 — §9-1 확장이 스웨거에 실렸다(차단 해소).** 실계약: 하이라이트에 `reason`(PROBE_WORTHY/OFF_INTENT/SHALLOW/SUFFICIENT)·`title`·`analysis`·`followUpQuestions`(PROBE_WORTHY 만)·`startSec`·OFF_INTENT 전용 3필드(`answerTopicTitle`·`questionIntentTitle`·`questionIntent`), 카드에 `questionIntentTitle`·`scriptSegments`(면접관/면접자 `role` 혼재 + 카드 대본 문자 오프셋), 최상위에 `script`(세션 전체 타임라인). 레드플래그는 보고서 단위 배열이 없어지고 **카드 `cardRedFlagNotices` 로만** 온다. 시각은 합성 영상(=녹화) 기준으로 확정(§9-1 의 5-1 해소). 옛 이름 `segments`/`words`/`evidenceStartAt` 은 폐기.
+**남은 확장 대기는 행동형 키워드 태그 하나**다(시트 볼드 줄은 `span.title` 로 해소).
+
+(이하 2026-07-29 개정 기록 — 역사적 기록으로 유지)
+서버가 대본 타임스탬프를 두 해상도로 내려주기로 했었다: 구간 `segments` · 단어 `words`. 이 형태는 위 개정으로 대체됐다.
 
 | PRD 요구 | 현 계약으로 | 막는 것 |
 |---|---|---|
 | 한 줄 요약·레드플래그 줄·카드·질문 의도·해상도 안내 | ✅ 만들 수 있다 | — |
-| 대본 하이라이트 색 구분(잘함/개선) | ⚠️ 부분 | `HighlightSpan.tone: String?` 이 untyped, `"GOOD"` 만 알려짐 — 개선 톤 값 미정 |
-| 상세 시트 depth 1 진단 (행동형 키워드 태그) | ❌ | 키워드 필드 없음. `analysis: String?` 설명문만 |
-| 상세 시트 depth 2 다음 대비 (후속 질문) | ❌ | 질문 필드 없음 |
-| `[영상 보러가기]` · STT 오버레이 시간 동기 · 구간 seek | ✅ 만들 수 있다 | 해결 — `card.segments` (구간 타임스탬프) |
+| 대본 하이라이트 색 구분(잘함/개선) | ✅ 만들 수 있다 | 해결 — 스웨거 enum `GOOD|IMPROVE` |
+| 상세 시트 depth 1 진단 (행동형 키워드 태그) | ⚠️ 부분 | 볼드 줄은 `span.title` 해결, 키워드 태그 필드만 없음 |
+| 상세 시트 depth 2 다음 대비 (후속 질문) | ✅ 만들 수 있다 | 해결 — `reason` 별 `followUpQuestions` / OFF_INTENT 대조 3필드 |
+| `[영상 보러가기]` · STT 오버레이 시간 동기 · 구간 seek | ✅ 만들 수 있다 | 해결 — `card.scriptSegments` + 최상위 `script` |
 | 진행바의 **질문(턴) 경계 표시** | ❌ | 구간 경계는 알지만 «이 구간이 몇 번 질문인지» 는 카드 소속으로만 안다 — 시각적 턴 구분은 미구현 |
 | 레드플래그 타임라인 표시 | ❌ | 레드플래그에 시각이 없다 (§9-1 미요청) |
 
@@ -71,7 +75,7 @@ ReportMain ─[영상 다시보기]─────────────→ Re
 |---|---|---|
 | `status: InterviewReportPhase` | 화면 상태 분기 | `.generating` 폴링 · `.ready` 정상 · `.insufficientAnalysis` 분석 부족 · `.failed` §13 미확정 |
 | `headline: String?` | 리포트 맨 위 한 줄 요약 | **서버 소유 문구.** 3갈래 분기(정상/분석부족/레드플래그)는 서버가 반영해 내려준다 — 클라는 그대로 표시, nil 이면 §6 폴백 |
-| `redFlagNotices: [RedFlagNotice]?` | 한 줄 요약 아래 안내 줄 | **최대 2줄로 절단.** `message` 그대로 노출, `type` 은 표시하지 않는다(로깅·분기용) |
+| `card.cardRedFlagNotices` (보고서 단위 필드 없음) | 한 줄 요약 아래 안내 줄 | 걸린 카드들에서 카드 순서대로 모아 **최대 2줄로 절단.** `message` 그대로 노출, `type` 은 표시하지 않는다(로깅·분기용) |
 | `video.url: String?` | `[영상 다시보기]` | `String` → `URL(string:)` 변환 실패 시 만료와 동일 취급 |
 | `video.expired: Bool?` / `expiresAt: Date?` | 버튼 활성/비활성 + 만료 안내 | `expired == true` **또는** `url == nil` → 비활성 + §6 만료 문구 |
 | `cards: [InterviewReportCard]?` | 항목 카드 2~4개 | 순서는 서버 배열 순서를 따른다(클라 재정렬 금지) |
@@ -80,7 +84,7 @@ ReportMain ─[영상 다시보기]─────────────→ Re
 | `card.questionIntent: String?` | 카드의 "질문 분석" | 내부 `probe_text` 를 서버가 사용자 표현으로 번역한 값 |
 | `card.transcript: String?` | 답변 대본 | 하이라이트 렌더의 베이스 문자열 |
 | `card.highlightSpans: [HighlightSpan]?` | 대본 하이라이트 + 시트 진입점 | `startIndex/endIndex` 는 `transcript` 문자열 인덱스 — §9-2 안전 슬라이싱 필수 |
-| `card.segments: [TranscriptSegment]?` | 플레이어 진행바 칸 · 구간 이동 · 오버레이 «현재 줄» | 칸 하나 = 구간 하나. 서버 정렬을 믿지 않고 `start` 로 다시 세운다(`orderedSegments`) |
+| `script` · `card.scriptSegments` | 플레이어 진행바 칸(전자) · 오버레이 «현재 줄»·시각 폴백(후자의 면접자 발화) | 칸 하나 = 발화 하나. 서버 정렬을 믿지 않고 `startSec` 으로 다시 세운다(`orderedSegments`) |
 | `card.words: [TranscriptWord]?` | (없음 — 계약만 보존) | 단어 강조가 필요해질 때 쓴다. **말속도·군말·침묵 산출에 쓰지 않는다** (§0-2 MVP 제외) |
 | `card.resolutionNotice: String?` | 카드 상단 안내 문구 | **서버 소유 문구.** 있으면 해상도 낮음 카드 → 하이라이트가 없어 시트로 진입하지 않는다 |
 | `card.cardRedFlagNotices: [RedFlagNotice]?` | 카드 안 레드플래그 표기 | 해상도와 **독립** — 해상도 낮음 카드에도 표기한다 |
@@ -134,7 +138,7 @@ Path 케이스 3개는 유지, **트리거만 §1-1 허브형으로 교체**한�
 
 1. 내비게이션 바 (닫기 X)
 2. **한 줄 요약** — `headline`
-3. **레드플래그 안내 줄** — `redFlagNotices` 있을 때만, 최대 2줄
+3. **레드플래그 안내 줄** — 카드 `cardRedFlagNotices` 가 하나라도 있을 때만, 최대 2줄
 4. `[영상 다시보기]` — 영상 유효할 때만 활성
 5. **항목 카드 2~4개** — 각 카드: 제목(`질문 n-m`) · 질문 텍스트 · 질문 분석 · (해상도 안내) · (카드 레드플래그) · 대본+하이라이트
 6. `[지인에게 면접 영상 보내기]` — 4.5 진입
@@ -164,7 +168,7 @@ View 표시 분기는 State 를 늘리지 않고 computed 로 파생한다.
 ```swift
 public extension ReportMainFeature.State {
     var isInsufficient: Bool { report?.status == .insufficientAnalysis }
-    var visibleRedFlagNotices: [RedFlagNotice] { Array(report?.redFlagNotices?.prefix(2) ?? []) }
+    var visibleRedFlagNotices: [RedFlagNotice] { Array(cards.flatMap { $0.cardRedFlagNotices ?? [] }.prefix(2)) }
     var cards: [InterviewReportCard] { report?.cards ?? [] }
     var playableVideoURL: URL? {                     // 만료·nil·형식오류를 한 곳에서 흡수
         guard report?.video?.expired != true, let raw = report?.video?.url else { return nil }
@@ -215,7 +219,7 @@ public enum Action: ViewAction {
 | `loadState == .loading` | 로딩 — 폴링 진행, 진행 문구만(스켈레톤 없음, §10) |
 | `status == .ready` | 정상 — 한 줄 요약 + 카드 전체 |
 | `status == .insufficientAnalysis` | **분석 부족** — 한 줄 요약 자리에 분석 부족 문구, 채점된 카드만 노출, `[영상 다시보기]` + 재도전 안내 |
-| `redFlagNotices` 비어있지 않음 | 위 분기와 **직교** — 요약 아래 안내 줄을 덧붙인다(요약 자체는 서버가 중립 문장으로 내려줌) |
+| 카드 레드플래그 합계 비어있지 않음 | 위 분기와 **직교** — 요약 아래 안내 줄을 덧붙인다(요약 자체는 서버가 중립 문장으로 내려줌) |
 | `loadState == .pollTimedOut` | 채점 지연 안내 + 수동 재시도 |
 | `.failed(.reportNotFound)` | **폴링 계속** (보고서 미생성 상태 = 에러 코드로 옴, [[api#Interview Report]]) |
 | `.failed(.sessionNotFound)` | 복구 불가(세션 없음·타인 소유) — 재시도 버튼 없이 닫기만 |
@@ -261,15 +265,15 @@ public enum Action: ViewAction {
 }
 ```
 
-`HighlightContext` 는 **이 Feature 안에 두는** 화면 조립 타입(§9-2 배치 규칙). 서버 확장 전에는 `keyword`/`followUpQuestions`/`evidenceAt` 가 비어 오고, **비면 그 블록을 렌더하지 않는다** — PRD 의 "유의미한 질문이 없으면 depth 2 생략" 규칙과 같은 동작이므로 확장 전후 코드 경로가 같다.
+`HighlightContext` 는 **이 Feature 안에 두는** 화면 조립 타입(§9-2 배치 규칙). `followUpQuestions`/`intentReview` 는 구간 `reason` 이 문지기다(PROBE_WORTHY/OFF_INTENT). `keyword` 만 서버 확장 대기 — **비면 그 줄·블록을 렌더하지 않는다.**
 
 | 블록 | 재료 | 없을 때 |
 |---|---|---|
 | 하이라이트 문장 | `transcript[start..<end]` | (항상 있음) |
 | depth 1 태그 | `span.keyword` 🔴확장 | 태그 숨김, 설명만 |
 | depth 1 설명 | `span.analysis` | 블록 숨김 |
-| `[영상 보러가기]` | 영상 유효(`showsVideoJump`) — 시각은 `span.evidenceStartAt` 또는 `segments` 에서 파생 | 영상 없으면 버튼 숨김. **시각을 몰라도 버튼은 남긴다**(처음부터 재생) |
-| depth 2 다음 대비 | `span.followUpQuestions` 🔴확장 | depth 2 생략 + PRD 마무리 문구(§6) |
+| `[영상 보러가기]` | 영상 유효(`showsVideoJump`) — 시각은 `span.startSec` 또는 `scriptSegments` 에서 파생 | 영상 없으면 버튼 숨김. **시각을 몰라도 버튼은 남긴다**(처음부터 재생) |
+| depth 2 다음 대비 | `reason` 별 — PROBE_WORTHY `followUpQuestions` / OFF_INTENT 의도 대조 | 그 외 reason 은 depth 2 생략 + PRD 마무리 문구(§6) |
 
 ## 6. 사용자 문구 — 소유 주체 (카피 단일 소스)
 
@@ -323,7 +327,7 @@ public enum Action: ViewAction {
 
 **AVPlayer 는 뷰가, 재생 상태는 리듀서가 갖는다.** 인스턴스는 `GuestVideoPlayerView`([FeatureGuestFeedback](../../Projects/Feature/FeatureGuestFeedback/Sources/View/GuestVideoPlayerView.swift)) 선례대로 View-local `@State` 지만, 재생 여부·현재 시각은 State 에 올린다 — 컨트롤 자동 숨김·진행바 칸 채움·«현재 줄» 이 전부 시각에 딸린 화면 상태다(초판의 "재생 위치를 리듀서에 올리지 않는다"는 커스텀 컨트롤이 없다는 전제였고, Figma 컨트롤이 커스텀이라 성립하지 않는다).
 
-**2단계로 나눴고, 둘 다 구현됐다** (2단계는 `segments` 도착으로 해금).
+**2단계로 나눴고, 둘 다 구현됐다** (2단계는 대본 발화 타임스탬프 도착으로 해금).
 
 | 단계 | 내용 | 상태 |
 |---|---|---|
@@ -346,13 +350,13 @@ public enum Action: ViewAction {
 
 | # | 요청 | 우선 | 없으면 못 만드는 것 |
 |---|---|---|---|
-| 1 | `HighlightSpan.evidenceStartAt` / `evidenceEndAt` (초) | 🟠 **부분 해결** | 없어도 `segments` 에서 문장을 찾아 구간 시작으로 대체한다(`evidenceTime(for:)`) — 다만 하이라이트가 구간 경계와 어긋나면 오차가 생긴다. 필드명은 이 요청서 이름을 코드에 그대로 뒀다 |
-| 2 | `HighlightSpan.tone` 허용값 확정 (예: `GOOD` / `IMPROVE`) | 🔴 | 잘함(시안)·개선(빨강) 색 구분. 미지 값은 본문 색 그대로(강조 없음) |
-| 3 | `HighlightSpan.keyword: String` (행동형 키워드 1개) | 🔴 | 상세 시트 분석 카드의 볼드 한 줄 |
-| 4 | `HighlightSpan.followUpQuestions: [String]` (최대 2) | 🔴 | 상세 시트 «실전에서는 이런 질문이…» 블록 |
-| 5 | ~~`card.answerStartAt` / `answerEndAt`~~ | ✅ **해결** | `card.segments` 로 대체됐다 — 답변 시간대는 첫/마지막 구간에서 파생한다 |
-| 5-1 | **`segments`/`words` 위치·기준점 확인** | 🔴 | 카드 안에 오는지(현재 가정), 시각이 영상 0초 기준인지(질문 낭독 포함 여부). 기준점이 다르면 진행바·seek 전체가 어긋난다 |
-| 6 | `card.resolutionCause` (예: `SHALLOW` / `OFF_TOPIC`) | 🟡 | 문구는 서버가 주므로 표시엔 불필요 — 로깅·분석용 |
+| 1 | `HighlightSpan.evidenceStartAt` / `evidenceEndAt` (초) | ✅ **해결** | `startSec` 으로 내려온다(끝 시각은 안 옴). 없으면 `scriptSegments` 의 면접자 발화에서 문자 오프셋 겹침으로 대체(`evidenceTime(for:)`) |
+| 2 | `HighlightSpan.tone` 허용값 확정 (예: `GOOD` / `IMPROVE`) | ✅ **해결** | 스웨거 enum `GOOD|IMPROVE`. 미지 값은 본문 색 그대로(강조 없음) |
+| 3 | `HighlightSpan.keyword: String` (행동형 키워드 1개) | 🔴 **유일한 잔여** | 시트 태그 줄. 볼드 한 줄은 `span.title` 로 해소됐다 |
+| 4 | `HighlightSpan.followUpQuestions: [String]` (최대 2) | ✅ **해결** | `reason=PROBE_WORTHY` 일 때만 채워진다. OFF_INTENT 는 대신 «질문 의도 ↔ 내 답변» 대조 재료 3필드가 온다 |
+| 5 | ~~`card.answerStartAt` / `answerEndAt`~~ | ✅ **해결** | `card.scriptSegments` 의 면접자 발화 첫/마지막에서 파생한다 |
+| 5-1 | **발화 위치·기준점 확인** | ✅ **해결** | 카드 `scriptSegments` + 최상위 `script` 두 자리. `startSec` 은 합성 영상(=녹화) 타임라인 기준으로 명시됐다 |
+| 6 | `card.resolutionCause` (예: `SHALLOW` / `OFF_TOPIC`) | ✅ **대체 해결** | 해상도 낮음 사유가 하이라이트 `reason` 으로 온다(짧음·얕음 = 빈 배열 / 딴 답 = OFF_INTENT 1개) |
 | 7 | 카드 제목 표시 규칙 확정 (`axisOrder`-`depthLevel` 유지 여부) | 🟡 | 현 규칙으로 진행 가능 |
 | 8 | `GuestAttitudeRating.axis` 표시명 (또는 코드 목록 고정) | 🟡 | 4.6 소관 |
 
@@ -384,14 +388,15 @@ public extension InterviewReportCard {
 struct HighlightContext: Equatable, Sendable {             // 상세 시트 입력 (§5)
     let transcript: String                                 // 문장이 아니라 대본 전체 — 앞뒤 문맥을 흐리게 함께 보여준다
     let span: HighlightSpan                                // 문장·톤·진단은 여기서 파생
-    let keyword: String?                                   // 🔴확장 전 nil
-    let followUpQuestions: [String]                        // 🔴확장 전 []
-    let evidenceAt: TimeInterval?                          // span 시각 또는 segments 파생
+    let keyword: String?                                   // 🔴확장 전 nil (유일한 잔여)
+    let followUpQuestions: [String]                        // reason=PROBE_WORTHY 만 채워짐
+    let intentReview: IntentReview?                        // reason=OFF_INTENT 만 — 질문 의도 ↔ 내 답변 대조
+    let evidenceAt: TimeInterval?                          // span.startSec 또는 scriptSegments 파생
 }
 
 struct VideoTranscript: Equatable {                        // 플레이어 타임라인 (§8)
     let lines: [Line]                                      // 카드 1장 = 줄 1개 (오버레이)
-    let chunks: [Chunk]                                    // 서버 구간 1개 = 진행바 칸 1개 (카드 경계를 넘겨 이어 붙임)
+    let chunks: [Chunk]                                    // 진행바 칸 — 최상위 script(전체 타임라인) 우선, 없으면 카드 발화
 }
 ```
 
@@ -430,7 +435,7 @@ Domain 추가분에 `TranscriptSegment`·`TranscriptWord`(서버 타임스탬프
 3. **카드 UI** — 카드 컨테이너·`TranscriptText`·해상도/레드플래그 표기. CTA 는 `ButtonLarge`.
 4. **상세 시트** — `ReportHighlightDetailFeature` + `.sheet` 패턴 확립. 확장 전이므로 depth 1 설명까지.
 5. **영상 플레이어 1단계** — 통짜 재생 + 재생 실패 표시. 코디네이터 라우팅 허브화(§1-1)와 함께.
-6. **[확장 후] 2단계** — ✅ timestamp(`segments`) → 구간 seek·대본 오버레이·`[영상 보러가기]`. depth 2(후속 질문)·키워드 태그는 서버 필드 대기라 «비면 렌더 안 함» 상태로 남아 있다.
+6. **[확장 후] 2단계** — ✅ timestamp(`scriptSegments`/`script`) → 구간 seek·대본 오버레이·`[영상 보러가기]`·depth 2(후속 질문/의도 대조). 키워드 태그만 서버 필드 대기라 «비면 렌더 안 함» 상태로 남아 있다.
 7. **AppFeature 배선** — ✅ 2026-08-05. 진입은 **홈 위젯② [레포트 보기]** 다: `home(.delegate(.reportDetailRequested(sessionId:)))` → `state.report = ReportFeature.State(sessionId:)` fullScreenCover, `closeRequested` → dismiss, `retryRequested` → dismiss + 온보딩 위저드(면접 셋업). `// depends-on: [[report]]` 라벨 붙였다. 리포트 커버 중에는 전역 LoadingModal 을 끈다(폴링마다 딤이 깜빡인다).
    남은 경로: **면접 정상 종료 → r1 직행** 은 여전히 미배선이다 — 면접은 리포트 대기 화면에서 홈으로 돌아가고, 홈 재진입이 목록을 재조회한다.
 8. **문서 동기화** — `[[report]]` 노드를 실제 구조로 갱신(현재 "4화면 골격·임시 선형" 서술은 이 정의서 적용 시 거짓이 된다), `@lat` 라벨 재부착, `lat check` 통과.
@@ -442,7 +447,7 @@ Domain 추가분에 `TranscriptSegment`·`TranscriptWord`(서버 타임스탬프
 - 폴링 상한 초과 → `.pollTimedOut`, effect 정지
 - 화면 이탈 시 폴링 취소, `CancellationError` 가 에러 상태를 만들지 않음
 - `.insufficientAnalysis` → 분석 부족 분기 + 채점된 카드만
-- `redFlagNotices` 3건 → 2건으로 절단
+- 카드 레드플래그 3건 → 2건으로 절단
 - `video.expired == true` / `url == nil` / 형식 오류 → `playableVideoURL == nil`
 - 하이라이트 탭 → 시트 present, `tone` 매핑(`"GOOD"`→`.good`, 미지값→`.unknown`)
 - 범위 밖 `startIndex/endIndex` → 시트 미present (크래시 없음)

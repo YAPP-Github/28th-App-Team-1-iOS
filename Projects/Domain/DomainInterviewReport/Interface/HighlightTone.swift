@@ -8,8 +8,8 @@
 import Foundation
 
 /// 서버 `HighlightSpan.tone`(String?) 을 화면이 쓸 수 있게 좁힌 타입.
-/// 스웨거 예시가 `"GOOD"` 하나뿐이라 개선 톤 문자열은 아직 미확정 — 미지 값은 `.unknown` 으로 흡수해
-/// 강조 없이 평문으로 렌더한다(모르는 값을 개선으로 오인해 빨갛게 칠하지 않는다).
+/// 미지 값은 `.unknown` 으로 흡수해 강조 없이 평문으로 렌더한다
+/// (모르는 값을 개선으로 오인해 빨갛게 칠하지 않는다).
 public enum HighlightTone: Equatable, Sendable {
     /// 잘한 문장
     case good
@@ -27,9 +27,38 @@ public enum HighlightTone: Equatable, Sendable {
     }
 }
 
+/// 서버 `HighlightSpan.reason`(String?) — 하이라이트가 뽑힌 이유.
+/// 시트의 «다음 대비» 판을 가른다: 파고들 여지면 꼬리질문, 딴 답이면 의도 대조.
+/// 미지 값은 `.unknown` — 둘 다 그리지 않는다(모르는 이유로 판을 고르지 않는다).
+public enum HighlightReason: Equatable, Sendable {
+    /// 파고들 여지 — `followUpQuestions` 가 채워진다.
+    case probeWorthy
+    /// 질문과 다른 답 — `answerTopicTitle`·`questionIntentTitle`·`questionIntent` 가 채워진다.
+    case offIntent
+    /// 짧고 얕음
+    case shallow
+    /// 충분함
+    case sufficient
+    /// 서버가 새 값을 내렸거나 nil
+    case unknown
+
+    public init(rawReason: String?) {
+        switch rawReason?.uppercased() {
+        case "PROBE_WORTHY": self = .probeWorthy
+        case "OFF_INTENT": self = .offIntent
+        case "SHALLOW": self = .shallow
+        case "SUFFICIENT": self = .sufficient
+        default: self = .unknown
+        }
+    }
+}
+
 public extension HighlightSpan {
     /// 타입으로 좁힌 톤.
     var highlightTone: HighlightTone { HighlightTone(rawTone: tone) }
+
+    /// 타입으로 좁힌 이유.
+    var highlightReason: HighlightReason { HighlightReason(rawReason: reason) }
 }
 
 public extension InterviewReportCard {
@@ -55,20 +84,24 @@ public extension InterviewReportCard {
 
     /// 하이라이트가 영상에서 시작하는 시각(초) — «이 장면 영상으로 보기»의 목적지.
     ///
-    /// 서버가 `evidenceStartAt` 을 주면 그대로 쓰고, 없으면 구간 대본에서 문장을 찾아 그 구간 시작으로 대체한다.
-    /// 둘 다 없으면 nil — 호출부는 장면 이동 버튼을 숨긴다.
+    /// 서버가 `startSec` 을 주면 그대로 쓰고, 없으면 이 턴의 발화에서 하이라이트가 걸친
+    /// 첫 문장을 문자 오프셋으로 찾아 그 시작으로 대체한다. 둘 다 없으면 nil —
+    /// 호출부는 영상을 처음부터 재생한다.
     func evidenceTime(for span: HighlightSpan) -> TimeInterval? {
-        if let evidenceStartAt = span.evidenceStartAt { return evidenceStartAt }
-        guard let segments, let sentence = sentence(for: span) else { return nil }
-        let trimmed = sentence.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        // 하이라이트가 구간 경계와 딱 맞지 않을 수 있어 포함 관계를 양방향으로 본다.
-        return segments.first { $0.text.contains(trimmed) || trimmed.contains($0.text) }?.start
+        if let startSec = span.startSec { return startSec }
+        // 하이라이트와 발화가 같은 좌표계(카드 `transcript` 오프셋)라 겹침으로 찾는다.
+        return orderedSegments.first {
+            guard let start = $0.startIndex, let end = $0.endIndex else { return false }
+            return start < span.endIndex && span.startIndex < end
+        }?.startSec
     }
 
-    /// 재생 순서대로 정렬된 구간. 서버 정렬을 신뢰하지 않고 시작 시각으로 다시 세운다 —
+    /// 재생 순서대로 정렬된 **면접자 발화**. 면접관 질문은 카드 대본(`transcript`)에 없어
+    /// 하이라이트·현재 줄 판정에 못 쓴다. 서버 정렬을 신뢰하지 않고 시작 시각으로 다시 세운다 —
     /// 진행바 칸 순서가 뒤집히면 이동 지점이 어긋난다.
-    var orderedSegments: [TranscriptSegment] {
-        (segments ?? []).sorted { $0.start < $1.start }
+    var orderedSegments: [ScriptSegment] {
+        (scriptSegments ?? [])
+            .filter { $0.role == .interviewee }
+            .sorted { $0.startSec < $1.startSec }
     }
 }

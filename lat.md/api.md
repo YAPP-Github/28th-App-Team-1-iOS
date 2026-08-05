@@ -94,12 +94,12 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 
 - GET `/api/v1/interview/sessions/{id}/report`
 - `status` 는 채점 진행 상태만 — GENERATING(전 필드 nil, 폴링 지속) / READY / INSUFFICIENT_ANALYSIS(채점된 카드만) / FAILED.
-- 레드플래그 유무는 `status` 가 아니라 `redFlagNotices` 배열로 판단. 저장 5종 중 노출 3종(지어냄·모순·무결점 서사)만 중립 문구로 온다. READY + 레드플래그면 headline 이 중립 사실 요약으로 대체.
+- 레드플래그는 보고서 단위 배열이 없다 — 걸린 카드의 `cardRedFlagNotices` 로만 온다. 저장 5종 중 노출 3종(지어냄·모순·무결점 서사)만 중립 문구. READY + 심각 레드플래그면 headline 이 중립 사실 요약으로 대체.
 - 카드는 질문/답변 턴당 1장 — 같은 축이면 `axisOrder` 동일, `depthLevel` 로 구분 (표시: "질문 {axisOrder}-{depthLevel}").
-- `resolutionNotice` 가 있으면 해상도 낮음 — 능력 판단 보류, `highlightSpans` 는 빈 배열.
-- 영상 만료 시 `video.url` 만 nil — 대본·하이라이트는 유지. `guestFeedback` 은 제출자 0명이면 통째로 nil.
-- 대본 타임스탬프는 두 해상도로 온다 — 카드의 `segments`(구간: text/start/end)와 `words`(단어). 플레이어 진행바·구간 이동은 segment 단위이고 word 는 계약만 열어 둔 상태다(말속도·군말 지표 산출은 MVP 제외라 금지). `highlightSpans` 의 `evidenceStartAt`/`evidenceEndAt`(정의서 §9-1 요청 이름)은 아직 미확정이라, 없으면 클라가 구간 대본에서 문장을 찾아 그 구간 시작으로 대체한다.
-- **미검증 가정 2개**: `segments`/`words` 가 카드 안에 오는지, 시각이 영상 0초 기준인지(질문 낭독 포함 여부). 기준점이 다르면 진행바·seek 가 통째로 어긋난다 — 백엔드 확인 필요.
+- `highlightSpans` 는 톤(GOOD/IMPROVE)에 더해 `reason`(PROBE_WORTHY/OFF_INTENT/SHALLOW/SUFFICIENT)·`title`·`startSec` 을 갖는다. `followUpQuestions` 는 PROBE_WORTHY 만, `answerTopicTitle`·`questionIntentTitle`·`questionIntent`(카드 값 복사) 는 OFF_INTENT 만 채워진다 — 그 외 reason 에선 셋 다 null/빈 배열.
+- `resolutionNotice` 가 있으면 해상도 낮음 — 능력 판단 보류. 사유가 짧음·얕음이면 `highlightSpans` 빈 배열, 딴 답이면 OFF_INTENT 하이라이트 1개.
+- 영상 만료 시 `video.url` 만 nil — 대본·하이라이트는 유지. `guestFeedback` 은 지인 0명이어도 `participantCount=0, guests=[]` 로 온다(GENERATING 때만 nil).
+- 대본 발화는 두 자리에 온다 — 카드 `scriptSegments`(그 턴의 문장들, 면접관/면접자 `role` 혼재, 카드 `transcript` 기준 문자 오프셋 동봉)와 최상위 `script`(첫 멘트부터 마무리까지 세션 전체를 `startSec` 오름차순 한 배열, 오프셋 없음). `startSec`/`endSec` 은 합성 영상(=녹화) 타임라인 기준이라 진행바·재생 강조가 그대로 쓴다. 플레이어 진행바 칸은 `script`, 하이라이트 시각 폴백은 카드 `scriptSegments` 의 면접자 발화.
 
 에러는 `InterviewReportError` 로 매핑된다 — INTERVIEW_SESSION_NOT_FOUND → sessionNotFound, INTERVIEW_REPORT_NOT_FOUND → reportNotFound (둘 다 404 — 보고서 미생성 상태는 에러 코드로 구분).
 

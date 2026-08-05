@@ -325,7 +325,7 @@ public struct ReportMainView: View {
 
 #Preview("레드플래그 · 영상 만료 — 443:7264") {
     reportMainPreview(
-        redFlagNotices: [
+        cardRedFlagNotices: [
             RedFlagNotice(type: "LOW_RESOLUTION", message: "영상 해상도가 낮아 분석율이 떨어질 수 있어요.")
         ],
         video: InterviewReportVideo(url: nil, expired: true, expiresAt: nil)
@@ -362,16 +362,16 @@ private let previewAttitudeRatings = [
 ]
 
 /// 시안 대조용 화면 — 상태를 가르는 세 필드(레드플래그·영상·지인 피드백)만 바꿔 끼운다.
+/// 레드플래그는 보고서 단위 필드가 없어 첫 카드에 싣는다(메인은 카드들에서 모아 보여준다).
 @ViewBuilder
 private func reportMainPreview(
-    redFlagNotices: [RedFlagNotice]? = nil,
+    cardRedFlagNotices: [RedFlagNotice]? = nil,
     video: InterviewReportVideo,
     guestFeedback: GuestFeedbackSection? = nil
 ) -> some View {
     let report = InterviewReport(
         status: .ready,
         headline: "캐시 도입 결정의 이유와 한계까지 구체적인 수치로 설명해 주셨어요",
-        redFlagNotices: redFlagNotices,
         video: video,
         cards: (1...5).map { depth in
             InterviewReportCard(
@@ -383,7 +383,7 @@ private func reportMainPreview(
                     HighlightSpan(startIndex: 40, endIndex: 62, tone: "IMPROVE", analysis: nil)
                 ],
                 resolutionNotice: nil,
-                cardRedFlagNotices: nil,
+                cardRedFlagNotices: depth == 1 ? cardRedFlagNotices : nil,
                 questionIntent: "트래픽이 증가했을 때 발생할 병목 지점과 시스템의 한계, 그리고 이를 어떻게 판단할지 설명하는 질문입니다."
             )
         },

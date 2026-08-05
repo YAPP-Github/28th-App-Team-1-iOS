@@ -17,13 +17,13 @@ public enum InterviewReportFixtures {
         InterviewReport(
             status: .ready,
             headline: "캐시 도입 결정의 이유와 한계까지 구체적인 수치로 설명해주셨어요.",
-            redFlagNotices: nil,
             video: InterviewReportVideo(
                 url: "https://example.com/interview/1.mp4",
                 expired: false,
                 expiresAt: Date(timeIntervalSince1970: 1_782_172_800)
             ),
             cards: [strongCard, improveCard],
+            script: fullScript,
             guestFeedback: nil
         )
     }
@@ -33,9 +33,9 @@ public enum InterviewReportFixtures {
         InterviewReport(
             status: .generating,
             headline: nil,
-            redFlagNotices: nil,
             video: nil,
             cards: nil,
+            script: nil,
             guestFeedback: nil
         )
     }
@@ -45,35 +45,24 @@ public enum InterviewReportFixtures {
         InterviewReport(
             status: .insufficientAnalysis,
             headline: "이번 면접의 답변이 충분하지 않아요. 다음 면접 연습 때는 조금 더 충분한 답변을 말씀해주세요.",
-            redFlagNotices: nil,
             video: InterviewReportVideo(url: nil, expired: true, expiresAt: nil),
             cards: [lowResolutionCard],
             guestFeedback: nil
         )
     }
 
-    /// 레드플래그 3건 — 화면이 2건으로 절단하는지 확인용(모순 계열 + 무결점 + 초과분).
+    /// 카드 레드플래그 3건 — 화면이 2건으로 절단하는지 확인용(모순 계열 + 무결점 + 초과분).
+    /// 레드플래그는 보고서 단위 필드가 없다 — 걸린 카드의 `cardRedFlagNotices` 로만 온다.
     public static var withRedFlags: InterviewReport {
         InterviewReport(
             status: .ready,
             headline: "이번 면접에서는 캐시 도입 결정과 장애 대응 경험을 중심으로 이야기를 나눴어요.",
-            redFlagNotices: [
-                RedFlagNotice(
-                    type: "CONTRADICTION",
-                    message: "답변 사이에 사실관계가 엇갈린 지점이 있었어요. 실제 면접관은 이런 모순에 민감할 수 있습니다."
-                ),
-                RedFlagNotice(
-                    type: "FLAWLESS_NARRATIVE",
-                    message: "포기한 것이나 아쉬운 점이 거의 언급되지 않았어요. 면접관은 비용을 아는 답변을 신뢰하는 경향이 있습니다."
-                ),
-                RedFlagNotice(type: "OTHER", message: "세 번째 안내 — 화면에서 잘려야 한다.")
-            ],
             video: InterviewReportVideo(
                 url: "https://example.com/interview/2.mp4",
                 expired: false,
                 expiresAt: nil
             ),
-            cards: [improveCard],
+            cards: [redFlaggedCard],
             guestFeedback: nil
         )
     }
@@ -83,7 +72,6 @@ public enum InterviewReportFixtures {
         InterviewReport(
             status: .ready,
             headline: "이번 면접에서는 결제 응답 속도 개선 경험을 중심으로 이야기를 나눴어요.",
-            redFlagNotices: nil,
             video: nil,
             cards: [lowResolutionCard],
             guestFeedback: nil
@@ -95,13 +83,13 @@ public enum InterviewReportFixtures {
         InterviewReport(
             status: .ready,
             headline: "캐시 도입 결정의 이유와 한계까지 구체적인 수치로 설명해주셨어요.",
-            redFlagNotices: nil,
             video: InterviewReportVideo(
                 url: "https://example.com/interview/1.mp4",
                 expired: false,
                 expiresAt: Date(timeIntervalSince1970: 1_782_172_800)
             ),
             cards: [strongCard, improveCard],
+            script: fullScript,
             guestFeedback: GuestFeedbackSection(
                 participantCount: 2,
                 guests: [firstGuest, secondGuest]
@@ -140,9 +128,24 @@ public enum InterviewReportFixtures {
         )
     }
 
+    // MARK: - 대본 타임라인
+
+    /// 세션 전체 발화 — 면접자 답변과 면접관 마무리 멘트가 시각 순으로 이어진 한 배열.
+    /// 진행바 칸이 이걸 그대로 쓴다(답변만이 아니라 영상 전체를 칸으로 나눈다).
+    /// 답변 시각은 카드 발화와 같은 축이다 — 픽스처를 쓰는 테스트가 한 시간축을 공유한다.
+    public static var fullScript: [ScriptSegment] {
+        [
+            ScriptSegment(role: .interviewee, text: "프로파일링하니 DB 왕복이 7번 도는 N+1이 원인이었고,", startSec: 0, endSec: 3.4),
+            ScriptSegment(role: .interviewee, text: "안 바뀌는 6번을 캐시로 흡수해 600ms를 깎았어요.", startSec: 3.4, endSec: 6.4),
+            ScriptSegment(role: .interviewee, text: "결제가 느려서 캐시를 써서 빠르게 만들었어요.", startSec: 6.4, endSec: 9.1),
+            ScriptSegment(role: .interviewee, text: "그 캐시는 팀이 원래 쓰던 것이라 저는 운영만 했어요.", startSec: 9.1, endSec: 12),
+            ScriptSegment(role: .interviewer, text: "수고하셨습니다. 면접을 마치겠습니다.", startSec: 12, endSec: 14)
+        ]
+    }
+
     // MARK: - 카드
 
-    /// 잘함 하이라이트가 있는 카드.
+    /// 잘함(파고들 여지) 하이라이트가 있는 카드 — 꼬리질문 판 확인용.
     public static var strongCard: InterviewReportCard {
         let transcript = "프로파일링하니 DB 왕복이 7번 도는 N+1이 원인이었고, 안 바뀌는 6번을 캐시로 흡수해 600ms를 깎았어요."
         return InterviewReportCard(
@@ -155,29 +158,40 @@ public enum InterviewReportFixtures {
                     startIndex: 0,
                     endIndex: 30,
                     tone: "GOOD",
+                    reason: "PROBE_WORTHY",
+                    title: "구체적 수치로 원인 설명",
                     analysis: "문제부터 원인, 한계까지 스스로 짚었어요.",
-                    evidenceStartAt: 0,
-                    evidenceEndAt: 3.4
+                    followUpQuestions: ["그 수치는 어떤 기간을 기준으로 집계한 건가요?"],
+                    startSec: 0
                 )
             ],
             resolutionNotice: nil,
             cardRedFlagNotices: nil,
+            questionIntentTitle: "성능 저하 인지 수준",
             questionIntent: "성능 문제를 얼마나 구체적으로 인지했는지 확인하는 질문입니다.",
-            // 진행바 칸·구간 이동 확인용 — 구간 단위 타임스탬프.
-            segments: [
-                TranscriptSegment(text: "프로파일링하니 DB 왕복이 7번 도는 N+1이 원인이었고,", start: 0, end: 3.4),
-                TranscriptSegment(text: "안 바뀌는 6번을 캐시로 흡수해 600ms를 깎았어요.", start: 3.4, end: 6.4)
-            ],
-            // 단어 단위는 현재 화면 미사용 — 디코딩 계약 확인용으로 앞부분만 둔다.
-            words: [
-                TranscriptWord(word: "프로파일링하니", start: 0, end: 0.9),
-                TranscriptWord(word: "DB", start: 0.95, end: 1.2),
-                TranscriptWord(word: "왕복이", start: 1.24, end: 1.6)
+            // 이 턴의 면접자 발화 — 문자 오프셋은 카드 `transcript` 기준(하이라이트와 같은 좌표계).
+            scriptSegments: [
+                ScriptSegment(
+                    role: .interviewee,
+                    text: "프로파일링하니 DB 왕복이 7번 도는 N+1이 원인이었고,",
+                    startIndex: 0,
+                    endIndex: 30,
+                    startSec: 0,
+                    endSec: 3.4
+                ),
+                ScriptSegment(
+                    role: .interviewee,
+                    text: "안 바뀌는 6번을 캐시로 흡수해 600ms를 깎았어요.",
+                    startIndex: 31,
+                    endIndex: 58,
+                    startSec: 3.4,
+                    endSec: 6.4
+                )
             ]
         )
     }
 
-    /// 개선 하이라이트 + 카드 레드플래그가 함께 있는 카드.
+    /// 개선(딴 답) 하이라이트가 있는 카드 — «질문 의도 ↔ 내 답변» 대조 판 확인용.
     public static var improveCard: InterviewReportCard {
         let transcript = "결제가 느려서 캐시를 써서 빠르게 만들었어요. 그 캐시는 팀이 원래 쓰던 것이라 저는 운영만 했어요."
         return InterviewReportCard(
@@ -190,9 +204,14 @@ public enum InterviewReportFixtures {
                     startIndex: 0,
                     endIndex: 24,
                     tone: "IMPROVE",
+                    reason: "OFF_INTENT",
+                    title: "질문과 다른 주제로 답변",
                     analysis: "왜 그 방법이 통했는지 원인이 빠졌어요.",
-                    evidenceStartAt: 6.4,
-                    evidenceEndAt: 9.1
+                    followUpQuestions: [],
+                    startSec: 6.4,
+                    answerTopicTitle: "적용 결과 나열",
+                    questionIntentTitle: "선택 근거와 대안 검토",
+                    questionIntent: "선택의 근거와 대안 검토를 확인하는 질문입니다."
                 )
             ],
             resolutionNotice: nil,
@@ -202,11 +221,52 @@ public enum InterviewReportFixtures {
                     message: "답변 사이에 사실관계가 엇갈린 지점이 있었어요. 실제 면접관은 이런 모순에 민감할 수 있습니다."
                 )
             ],
+            questionIntentTitle: "선택 근거와 대안 검토",
             questionIntent: "선택의 근거와 대안 검토를 확인하는 질문입니다.",
-            segments: [
-                TranscriptSegment(text: "결제가 느려서 캐시를 써서 빠르게 만들었어요.", start: 6.4, end: 9.1),
-                TranscriptSegment(text: "그 캐시는 팀이 원래 쓰던 것이라 저는 운영만 했어요.", start: 9.1, end: 12)
+            scriptSegments: [
+                ScriptSegment(
+                    role: .interviewee,
+                    text: "결제가 느려서 캐시를 써서 빠르게 만들었어요.",
+                    startIndex: 0,
+                    endIndex: 24,
+                    startSec: 6.4,
+                    endSec: 9.1
+                ),
+                ScriptSegment(
+                    role: .interviewee,
+                    text: "그 캐시는 팀이 원래 쓰던 것이라 저는 운영만 했어요.",
+                    startIndex: 25,
+                    endIndex: 53,
+                    startSec: 9.1,
+                    endSec: 12
+                )
             ]
+        )
+    }
+
+    /// 레드플래그 3건이 걸린 카드 — 메인 안내 줄이 2건으로 절단되는지 확인용.
+    public static var redFlaggedCard: InterviewReportCard {
+        InterviewReportCard(
+            axisOrder: 1,
+            depthLevel: 1,
+            questionText: improveCard.questionText,
+            transcript: improveCard.transcript,
+            highlightSpans: improveCard.highlightSpans,
+            resolutionNotice: nil,
+            cardRedFlagNotices: [
+                RedFlagNotice(
+                    type: "CONTRADICTION",
+                    message: "답변 사이에 사실관계가 엇갈린 지점이 있었어요. 실제 면접관은 이런 모순에 민감할 수 있습니다."
+                ),
+                RedFlagNotice(
+                    type: "FLAWLESS_NARRATIVE",
+                    message: "포기한 것이나 아쉬운 점이 거의 언급되지 않았어요. 면접관은 비용을 아는 답변을 신뢰하는 경향이 있습니다."
+                ),
+                RedFlagNotice(type: "OTHER", message: "세 번째 안내 — 화면에서 잘려야 한다.")
+            ],
+            questionIntentTitle: improveCard.questionIntentTitle,
+            questionIntent: improveCard.questionIntent,
+            scriptSegments: improveCard.scriptSegments
         )
     }
 
@@ -221,6 +281,7 @@ public enum InterviewReportFixtures {
             resolutionNotice: "AI가 분석을 제공하기에는 이번 질문에 대한 답변이 충분하지 않아요. "
                 + "다음 면접 연습 때는 유사한 질문에 조금 더 충분한 답변을 말씀해주세요.",
             cardRedFlagNotices: nil,
+            questionIntentTitle: "부하 대응 경계",
             questionIntent: "부하 상황의 대응 경계를 확인하는 질문입니다."
         )
     }

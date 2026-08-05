@@ -10,8 +10,10 @@ import Foundation
 
 /// 플레이어가 쓰는 대본 타임라인. 카드별 답변을 **시간축 하나**로 펼친 파생값이다.
 ///
-/// 두 가지를 만든다 — 진행바의 칸(`chunks`, 서버 구간 1:1)과 오버레이 대본 줄(`lines`, 카드 1:1).
-/// 서버가 구간을 아직 안 내려주면 `chunks` 가 비고, 그때는 플레이어가 전체 길이 한 칸으로 대체한다.
+/// 두 가지를 만든다 — 진행바의 칸(`chunks`)과 오버레이 대본 줄(`lines`, 카드 1:1).
+/// 칸은 세션 전체 타임라인(`script` — 면접관 멘트 포함)에서 세운다: 시안의 하단 덩어리는
+/// 답변만이 아니라 영상 전체를 나눈다. `script` 가 없으면 카드의 면접자 발화로,
+/// 그마저 없으면 플레이어가 전체 길이 한 칸으로 대체한다.
 struct VideoTranscript: Equatable {
 
     /// 진행바 칸 = 이동 단위. 폭은 길이에 비례하고, 탭하면 `start` 로 이동한다.
@@ -49,7 +51,7 @@ struct VideoTranscript: Equatable {
     let lines: [Line]
     let chunks: [Chunk]
 
-    init(cards: [InterviewReportCard]) {
+    init(cards: [InterviewReportCard], script: [ScriptSegment] = []) {
         lines = cards.enumerated().compactMap { index, card in
             guard let text = card.transcript, !text.isEmpty else { return nil }
             let segments = card.orderedSegments
@@ -57,16 +59,17 @@ struct VideoTranscript: Equatable {
                 id: index,
                 text: text,
                 spans: card.highlightSpans ?? [],
-                start: segments.first?.start,
-                end: segments.last?.end
+                start: segments.first?.startSec,
+                end: segments.last?.endSec
             )
         }
-        // 카드 경계를 넘겨 한 줄로 세운다 — 진행바는 질문 턴이 아니라 영상 시간축을 보여준다.
-        chunks = cards
-            .flatMap(\.orderedSegments)
-            .sorted { $0.start < $1.start }
+        // 전체 타임라인이 있으면 그대로 칸이 된다(인사·질문·마무리 포함). 없으면
+        // 카드 경계를 넘겨 면접자 발화를 한 줄로 세운다 — 어느 쪽이든 영상 시간축을 보여준다.
+        let source = script.isEmpty ? cards.flatMap(\.orderedSegments) : script
+        chunks = source
+            .sorted { $0.startSec < $1.startSec }
             .enumerated()
-            .map { Chunk(id: $0.offset, start: $0.element.start, end: $0.element.end) }
+            .map { Chunk(id: $0.offset, start: $0.element.startSec, end: $0.element.endSec) }
     }
 
     /// 지금 재생 중인 줄. 구간 정보가 없으면 nil — 오버레이는 전부 같은 색으로 둔다.

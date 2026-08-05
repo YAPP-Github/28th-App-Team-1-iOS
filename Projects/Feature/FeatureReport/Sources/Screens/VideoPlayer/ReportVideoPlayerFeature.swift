@@ -33,9 +33,11 @@ public struct ReportVideoPlayerFeature {
         public let videoURL: URL
         /// 진입 시 이동할 시각(초). nil 이면 처음부터.
         public let startAt: TimeInterval?
-        /// STT 오버레이·진행바 재료.
+        /// STT 오버레이·하이라이트 시트 재료.
         public let cards: [InterviewReportCard]
-        /// 카드에서 펼친 대본 타임라인 (파생값 — 카드가 바뀌지 않으니 한 번만 만든다).
+        /// 세션 전체 발화 타임라인 — 진행바 칸의 재료(면접관 멘트 포함).
+        public let script: [ScriptSegment]
+        /// 카드·타임라인에서 펼친 대본 (파생값 — 입력이 바뀌지 않으니 한 번만 만든다).
         let transcript: VideoTranscript
         public var isPlaying = true
         /// AVPlayer 가 알려주는 현재 재생 시각(초).
@@ -59,11 +61,17 @@ public struct ReportVideoPlayerFeature {
         public var currentLineID: Int?
         @Presents public var highlightDetail: ReportHighlightDetailFeature.State?
 
-        public init(videoURL: URL, startAt: TimeInterval? = nil, cards: [InterviewReportCard] = []) {
+        public init(
+            videoURL: URL,
+            startAt: TimeInterval? = nil,
+            cards: [InterviewReportCard] = [],
+            script: [ScriptSegment] = []
+        ) {
             self.videoURL = videoURL
             self.startAt = startAt
             self.cards = cards
-            self.transcript = VideoTranscript(cards: cards)
+            self.script = script
+            self.transcript = VideoTranscript(cards: cards, script: script)
             self.currentTime = startAt ?? 0
             self.currentLineID = transcript.currentLineID(at: currentTime)
         }

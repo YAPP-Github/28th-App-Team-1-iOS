@@ -261,16 +261,33 @@ private extension InterviewReportCard {
                     startIndex: 9,
                     endIndex: transcript.count,
                     tone: "GOOD",
+                    reason: "PROBE_WORTHY",
+                    title: "원인과 해결을 수치로 설명",
                     analysis: "문제를 바라보는 관점이 좋았어요.",
-                    evidenceStartAt: 2.3
+                    followUpQuestions: ["그 수치는 어떤 기간을 기준으로 집계한 건가요?"],
+                    startSec: 2.3
                 )
             ],
             resolutionNotice: nil,
             cardRedFlagNotices: nil,
             questionIntent: nil,
-            segments: [
-                TranscriptSegment(text: "프로파일링하니 DB 왕복 7번이 원인이라,", start: 0, end: 2.3),
-                TranscriptSegment(text: "안바뀌는 6번을 캐시로 흡수해 600ms 깎았어요.", start: 2.3, end: 4.4)
+            scriptSegments: [
+                ScriptSegment(
+                    role: .interviewee,
+                    text: "프로파일링하니 DB 왕복 7번이 원인이라,",
+                    startIndex: 0,
+                    endIndex: 22,
+                    startSec: 0,
+                    endSec: 2.3
+                ),
+                ScriptSegment(
+                    role: .interviewee,
+                    text: "안바뀌는 6번을 캐시로 흡수해 600ms 깎았어요.",
+                    startIndex: 23,
+                    endIndex: transcript.count,
+                    startSec: 2.3,
+                    endSec: 4.4
+                )
             ]
         )
     }
