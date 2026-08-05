@@ -145,7 +145,8 @@ public struct OnboardingPortfolioUploadFeature {
             case userTappedDeleteConfirm
             /// 삭제 확인 모달 «아니요» — 모달만 닫고 파일은 그대로 둔다.
             case userTappedDeleteCancel
-            /// 기존 포트폴리오 확인 모달 «예» — 그 포폴을 완료 상태로 앉힌다.
+            /// 기존 포트폴리오 확인 모달 «취소»/«진행할게요» — 그 포폴을 완료 상태로 앉힌다.
+            /// 두 버튼이 같은 액션인 건 결과가 하나뿐이기 때문이다(View 주석 참조).
             case userTappedUseExisting
             /// fileImporter 선택 완료 — security-scoped URL.
             case fileSelected(URL)
