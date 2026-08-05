@@ -151,8 +151,6 @@ public struct ReportHighlightDetailView: View {
     private func intentReviewBlock(_ intentReview: HighlightContext.IntentReview) -> some View {
         VStack(alignment: .leading, spacing: .ds(.p14)) {
             VStack(alignment: .leading, spacing: .ds(.p10)) {
-                // @ds(color): 판 #27282F(g900) + 글자 #BCBEC6(g200) → TagLabel `.darkGrayGray`
-                //             — DS 는 g800 판 + g600 글자다(시안 tag 435:797 과 어긋남, DS 쪽 수정 대상)
                 TagLabel("질문 의도", style: .darkGrayGray, size: .regular)
                 VStack(alignment: .leading, spacing: .ds(.p8)) {
                     bodyLine(intentReview.intent)
