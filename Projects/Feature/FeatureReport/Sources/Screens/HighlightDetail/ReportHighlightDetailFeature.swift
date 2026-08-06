@@ -21,6 +21,8 @@ import Foundation
 /// 긍정(443:7430)은 이어질 수 있는 후속 질문. 분석 내용 블록의 구조는 톤과 무관하게 같다.
 @Reducer
 public struct ReportHighlightDetailFeature {
+    /// 진단 카드 라벨 — 클라 소유 고정 문구. 시트의 분석 대상은 언제나 답변이다.
+    static let analysisLabel = "Hilit의 답변 분석"
     /// 마무리 코칭 문구 — 클라 소유 고정 문구. 부정 톤은 «무엇을 묻고 있는지» 로 갈린다(Figma 443:7324).
     static let improveTipMessage = "다음에는 질문에서 무엇을 묻고 있는지 짚어보세요!"
     /// 마무리 코칭 문구 — 긍정·미지 톤(Figma 443:7430). 미지 톤도 답변을 평하지 않는 이 문구를 쓴다.
@@ -117,11 +119,8 @@ public extension ReportHighlightDetailFeature.State {
         }
     }
 
-    /// 진단 카드 서브타이틀 — 미지 톤은 답변을 평할 근거가 없어 «질문 분석» 으로 남긴다.
-    var analysisLabel: String {
-        switch context.tone {
-        case .good, .improve: "Hilit의 답변 분석"
-        case .unknown: "Hilit의 질문 분석"
-        }
-    }
+    /// 진단 카드 서브타이틀 — 시트는 톤과 무관하게 «답변 분석» 이다.
+    /// 시트가 평하는 대상이 대본 구간(= 답변)이라 톤이 미지여도 질문 분석으로 바뀌지 않는다
+    /// («질문 분석» 은 메인 `QuestionAnalysisCard` 전용). 톤은 아이콘·코칭 문구만 가른다.
+    var analysisLabel: String { ReportHighlightDetailFeature.analysisLabel }
 }
