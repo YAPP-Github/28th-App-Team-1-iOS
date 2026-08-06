@@ -57,7 +57,7 @@ Projects/
 ## 컨벤션
 
 - **나열은 알파벳순**: 항목을 늘어놓는 자리는 **전부** 알파벳순을 유지하고, 새 항목은 끝에 붙이지 말고 **제자리에 끼워 넣는다** (모듈 나열·`Modules.swift` case·`Project.swift` dependencies·문서 표 …). 끝에 붙이면 두 브랜치가 같은 줄을 건드려 머지 충돌이 나고, 제자리면 서로 다른 줄이라 git 이 자동 병합한다.
-- **커밋**: 제목 1 줄 한국어. `type: 설명_부연` 형식. 본문은 필요할 때만 2-3 줄.
+- **커밋**: 제목 1 줄 한국어. `type: 설명_부연` 형식. 본문은 필요할 때만 2-3 줄. 말투는 사람이 쓴 메모처럼 짧게 — 설명체 장문·홍보 형용사·도구 서명 금지 (상세 `CONTRIBUTING.md` 1.2).
 - **네이밍**: Swift API Design Guidelines — 변수·함수 lowerCamelCase, 타입 UpperCamelCase, 식별자 언더스코어·한글 금지. 외부 명칭(Figma `head1_sb_32` 등)은 Swift 식별자로 변환, 원본은 매핑 프로퍼티 보존(`DSTypography.figmaName`). 테스트 함수도 camelCase, 한글 설명은 `@Test("설명")` 표시명.
 - **public 키워드**: 모듈 경계 넘는 타입/함수에 필수.
 - **Action 네이밍**: 3분류(view/inner/delegate — «패턴» 참조) 안에서 — 사용자 입력 `userTapped...`(View), 응답 `...Loaded`/`...Saved`(Inner), 생명주기 `onAppear`/`onDisappear`(View), 부모 통보 `delegate(Delegate)`.
