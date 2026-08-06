@@ -29,6 +29,11 @@ import SwiftUI
 /// 부분 강조를 하면서 줄바꿈도 되게 하려고 문장을 토큰으로 쪼개 흘려 배치한다(`HighlightFlow`).
 /// **강조 구간만은 쪼개지 않는다** — 경사 배경이 조각나면 마커로 안 보이기 때문이다. 그래서 강조 구절이
 /// 한 줄을 넘길 만큼 길면 넘친다. 마커는 짧은 구절에 쓰는 게 전제다.
+///
+/// **여러 구간·긴 구간·구간별 탭은 이 컴포넌트가 아니다** — 강조 하나에 짧은 구절이라는 전제가 셋 다 깨진다.
+/// 그런 본문은 `AttributedString`(`backgroundColor` + `link` 태그)으로 직접 그린다 —
+/// 마커가 평평한 사각이 되므로 형광펜 룩과 다른 물건이고, 승격 조건 ①(시안에 이름 붙은 DS 컴포넌트)이
+/// 안 서서 DS 로 올리지 않았다(사용처 FeatureReport 대본 3곳 — 그 피처 안 `TranscriptText`).
 public struct HighlightedText: View {
     /// 색 조합 — Figma `color` 변형 6종. **글자색과 배경색이 한 쌍**이라 따로 고르지 않는다.
     public enum Tone: Sendable, Hashable, CaseIterable {
