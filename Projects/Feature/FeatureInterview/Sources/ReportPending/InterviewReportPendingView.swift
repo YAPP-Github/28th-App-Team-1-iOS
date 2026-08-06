@@ -38,6 +38,8 @@ public struct InterviewReportPendingView: View {
             }
         }
         .background(Color.BlackWhite.white.ignoresSafeArea())
+        // 진입이 조용한 영상 업로드를 연다 — 화면에 드러나는 변화는 없다(스펙 §④).
+        .onAppear { send(.onAppear) }
     }
 }
 
