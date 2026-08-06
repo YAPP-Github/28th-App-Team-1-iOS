@@ -111,8 +111,9 @@ public struct ReportFeature {
 
     private func reducePath(_ state: inout State, _ action: StackActionOf<Path>) -> Effect<Action> {
         switch action {
-        // 뒤로 — 어느 화면에서든 pop. 두 화면 다 X 가 «뒤로» 라서 이탈 신호는 없다
-        // (리포트 이탈은 메인의 X 만 담당한다). 플레이어 X 는 메인까지다 — 접어 둔 시트는 버린다.
+        // 뒤로 — 어느 화면에서든 pop. 두 화면 다 이탈 신호가 없다(리포트 이탈은 메인의 X 만 담당).
+        // 플레이어 X 는 메인까지다 — 접어 둔 시트는 버린다. 지인 피드백은 팝업이 없을 때의 X 와
+        // 복사 완료 뒤 자동 이탈이 같은 신호를 쓴다(둘 다 도착지가 메인이다).
         case .element(id: _, action: .videoPlayer(.delegate(.backRequested))):
             _ = state.path.popLast()
             state.main.stashedHighlightDetail = nil

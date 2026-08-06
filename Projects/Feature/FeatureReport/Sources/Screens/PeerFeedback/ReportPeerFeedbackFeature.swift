@@ -18,13 +18,26 @@ import DomainInterviewReportInterface
 /// 그래서 이 화면이 서버로 보내는 것도 **항목 코드뿐**이다 ([[api#Feedback Share]]).
 ///
 /// 항목은 생성 시점에 링크로 잠긴다 — 만든 뒤 바꿀 수 없고 면접당 활성 링크는 1개다(409 `alreadyExists`).
-/// 그래서 생성은 되돌릴 수 없는 사건이고, 화면은 성공 즉시 완료 모달로 링크 복사만 남긴다.
+/// 그래서 생성은 되돌릴 수 없는 사건이고, 화면은 성공 즉시 완료 팝업으로 링크 복사만 남긴다.
 ///
-/// **재생성은 없지만 재복사는 있다** — 공유 시트를 취소하면 링크가 손에 남지 않는다. 그래서 진입 때
-/// `status` 로 활성 링크를 회수하고(있으면 항목을 잠근 채 CTA 를 «링크 복사하기» 로 바꾼다),
-/// 생성이 409 로 걸려도 같은 회수로 완료 모달을 다시 띄운다.
+/// **복사가 이 화면의 끝이다** — 복사하면 생성 완료 판이 복사 완료 판으로 바뀌고, 그 판은 버튼 없이
+/// 2초 뒤 스스로 닫히며 리포트 메인으로 나간다(2026-08-07 확정). 시스템 공유 시트는 떼어냈다 —
+/// 자동 이탈과 시트가 같은 자리를 다툰다.
+///
+/// **재생성은 없지만 재복사는 있다** — 링크를 손에 넣지 못한 채 나가면 CTA 재탭이 409 로 막힌다.
+/// 그래서 진입 때 `status` 로 활성 링크를 회수하고(있으면 항목을 잠근 채 CTA 를 «링크 복사하기» 로
+/// 바꾼다), 생성이 409 로 걸려도 같은 회수로 완료 팝업을 다시 띄운다.
 @Reducer
 public struct ReportPeerFeedbackFeature {
+    /// 화면 위 팝업 — 링크 생성 완료 → 복사 완료 두 판이 이어 뜬다. 동시에 뜨는 판은 없어서
+    /// Bool 두 개가 아니라 enum 하나로 둔다(`hilitModal(item:)`).
+    public enum Popup: Equatable, Sendable {
+        /// 링크 생성 완료 — «링크 복사하기» 하나 (Figma 443:8121). 회수한 링크면 제목만 갈린다.
+        case shareLinkReady
+        /// 링크 복사 완료 — 버튼 없는 판 (Figma 1321:10451). 2초 뒤 리포트 메인으로 나간다.
+        case linkCopied
+    }
+
     @ObservableState
     public struct State: Equatable {
         public let sessionId: Int
@@ -34,13 +47,11 @@ public struct ReportPeerFeedbackFeature {
         /// 공유 링크 — 생성 성공 또는 **진입·409 회수**로 채워지고, 채워진 뒤엔 항상 남는다
         /// (항목이 잠겨 재생성이 없으므로).
         public var createdLink: String?
-        /// 이 링크가 방금 만든 것이 아니라 서버에서 회수한 기존 링크인지 — 완료 모달 문구가 갈린다.
+        /// 이 링크가 방금 만든 것이 아니라 서버에서 회수한 기존 링크인지 — 완료 팝업 문구가 갈린다.
         public var isLinkRecovered = false
-        /// 완료 모달 표시 여부 (Figma 443:8082 의 모달 443:8121). 복사를 누르면 닫힌다.
-        public var isCompletionModalVisible = false
-        /// 시스템 공유 시트 — 복사 직후 이어서 뜬다 (복사 + 바로 보내기 겸용).
-        public var isShareSheetPresented = false
-        /// 하단 토스트 문구 — 복사 완료·생성 실패 안내를 같은 자리에서 쓴다.
+        /// 떠 있는 팝업 (Figma 443:8082 · 1321:10338). 없으면 nil.
+        public var popup: Popup?
+        /// 하단 토스트 문구 — 생성·회수 실패 안내 자리다(복사 완료는 팝업이 받는다).
         public var toast: String?
 
         public init(sessionId: Int) {
@@ -63,12 +74,13 @@ public struct ReportPeerFeedbackFeature {
         }
 
         public enum Inner: Equatable, Sendable {
-            /// 서버에 이미 있던 활성 링크 회수 — 진입 조회(`presentsModal: false`)와 생성 409
-            /// (`presentsModal: true`)가 같은 재료를 쓰고 뒷처리만 다르다.
-            case existingShareLoaded(token: String, axes: [String], presentsModal: Bool)
+            /// 서버에 이미 있던 활성 링크 회수 — 진입 조회(`presentsPopup: false`)와 생성 409
+            /// (`presentsPopup: true`)가 같은 재료를 쓰고 뒷처리만 다르다.
+            case existingShareLoaded(token: String, axes: [String], presentsPopup: Bool)
+            /// 복사 완료 판이 제 수명을 다 썼다 — 판을 내리고 리포트 메인으로 나간다.
+            case linkCopiedPopupElapsed
             case shareLinkCreated(token: String)
             case shareLinkFailed(message: String)
-            case shareSheetRequested
             case toastDismissed
         }
 
@@ -79,11 +91,10 @@ public struct ReportPeerFeedbackFeature {
         }
     }
 
-    private enum CancelID { case share, toast }
+    private enum CancelID { case popup, share, toast }
 
-    /// 완료 모달이 닫히고 공유 시트가 올라오기까지 벌려 두는 간격.
-    /// 모달은 `fullScreenCover`(`.hilitModal`)라 닫히는 도중에 시트를 올리면 시스템이 둘째 표출을 삼킨다.
-    private static let modalDismissGap: Duration = .milliseconds(400)
+    /// 복사 완료 판이 떠 있는 시간 — 이 뒤에 화면이 스스로 리포트 메인으로 나간다.
+    private static let linkCopiedPopupDuration: Duration = .seconds(2)
 
     /// 토스트가 떠 있는 시간.
     private static let toastDuration: Duration = .seconds(2)
@@ -117,13 +128,21 @@ public struct ReportPeerFeedbackFeature {
             return .none
 
         case .onAppear:
-            // 이미 만들어 둔 활성 링크가 있으면 회수한다 — 공유 시트를 취소해 링크를 잃어버린 사용자가
-            // 다시 들어오는 경로다. 항목은 그때 잠긴 값이라 화면은 재복사만 남는다.
+            // 이미 만들어 둔 활성 링크가 있으면 회수한다 — 복사하지 못한 채 나가 링크를 잃어버린
+            // 사용자가 다시 들어오는 경로다. 항목은 그때 잠긴 값이라 화면은 재복사만 남는다.
             guard state.createdLink == nil else { return .none }
-            return recoverExistingShare(sessionId: state.sessionId, presentsModal: false)
+            return recoverExistingShare(sessionId: state.sessionId, presentsPopup: false)
 
         case .userTappedBack:
-            return .send(.delegate(.backRequested))
+            // 상단 X 는 팝업 판의 X 다 — 팝업이 떠 있으면 그 판만 닫고 화면은 남는다(2026-08-07 확정).
+            guard let popup = state.popup else { return .send(.delegate(.backRequested)) }
+            state.popup = nil
+            // 복사 완료 판은 어차피 2초 뒤 나가는 자리라 X 는 그 기다림만 건너뛴다.
+            guard popup == .linkCopied else { return .none }
+            return .merge(
+                .cancel(id: CancelID.popup),
+                .send(.delegate(.backRequested))
+            )
 
         case let .userToggledAxis(axis, isOn):
             if isOn {
@@ -141,44 +160,46 @@ public struct ReportPeerFeedbackFeature {
 
         case .userTappedCopyLink:
             guard let link = state.createdLink else { return .none }
-            // 복사 + 시스템 공유 시트를 이어서 연다 — 붙여넣기와 바로 보내기 둘 다 지원.
-            // 모달은 닫고 화면은 남는다 (링크는 이미 만들어졌고 항목은 잠겼다).
-            state.isCompletionModalVisible = false
+            // 생성 완료 판을 복사 완료 판으로 바꿔 끼운다 — 그 판이 화면의 끝이고, 스스로 나간다.
+            state.popup = .linkCopied
             return .merge(
                 .run { _ in pasteboard.copy(link) },
-                showToast("링크를 복사했어요.", &state),
                 .run { send in
-                    try await clock.sleep(for: Self.modalDismissGap)
-                    await send(.inner(.shareSheetRequested))
+                    try await clock.sleep(for: Self.linkCopiedPopupDuration)
+                    await send(.inner(.linkCopiedPopupElapsed))
                 }
+                .cancellable(id: CancelID.popup, cancelInFlight: true)
             )
         }
     }
 
     private func reduceInner(_ state: inout State, _ action: Action.Inner) -> Effect<Action> {
         switch action {
-        case let .existingShareLoaded(token, axes, presentsModal):
+        case let .existingShareLoaded(token, axes, presentsPopup):
             state.isCreating = false
             state.createdLink = Self.shareLink(token: token)
             state.isLinkRecovered = true
             // 항목은 생성 시점에 잠긴 값이라 서버가 답이다 — 모르는 코드는 버린다.
             state.selectedAxes = Set(axes.compactMap { AttitudeAxisKind(rawCode: $0) })
-            state.isCompletionModalVisible = presentsModal
+            // 진입 회수(presentsPopup: false)는 떠 있는 판을 건드리지 않는다.
+            if presentsPopup {
+                state.popup = .shareLinkReady
+            }
             return .none
+
+        case .linkCopiedPopupElapsed:
+            state.popup = nil
+            return .send(.delegate(.backRequested))
 
         case let .shareLinkCreated(token):
             state.isCreating = false
             state.createdLink = Self.shareLink(token: token)
-            state.isCompletionModalVisible = true
+            state.popup = .shareLinkReady
             return .none
 
         case let .shareLinkFailed(message):
             state.isCreating = false
             return showToast(message, &state)
-
-        case .shareSheetRequested:
-            state.isShareSheetPresented = true
-            return .none
 
         case .toastDismissed:
             state.toast = nil
@@ -205,7 +226,7 @@ public struct ReportPeerFeedbackFeature {
             await send(.inner(.existingShareLoaded(
                 token: status.token,
                 axes: status.axes ?? [],
-                presentsModal: true
+                presentsPopup: true
             )))
         }
         // 진입 회수와 같은 ID — 회수가 나는 동안 생성을 탭하면 회수를 끊고 생성이 이어받는다
@@ -216,15 +237,15 @@ public struct ReportPeerFeedbackFeature {
     /// 서버에 이미 있는 활성 링크를 회수한다 — 링크 미생성(404)이 정상 경로라 조회 실패로 화면을 막지 않고,
     /// ACTIVE 가 아닌 링크(무효화·비공개)는 복사해도 지인이 못 열어 회수 대상이 아니다.
     // TODO(prd-외): 재복사 동선 전체(진입 회수·409 회수·CTA 잠금)가 PRD 에 없는 재량 구현 —
-    //               «공유 시트 취소 = 링크 유실» 막다른 길을 관례로 메웠다. 스펙 확정 시 재검토.
-    private func recoverExistingShare(sessionId: Int, presentsModal: Bool) -> Effect<Action> {
+    //               «복사 못 한 채 이탈 = 링크 유실» 막다른 길을 관례로 메웠다. 스펙 확정 시 재검토.
+    private func recoverExistingShare(sessionId: Int, presentsPopup: Bool) -> Effect<Action> {
         .run { send in
             let status = try await feedbackShareClient.status(sessionId)
             guard status.status == .active else { return }
             await send(.inner(.existingShareLoaded(
                 token: status.token,
                 axes: status.axes ?? [],
-                presentsModal: presentsModal
+                presentsPopup: presentsPopup
             )))
         } catch: { _, _ in
             // 생성 시 409 로 다시 걸리므로 여기서 사용자에게 알릴 것이 없다.

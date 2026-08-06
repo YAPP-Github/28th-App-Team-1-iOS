@@ -52,7 +52,7 @@ struct ReportPeerFeedbackFeatureTests {
         await store.receive(\.inner.shareLinkCreated) {
             $0.isCreating = false
             $0.createdLink = "https://hilit.my/feedback/tok"
-            $0.isCompletionModalVisible = true
+            $0.popup = .shareLinkReady
         }
 
         #expect(sent.value == ["GAZE", "VOICE"])
@@ -94,7 +94,7 @@ struct ReportPeerFeedbackFeatureTests {
         #expect(!store.state.isAxisLocked)
     }
 
-    @Test("409 는 실패로 끝나지 않는다 — 기존 링크를 회수해 완료 모달을 다시 띄운다")
+    @Test("409 는 실패로 끝나지 않는다 — 기존 링크를 회수해 완료 팝업을 다시 띄운다")
     func alreadyExistsRecoversLink() async {
         let store = TestStore(initialState: ReportPeerFeedbackFeature.State(sessionId: 7)) {
             ReportPeerFeedbackFeature()
@@ -115,7 +115,7 @@ struct ReportPeerFeedbackFeatureTests {
             $0.selectedAxes = [.expression]
             $0.createdLink = "https://hilit.my/feedback/tok"
             $0.isLinkRecovered = true
-            $0.isCompletionModalVisible = true
+            $0.popup = .shareLinkReady
         }
         #expect(store.state.isAxisLocked)
     }
@@ -147,7 +147,7 @@ struct ReportPeerFeedbackFeatureTests {
         }
     }
 
-    @Test("진입 때 활성 링크가 있으면 회수해 항목을 잠근다 — 모달은 스스로 뜨지 않는다")
+    @Test("진입 때 활성 링크가 있으면 회수해 항목을 잠근다 — 팝업은 스스로 뜨지 않는다")
     func onAppearRecoversActiveLink() async {
         let store = TestStore(initialState: ReportPeerFeedbackFeature.State(sessionId: 7)) {
             ReportPeerFeedbackFeature()
@@ -163,8 +163,8 @@ struct ReportPeerFeedbackFeatureTests {
             $0.isLinkRecovered = true
         }
         #expect(store.state.isAxisLocked)
-        // 진입만으로 모달을 띄우지 않는다 — 재복사는 CTA 로 시작한다.
-        #expect(!store.state.isCompletionModalVisible)
+        // 진입만으로 팝업을 띄우지 않는다 — 재복사는 CTA 로 시작한다.
+        #expect(store.state.popup == nil)
     }
 
     @Test("무효화·비공개 링크는 회수 대상이 아니다 — 복사해도 지인이 못 연다")
@@ -189,14 +189,21 @@ struct ReportPeerFeedbackFeatureTests {
         #expect(!store.state.isAxisLocked)
     }
 
-    @Test("복사하면 클립보드에 담기고 모달이 닫히며 공유 시트가 이어진다")
-    func copyPutsLinkOnPasteboardThenPresentsShareSheet() async {
+    /// 링크가 이미 만들어져 팝업이 떠 있는 상태 — 복사 동선 테스트의 출발점.
+    private static func popupState(
+        _ popup: ReportPeerFeedbackFeature.Popup
+    ) -> ReportPeerFeedbackFeature.State {
+        var state = ReportPeerFeedbackFeature.State(sessionId: 7)
+        state.createdLink = "https://hilit.my/feedback/tok"
+        state.popup = popup
+        return state
+    }
+
+    @Test("복사하면 클립보드에 담기고 복사 완료 판으로 바뀐 뒤 2초 만에 리포트 메인으로 나간다")
+    func copyPutsLinkOnPasteboardThenLeavesAfterNotice() async {
         let clock = TestClock()
         let copied = LockIsolated<String?>(nil)
-        var initialState = ReportPeerFeedbackFeature.State(sessionId: 7)
-        initialState.createdLink = "https://hilit.my/feedback/tok"
-        initialState.isCompletionModalVisible = true
-        let store = TestStore(initialState: initialState) {
+        let store = TestStore(initialState: Self.popupState(.shareLinkReady)) {
             ReportPeerFeedbackFeature()
         } withDependencies: {
             $0.pasteboard = PasteboardClient { copied.setValue($0) }
@@ -204,19 +211,62 @@ struct ReportPeerFeedbackFeatureTests {
         }
 
         await store.send(.view(.userTappedCopyLink)) {
-            $0.isCompletionModalVisible = false
-            $0.toast = "링크를 복사했어요."
+            $0.popup = .linkCopied
         }
-        // 모달(cover)이 닫히는 동안엔 시트를 올리지 않는다 — 한 틱 뒤에 올라온다.
-        await clock.advance(by: .milliseconds(400))
-        await store.receive(\.inner.shareSheetRequested) {
-            $0.isShareSheetPresented = true
+        #expect(copied.value == "https://hilit.my/feedback/tok")
+
+        await clock.advance(by: .seconds(2))
+        await store.receive(\.inner.linkCopiedPopupElapsed) {
+            $0.popup = nil
         }
-        await clock.advance(by: .milliseconds(1600))
-        await store.receive(\.inner.toastDismissed) {
-            $0.toast = nil
+        // 나가기는 코디네이터 몫 — 화면은 신호만 올린다.
+        await store.receive(\.delegate.backRequested)
+    }
+
+    @Test("팝업이 떠 있는 동안 상단 X 는 그 판만 닫는다 — 화면은 남는다")
+    func closeDismissesPopupOnly() async {
+        let store = TestStore(initialState: Self.popupState(.shareLinkReady)) {
+            ReportPeerFeedbackFeature()
         }
 
-        #expect(copied.value == "https://hilit.my/feedback/tok")
+        await store.send(.view(.userTappedBack)) {
+            $0.popup = nil
+        }
+        // 링크는 그대로 손에 있고 항목도 잠긴 채다 — CTA 로 다시 복사할 수 있다.
+        #expect(store.state.isAxisLocked)
+    }
+
+    @Test("복사 완료 판의 X 는 2초를 기다리지 않고 바로 나간다 — 예정된 이탈은 끊긴다")
+    func closeOnCopyNoticeLeavesImmediately() async {
+        let clock = TestClock()
+        let store = TestStore(initialState: Self.popupState(.shareLinkReady)) {
+            ReportPeerFeedbackFeature()
+        } withDependencies: {
+            $0.pasteboard = PasteboardClient { _ in }
+            $0.continuousClock = clock
+        }
+
+        await store.send(.view(.userTappedCopyLink)) {
+            $0.popup = .linkCopied
+        }
+        await clock.advance(by: .seconds(1))
+        await store.send(.view(.userTappedBack)) {
+            $0.popup = nil
+        }
+        await store.receive(\.delegate.backRequested)
+        // 남은 1초가 흘러도 두 번째 신호가 없다 — 자동 이탈 effect 가 끊겼다.
+        await clock.advance(by: .seconds(1))
+    }
+
+    @Test("팝업이 없을 때 상단 X 는 화면을 나간다")
+    func closeWithoutPopupLeavesScreen() async {
+        var initialState = ReportPeerFeedbackFeature.State(sessionId: 7)
+        initialState.selectedAxes = [.gaze]
+        let store = TestStore(initialState: initialState) {
+            ReportPeerFeedbackFeature()
+        }
+
+        await store.send(.view(.userTappedBack))
+        await store.receive(\.delegate.backRequested)
     }
 }

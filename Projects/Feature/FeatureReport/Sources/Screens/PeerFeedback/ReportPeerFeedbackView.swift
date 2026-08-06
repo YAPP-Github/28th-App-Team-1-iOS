@@ -12,9 +12,11 @@ import SharedDesignSystemInterface
 import SwiftUI
 
 // Figma: «Report_PeerFeedback_RequestItems» https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=443-8006
-//        링크 생성 완료 팝업이 얹힌 판 443:8082 (모달 인스턴스 443:8121 = DS «modal» 2302:6080).
+//        링크 생성 완료 팝업이 얹힌 판 443:8082 (인스턴스 443:8121 = DS «modal» 2302:6080)
+//        링크 복사 완료 팝업이 얹힌 판 1321:10338 (인스턴스 1321:10451 = DS «home modal» 435:1565).
 /// 지인에게 평가받을 태도 항목 선택 — 다크 판 위 «아이콘 + 이름 + 토글» 5줄과 하단 CTA 한 개.
 /// CTA 를 누르면 링크가 만들어지고 그 자리에서 완료 팝업이 뜬다(링크 복사만 남는다).
+/// 복사하면 복사 완료 팝업으로 바뀌고, 그 판이 2초 뒤 화면을 리포트 메인으로 내보낸다.
 @ViewAction(for: ReportPeerFeedbackFeature.self)
 public struct ReportPeerFeedbackView: View {
     @Bindable public var store: StoreOf<ReportPeerFeedbackFeature>
@@ -41,31 +43,28 @@ public struct ReportPeerFeedbackView: View {
                     .padding(.bottom, 65)
             }
         }
-        // 링크 생성 완료 팝업 — 딤·중앙 배치·좌우 여백 24 는 DS 오버레이 몫(443:8082).
-        // 스스로 닫지 않는다 — «링크 복사하기» 가 리듀서로 보낸 액션이 상태를 내린다.
-        .hilitModal(isPresented: store.isCompletionModalVisible) {
-            completionModal
-        }
-        // 복사 직후 시스템 공유 시트가 이어서 뜬다 — 붙여넣기와 바로 보내기 둘 다 지원.
-        // 팝업(cover)이 닫힌 뒤에 올라온다 — 리듀서가 한 틱 벌려 둔다(`ReportPeerFeedbackFeature`).
-        .sheet(isPresented: $store.isShareSheetPresented) {
-            if let link = store.createdLink {
-                ShareSheet(items: [Self.shareItem(link)])
-                    .presentationDetents([.medium, .large])
+        // 팝업 두 판 — 딤·중앙 배치·좌우 여백 24 는 DS 오버레이 몫(443:8082 · 1321:10338).
+        // 스스로 닫지 않는다 — 닫는 건 리듀서다(복사 버튼·상단 X·복사 완료 판의 2초).
+        .hilitModal(item: store.popup) { popup in
+            switch popup {
+            case .shareLinkReady:
+                shareLinkReadyPopup
+            case .linkCopied:
+                linkCopiedPopup
             }
         }
-        // X = 이 화면 나가기 — 리듀서가 소유(뒤로 신호를 delegate 로 올린다).
+        // X = 팝업이 떠 있으면 그 판 닫기, 없으면 화면 나가기 — 판단은 리듀서가 한다.
         // `background: .filled` — 스크롤 화면이라 투명 바로 두면 항목 목록이 X 뒤로 지나간다.
         .hilitNavigationBar(surface: .dark, background: .filled, onClose: { send(.userTappedBack) })
         .onAppear { send(.onAppear) }
     }
 
     /// 하단 CTA. 링크가 이미 있으면(생성 성공·진입 회수) 항목이 잠겨 «생성» 이 남을 자리가 없다 —
-    /// 그 자리를 재복사가 받는다(공유 시트를 취소해도 링크를 다시 손에 넣을 수 있게).
+    /// 그 자리를 재복사가 받는다(복사하지 못한 채 나갔어도 링크를 다시 손에 넣을 수 있게).
     ///
     /// 비활성(항목 0개)은 라이트용 g50 바로 그려진다 — 다크 화면용 disabled 변형이 시안에 없다.
     // @ds(component): 다크 판 CTA 비활성 — 시안 #27282F 판 + 흰 라벨(443:8046) → ButtonLarge
-    // disabled(g50 판 + g300 라벨). 시트에 dark-disabled 칸이 없어 그대로 뒀다
+    // disabled(g50 판 + g300 라벨).
     @ViewBuilder
     private var cta: some View {
         if store.isAxisLocked {
@@ -79,11 +78,6 @@ public struct ReportPeerFeedbackView: View {
             .hilitButtonLoading(store.isCreating)
             .disabled(store.selectedAxes.isEmpty)
         }
-    }
-
-    /// 공유 시트에는 URL 로 넘긴다 — 문자열보다 앱별 미리보기(카톡 링크 카드 등)가 살아난다.
-    private static func shareItem(_ link: String) -> Any {
-        URL(string: link) ?? link
     }
 
     /// 화면 머리글 — 글자색(다크 판 white/g300)·수직 리듬은 DS `TitleBox` 가 `.hilitSurface(.dark)` 에서 파생.
@@ -142,8 +136,8 @@ public struct ReportPeerFeedbackView: View {
 
     /// 링크 생성 완료 팝업의 **카드** — 링크 일러스트 74 + 두 줄 타이틀 + «링크 복사하기»(Figma 443:8121).
     /// 딤·폭·표출 전환은 `.hilitModal` 몫이라 여기서 그리지 않는다.
-    /// 회수한 기존 링크에도 같은 모달을 쓰지만 «생성 완료» 는 거짓이 되므로 제목만 가른다.
-    private var completionModal: some View {
+    /// 회수한 기존 링크에도 같은 카드를 쓰지만 «생성 완료» 는 거짓이 되므로 제목만 가른다.
+    private var shareLinkReadyPopup: some View {
         Modal(
             store.isLinkRecovered ? Self.recoveredTitle : Self.createdTitle,
             icon: Image.Img.link
@@ -154,11 +148,26 @@ public struct ReportPeerFeedbackView: View {
         }
     }
 
+    /// 링크 복사 완료 팝업의 **카드** — 같은 링크 일러스트에 보조문구 + 타이틀, 버튼 없음(Figma 1321:10451).
+    /// 시안 인스턴스가 DS «home modal» 이라 `Modal` 이 아니라 `HomeModal` 이다
+    /// (보조문구가 타이틀 **위**, 버튼 슬롯 없음 — 두 판의 차이가 그 둘이다).
+    /// 사용자가 닫을 버튼이 없는 판이라 수명은 리듀서가 갖는다(2초 뒤 리포트 메인).
+    private var linkCopiedPopup: some View {
+        HomeModal(
+            Self.copiedTitle,
+            subTitle: Self.copiedSubTitle,
+            icon: Image.Img.link
+        )
+    }
+
     /// 방금 만든 링크 — 시안 문구(443:8121).
     static let createdTitle = "링크 생성 완료!\n지인에게 보내보세요."
     /// 서버에서 회수한 기존 링크 — 시안에 없는 판이다.
     // TODO: 카피 확정 대기 — 재복사 모달 문구.
     static let recoveredTitle = "이미 만들어 둔 링크예요.\n지인에게 보내보세요."
+    /// 복사 완료 판 문구 — 시안 그대로(1321:10451).
+    static let copiedTitle = "링크를 지인에게 보내보세요!"
+    static let copiedSubTitle = "링크 복사 완료"
 }
 
 // Preview 컨텍스트는 `previewValue` 를 자동으로 쓴다 — 링크 생성·복사 모두 주입 없이 돈다.
@@ -184,16 +193,25 @@ public struct ReportPeerFeedbackView: View {
 
 #Preview("링크 생성 완료") {
     ReportPeerFeedbackView(
-        store: Store(
-            initialState: {
-                var state = ReportPeerFeedbackFeature.State(sessionId: 1)
-                state.selectedAxes = [.gaze, .voice]
-                state.createdLink = "https://hilit.my/feedback/preview-token"
-                state.isCompletionModalVisible = true
-                return state
-            }()
-        ) {
+        store: Store(initialState: previewState(popup: .shareLinkReady)) {
             ReportPeerFeedbackFeature()
         }
     )
+}
+
+#Preview("링크 복사 완료 — 2초 뒤 나간다") {
+    ReportPeerFeedbackView(
+        store: Store(initialState: previewState(popup: .linkCopied)) {
+            ReportPeerFeedbackFeature()
+        }
+    )
+}
+
+/// 팝업 판 프리뷰용 — 링크가 이미 있는(항목 잠긴) 상태.
+private func previewState(popup: ReportPeerFeedbackFeature.Popup) -> ReportPeerFeedbackFeature.State {
+    var state = ReportPeerFeedbackFeature.State(sessionId: 1)
+    state.selectedAxes = [.gaze, .voice]
+    state.createdLink = "https://hilit.my/feedback/preview-token"
+    state.popup = popup
+    return state
 }
