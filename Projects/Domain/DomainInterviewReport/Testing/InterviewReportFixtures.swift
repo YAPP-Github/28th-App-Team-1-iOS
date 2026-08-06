@@ -130,14 +130,16 @@ public enum InterviewReportFixtures {
 
     // MARK: - 대본 타임라인
 
-    /// 세션 전체 발화 — 면접자 답변과 면접관 마무리 멘트가 시각 순으로 이어진 한 배열.
+    /// 세션 전체 발화 — 면접관 질문·마무리 멘트와 면접자 답변이 시각 순으로 이어진 한 배열.
     /// 서버 계약 형태 보존용이다 — 진행바 칸이 턴 단위가 되면서(2026-08-07) 화면 사용처는 없다.
-    /// 답변 시각은 카드 발화와 같은 축이다 — 픽스처를 쓰는 테스트가 한 시간축을 공유한다.
+    /// 시각은 카드 발화와 같은 축이다 — 픽스처를 쓰는 테스트가 한 시간축을 공유한다.
     public static var fullScript: [ScriptSegment] {
         [
-            ScriptSegment(role: .interviewee, text: "프로파일링하니 DB 왕복이 7번 도는 N+1이 원인이었고,", startSec: 0, endSec: 3.4),
+            ScriptSegment(role: .interviewer, text: "결제 응답 속도를 개선하신 경험을 말씀해주세요.", startSec: 0, endSec: 1.5),
+            ScriptSegment(role: .interviewee, text: "프로파일링하니 DB 왕복이 7번 도는 N+1이 원인이었고,", startSec: 1.5, endSec: 3.4),
             ScriptSegment(role: .interviewee, text: "안 바뀌는 6번을 캐시로 흡수해 600ms를 깎았어요.", startSec: 3.4, endSec: 6.4),
-            ScriptSegment(role: .interviewee, text: "결제가 느려서 캐시를 써서 빠르게 만들었어요.", startSec: 6.4, endSec: 9.1),
+            ScriptSegment(role: .interviewer, text: "그 방법을 고른 이유가 무엇인가요?", startSec: 6.4, endSec: 7.2),
+            ScriptSegment(role: .interviewee, text: "결제가 느려서 캐시를 써서 빠르게 만들었어요.", startSec: 7.2, endSec: 9.1),
             ScriptSegment(role: .interviewee, text: "그 캐시는 팀이 원래 쓰던 것이라 저는 운영만 했어요.", startSec: 9.1, endSec: 12),
             ScriptSegment(role: .interviewer, text: "수고하셨습니다. 면접을 마치겠습니다.", startSec: 12, endSec: 14)
         ]
@@ -165,21 +167,31 @@ public extension InterviewReportFixtures {
                     title: "구체적 수치로 원인 설명",
                     analysis: "문제부터 원인, 한계까지 스스로 짚었어요.",
                     followUpQuestions: ["그 수치는 어떤 기간을 기준으로 집계한 건가요?"],
-                    startSec: 0
+                    startSec: 1.5
                 )
             ],
             resolutionNotice: nil,
             cardRedFlagNotices: nil,
             questionIntentTitle: "성능 저하 인지 수준",
             questionIntent: "성능 문제를 얼마나 구체적으로 인지했는지 확인하는 질문입니다.",
-            // 이 턴의 면접자 발화 — 문자 오프셋은 카드 `transcript` 기준(하이라이트와 같은 좌표계).
+            // 이 턴의 발화 — 면접관 질문이 먼저 오고, 면접자 발화의 문자 오프셋만
+            // 카드 `transcript` 기준이다(하이라이트와 같은 좌표계).
+            // 면접관 오프셋은 **질문 문자열 기준**이라 답변에 대고 자르면 안 된다 (서버가 이렇게 준다).
             scriptSegments: [
+                ScriptSegment(
+                    role: .interviewer,
+                    text: "결제 응답 속도를 개선하신 경험을 말씀해주세요.",
+                    startIndex: 0,
+                    endIndex: 26,
+                    startSec: 0,
+                    endSec: 1.5
+                ),
                 ScriptSegment(
                     role: .interviewee,
                     text: "프로파일링하니 DB 왕복이 7번 도는 N+1이 원인이었고,",
                     startIndex: 0,
                     endIndex: 30,
-                    startSec: 0,
+                    startSec: 1.5,
                     endSec: 3.4
                 ),
                 ScriptSegment(
@@ -211,7 +223,7 @@ public extension InterviewReportFixtures {
                     title: "질문과 다른 주제로 답변",
                     analysis: "왜 그 방법이 통했는지 원인이 빠졌어요.",
                     followUpQuestions: [],
-                    startSec: 6.4,
+                    startSec: 7.2,
                     answerTopicTitle: "적용 결과 나열",
                     questionIntentTitle: "선택 근거와 대안 검토",
                     questionIntent: "선택의 근거와 대안 검토를 확인하는 질문입니다."
@@ -228,11 +240,19 @@ public extension InterviewReportFixtures {
             questionIntent: "선택의 근거와 대안 검토를 확인하는 질문입니다.",
             scriptSegments: [
                 ScriptSegment(
+                    role: .interviewer,
+                    text: "그 방법을 고른 이유가 무엇인가요?",
+                    startIndex: 0,
+                    endIndex: 19,
+                    startSec: 6.4,
+                    endSec: 7.2
+                ),
+                ScriptSegment(
                     role: .interviewee,
                     text: "결제가 느려서 캐시를 써서 빠르게 만들었어요.",
                     startIndex: 0,
                     endIndex: 24,
-                    startSec: 6.4,
+                    startSec: 7.2,
                     endSec: 9.1
                 ),
                 ScriptSegment(

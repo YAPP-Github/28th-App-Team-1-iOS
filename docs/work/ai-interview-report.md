@@ -82,7 +82,7 @@ ReportMain ─[영상 다시보기]─────────────→ Re
 | `card.questionIntent: String?` | 카드의 "질문 분석" | 내부 `probe_text` 를 서버가 사용자 표현으로 번역한 값 |
 | `card.transcript: String?` | 답변 대본 | 하이라이트 렌더의 베이스 문자열 |
 | `card.highlightSpans: [HighlightSpan]?` | 대본 하이라이트 + 시트 진입점 | `startIndex/endIndex` 는 `transcript` 문자열 인덱스 — §9-2 안전 슬라이싱 필수 |
-| `script` · `card.scriptSegments` | 플레이어 진행바 칸·오버레이 문장·시각 폴백은 전부 후자 — `script` 는 화면 사용처 없음(2026-08-07) | 칸 하나 = 카드(질문 턴) 하나. 서버 정렬을 믿지 않고 `startSec` 으로 다시 세운다(`orderedSegments`) |
+| `script` · `card.scriptSegments` | 플레이어 진행바 칸·오버레이 문장·시각 폴백은 전부 후자 — `script` 는 화면 사용처 없음(2026-08-07) | 칸 하나 = 카드(질문 턴) 하나. 서버 정렬을 믿지 않고 `startSec` 으로 다시 세운다 — 칸·오버레이는 발화 전체(`timelineSegments`), 시각 폴백은 면접자만(`orderedSegments`) |
 | `card.words: [TranscriptWord]?` | (없음 — 계약만 보존) | 단어 강조가 필요해질 때 쓴다. **말속도·군말·침묵 산출에 쓰지 않는다** (§0-2 MVP 제외) |
 | `card.resolutionNotice: String?` | 느낌표 툴팁 — 그 카드를 보고 있을 때만 (카드 본문에는 안 세운다) | **서버 소유 문구.** 있으면 해상도 낮음 카드 → 하이라이트가 없어 시트로 진입하지 않는다 |
 | `card.cardRedFlagNotices: [RedFlagNotice]?` | 느낌표 툴팁 — 그 카드를 보고 있을 때만 (카드 본문에는 안 세운다) | 해상도와 **독립** — 같은 카드면 해상도 안내와 나란히 툴팁에 선다. 원소는 문구 문자열 또는 `{type, message}` 둘 다 — `RedFlagNotice` 가 양쪽 디코딩 |
@@ -328,7 +328,7 @@ public enum Action: ViewAction {
 
 컨트롤 규약: 무입력 3초 뒤 딤·재생 버튼·하단 바가 사라져 영상만 남는다. **일시정지 중에는 숨기지 않고**(재생 버튼이 사라진다), 대본을 켜 둔 동안은 하단 바를 유지한다(대본의 일부). 좌우 화살표는 진행바 한 칸(질문 턴)씩 움직이고(옛 ±10초 폐기), 끝까지 본 뒤 재생을 누르면 처음으로 되감는다.
 
-진행바는 **칸 하나 = 카드(질문 턴) 하나**(폭 ∝ 길이, 탭 = 그 턴 시작으로 이동)다(2026-08-07 — 옛 «발화 하나당 칸 하나» 는 너무 잘게 쪼개져 폐기). 칸의 시간 범위는 턴 발화 전체(면접관 질문 포함 — 탭하면 질문부터). 서버 발화가 없으면 영상 전체 한 칸으로 대체하고, 이때 탭은 무반응이다(이동할 지점을 모른다). 대본 오버레이는 **현재 턴 하나만, 문장을 재생 시각까지 쌓아** 보여준다 — 규칙·페이드·스냅 상세는 [[report#영상 플레이어]].
+진행바는 **칸 하나 = 카드(질문 턴) 하나**(폭 ∝ 길이, 탭 = 그 턴 시작으로 이동)다(2026-08-07 — 옛 «발화 하나당 칸 하나» 는 너무 잘게 쪼개져 폐기). 칸의 시간 범위는 턴 발화 전체(면접관 질문 포함 — 탭하면 질문부터). 서버 발화가 없으면 영상 전체 한 칸으로 대체하고, 이때 탭은 무반응이다(이동할 지점을 모른다). 대본 오버레이는 **현재 턴 하나만, 문장을 재생 시각까지 쌓아** 보여준다(면접관 질문도 시각 순으로 함께, Q 배지로 구분) — 규칙·페이드·스냅 상세는 [[report#영상 플레이어]].
 
 시스템 컨트롤을 쓰지 않으므로 SwiftUI `VideoPlayer` 대신 `AVPlayerLayer`(`VideoSurface`)를 직접 얹는다.
 
@@ -387,12 +387,12 @@ struct HighlightContext: Equatable, Sendable {             // 상세 시트 입�
 }
 
 struct VideoTranscript: Equatable {                        // 플레이어 타임라인 (§8)
-    let lines: [Line]                                      // 카드 1장 = 줄 1개, 문장(Sentence) 단위로 쪼갬 (오버레이)
+    let lines: [Line]                                      // 카드 1장 = 줄 1개, 문장(Sentence) 단위로 쪼갬 — 질문·답변 시각 순 (오버레이)
     let chunks: [Chunk]                                    // 진행바 칸 — 카드(질문 턴) 1:1, 없으면 영상 전체 한 칸
 }
 ```
 
-Domain 추가분에 `TranscriptSegment`·`TranscriptWord`(서버 타임스탬프)와 `card.evidenceTime(for:)`·`card.orderedSegments` 가 함께 들어간다 — 서버 값 정규화라 Domain 이 맞다.
+Domain 추가분에 `TranscriptSegment`·`TranscriptWord`(서버 타임스탬프)와 `card.evidenceTime(for:)`·`card.orderedSegments`·`card.timelineSegments` 가 함께 들어간다 — 서버 값 정규화라 Domain 이 맞다.
 
 `InterviewReportCard`·`HighlightSpan` 에 `id` 가 없다 → `ForEach` 는 `Array.enumerated()` 의 offset 을 `id:` 로 쓴다. 배열 순서가 계약(클라 재정렬 금지, §2)이므로 인덱스가 정당한 식별자다. `(axisOrder, depthLevel)` 조합키는 서버가 중복을 내리면 깨진다. `Identifiable` 을 서버 DTO 에 억지로 붙이지 않는다.
 

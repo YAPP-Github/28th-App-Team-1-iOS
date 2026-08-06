@@ -96,12 +96,19 @@ public extension InterviewReportCard {
         }?.startSec
     }
 
-    /// 재생 순서대로 정렬된 **면접자 발화**. 면접관 질문은 카드 대본(`transcript`)에 없어
-    /// 하이라이트·오버레이 문장에 못 쓴다. 서버 정렬을 신뢰하지 않고 시작 시각으로 다시 세운다 —
-    /// 문장 순서가 뒤집히면 오버레이 누적·이동 지점이 어긋난다.
+    /// 재생 순서대로 정렬된 **면접자 발화**. 하이라이트 좌표계(카드 `transcript` 문자 오프셋)를
+    /// 가진 발화가 이것뿐이라 시각 폴백·구간 겹침 판정은 여기서만 찾는다.
+    /// 서버 정렬을 신뢰하지 않고 시작 시각으로 다시 세운다 — 순서가 뒤집히면 판정이 어긋난다.
     var orderedSegments: [ScriptSegment] {
-        (scriptSegments ?? [])
-            .filter { $0.role == .interviewee }
-            .sorted { $0.startSec < $1.startSec }
+        timelineSegments.filter { $0.role == .interviewee }
+    }
+
+    /// 재생 순서대로 정렬된 **턴 전체 발화** — 면접관 질문과 면접자 답변이 섞인 그대로.
+    /// 진행바 칸 범위와 대본 오버레이가 쓴다(둘 다 시간축 하나라 질문도 제자리에 낀다).
+    ///
+    /// 면접관 발화의 `startIndex`/`endIndex` 는 **질문 문자열 기준**이라 카드 `transcript`(답변 전문)
+    /// 좌표계가 아니다 — 답변에 대고 자르면 엉뚱한 대목이 나오므로 발화 원문(`text`)만 쓴다.
+    var timelineSegments: [ScriptSegment] {
+        (scriptSegments ?? []).sorted { $0.startSec < $1.startSec }
     }
 }
