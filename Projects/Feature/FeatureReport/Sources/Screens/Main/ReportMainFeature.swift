@@ -20,8 +20,6 @@ public struct ReportMainFeature {
     static let pollInterval: Duration = .seconds(4)
     /// 폴링 상한. 서버 SLA 는 24시간이지만 화면이 무한 폴링하면 안 된다 — 넘으면 수동 재시도로 넘긴다.
     static let pollLimit = 75
-    /// 한 줄 요약 아래 안내 줄 최대 개수 (PRD 2-4).
-    static let maxRedFlagNotices = 2
     /// 지인 피드백 요청 정원. 서버가 정원 필드를 안 내려서 클라 상수로 둔다 —
     /// 응답에 필드가 생기면 이 상수 대신 그 값을 쓴다.
     static let maxGuestCount = 4
@@ -36,7 +34,8 @@ public struct ReportMainFeature {
         /// 상세 리포트에서 보고 있는 카드(질문 탭) 위치.
         public var selectedCardIndex = 0
         /// 레드플래그 툴팁 노출 여부 — 시안(443:7204)이 느낌표와 툴팁을 **함께** 띄우므로 기본 펼침이다.
-        /// 접힘은 그 방문에서만 유효하다 — 화면에 다시 들어오면 `onAppear` 가 도로 펼친다.
+        /// 한 번 접으면 이 State 가 사는 동안 계속 접힌 채다 — 재진입(뒤로가기 복귀)에도 다시 안 띄운다.
+        /// 다시 띄우려면 State 가 새로 만들어져야 한다(화면을 닫고 새로 진입).
         /// 레드플래그가 없으면 이 값과 무관하게 뷰가 둘 다 그리지 않는다.
         public var isRedFlagTooltipVisible = true
         /// 지인 피드백에서 보고 있는 지인(탭) 위치.
@@ -146,8 +145,7 @@ public struct ReportMainFeature {
     private func reduceView(_ state: inout State, _ action: Action.View) -> Effect<Action> {
         switch action {
         case .onAppear:
-            // 툴팁은 화면에 들어올 때마다 다시 띄운다 — 접어 둔 건 그 방문에서만 유효하다.
-            state.isRedFlagTooltipVisible = true
+            // 툴팁은 State 초기값으로 한 번 띄운다 — 접으면 이 State 가 사는 동안 다시 안 띄운다.
             // 재진입(뒤로가기 복귀)에는 이미 받아둔 보고서를 그대로 쓴다.
             guard state.report == nil else { return .none }
             return fetch(sessionId: state.sessionId)
@@ -310,10 +308,15 @@ public struct ReportMainFeature {
 // MARK: - 표시 파생값
 
 public extension ReportMainFeature.State {
-    /// 한 줄 요약 아래 안내 줄 — 최대 2줄로 절단한다.
-    /// 보고서 단위 필드가 없어 걸린 카드들의 `cardRedFlagNotices` 를 카드 순서대로 모은다.
-    var visibleRedFlagNotices: [RedFlagNotice] {
-        Array(cards.flatMap { $0.cardRedFlagNotices ?? [] }.prefix(ReportMainFeature.maxRedFlagNotices))
+    /// «상세 리포트» 제목 옆 툴팁에 서는 안내 줄 — 보고서 단위 필드가 없어 카드에서 모은다.
+    /// 카드 순서대로 `resolutionNotice`(카드당 최대 1건) → `cardRedFlagNotices`(전부) 를 잇고,
+    /// 빈 문자열은 줄만 차지하므로 버린다. 둘 다 없으면 비고, 그때 뷰가 느낌표·툴팁을 함께 감춘다.
+    var detailReportNotices: [String] {
+        cards.flatMap { card in
+            let redFlags = (card.cardRedFlagNotices ?? []).map(\.message)
+            let notices = card.resolutionNotice.map { [$0] + redFlags } ?? redFlags
+            return notices.filter { !$0.isEmpty }
+        }
     }
 
     var cards: [InterviewReportCard] { report?.cards ?? [] }
@@ -323,12 +326,12 @@ public extension ReportMainFeature.State {
         cards.indices.contains(selectedCardIndex) ? cards[selectedCardIndex] : nil
     }
 
-    /// 레드플래그 안내 유무 — 섹션 제목 옆 느낌표·툴팁의 노출 조건 (정의서 §2-4).
-    var hasRedFlagNotices: Bool { !visibleRedFlagNotices.isEmpty }
+    /// 안내 유무 — 섹션 제목 옆 느낌표·툴팁의 노출 조건 (정의서 §2-4).
+    var hasDetailReportNotices: Bool { !detailReportNotices.isEmpty }
 
-    /// 툴팁 문구 — 안내가 여러 건이면 줄바꿈으로 잇는다(최대 2건).
-    var redFlagTooltipMessage: String {
-        visibleRedFlagNotices.map(\.message).joined(separator: "\n")
+    /// 툴팁 문구 — 안내가 여러 건이면 줄바꿈으로 잇는다(건수 상한 없음).
+    var detailReportTooltipMessage: String {
+        detailReportNotices.joined(separator: "\n")
     }
 
     /// 피드백을 제출한 지인 수 — 섹션이 통째로 nil 이면 0명.

@@ -116,17 +116,47 @@ struct ReportMainFeatureTests {
         }
     }
 
-    @Test("레드플래그 3건은 2건으로 잘린다")
-    func redFlagNoticesAreTruncated() async {
-        let clock = TestClock()
-        let store = store(report: { _ in InterviewReportFixtures.withRedFlags }, clock: clock)
+    @Test("툴팁은 해상도 안내와 카드 레드플래그를 카드 순서대로 전부 잇는다")
+    func tooltipJoinsResolutionAndRedFlagNotices() {
+        var state = ReportMainFeature.State(sessionId: 1)
+        state.report = InterviewReport(
+            status: .ready,
+            headline: nil,
+            video: nil,
+            cards: [InterviewReportFixtures.lowResolutionCard, InterviewReportFixtures.redFlaggedCard],
+            guestFeedback: nil
+        )
 
-        await store.send(.view(.onAppear))
-        await store.receive(\.inner.reportLoaded) {
-            $0.report = InterviewReportFixtures.withRedFlags
-            $0.loadState = .loaded
-        }
-        #expect(store.state.visibleRedFlagNotices.count == 2)
+        let expected = [InterviewReportFixtures.lowResolutionCard.resolutionNotice].compactMap { $0 }
+            + (InterviewReportFixtures.redFlaggedCard.cardRedFlagNotices ?? []).map(\.message)
+        #expect(state.detailReportNotices == expected)
+        #expect(state.detailReportTooltipMessage == expected.joined(separator: "\n"))
+    }
+
+    @Test("안내가 둘 다 없으면 느낌표·툴팁을 그리지 않는다")
+    func noNoticesHidesRedFlagTooltip() {
+        var state = ReportMainFeature.State(sessionId: 1)
+        state.report = InterviewReportFixtures.ready
+
+        #expect(state.detailReportNotices.isEmpty)
+        #expect(!state.hasDetailReportNotices)
+    }
+
+    @Test("한쪽만 오면 그 한 건만 툴팁에 선다")
+    func singleNoticeShowsAlone() {
+        var state = ReportMainFeature.State(sessionId: 1)
+
+        state.report = InterviewReportFixtures.lowResolutionOnly
+        #expect(
+            state.detailReportNotices
+                == [InterviewReportFixtures.lowResolutionCard.resolutionNotice].compactMap { $0 }
+        )
+
+        state.report = InterviewReportFixtures.withRedFlags
+        #expect(
+            state.detailReportNotices
+                == (InterviewReportFixtures.redFlaggedCard.cardRedFlagNotices ?? []).map(\.message)
+        )
     }
 
     @Test("만료·nil·형식오류 영상은 재생 대상이 아니다")
@@ -268,7 +298,7 @@ struct ReportMainFeatureTests {
             $0.report = InterviewReportFixtures.withRedFlags
             $0.loadState = .loaded
         }
-        #expect(store.state.hasRedFlagNotices)
+        #expect(store.state.hasDetailReportNotices)
 
         // 시안이 느낌표·툴팁을 함께 띄우므로 기본이 펼침이다 — 첫 탭이 접는 쪽이고,
         // 이 단정이 통과하는 것 자체가 기본값이 true 임을 확인한다.
@@ -276,8 +306,8 @@ struct ReportMainFeatureTests {
         await store.send(.view(.userTappedRedFlagInfo)) { $0.isRedFlagTooltipVisible = true }
     }
 
-    @Test("툴팁을 누르면 접히고, 화면에 다시 들어오면 도로 펼쳐진다")
-    func tooltipReopensOnReentry() async {
+    @Test("툴팁을 누르면 접히고, 화면에 다시 들어와도 도로 펼치지 않는다")
+    func tooltipStaysClosedOnReentry() async {
         let clock = TestClock()
         let store = store(report: { _ in InterviewReportFixtures.withRedFlags }, clock: clock)
 
@@ -288,8 +318,9 @@ struct ReportMainFeatureTests {
         }
 
         await store.send(.view(.userTappedRedFlagTooltip)) { $0.isRedFlagTooltipVisible = false }
-        // 재진입 — 보고서는 이미 있어 재조회하지 않지만 툴팁은 다시 띄운다.
-        await store.send(.view(.onAppear)) { $0.isRedFlagTooltipVisible = true }
+        // 재진입 — 보고서도 툴팁도 그대로다. 툴팁은 State 가 새로 만들어질 때만 다시 뜬다.
+        await store.send(.view(.onAppear))
+        #expect(!store.state.isRedFlagTooltipVisible)
     }
 
     @Test("지인을 바꾸면 펼쳐 둔 코멘트를 접는다")

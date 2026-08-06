@@ -51,7 +51,7 @@ public enum InterviewReportFixtures {
         )
     }
 
-    /// 카드 레드플래그 3건 — 화면이 2건으로 절단하는지 확인용(모순 계열 + 무결점 + 초과분).
+    /// 카드 레드플래그 3건 — 툴팁이 배열을 전부 잇는지 확인용(모순 계열 + 무결점 + 기타).
     /// 레드플래그는 보고서 단위 필드가 없다 — 걸린 카드의 `cardRedFlagNotices` 로만 온다.
     public static var withRedFlags: InterviewReport {
         InterviewReport(
@@ -244,7 +244,7 @@ public enum InterviewReportFixtures {
         )
     }
 
-    /// 레드플래그 3건이 걸린 카드 — 메인 안내 줄이 2건으로 절단되는지 확인용.
+    /// 레드플래그 3건이 걸린 카드 — 툴팁이 배열 전부를 줄바꿈으로 잇는지 확인용.
     public static var redFlaggedCard: InterviewReportCard {
         InterviewReportCard(
             axisOrder: 1,
@@ -262,7 +262,7 @@ public enum InterviewReportFixtures {
                     type: "FLAWLESS_NARRATIVE",
                     message: "포기한 것이나 아쉬운 점이 거의 언급되지 않았어요. 면접관은 비용을 아는 답변을 신뢰하는 경향이 있습니다."
                 ),
-                RedFlagNotice(type: "OTHER", message: "세 번째 안내 — 화면에서 잘려야 한다.")
+                RedFlagNotice(type: "OTHER", message: "세 번째 안내 — 툴팁 세 번째 줄로 선다.")
             ],
             questionIntentTitle: improveCard.questionIntentTitle,
             questionIntent: improveCard.questionIntent,
