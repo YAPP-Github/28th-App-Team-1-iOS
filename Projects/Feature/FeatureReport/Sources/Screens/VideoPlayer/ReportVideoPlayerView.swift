@@ -55,7 +55,13 @@ public struct ReportVideoPlayerView: View {
         // 영상 풀블리드 위 투명 바(기본값) — X 는 플레이어를 닫고 리포트로 (리듀서 소유).
         // 바닥이 어두운 영상이라 `surface: .dark`(흰 X). 시안은 `cancel/24px/dark`(검정 X)를
         // 얹었지만 DS 는 «다크 바닥 + 검정 X» 를 표현 불가로 못박았고, 딤 65% 위에선 안 보인다.
-        .hilitNavigationBar(surface: .dark, onClose: { send(.userTappedBack) })
+        // 상세 시트가 올라와 있는 동안은 leading 슬롯을 비운다 — 모디파이어를 분기하지 않고
+        // 값만 바꾼다(분기하면 뷰 identity 가 갈려 AVPlayer 를 쥔 `@State` 가 날아간다).
+        .hilitNavigationBar(
+            surface: .dark,
+            leading: store.isCloseButtonVisible ? .close : .hidden,
+            onClose: { send(.userTappedBack) }
+        )
         .contentShape(Rectangle())
         .onTapGesture { send(.userTappedSurface) }
         .onAppear {
