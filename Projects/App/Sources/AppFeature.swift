@@ -250,13 +250,10 @@ struct AppFeature {
                 return .send(.home(.view(.onAppear)))
             case .interview:
                 return .none
-            // 리포트가 올리는 두 신호 — 둘 다 커버만 닫고(홈 재조회 없음), «다시 연습» 만 면접 시작과 같은 위저드로 잇는다.
+            // 리포트가 올리는 신호는 이탈(X) 하나 — 커버만 닫는다(리포트를 읽는 동안
+            // 잔여·목록이 바뀌지 않아 홈 재조회가 없다).
             case .report(.presented(.delegate(.closeRequested))):
                 state.report = nil
-                return .none
-            case .report(.presented(.delegate(.retryRequested))):
-                state.report = nil
-                state.onboarding = OnboardingFeature.State(userName: state.home.userName)
                 return .none
             case .report:
                 return .none

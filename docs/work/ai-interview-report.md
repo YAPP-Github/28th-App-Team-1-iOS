@@ -108,7 +108,6 @@ Path 케이스 3개는 유지, **트리거만 §1-1 허브형으로 교체**한�
 }
 
 @CasePathable public enum Delegate: Equatable, Sendable {
-    case retryRequested    // 신규 — 분석 부족 시 다음 면접(면접 셋업으로)
     case closeRequested    // 유지
     // 지인 피드백은 모듈 안에서 push 하므로 부모로 올리지 않는다.
 }
@@ -122,7 +121,7 @@ Path 케이스 3개는 유지, **트리거만 §1-1 허브형으로 교체**한�
 | `main.delegate.peerFeedbackRequested` | `path.append(.peerFeedback(...))` |
 | `highlightDetail.delegate.videoJumpRequested(at:)` | 시트 dismiss 후 `.videoPlayer(startAt:)` push |
 | `path…backRequested` | `popLast()` |
-| `main.delegate.retryRequested` / `closeRequested` | 부모로 그대로 전파 |
+| `main.delegate.closeRequested` | 부모로 그대로 전파 |
 
 **평가 독립성**: 지인에게 넘기는 payload 는 영상과 질문 경계만. AI 피드백(하이라이트·진단·다음 대비)은 넘기지 않는다 — `ReportPeerFeedbackFeature` 는 `sessionId` 만 받고 링크 생성은 `FeedbackShareClient`(Domain)로 수행한다.
 
@@ -138,7 +137,6 @@ Path 케이스 3개는 유지, **트리거만 §1-1 허브형으로 교체**한�
 4. `[영상 다시보기]` — 영상 유효할 때만 활성
 5. **항목 카드 2~4개** — 각 카드: 제목(`질문 n-m`) · 질문 텍스트 · 질문 분석 · (해상도 안내) · (카드 레드플래그) · 대본+하이라이트
 6. `[지인에게 면접 영상 보내기]` — 4.5 진입
-7. (분석 부족일 때) 재도전 안내 + `[다시 연습하기]`
 
 ### 4-2. State
 
@@ -163,7 +161,6 @@ View 표시 분기는 State 를 늘리지 않고 computed 로 파생한다.
 
 ```swift
 public extension ReportMainFeature.State {
-    var isInsufficient: Bool { report?.status == .insufficientAnalysis }
     var visibleRedFlagNotices: [RedFlagNotice] { Array(cards.flatMap { $0.cardRedFlagNotices ?? [] }.prefix(2)) }
     var cards: [InterviewReportCard] { report?.cards ?? [] }
     var playableVideoURL: URL? {                     // 만료·nil·형식오류를 한 곳에서 흡수
@@ -200,7 +197,6 @@ public enum Action: ViewAction {
     @CasePathable public enum Delegate: Equatable, Sendable {
         case videoRequested(startAt: TimeInterval?)   // nil = 처음부터
         case peerFeedbackRequested                    // 코디네이터가 push (부모로 안 올라감)
-        case retryRequested
         case closeRequested
     }
 }
@@ -214,7 +210,7 @@ public enum Action: ViewAction {
 |---|---|
 | `loadState == .loading` | 로딩 — 폴링 진행, 진행 문구만(스켈레톤 없음, §10) |
 | `status == .ready` | 정상 — 한 줄 요약 + 카드 전체 |
-| `status == .insufficientAnalysis` | **분석 부족** — 한 줄 요약 자리에 분석 부족 문구, 채점된 카드만 노출, `[영상 다시보기]` + 재도전 안내 |
+| `status == .insufficientAnalysis` | **분석 부족** — 한 줄 요약 자리에 분석 부족 문구, 채점된 카드만 노출, `[영상 다시보기]`. 재도전 CTA 는 없다(2026-08-06 제거 — 재도전은 홈 «면접 시작») |
 | 카드 레드플래그 합계 비어있지 않음 | 위 분기와 **직교** — 요약 아래 안내 줄을 덧붙인다(요약 자체는 서버가 중립 문장으로 내려줌) |
 | `loadState == .pollTimedOut` | 채점 지연 안내 + 수동 재시도 |
 | `.failed(.reportNotFound)` | **폴링 계속** (보고서 미생성 상태 = 에러 코드로 옴, [[api#Interview Report]]) |
@@ -432,7 +428,7 @@ Domain 추가분에 `TranscriptSegment`·`TranscriptWord`(서버 타임스탬프
 4. **상세 시트** — `ReportHighlightDetailFeature` + `.sheet` 패턴 확립. 확장 전이므로 depth 1 설명까지.
 5. **영상 플레이어 1단계** — 통짜 재생 + 재생 실패 표시. 코디네이터 라우팅 허브화(§1-1)와 함께.
 6. **[확장 후] 2단계** — ✅ timestamp(`scriptSegments`/`script`) → 구간 seek·대본 오버레이·`[영상 보러가기]`·depth 2(후속 질문/의도 대조). 키워드 태그만 서버 필드 대기라 «비면 렌더 안 함» 상태로 남아 있다.
-7. **AppFeature 배선** — ✅ 2026-08-05. 진입은 **홈 위젯② [레포트 보기]** 다: `home(.delegate(.reportDetailRequested(sessionId:)))` → `state.report = ReportFeature.State(sessionId:)` fullScreenCover, `closeRequested` → dismiss, `retryRequested` → dismiss + 온보딩 위저드(면접 셋업). `// depends-on: [[report]]` 라벨 붙였다. 리포트 커버 중에는 전역 LoadingModal 을 끈다(폴링마다 딤이 깜빡인다).
+7. **AppFeature 배선** — ✅ 2026-08-05. 진입은 **홈 위젯② [레포트 보기]** 다: `home(.delegate(.reportDetailRequested(sessionId:)))` → `state.report = ReportFeature.State(sessionId:)` fullScreenCover, `closeRequested` → dismiss. (`retryRequested` → 온보딩 위저드 배선도 함께 깔았으나 2026-08-06 «다시 연습하기» CTA 제거와 함께 회수했다.) `// depends-on: [[report]]` 라벨 붙였다. 리포트 커버 중에는 전역 LoadingModal 을 끈다(폴링마다 딤이 깜빡인다).
    남은 경로: **면접 정상 종료 → r1 직행** 은 여전히 미배선이다 — 면접은 리포트 대기 화면에서 홈으로 돌아가고, 홈 재진입이 목록을 재조회한다.
 8. **문서 동기화** — `[[report]]` 노드를 실제 구조로 갱신(현재 "4화면 골격·임시 선형" 서술은 이 정의서 적용 시 거짓이 된다), `@lat` 라벨 재부착, `lat check` 통과.
 
@@ -453,7 +449,7 @@ Domain 추가분에 `TranscriptSegment`·`TranscriptWord`(서버 타임스탬프
 - 플레이어: 건너뛰기 ±10초 범위 클램프, 끝에서 재생 → 0 으로 되감기
 - 플레이어: 진행바 칸 탭 → 그 구간 시작으로 이동, 구간 없으면 한 칸 폴백
 - 플레이어: 이동 직후 옛 위치 보고 무시(`isSeeking`), 시트 «영상 보러가기» → 닫기 + 이동 + 재생 재개
-- 코디네이터: `videoRequested`/`peerFeedbackRequested` → 각 화면 push (체인 아님), `backRequested` → pop, `retryRequested`/`closeRequested` → 부모 전파
+- 코디네이터: `videoRequested`/`peerFeedbackRequested` → 각 화면 push (체인 아님), `backRequested` → pop, `closeRequested` → 부모 전파
 
 `InterviewReportClient.testValue` 는 `unimplemented` 유지 — 테스트마다 `withDependencies` 로 명시 주입한다.
 

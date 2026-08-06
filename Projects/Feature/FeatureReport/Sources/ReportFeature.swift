@@ -51,8 +51,6 @@ public struct ReportFeature {
         /// 부모(AppFeature) 통보. 모듈 안에서 끝나는 전환은 여기 올리지 않는다.
         @CasePathable
         public enum Delegate: Equatable, Sendable {
-            /// 분석 부족 — 다시 연습하기. 면접 셋업 진입은 부모가 처리한다.
-            case retryRequested
             /// 리포트 이탈(X) — dismiss 는 부모가 처리한다.
             case closeRequested
         }
@@ -105,9 +103,6 @@ public struct ReportFeature {
                 sessionId: state.main.sessionId
             )))
             return .none
-
-        case .retryRequested:
-            return .send(.delegate(.retryRequested))
 
         case .closeRequested:
             return .send(.delegate(.closeRequested))

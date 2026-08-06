@@ -87,7 +87,6 @@ public struct ReportMainFeature {
             /// 태도 코멘트 펼치기/접기 (항목 코드).
             case userTappedAttitudeComment(axisCode: String)
             case userTappedPeerFeedback
-            case userTappedRetry
         }
 
         @CasePathable
@@ -107,8 +106,6 @@ public struct ReportMainFeature {
             /// 영상 플레이어 요청 — `entry` 는 «어디서 눌렀는가»(플레이어 하단 버튼 유무를 가른다).
             case videoRequested(startAt: TimeInterval?, entry: ReportVideoPlayerFeature.Entry)
             case peerFeedbackRequested
-            /// 분석 부족 — 다시 연습하기.
-            case retryRequested
             case closeRequested
         }
     }
@@ -210,9 +207,6 @@ public struct ReportMainFeature {
 
         case .userTappedPeerFeedback:
             return .send(.delegate(.peerFeedbackRequested))
-
-        case .userTappedRetry:
-            return .send(.delegate(.retryRequested))
         }
     }
 
@@ -316,9 +310,6 @@ public struct ReportMainFeature {
 // MARK: - 표시 파생값
 
 public extension ReportMainFeature.State {
-    /// 분석 부족 면접 — 한 줄 요약 자리에 안내문을 쓰고 채점된 카드만 노출한다.
-    var isInsufficient: Bool { report?.status == .insufficientAnalysis }
-
     /// 한 줄 요약 아래 안내 줄 — 최대 2줄로 절단한다.
     /// 보고서 단위 필드가 없어 걸린 카드들의 `cardRedFlagNotices` 를 카드 순서대로 모은다.
     var visibleRedFlagNotices: [RedFlagNotice] {
