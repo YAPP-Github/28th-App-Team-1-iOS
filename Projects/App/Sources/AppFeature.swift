@@ -9,6 +9,7 @@ import ComposableArchitecture
 import DomainAppVersionInterface
 import DomainAuthInterface
 import DomainConsentInterface
+import DomainInterviewInterface
 import Feature
 import Foundation
 
@@ -101,6 +102,7 @@ struct AppFeature {
     @Dependency(\.appVersionClient) var appVersionClient
     @Dependency(\.authClient) var authClient
     @Dependency(\.consentClient) var consentClient
+    @Dependency(\.interviewVideoUploadQueue) var uploadQueue
     @Dependency(\.onboardingDraftStore) var draftStore
     @Dependency(\.openURL) var openURL
 
@@ -118,7 +120,11 @@ struct AppFeature {
                 // dev 계에서만 Home 온보딩 진입·디버그 로그아웃 버튼을 노출한다.
                 state.home.showsOnboardingEntry = AppEnvironment.isDev
                 state.home.showsDebugLogout = AppEnvironment.isDev
-                return resolveLaunchRouting()
+                // 미완 영상 업로드 재개(저널) — 강제 종료·complete 실패 회복은 실행 시점 훅이 유일하다(스펙 ⑤).
+                return .merge(
+                    resolveLaunchRouting(),
+                    .run { _ in await uploadQueue.resumePending() }
+                )
 
             case .retryLaunchRouting:
                 state.root = .splash

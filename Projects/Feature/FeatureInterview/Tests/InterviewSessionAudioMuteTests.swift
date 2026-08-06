@@ -79,6 +79,7 @@ struct InterviewSessionAudioMuteTests {
                 return finishedPlayback()
             }
             $0.speechClient.finishSessionAudioRecording = { .stub }
+            $0.speechClient.stopCapture = {}
             $0.speechClient.answerAudio = { nil }
             $0.interviewClient.submitAnswer = { _, _ in .ended(.normalEnd, wrapUp: "bXAz") }
         }

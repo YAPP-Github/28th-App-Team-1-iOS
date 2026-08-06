@@ -39,8 +39,6 @@ public struct InterviewView: View {
                     InterviewSessionView(store: store)
                 } else if let store = store.scope(state: \.screen.failure, action: \.screen.failure) {
                     InterviewFailureView(store: store)
-                } else if let store = store.scope(state: \.screen.reportPending, action: \.screen.reportPending) {
-                    InterviewReportPendingView(store: store)
                 }
             }
             .animation(.easeInOut(duration: 0.3), value: screenCaseID)
@@ -52,7 +50,7 @@ public struct InterviewView: View {
         switch store.screen {
         case let .readiness(state): (showsTopScrim: true, previewHandle: state.previewHandle)
         case let .session(state): (showsTopScrim: false, previewHandle: state.previewHandle)
-        case .failure, .reportPending: nil
+        case .failure: nil
         }
     }
 
@@ -67,7 +65,6 @@ public struct InterviewView: View {
         case .readiness: 0
         case .session: 1
         case .failure: 2
-        case .reportPending: 3
         }
     }
 }

@@ -14,8 +14,8 @@ import Foundation
 @testable import FeatureInterviewImplementation
 
 // 세션 리듀서 테스트 공용 픽스처 — 세션 스위트가 여러 파일로 나뉘어(파일당 1000행 SwiftLint 한계)
-// 같은 스텁이 사본으로 갈라지지 않게 여기 한 곳에 둔다. 소비처: InterviewSessionFeatureTests.swift ·
-// InterviewSessionAudioMuteTests.swift.
+// 같은 스텁이 사본으로 갈라지지 않게 여기 한 곳에 둔다. 소비처: InterviewSessionAudioMuteTests.swift ·
+// InterviewSessionFeatureTests.swift · InterviewSessionNetworkFailureTests.swift.
 
 extension InterviewSessionFeature.State {
     /// 표준 시작 상태 — sessionId 7, 요약 질문(questionId 1). summaryAudio 는 base64 mp3(없으면 스트림 폴백).

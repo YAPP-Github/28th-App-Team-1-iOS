@@ -15,6 +15,8 @@ import ComposableArchitecture
 
 @main
 struct HilitApp: App {
+    /// background URLSession wake 수신 — SwiftUI 수명주기에는 이 콜백이 없어 어댑터가 필요하다.
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Dependency(\.authClient) var authClient
 
     init() {
