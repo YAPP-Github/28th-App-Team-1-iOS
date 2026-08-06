@@ -150,16 +150,19 @@ public struct ReportMainView: View {
                 questionRow(card)
 
                 // 질문 의도 분석 — 볼드 제목·본문 모두 서버 소유 문구.
+                // 메인에 서는 분석 카드는 이 한 종류뿐이다(시안 443:7204) — «Hilit의 답변 분석» 은
+                // 하이라이트 상세 시트 전용이라 여기서 그리지 않는다.
                 if let questionIntent = card.questionIntent {
-                    AnalysisCard(kind: .question, title: card.questionIntentTitle, contents: questionIntent)
+                    QuestionAnalysisCard(title: card.questionIntentTitle, contents: questionIntent)
                 }
                 // 해상도 낮음 안내 — 이 카드는 하이라이트가 없어 시트로 가지 않는다.
+                // 분석이 아니라 «안내» 라 분석 카드(36pt 아이콘 + 라벨) 대신 한 줄 판을 쓴다.
                 if let resolutionNotice = card.resolutionNotice {
-                    AnalysisCard(kind: .improvement, contents: resolutionNotice)
+                    MessageCard(.mini(resolutionNotice))
                 }
-                // 카드 레드플래그 — 해상도와 독립이라 해상도 낮음 카드에도 표기한다.
+                // 카드 레드플래그 — 해상도와 독립이라 해상도 낮음 카드에도 표기한다(안내 줄과 같은 한 줄 판).
                 ForEach(Array((card.cardRedFlagNotices ?? []).enumerated()), id: \.offset) { _, notice in
-                    AnalysisCard(kind: .improvement, contents: notice.message)
+                    MessageCard(.mini(notice.message))
                 }
             }
 
