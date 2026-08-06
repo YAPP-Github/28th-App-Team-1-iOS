@@ -50,8 +50,13 @@ actor AudioCaptureManager {
         let (stream, continuation) = AsyncStream<SpeechCaptureEvent>.makeStream()
         do {
             let session = AVAudioSession.sharedInstance()
-            // .playAndRecord: 추후 질문 TTS 재생과 마이크 캡처를 한 세션에서 쓴다.
-            try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
+            // .playAndRecord: 질문 TTS 재생과 마이크 캡처가 한 세션을 공유한다.
+            // .defaultToSpeaker: 액세서리가 없을 때 리시버 대신 하단 스피커로 — 없으면 거치 상태에서 거의 안 들린다.
+            // .allowBluetoothA2DP: 이어폰 출력 허용 — playAndRecord 는 명시해야 켜진다(playback 계열만 자동).
+            //   입력은 A2DP 가 출력 전용이라 내장 마이크로 남는다. HFP(.allowBluetoothHFP)는 **같이 켜지 않는다** —
+            //   양쪽을 지원하는 기기(AirPods)에서 CoreAudio 가 HFP 를 우선해 면접관 음성이 통화 음질로 떨어지고,
+            //   답변 녹음까지 8/16kHz 모노가 되어 서버 STT 정확도와 최종 영상 음질이 같이 내려간다.
+            try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothA2DP])
             try session.setActive(true)
 
             let engine = AVAudioEngine()
