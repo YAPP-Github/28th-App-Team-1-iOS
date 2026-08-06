@@ -93,7 +93,6 @@ public struct ReportFeature {
                 videoURL: url,
                 startAt: startAt,
                 cards: state.main.cards,
-                script: state.main.report?.script ?? [],
                 entry: entry
             )))
             return .none

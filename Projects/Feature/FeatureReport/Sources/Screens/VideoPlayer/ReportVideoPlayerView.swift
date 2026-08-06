@@ -13,7 +13,7 @@ import SwiftUI
 
 // Figma «Report_VideoPlayer» https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS
 //   443:7804 기본(딤 없음) · 443:7828 시트 진입 판(하단 «이전 화면으로 가기»)
-//   443:7852 컨트롤 노출(딤 65% + video-control) · 443:7902 대본 올림
+//   443:7852 컨트롤 노출(딤 65% + video-control) · 443:7902 대본(긴 턴) · 443:7941 대본(짧은 턴)
 // 하단 바(진행바·대본 버튼·«이전 화면으로 가기»)는 **붙박이**다 — 자동 숨김을 타는 건 딤과 재생 컨트롤뿐.
 // 딤은 영상 위에만 얹힌다: 재생 컨트롤·하단 바를 딤보다 위에 쌓아 색이 변하지 않게 한다.
 // 시스템 컨트롤을 쓰지 않고 AVPlayerLayer 를 직접 얹는다(Figma 컨트롤이 커스텀이라).
@@ -33,6 +33,8 @@ public struct ReportVideoPlayerView: View {
             // 영상·딤은 화면 끝까지 번지고, 상단 X·하단 바는 세이프에어리어를 지킨다.
             Color.HilitBlack.b900.ignoresSafeArea()
             videoSurface.ignoresSafeArea()
+            // 상단 X 를 밝은 영상 위에서도 읽히게 하는 스크림 — 항상 깐다 (Figma 443:7902 상단 그라데이션).
+            topScrim
             // 붙박이 하단 바를 딤 없이도 읽히게 하는 스크림 — 딤보다 아래에 깔린다.
             if store.isBottomScrimVisible {
                 bottomScrim
@@ -45,8 +47,8 @@ public struct ReportVideoPlayerView: View {
             }
             if store.isTranscriptVisible {
                 TranscriptOverlay(
-                    lines: store.transcriptLines,
-                    currentLineID: store.currentLineID,
+                    line: store.activeTranscriptLine,
+                    currentSentenceIndex: store.transcriptPosition?.sentenceIndex ?? 0,
                     onHighlightTap: { cardIndex, spanIndex in
                         send(.userTappedHighlight(cardIndex: cardIndex, spanIndex: spanIndex))
                     }
@@ -117,7 +119,7 @@ public struct ReportVideoPlayerView: View {
         if store.currentTime > 0 {
             player.seek(to: cmTime(store.currentTime))
         }
-        // 0.2초 간격 — 진행바 칸 채움과 대본의 «현재 줄» 이 따라올 만큼만 촘촘하게.
+        // 0.2초 간격 — 진행바 칸 채움과 대본의 «현재 문장» 이 따라올 만큼만 촘촘하게.
         timeObserver = player.addPeriodicTimeObserver(
             forInterval: CMTime(seconds: 0.2, preferredTimescale: Self.timescale),
             queue: .main
@@ -166,6 +168,18 @@ public struct ReportVideoPlayerView: View {
                 bottomBar
             }
         }
+    }
+
+    /// DS `VideoOverlay(.darkClose)` 를 위아래로 뒤집어 상단에 깐다 — DS 램프는 «아래로 갈수록
+    /// 진해지는» 방향뿐이라 방향만 화면이 뒤집는다(시안 443:7902 상단 판도 같은 컴포넌트의 뒤집기).
+    /// 탭을 먹지 않아(컴포넌트 내장) 스크림 뒤 영상 탭이 살아 있다.
+    private var topScrim: some View {
+        VStack(spacing: 0) {
+            VideoOverlay(.darkClose)
+                .scaleEffect(x: 1, y: -1)
+            Spacer(minLength: 0)
+        }
+        .ignoresSafeArea()
     }
 
     /// DS `VideoOverlay(.darkClose)`(Figma «video overlay» 443:7830) — 시안 높이 그대로 쓴다.
@@ -342,13 +356,15 @@ private extension InterviewReportCard {
     ReportVideoPlayerView(
         store: Store(
             initialState: {
+                // startAt 으로 넣어야 대본 위치(transcriptPosition)까지 그 시각으로 선다 —
+                // currentTime 직접 대입은 위치를 다시 세우지 않는다.
                 var state = ReportVideoPlayerFeature.State(
                     videoURL: URL(string: "https://example.com/interview/1.mp4")!,
+                    startAt: 3,
                     cards: [.previewCard, .previewCard]
                 )
                 state.isTranscriptVisible = true
                 state.duration = 4.4
-                state.currentTime = 3
                 return state
             }()
         ) {

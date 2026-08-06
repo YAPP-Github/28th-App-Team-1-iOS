@@ -14,7 +14,7 @@ import Foundation
 ///
 /// **AVPlayer 는 State 에 두지 않는다** — 선례 `GuestVideoPlayerView`(FeatureGuestFeedback)대로
 /// View-local `@State` 가 소유한다. 대신 재생 여부·현재 시각은 리듀서가 갖는다: 컨트롤 자동 숨김,
-/// 진행바 칸 채움, 대본 오버레이의 «현재 줄» 이 모두 시각에 딸린 화면 상태라서 State 없이 못 만든다.
+/// 진행바 칸 채움, 대본 오버레이의 «현재 문장» 이 모두 시각에 딸린 화면 상태라서 State 없이 못 만든다.
 /// 뷰로 내리는 이동 명령은 `seekToken`(단조 증가) + `seekTarget` 쌍 — 뷰가 토큰 변화만 보고 seek 한다.
 ///
 /// **만료 판정은 여기 책임이 아니다** — 리포트가 `playableVideoURL` 로 걸러 만료면 진입 자체가 없다.
@@ -45,8 +45,6 @@ public struct ReportVideoPlayerFeature {
         public let startAt: TimeInterval?
         /// STT 오버레이·하이라이트 시트 재료.
         public let cards: [InterviewReportCard]
-        /// 세션 전체 발화 타임라인 — 진행바 칸의 재료(면접관 멘트 포함).
-        public let script: [ScriptSegment]
         /// 진입 경로 — 하단 «이전 화면으로 가기» 노출만 가른다.
         public let entry: Entry
         /// 카드·타임라인에서 펼친 대본 (파생값 — 입력이 바뀌지 않으니 한 번만 만든다).
@@ -73,26 +71,24 @@ public struct ReportVideoPlayerFeature {
         public var seekToken = 0
         /// 이동 중 — 목표에 닿기 전 보고되는 이전 위치를 버리기 위한 표식.
         public var isSeeking = false
-        /// 지금 재생 중인 대본 줄(카드 인덱스). 시각에서 파생되지만 **State 에 둔다** —
-        /// 매 0.2초 시각 갱신마다 오버레이 전체를 다시 그리지 않게, 줄이 바뀔 때만 값이 변하게.
-        public var currentLineID: Int?
+        /// 지금 재생이 닿은 대본 위치(턴 + 문장). 시각에서 파생되지만 **State 에 둔다** —
+        /// 매 0.2초 시각 갱신마다 오버레이 전체를 다시 그리지 않게, 문장이 바뀔 때만 값이 변하게.
+        var transcriptPosition: VideoTranscript.Position?
         @Presents public var highlightDetail: ReportHighlightDetailFeature.State?
 
         public init(
             videoURL: URL,
             startAt: TimeInterval? = nil,
             cards: [InterviewReportCard] = [],
-            script: [ScriptSegment] = [],
             entry: Entry = .reportMain
         ) {
             self.videoURL = videoURL
             self.startAt = startAt
             self.cards = cards
-            self.script = script
             self.entry = entry
-            self.transcript = VideoTranscript(cards: cards, script: script)
+            self.transcript = VideoTranscript(cards: cards)
             self.currentTime = startAt ?? 0
-            self.currentLineID = transcript.currentLineID(at: currentTime)
+            self.transcriptPosition = transcript.position(at: currentTime)
         }
     }
 
@@ -114,13 +110,13 @@ public struct ReportVideoPlayerFeature {
             /// 재생 실패 안내의 «다시 시도» — 플레이어를 새로 만들어 보던 시각부터 다시 건다.
             // TODO(prd-외): PRD 에 재생 실패 UX 가 없어 관례(재시도 버튼)로 메운 재량 구현 — 시안 나오면 재검토.
             case userTappedPlaybackRetry
-            /// 왼쪽 화살표 — 진행바 한 칸(대본 구간) 되돌리기. 초 단위가 아니다.
+            /// 왼쪽 화살표 — 진행바 한 칸(질문 턴) 되돌리기. 초 단위가 아니다.
             case userTappedPreviousChunk
-            /// 오른쪽 화살표 — 진행바 한 칸(대본 구간) 앞으로.
+            /// 오른쪽 화살표 — 진행바 한 칸(질문 턴) 앞으로.
             case userTappedNextChunk
             /// 하단 아이콘 — 대본 오버레이 토글.
             case userTappedTranscriptToggle
-            /// 진행바 칸 — 그 구간 시작으로 이동.
+            /// 진행바 칸 — 그 턴 시작으로 이동.
             case userTappedChunk(index: Int)
             /// 오버레이 대본의 하이라이트 탭.
             case userTappedHighlight(cardIndex: Int, spanIndex: Int)
@@ -225,7 +221,7 @@ public struct ReportVideoPlayerFeature {
             state.areControlsVisible = true
             return startControlsHideTimer()
 
-        // 화살표는 «구간 = 이동 단위» 규약을 그대로 따른다 — 진행바 칸과 같은 눈금으로 움직여서
+        // 화살표는 «턴 = 이동 단위» 규약을 그대로 따른다 — 진행바 칸과 같은 눈금으로 움직여서
         // 어디로 가는지 하단 바가 미리 보여준다(초 단위 건너뛰기면 칸과 어긋난다).
         case .userTappedPreviousChunk:
             guard let start = state.previousChunkStart else { return .none }
@@ -271,7 +267,7 @@ public struct ReportVideoPlayerFeature {
                 state.isSeeking = false
             }
             state.currentTime = time
-            state.currentLineID = state.transcript.currentLineID(at: time)
+            state.transcriptPosition = state.transcript.position(at: time)
             return .none
 
         case let .durationLoaded(duration):
@@ -306,7 +302,7 @@ public struct ReportVideoPlayerFeature {
         state.seekTarget = target
         state.seekToken += 1
         state.currentTime = target
-        state.currentLineID = state.transcript.currentLineID(at: target)
+        state.transcriptPosition = state.transcript.position(at: target)
         state.isSeeking = true
         state.areControlsVisible = true
         if resuming { state.isPlaying = true }
@@ -326,7 +322,7 @@ public struct ReportVideoPlayerFeature {
 
 // 파생값은 모듈 안(View) 에서만 쓰고 `VideoTranscript` 를 노출하므로 internal 로 둔다.
 extension ReportVideoPlayerFeature.State {
-    /// 진행바 칸. 서버 구간이 없으면 영상 전체를 한 칸으로 대체한다 — 바가 사라지지 않게.
+    /// 진행바 칸(= 질문 턴). 서버 발화가 없으면 영상 전체를 한 칸으로 대체한다 — 바가 사라지지 않게.
     /// 이 대체 칸은 `transcript.chunks` 에 없어서 탭해도 아무 일이 없다(이동할 구간을 모른다).
     var progressChunks: [VideoTranscript.Chunk] {
         guard transcript.chunks.isEmpty else { return transcript.chunks }
@@ -354,8 +350,11 @@ extension ReportVideoPlayerFeature.State {
         return chunks[index + 1].start
     }
 
-    /// 오버레이 대본 줄.
-    var transcriptLines: [VideoTranscript.Line] { transcript.lines }
+    /// 오버레이가 보여줄 현재 턴 대본. 재생이 첫 발화 앞이면 nil — 오버레이는 스크림만 깐다.
+    var activeTranscriptLine: VideoTranscript.Line? {
+        guard let position = transcriptPosition else { return nil }
+        return transcript.line(with: position.lineID)
+    }
 
     /// 끝까지 재생됐는지. 길이를 모르면(0) 판정하지 않는다.
     var hasReachedEnd: Bool { duration > 0 && currentTime >= duration }

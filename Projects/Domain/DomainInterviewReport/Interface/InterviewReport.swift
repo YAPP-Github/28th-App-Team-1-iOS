@@ -142,7 +142,8 @@ public struct InterviewReportCard: Decodable, Equatable, Sendable {
     /// 질문 의도 설명
     public let questionIntent: String?
     /// 이 질문 턴의 발화들 — 면접관 질문과 면접자 답변이 `role` 로 섞여 온다.
-    /// 플레이어 진행바의 칸·구간 이동 단위는 이 중 면접자 발화다(`orderedSegments`).
+    /// 플레이어 진행바 칸(= 턴)의 시간 범위가 발화 전체에서, 오버레이 문장은
+    /// 이 중 면접자 발화(`orderedSegments`)에서 나온다.
     public let scriptSegments: [ScriptSegment]?
 
     public init(
@@ -219,6 +220,7 @@ public struct InterviewReport: Decodable, Equatable, Sendable {
     public let cards: [InterviewReportCard]?
     /// 세션 전체 발화 타임라인 — 첫 면접관 멘트부터 마무리까지 `startSec` 오름차순 한 배열.
     /// 카드의 `scriptSegments` 가 그 턴 안의 문장만 담는 것과 달리 이건 인사·마무리까지 들어 있다.
+    /// 지금 화면 사용처는 없다 — 진행바 칸이 턴 단위가 되면서(2026-08-07) 카드 발화만 쓴다.
     public let script: [ScriptSegment]?
     public let guestFeedback: GuestFeedbackSection?
 

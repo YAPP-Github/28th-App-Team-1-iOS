@@ -20,7 +20,7 @@
 | 상세 시트 depth 1 진단 (행동형 키워드 태그) | ⚠️ 부분 | 볼드 줄은 `span.title` 해결, 키워드 태그 필드만 없음 |
 | 상세 시트 depth 2 다음 대비 (후속 질문) | ✅ 만들 수 있다 | 해결 — `reason` 별 `followUpQuestions` / OFF_INTENT 대조 3필드 |
 | `[영상 보러가기]` · STT 오버레이 시간 동기 · 구간 seek | ✅ 만들 수 있다 | 해결 — `card.scriptSegments` + 최상위 `script` |
-| 진행바의 **질문(턴) 경계 표시** | ❌ | 구간 경계는 알지만 «이 구간이 몇 번 질문인지» 는 카드 소속으로만 안다 — 시각적 턴 구분은 미구현 |
+| 진행바의 **질문(턴) 경계 표시** | ✅ 해소 | 칸 자체가 턴 단위가 되면서(2026-08-07) 경계 표시 문제가 사라졌다 — 칸 하나 = 질문 턴 하나 |
 | 레드플래그 타임라인 표시 | ❌ | 레드플래그에 시각이 없다 (§9-1 미요청) |
 
 → **§9-1 확장 요청을 백엔드와 먼저 잠근다.** 확장 전에도 §11 의 1~5단계(리포트 본문 + 통짜 영상 재생)는 착수 가능하고, 6단계부터가 확장 의존이다.
@@ -82,7 +82,7 @@ ReportMain ─[영상 다시보기]─────────────→ Re
 | `card.questionIntent: String?` | 카드의 "질문 분석" | 내부 `probe_text` 를 서버가 사용자 표현으로 번역한 값 |
 | `card.transcript: String?` | 답변 대본 | 하이라이트 렌더의 베이스 문자열 |
 | `card.highlightSpans: [HighlightSpan]?` | 대본 하이라이트 + 시트 진입점 | `startIndex/endIndex` 는 `transcript` 문자열 인덱스 — §9-2 안전 슬라이싱 필수 |
-| `script` · `card.scriptSegments` | 플레이어 진행바 칸(전자) · 오버레이 «현재 줄»·시각 폴백(후자의 면접자 발화) | 칸 하나 = 발화 하나. 서버 정렬을 믿지 않고 `startSec` 으로 다시 세운다(`orderedSegments`) |
+| `script` · `card.scriptSegments` | 플레이어 진행바 칸·오버레이 문장·시각 폴백은 전부 후자 — `script` 는 화면 사용처 없음(2026-08-07) | 칸 하나 = 카드(질문 턴) 하나. 서버 정렬을 믿지 않고 `startSec` 으로 다시 세운다(`orderedSegments`) |
 | `card.words: [TranscriptWord]?` | (없음 — 계약만 보존) | 단어 강조가 필요해질 때 쓴다. **말속도·군말·침묵 산출에 쓰지 않는다** (§0-2 MVP 제외) |
 | `card.resolutionNotice: String?` | 느낌표 툴팁 (카드 본문에는 안 세운다) | **서버 소유 문구.** 있으면 해상도 낮음 카드 → 하이라이트가 없어 시트로 진입하지 않는다 |
 | `card.cardRedFlagNotices: [RedFlagNotice]?` | 느낌표 툴팁 (카드 본문에는 안 세운다) | 해상도와 **독립** — 해상도 낮음 카드의 안내와 나란히 툴팁에 선다. 원소는 문구 문자열 또는 `{type, message}` 둘 다 — `RedFlagNotice` 가 양쪽 디코딩 |
@@ -234,7 +234,7 @@ public enum Action: ViewAction {
 
 두 진입점(리포트 카드 / 플레이어 대본 오버레이)이 **같은 리듀서를 재사용**한다. 내용 동일, 차이는 `[영상 보러가기]` 버튼 노출 여부 하나.
 
-**플레이어 안에서도 이 버튼을 숨기지 않는다**(초판 결정 폐기). 오버레이 대본은 재생 위치와 무관하게 스크롤해 다른 장면의 하이라이트도 누를 수 있어서, «이미 그 장면에 멈춰 있다» 는 전제가 성립하지 않는다 — Figma(3165:14925)도 노출한다. 플레이어에서 누르면 시트를 닫고 그 장면으로 이동해 재생을 재개한다.
+**플레이어 안에서도 이 버튼을 숨기지 않는다**(초판 결정 폐기). 오버레이 대본은 지나온 문장을 스크롤로 되짚어 다른 장면의 하이라이트도 누를 수 있어서, «이미 그 장면에 멈춰 있다» 는 전제가 성립하지 않는다 — Figma(3165:14925)도 노출한다. 플레이어에서 누르면 시트를 닫고 그 장면으로 이동해 재생을 재개한다.
 
 ```swift
 @ObservableState public struct State: Equatable {
@@ -312,12 +312,12 @@ public enum Action: ViewAction {
     public var seekTarget: TimeInterval = 0      // 뷰로 내리는 이동 명령
     public var seekToken = 0                     // 단조 증가 — 같은 시각 재이동도 놓치지 않는다
     public var isSeeking = false                 // 목표에 닿기 전 보고되는 옛 위치를 버린다
-    public var currentLineID: Int?               // 재생 중인 대본 줄(카드 인덱스)
+    var transcriptPosition: VideoTranscript.Position?  // 재생이 닿은 대본 위치(턴 + 문장)
     @Presents public var highlightDetail: ReportHighlightDetailFeature.State?
 }
 ```
 
-**AVPlayer 는 뷰가, 재생 상태는 리듀서가 갖는다.** 인스턴스는 `GuestVideoPlayerView`([FeatureGuestFeedback](../../Projects/Feature/FeatureGuestFeedback/Sources/View/GuestVideoPlayerView.swift)) 선례대로 View-local `@State` 지만, 재생 여부·현재 시각은 State 에 올린다 — 컨트롤 자동 숨김·진행바 칸 채움·«현재 줄» 이 전부 시각에 딸린 화면 상태다(초판의 "재생 위치를 리듀서에 올리지 않는다"는 커스텀 컨트롤이 없다는 전제였고, Figma 컨트롤이 커스텀이라 성립하지 않는다).
+**AVPlayer 는 뷰가, 재생 상태는 리듀서가 갖는다.** 인스턴스는 `GuestVideoPlayerView`([FeatureGuestFeedback](../../Projects/Feature/FeatureGuestFeedback/Sources/View/GuestVideoPlayerView.swift)) 선례대로 View-local `@State` 지만, 재생 여부·현재 시각은 State 에 올린다 — 컨트롤 자동 숨김·진행바 칸 채움·«현재 문장» 이 전부 시각에 딸린 화면 상태다(초판의 "재생 위치를 리듀서에 올리지 않는다"는 커스텀 컨트롤이 없다는 전제였고, Figma 컨트롤이 커스텀이라 성립하지 않는다).
 
 **2단계로 나눴고, 둘 다 구현됐다** (2단계는 대본 발화 타임스탬프 도착으로 해금).
 
@@ -326,15 +326,15 @@ public enum Action: ViewAction {
 | 1단계 | 진입 즉시 재생 · 전체화면 · 재생 실패 표시 · 좌상단 X | ✅ |
 | 2단계 | 대본 오버레이 토글 · 재생-대본 동기 · 하이라이트 탭 → 정지 + 시트 · 구간 seek · `startAt` 진입 | ✅ |
 
-컨트롤 규약: 무입력 3초 뒤 딤·재생 버튼·하단 바가 사라져 영상만 남는다. **일시정지 중에는 숨기지 않고**(재생 버튼이 사라진다), 대본을 켜 둔 동안은 하단 바를 유지한다(대본의 일부). 건너뛰기는 ±10초, 끝까지 본 뒤 재생을 누르면 처음으로 되감는다.
+컨트롤 규약: 무입력 3초 뒤 딤·재생 버튼·하단 바가 사라져 영상만 남는다. **일시정지 중에는 숨기지 않고**(재생 버튼이 사라진다), 대본을 켜 둔 동안은 하단 바를 유지한다(대본의 일부). 좌우 화살표는 진행바 한 칸(질문 턴)씩 움직이고(옛 ±10초 폐기), 끝까지 본 뒤 재생을 누르면 처음으로 되감는다.
 
-진행바는 **칸 하나 = 구간 하나**(폭 ∝ 길이, 탭 = 그 구간 시작으로 이동)다. 카드 경계를 넘겨 이어 붙인다 — 진행바는 질문 턴이 아니라 영상 시간축을 보여준다. 서버 구간이 없으면 영상 전체 한 칸으로 대체하고, 이때 탭은 무반응이다(이동할 지점을 모른다).
+진행바는 **칸 하나 = 카드(질문 턴) 하나**(폭 ∝ 길이, 탭 = 그 턴 시작으로 이동)다(2026-08-07 — 옛 «발화 하나당 칸 하나» 는 너무 잘게 쪼개져 폐기). 칸의 시간 범위는 턴 발화 전체(면접관 질문 포함 — 탭하면 질문부터). 서버 발화가 없으면 영상 전체 한 칸으로 대체하고, 이때 탭은 무반응이다(이동할 지점을 모른다). 대본 오버레이는 **현재 턴 하나만, 문장을 재생 시각까지 쌓아** 보여준다 — 규칙·페이드·스냅 상세는 [[report#영상 플레이어]].
 
 시스템 컨트롤을 쓰지 않으므로 SwiftUI `VideoPlayer` 대신 `AVPlayerLayer`(`VideoSurface`)를 직접 얹는다.
 
 **만료 판정은 플레이어 책임이 아니다** — `videoURL` 이 필수값이라 만료·nil·형식 오류는 리포트 화면의 `playableVideoURL`(§4-2)에서 이미 걸러지고, 만료 시 진입 자체가 없다. 플레이어는 재생 실패(네트워크·코덱)만 표시한다.
 
-**아직 없는 것 2개**: 진행바의 질문(턴) 경계 시각 구분 — 구간이 어느 카드 소속인지는 알지만 Figma 에 턴 구분 표현이 없어 만들지 않았다. 레드플래그 타임라인 표시 — 레드플래그에 시각이 없다(§9-1 미요청).
+**아직 없는 것 1개**: 레드플래그 타임라인 표시 — 레드플래그에 시각이 없다(§9-1 미요청). (진행바 턴 경계 구분은 칸 = 턴이 되면서 해소, 2026-08-07.)
 
 ## 9. Domain 확장
 
@@ -387,8 +387,8 @@ struct HighlightContext: Equatable, Sendable {             // 상세 시트 입�
 }
 
 struct VideoTranscript: Equatable {                        // 플레이어 타임라인 (§8)
-    let lines: [Line]                                      // 카드 1장 = 줄 1개 (오버레이)
-    let chunks: [Chunk]                                    // 진행바 칸 — 최상위 script(전체 타임라인) 우선, 없으면 카드 발화
+    let lines: [Line]                                      // 카드 1장 = 줄 1개, 문장(Sentence) 단위로 쪼갬 (오버레이)
+    let chunks: [Chunk]                                    // 진행바 칸 — 카드(질문 턴) 1:1, 없으면 영상 전체 한 칸
 }
 ```
 
@@ -446,8 +446,8 @@ Domain 추가분에 `TranscriptSegment`·`TranscriptWord`(서버 타임스탬프
 - 해상도 낮음 카드 → 탭 대상 없음
 - 플레이어 안에서 연 시트 → `showsVideoJump == true` (영상이 있으므로) + 시트가 열리면 재생 정지
 - 플레이어: 무입력 3초 → 컨트롤 숨김 / 일시정지 중에는 유지 / 대본 켜면 하단 바 유지
-- 플레이어: 건너뛰기 ±10초 범위 클램프, 끝에서 재생 → 0 으로 되감기
-- 플레이어: 진행바 칸 탭 → 그 구간 시작으로 이동, 구간 없으면 한 칸 폴백
+- 플레이어: 좌우 화살표 = 진행바 한 칸(질문 턴), 끝에서 재생 → 0 으로 되감기
+- 플레이어: 진행바 칸 탭 → 그 턴 시작으로 이동, 발화 없으면 한 칸 폴백
 - 플레이어: 이동 직후 옛 위치 보고 무시(`isSeeking`), 시트 «영상 보러가기» → 닫기 + 이동 + 재생 재개
 - 코디네이터: `videoRequested`/`peerFeedbackRequested` → 각 화면 push (체인 아님), `backRequested` → pop, `closeRequested` → 부모 전파
 

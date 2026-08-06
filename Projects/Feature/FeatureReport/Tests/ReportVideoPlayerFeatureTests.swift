@@ -134,37 +134,28 @@ struct ReportVideoPlayerFeatureTests {
         }
     }
 
-    @Test("좌우 화살표는 초가 아니라 진행바 한 칸(대본 구간)씩 움직인다")
-    func chunkArrowsStepOneSegment() async {
+    @Test("좌우 화살표는 초가 아니라 진행바 한 칸(질문 턴)씩 움직인다")
+    func chunkArrowsStepOneTurn() async {
         let clock = TestClock()
         var state = ReportVideoPlayerFeature.State(videoURL: Self.videoURL, cards: Self.cards)
         state.duration = 12
         state.currentTime = 5
         let store = makeStore(clock: clock, state: state)
-        #expect(store.state.progressChunks.map(\.start) == [0, 3.4, 6.4, 9.1])
+        // 칸 하나 = 카드(질문 턴) 하나 — 발화 단위가 아니다(잘게 쪼개지지 않는다).
+        #expect(store.state.progressChunks.map(\.start) == [0, 6.4])
 
-        // 5초는 둘째 칸(3.4~6.4) — 왼쪽 화살표는 첫 칸 시작으로.
+        // 5초는 첫 칸(0~6.4) 안 — 왼쪽 화살표는 그 칸을 다시 처음부터.
         await store.send(.view(.userTappedPreviousChunk)) {
             $0.currentTime = 0
             $0.seekToken = 1
             $0.isSeeking = true
         }
-        await store.send(.view(.userTappedNextChunk)) {
-            $0.currentTime = 3.4
-            $0.seekTarget = 3.4
-            $0.seekToken = 2
-        }
-        // 셋째 칸은 둘째 카드의 첫 구간 — 대본의 «현재 줄» 도 같이 넘어간다.
+        // 다음 칸은 둘째 카드 턴 — 오버레이 대본도 그 턴 첫 문장으로 넘어간다.
         await store.send(.view(.userTappedNextChunk)) {
             $0.currentTime = 6.4
             $0.seekTarget = 6.4
-            $0.seekToken = 3
-            $0.currentLineID = 1
-        }
-        await store.send(.view(.userTappedNextChunk)) {
-            $0.currentTime = 9.1
-            $0.seekTarget = 9.1
-            $0.seekToken = 4
+            $0.seekToken = 2
+            $0.transcriptPosition = VideoTranscript.Position(lineID: 1, sentenceIndex: 0)
         }
         // 마지막 칸에선 갈 곳이 없다 — 탭이 아무 일도 하지 않는다(영상 끝으로 튀지 않게).
         await store.send(.view(.userTappedNextChunk))
@@ -203,12 +194,12 @@ struct ReportVideoPlayerFeatureTests {
         state.duration = 12
         let store = makeStore(clock: clock, state: state)
 
-        await store.send(.view(.userTappedChunk(index: 2))) {
+        await store.send(.view(.userTappedChunk(index: 1))) {
             $0.currentTime = 6.4
             $0.seekTarget = 6.4
             $0.seekToken = 1
             $0.isSeeking = true
-            $0.currentLineID = 1
+            $0.transcriptPosition = VideoTranscript.Position(lineID: 1, sentenceIndex: 0)
         }
         // 이동 전 위치 — 무시된다.
         await store.send(.inner(.timeUpdated(0.4)))
@@ -226,19 +217,19 @@ struct ReportVideoPlayerFeatureTests {
         }
     }
 
-    @Test("진행바 칸을 누르면 그 구간 시작으로 이동한다")
-    func chunkTapSeeksToSegmentStart() async {
+    @Test("진행바 칸을 누르면 그 턴 시작으로 이동한다")
+    func chunkTapSeeksToTurnStart() async {
         let clock = TestClock()
         let store = makeStore(clock: clock)
-        // 카드 2장의 구간을 시간축 하나로 이어 붙인다 — 3번째 칸은 두 번째 카드의 첫 구간.
-        #expect(store.state.progressChunks.count == 4)
+        // 칸 하나 = 카드(질문 턴) 하나 — 카드 2장이면 칸 2개.
+        #expect(store.state.progressChunks.count == 2)
 
-        await store.send(.view(.userTappedChunk(index: 2))) {
+        await store.send(.view(.userTappedChunk(index: 1))) {
             $0.currentTime = 6.4
             $0.seekTarget = 6.4
             $0.seekToken = 1
             $0.isSeeking = true
-            $0.currentLineID = 1
+            $0.transcriptPosition = VideoTranscript.Position(lineID: 1, sentenceIndex: 0)
         }
         await clock.advance(by: .seconds(3))
         await store.receive(\.inner.controlsHideElapsed) {
@@ -305,7 +296,7 @@ struct ReportVideoPlayerFeatureTests {
             $0.seekTarget = 6.4
             $0.seekToken = 1
             $0.isSeeking = true
-            $0.currentLineID = 1
+            $0.transcriptPosition = VideoTranscript.Position(lineID: 1, sentenceIndex: 0)
         }
         await clock.advance(by: .seconds(3))
         await store.receive(\.inner.controlsHideElapsed) {

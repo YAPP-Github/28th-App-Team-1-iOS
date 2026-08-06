@@ -25,6 +25,8 @@ struct TranscriptText: View {
     /// 하이라이트 구간 밴드 색 — 판이 다르면 밴드도 한 단 움직인다
     /// (리포트 카드 g800 / 플레이어 대본 오버레이 g900 — 시안 443:7301 vs 443:7906).
     let bandColor: Color
+    /// 잘함 톤 글자색 — 카드·시트는 `p500`, 플레이어 오버레이만 `p800`(«근사 판단» 아래 참조).
+    let goodToneColor: Color
     /// 하이라이트 구간 탭 (구간 인덱스). nil 이면 탭 비활성 — 시트 안처럼 이미 그 구간을 보고 있을 때.
     let onTapSpan: ((Int) -> Void)?
 
@@ -33,12 +35,14 @@ struct TranscriptText: View {
         spans: [HighlightSpan],
         baseColor: Color = Color.GrayScale.g50,
         bandColor: Color = Color.GrayScale.g800,
+        goodToneColor: Color = Color.Positive.p500,
         onTapSpan: ((Int) -> Void)? = nil
     ) {
         self.transcript = transcript
         self.spans = spans
         self.baseColor = baseColor
         self.bandColor = bandColor
+        self.goodToneColor = goodToneColor
         self.onTapSpan = onTapSpan
     }
 
@@ -94,11 +98,11 @@ struct TranscriptText: View {
     /// 미지 톤은 강조하지 않는다 — 모르는 값을 개선으로 오인해 빨갛게 칠하지 않기 위해서.
     /// 본문 색을 그대로 물려받아야 «강조 없음» 이 된다(플레이어 오버레이는 줄마다 본문 색이 다르다).
     ///
-    /// 잘함은 `p500` 고정이다(2026-08-05 확정). `p800`(#008A9F) 로 보이는 시안이 있다는 관측이 있었지만
-    /// 확인된 프레임엔 톤 글자색이 없었다 — 시안이 바뀌면 그때 옮긴다. 임의로 되돌리지 않는다.
+    /// 잘함은 기본 `p500`(2026-08-05 확정) — 단 **플레이어 오버레이는 `p800`** 이다: 새 대본 시안
+    /// 443:7919(#008A9F)에 톤 글자색이 확인돼(2026-08-07) 그 판만 `goodToneColor` 로 갈아끼운다.
     private func color(for tone: HighlightTone) -> Color {
         switch tone {
-        case .good: Color.Positive.p500
+        case .good: goodToneColor
         case .improve: Color.Error.e400
         case .unknown: baseColor
         }
