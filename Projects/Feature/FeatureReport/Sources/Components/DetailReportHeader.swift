@@ -13,7 +13,8 @@ import SwiftUI
 
 /// «상세 리포트» 제목 줄 — 레드플래그가 있을 때만 느낌표와 말풍선이 함께 붙는다 (정의서 §2-4).
 ///
-/// 말풍선은 오버레이라 열고 닫아도 아래 질문 탭이 밀리지 않는다.
+/// 말풍선은 오버레이라 열고 닫아도 아래 질문 탭이 밀리지 않고, 세로로는 **제목 위**에 뜬다
+/// (아래로 두면 질문 탭을 덮는다 — 시안 443:7261).
 /// 가로 위치는 **«꼬리 끝 = 느낌표 오른쪽 끝»** 으로 잡는다 — 좌표를 박지 않아 제목 글자폭이 바뀌어도
 /// 꼬리가 계속 느낌표를 가리킨다 (시안은 제목 80 + 간격 8 + 느낌표 16 기준으로 말풍선 왼쪽이 65).
 struct DetailReportHeader: View {
@@ -52,22 +53,27 @@ struct DetailReportHeader: View {
     }
 
     /// 말풍선 — 누르면 접히고, 화면에 다시 들어오면 리듀서가 도로 띄운다.
-    /// 폭은 고정이 아니라 내용폭(`.mini`)이고 상한만 둔다 — 시안 문구가 마침 상한과 같은 273 이다.
+    /// 폭은 고정이 아니라 내용폭(`.mini`)이고 상한만 둔다 — 상한(274)에서 줄바꿈하고, 짧으면 왼쪽에 붙어
+    /// 꼬리(왼쪽에서 40)가 제자리를 지킨다.
     private func tooltip(_ notice: String) -> some View {
         BubbleField(notice, .mini(mood: .dark))
-            .frame(maxWidth: Metric.tooltipMaxWidth)
+            .frame(maxWidth: Metric.tooltipMaxWidth, alignment: .leading)
             .fixedSize(horizontal: false, vertical: true)
-            .alignmentGuide(.redFlagTail) { _ in BubbleField.tailInset }
-            // 꼬리 끝이 제목 위 28 에 오도록 자기 높이만큼 끌어올린다 (시안 443:7261).
-            .alignmentGuide(.top) { $0[.bottom] + Metric.tooltipBottomGap }
+            // 탭 판정은 말풍선 자기 크기에서 받는다 — 아래 «높이 0» 프레임에 달면 판정이 사라진다.
             .onTapGesture(perform: onTapTooltip)
+            .padding(.bottom, Metric.tooltipBottomGap)
+            // 높이 0 프레임의 «바닥»에 붙여 자기 높이만큼 위로 넘치게 둔다 — 오버레이 기준선(제목 위쪽)
+            // 위로 통째로 올라가 질문 탭을 덮지 않는다 (시안 443:7261).
+            .frame(height: 0, alignment: .bottom)
+            // 가로 정렬 축은 프레임 밖에서 다시 세운다 — `frame` 은 자식의 커스텀 가이드를 물려주지 않는다.
+            .alignmentGuide(.redFlagTail) { _ in BubbleField.tailInset }
     }
 
     private enum Metric {
-        // @ds(spacing): 28 — 말풍선 꼬리 끝과 제목 사이
-        static let tooltipBottomGap: CGFloat = 28
-        // @ds(layout): 273 — 말풍선 최대 폭 (시안 443:7261)
-        static let tooltipMaxWidth: CGFloat = 273
+        // @ds(spacing): 8 — 말풍선 꼬리 끝과 제목 사이
+        static let tooltipBottomGap: CGFloat = 8
+        // @ds(layout): 274 — 말풍선 최대 폭 (시안 443:7261)
+        static let tooltipMaxWidth: CGFloat = 274
     }
 }
 
@@ -91,6 +97,8 @@ private extension HorizontalAlignment {
         DetailReportHeader(notice: nil, isTooltipVisible: true, onTapIcon: {}, onTapTooltip: {})
     }
     .padding(.horizontal, .ds(.p20))
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    // 말풍선이 제목 «위»로 넘쳐 나가므로 프리뷰 위쪽을 비워 둔다.
+    .padding(.top, .ds(.p40))
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     .background(Color.HilitBlack.b900)
 }
