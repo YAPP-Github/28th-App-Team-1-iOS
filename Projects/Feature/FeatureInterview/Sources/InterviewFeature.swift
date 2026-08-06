@@ -17,7 +17,7 @@ import DomainSpeechInterface
 @Reducer
 public struct InterviewFeature {
     /// 면접 흐름 하위 화면 — push 스택이 아니라 전면 교체라 StackState 대신 enum destination.
-    @Reducer(state: .equatable)
+    @Reducer
     public enum Screen {
         case readiness(InterviewReadinessFeature)
         case session(InterviewSessionFeature)
@@ -156,3 +156,5 @@ public struct InterviewFeature {
         }
     }
 }
+
+extension InterviewFeature.Screen.State: Equatable {}
