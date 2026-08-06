@@ -45,7 +45,7 @@ public struct ReportVideoPlayerView: View {
                 // @ds(color): «hilit opacity/dark/65%» #000000 65% — 컨트롤 딤. 팔레트에 검정 토큰이 없다(BlackWhite 는 white 뿐)
                 Color.black.opacity(Self.dimOpacity).ignoresSafeArea()
             }
-            if store.isTranscriptVisible {
+            if store.isTranscriptOverlayVisible {
                 TranscriptOverlay(
                     line: store.activeTranscriptLine,
                     currentSentenceIndex: store.transcriptPosition?.sentenceIndex ?? 0,
@@ -194,6 +194,8 @@ public struct ReportVideoPlayerView: View {
 
     /// Figma 443:7831 — 좌우 20, 진행바와 버튼 줄 사이 16, 대본 토글은 오른쪽 정렬.
     /// 버튼 줄 왼쪽 슬롯은 시트로 들어온 판에서만 «이전 화면으로 가기» 가 채운다(443:7843).
+    /// **버튼 줄 높이는 44 로 고정**한다 — 대본 없는 보고서(토글 없음)에서 줄이 쪼그라들면
+    /// 진행바가 내려앉아 하단 스크림 램프와 어긋난다. 대본 오버레이의 `bottomInset` 도 이 높이를 센다.
     private var bottomBar: some View {
         VStack(spacing: .ds(.p16)) {
             PlaybackProgressBar(store: store)
@@ -202,8 +204,11 @@ public struct ReportVideoPlayerView: View {
                     returnToPrevious
                 }
                 Spacer(minLength: 0)
-                transcriptToggle
+                if store.hasTranscript {
+                    transcriptToggle
+                }
             }
+            .frame(height: Self.controlSize)
         }
         .padding(.horizontal, .ds(.p20))
         .padding(.bottom, .ds(.p12))
@@ -275,107 +280,4 @@ public struct ReportVideoPlayerView: View {
     // @ds(icon): 20 — script/cancel 글리프. 에셋 원본 크기라 늘이지 않는다(image.md 크기 규칙)
     private static let toggleGlyphSize: CGFloat = 20
     private static let timescale: CMTimeScale = 600
-}
-
-// MARK: - Preview
-
-private extension InterviewReportCard {
-    /// 프리뷰용 카드 — Sources 는 Testing 타겟에 의존하지 않아 여기서 최소 재료만 만든다.
-    static var previewCard: InterviewReportCard {
-        let transcript = "프로파일링하니 DB 왕복 7번이 원인이라, 안바뀌는 6번을 캐시로 흡수해 600ms 깎았어요."
-        return InterviewReportCard(
-            axisOrder: 1,
-            depthLevel: 1,
-            questionText: "결제 응답 속도를 개선하신 경험을 말씀해주세요.",
-            transcript: transcript,
-            highlightSpans: [
-                HighlightSpan(
-                    startIndex: 9,
-                    endIndex: transcript.count,
-                    tone: "GOOD",
-                    reason: "PROBE_WORTHY",
-                    title: "원인과 해결을 수치로 설명",
-                    analysis: "문제를 바라보는 관점이 좋았어요.",
-                    followUpQuestions: ["그 수치는 어떤 기간을 기준으로 집계한 건가요?"],
-                    startSec: 4.3
-                )
-            ],
-            resolutionNotice: nil,
-            cardRedFlagNotices: nil,
-            questionIntent: nil,
-            // 면접관 질문이 턴 첫 문장 — 오버레이가 Q 배지로 그린다.
-            scriptSegments: [
-                ScriptSegment(
-                    role: .interviewer,
-                    text: "결제 응답 속도를 개선하신 경험을 말씀해주세요.",
-                    startSec: 0,
-                    endSec: 2
-                ),
-                ScriptSegment(
-                    role: .interviewee,
-                    text: "프로파일링하니 DB 왕복 7번이 원인이라,",
-                    startIndex: 0,
-                    endIndex: 22,
-                    startSec: 2,
-                    endSec: 4.3
-                ),
-                ScriptSegment(
-                    role: .interviewee,
-                    text: "안바뀌는 6번을 캐시로 흡수해 600ms 깎았어요.",
-                    startIndex: 23,
-                    endIndex: transcript.count,
-                    startSec: 4.3,
-                    endSec: 6.4
-                )
-            ]
-        )
-    }
-}
-
-#Preview("영상 플레이어 — 컨트롤") {
-    ReportVideoPlayerView(
-        store: Store(
-            initialState: ReportVideoPlayerFeature.State(
-                videoURL: URL(string: "https://example.com/interview/1.mp4")!,
-                cards: [.previewCard]
-            )
-        ) {
-            ReportVideoPlayerFeature()
-        }
-    )
-}
-
-#Preview("영상 플레이어 — 시트 진입(이전 화면으로 가기)") {
-    ReportVideoPlayerView(
-        store: Store(
-            initialState: ReportVideoPlayerFeature.State(
-                videoURL: URL(string: "https://example.com/interview/1.mp4")!,
-                cards: [.previewCard],
-                entry: .highlightSheet
-            )
-        ) {
-            ReportVideoPlayerFeature()
-        }
-    )
-}
-
-#Preview("영상 플레이어 — 대본 오버레이") {
-    ReportVideoPlayerView(
-        store: Store(
-            initialState: {
-                // startAt 으로 넣어야 대본 위치(transcriptPosition)까지 그 시각으로 선다 —
-                // currentTime 직접 대입은 위치를 다시 세우지 않는다.
-                var state = ReportVideoPlayerFeature.State(
-                    videoURL: URL(string: "https://example.com/interview/1.mp4")!,
-                    startAt: 5,
-                    cards: [.previewCard, .previewCard]
-                )
-                state.isTranscriptVisible = true
-                state.duration = 6.4
-                return state
-            }()
-        ) {
-            ReportVideoPlayerFeature()
-        }
-    )
 }

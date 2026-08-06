@@ -27,6 +27,15 @@ struct TranscriptOverlay: View {
     let onHighlightTap: (Int, Int) -> Void
 
     var body: some View {
+        // 그릴 문장이 없으면 아무것도 얹지 않는다 — 글자 없는 스크림이 화면을 덮고 하단 램프까지
+        // 가로채면 하단 바 그라데이션이 어긋난다. 노출 판정은 리듀서(`isTranscriptOverlayVisible`)가
+        // 하고 여기는 마지막 방어선이다.
+        if !visibleSentences.isEmpty {
+            overlay
+        }
+    }
+
+    private var overlay: some View {
         GeometryReader { proxy in
             // 대본 최고점은 네비 바에서 182 아래 — 여기서 위쪽은 영상 얼굴 자리라 비워 둔다.
             // (네비 바는 `.hilitNavigationBar` 가 safeAreaInset 으로 얹어 이미 이 영역 밖이다.)

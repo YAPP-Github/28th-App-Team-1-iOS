@@ -192,8 +192,8 @@ public struct ReportVideoPlayerFeature {
             return .send(.delegate(.returnToHighlightSheetRequested))
 
         case .userTappedSurface:
-            // 대본을 켜 둔 동안은 화면 탭이 딤·재생 버튼을 만지지 않는다 (대본이 화면 주인).
-            guard !state.isTranscriptVisible else { return .none }
+            // 대본이 떠 있는 동안은 화면 탭이 딤·재생 버튼을 만지지 않는다 (대본이 화면 주인).
+            guard !state.isTranscriptOverlayVisible else { return .none }
             state.areControlsVisible.toggle()
             return state.areControlsVisible ? startControlsHideTimer() : .cancel(id: CancelID.controlsHide)
 
@@ -227,6 +227,8 @@ public struct ReportVideoPlayerFeature {
             return seek(&state, to: start)
 
         case .userTappedTranscriptToggle:
+            // 대본이 없으면 버튼도 없다 — 그래도 신호가 오면 무시한다(빈 판을 띄우지 않게).
+            guard state.hasTranscript else { return .none }
             state.isTranscriptVisible.toggle()
             state.areControlsVisible = true
             return state.isTranscriptVisible
@@ -238,19 +240,28 @@ public struct ReportVideoPlayerFeature {
             return seek(&state, to: chunk.start)
 
         case let .userTappedHighlight(cardIndex, spanIndex):
-            guard state.cards.indices.contains(cardIndex) else { return .none }
-            let card = state.cards[cardIndex]
-            guard let spans = card.highlightSpans, spans.indices.contains(spanIndex) else { return .none }
-            guard let context = HighlightContext(card: card, span: spans[spanIndex]) else { return .none }
-            // 시트를 보는 동안 영상은 멈춘다 (Figma 주석 «바텀시트 올라왔을 때 영상 정지»).
-            state.isPlaying = false
-            // 여기가 이미 영상이라 «영상 보러가기» 는 갈 곳이 없다 — 플레이어에서 올린 시트는 늘 숨긴다.
-            state.highlightDetail = ReportHighlightDetailFeature.State(
-                context: context,
-                showsVideoJump: false
-            )
-            return .cancel(id: CancelID.controlsHide)
+            return presentHighlight(&state, cardIndex: cardIndex, spanIndex: spanIndex)
         }
+    }
+
+    /// 대본 하이라이트 → 상세 시트. 카드·구간 인덱스가 어긋나면 아무 일도 하지 않는다.
+    private func presentHighlight(
+        _ state: inout State,
+        cardIndex: Int,
+        spanIndex: Int
+    ) -> Effect<Action> {
+        guard state.cards.indices.contains(cardIndex) else { return .none }
+        let card = state.cards[cardIndex]
+        guard let spans = card.highlightSpans, spans.indices.contains(spanIndex) else { return .none }
+        guard let context = HighlightContext(card: card, span: spans[spanIndex]) else { return .none }
+        // 시트를 보는 동안 영상은 멈춘다 (Figma 주석 «바텀시트 올라왔을 때 영상 정지»).
+        state.isPlaying = false
+        // 여기가 이미 영상이라 «영상 보러가기» 는 갈 곳이 없다 — 플레이어에서 올린 시트는 늘 숨긴다.
+        state.highlightDetail = ReportHighlightDetailFeature.State(
+            context: context,
+            showsVideoJump: false
+        )
+        return .cancel(id: CancelID.controlsHide)
     }
 
     private func reduceInner(_ state: inout State, _ action: Action.Inner) -> Effect<Action> {
@@ -312,73 +323,4 @@ public struct ReportVideoPlayerFeature {
         }
         .cancellable(id: CancelID.controlsHide, cancelInFlight: true)
     }
-}
-
-// MARK: - 표시 파생값
-
-// 파생값은 모듈 안(View) 에서만 쓰고 `VideoTranscript` 를 노출하므로 internal 로 둔다.
-extension ReportVideoPlayerFeature.State {
-    /// 진행바 칸(= 질문 턴). 서버 발화가 없으면 영상 전체를 한 칸으로 대체한다 — 바가 사라지지 않게.
-    /// 이 대체 칸은 `transcript.chunks` 에 없어서 탭해도 아무 일이 없다(이동할 구간을 모른다).
-    var progressChunks: [VideoTranscript.Chunk] {
-        guard transcript.chunks.isEmpty else { return transcript.chunks }
-        return [VideoTranscript.Chunk(id: 0, start: 0, end: max(duration, 1))]
-    }
-
-    /// 지금 재생 위치가 걸린 진행바 칸. 첫 칸보다 앞이면 첫 칸으로 본다.
-    var currentChunkIndex: Int? {
-        let chunks = progressChunks
-        guard !chunks.isEmpty else { return nil }
-        return chunks.lastIndex(where: { $0.start <= currentTime }) ?? 0
-    }
-
-    /// 왼쪽 화살표가 갈 시각 — 한 칸 앞 칸의 시작. 첫 칸에서 누르면 그 칸을 다시 처음부터.
-    var previousChunkStart: TimeInterval? {
-        let chunks = progressChunks
-        guard let index = currentChunkIndex else { return nil }
-        return chunks[max(0, index - 1)].start
-    }
-
-    /// 오른쪽 화살표가 갈 시각 — 다음 칸의 시작. 마지막 칸에선 갈 곳이 없어 nil(탭 무반응).
-    var nextChunkStart: TimeInterval? {
-        let chunks = progressChunks
-        guard let index = currentChunkIndex, chunks.indices.contains(index + 1) else { return nil }
-        return chunks[index + 1].start
-    }
-
-    /// 오버레이가 보여줄 현재 턴 대본. 재생이 첫 발화 앞이면 nil — 오버레이는 스크림만 깐다.
-    var activeTranscriptLine: VideoTranscript.Line? {
-        guard let position = transcriptPosition else { return nil }
-        return transcript.line(with: position.lineID)
-    }
-
-    /// 끝까지 재생됐는지. 길이를 모르면(0) 판정하지 않는다.
-    var hasReachedEnd: Bool { duration > 0 && currentTime >= duration }
-
-    /// 가운데 재생 컨트롤 노출 조건 — 대본을 켜면 대본이 화면 주인이라 컨트롤은 비운다.
-    var isPlaybackControlVisible: Bool {
-        areControlsVisible && !isTranscriptVisible && playbackFailureMessage == nil && !isHighlightDetailPresented
-    }
-
-    /// 하단 바(진행바 + 대본 버튼 + 시트 진입 판의 «이전 화면으로 가기») 노출 조건 —
-    /// **자동 숨김을 타지 않는다**: 진행바·대본 버튼은 화면의 붙박이고 딤·재생 버튼만 3초 뒤 사라진다.
-    /// 재생 실패(안내가 화면을 차지)와 상세 시트(아래 사유)에서만 비운다.
-    var isBottomBarVisible: Bool {
-        playbackFailureMessage == nil && !isHighlightDetailPresented
-    }
-
-    /// 하단 스크림 노출 조건 — 붙박이 하단 바가 밝은 영상 위에서도 읽히게 한다(Figma 443:7830).
-    /// 대본을 켜면 오버레이가 제 스크림(`.darkOpen`)을 갖고 있어 겹쳐 깔지 않는다.
-    var isBottomScrimVisible: Bool { isBottomBarVisible && !isTranscriptVisible }
-
-    /// 하단 «이전 화면으로 가기» 노출 조건 — 시트로 들어온 판에만 있다(돌아갈 시트가 있는 판).
-    var isReturnToPreviousVisible: Bool { entry == .highlightSheet }
-
-    /// 상단 X 노출 조건 — 시트를 보는 동안은 비운다.
-    var isCloseButtonVisible: Bool { !isHighlightDetailPresented }
-
-    /// 상세 시트가 올라와 있는 동안은 플레이어 컨트롤을 전부 비운다 (사용자 결정 2026-08-06).
-    /// 시트는 화면을 다 덮지 않아 위쪽 띠에 X 가 남는데, 그 X 는 시트 밖이라 눌리고
-    /// 눌리면 보던 하이라이트째로 플레이어를 떠난다 — 시트를 내리는 게 먼저다.
-    private var isHighlightDetailPresented: Bool { highlightDetail != nil }
 }
