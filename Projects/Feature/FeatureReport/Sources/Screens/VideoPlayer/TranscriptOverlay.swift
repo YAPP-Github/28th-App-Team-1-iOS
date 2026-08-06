@@ -22,8 +22,9 @@ struct TranscriptOverlay: View {
             Spacer(minLength: 0)
             transcript
                 .frame(height: Self.overlayHeight)
-                // 위로 갈수록 대본이 사라진다 — 영상 얼굴을 가리지 않기 위한 Figma 그라데이션.
-                .background(Self.backgroundGradient)
+                // 위로 갈수록 대본이 사라진다 — 영상 얼굴을 가리지 않기 위한 Figma 스크림.
+                // 램프 비율은 DS 가 소유하고 덮는 높이만 화면 실측으로 덮는다.
+                .background(VideoOverlay(.darkOpen, height: Self.overlayHeight))
                 .mask(Self.fadeMask)
         }
     }
@@ -59,18 +60,6 @@ struct TranscriptOverlay: View {
             }
         }
     }
-
-    /// Figma «video-overlay/dark/open» 435:847 그라데이션 (투명 → 56% → b900).
-    // @ds(color): #121316 0% → 56%@33.1% → 100%@90.9% — 대본 배경 스크림. 그라데이션 토큰 없음
-    private static let backgroundGradient = LinearGradient(
-        stops: [
-            .init(color: Color.HilitBlack.b900.opacity(0), location: 0),
-            .init(color: Color.HilitBlack.b900.opacity(0.56), location: 0.331),
-            .init(color: Color.HilitBlack.b900, location: 0.909)
-        ],
-        startPoint: .top,
-        endPoint: .bottom
-    )
 
     /// 위쪽 대본이 흐려지며 사라지는 마스크 — 시안은 맨 위 줄에만 텍스트 그라데이션(443:7916)을
     /// 걸었지만, 줄 수가 유동이라 오버레이 상단 16% 에 마스크로 걸어 같은 효과를 만든다.

@@ -194,42 +194,15 @@ public struct ReportVideoPlayerView: View {
 
     // MARK: - 재생 컨트롤
 
-    /// Figma «video-control/play» 435:830 — 화살표 44 · 간격 46 · 가운데 74 정사각.
-    /// 화살표는 초 단위가 아니라 진행바 한 칸씩 움직인다(이동 단위는 리듀서 소유).
+    /// DS `VideoControl`(Figma «video-control» 435:830) 그대로 — 화살표 44 · 간격 46 · 가운데 74 정사각.
+    /// 좌우 화살표는 초 단위가 아니라 진행바 한 칸씩 움직인다(이동 단위는 리듀서 소유).
     private var playbackControls: some View {
-        HStack(spacing: Self.controlsSpacing) {
-            chunkStepButton(Image.SkipL.white34) { send(.userTappedPreviousChunk) }
-            playPauseButton
-            chunkStepButton(Image.SkipR.white34) { send(.userTappedNextChunk) }
-        }
-    }
-
-    private func chunkStepButton(_ icon: Image, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            icon
-                .resizable()
-                .scaledToFit()
-                .frame(width: Self.glyphSize, height: Self.glyphSize)
-                .frame(width: Self.controlSize, height: Self.controlSize)
-        }
-        .buttonStyle(.plain)
-    }
-
-    /// 연한 초록 정사각 판 + 짙은 초록 글리프 (Figma 435:833 — 모서리 0, p20).
-    /// 시안엔 판 뒤 backdrop-blur 11.5 가 걸려 있지만 판이 불투명 g500 이라 보이지 않아 옮기지 않았다.
-    private var playPauseButton: some View {
-        Button {
-            send(.userTappedPlayPause)
-        } label: {
-            // 원본색 에셋(그린 글리프) — 배경 그린과 짝이라 틴트하지 않는다.
-            (store.isPlaying ? Image.Pause.green34 : Image.Play.green34)
-                .resizable()
-                .scaledToFit()
-                .frame(width: Self.glyphSize, height: Self.glyphSize)
-                .padding(.ds(.p20))
-                .background(Color.HilitGreen.g500)
-        }
-        .buttonStyle(.plain)
+        VideoControl(
+            isPlaying: store.isPlaying,
+            onSkipBackward: { send(.userTappedPreviousChunk) },
+            onPlayPauseToggle: { send(.userTappedPlayPause) },
+            onSkipForward: { send(.userTappedNextChunk) }
+        )
     }
 
     // MARK: - 재생 실패
@@ -254,14 +227,11 @@ public struct ReportVideoPlayerView: View {
 
     /// Figma 변수 «hilit opacity/dark/65%» — 딤 불투명도.
     private static let dimOpacity: Double = 0.65
-    // @ds(layout): 44 — 컨트롤 버튼 한 변(화살표·대본 토글 슬롯). spacing 스케일(4~40)에 44 가 없다
+    // @ds(layout): 44 — 대본 토글 슬롯 한 변. spacing 스케일(4~40)에 44 가 없다
+    // (재생 컨트롤의 같은 수치는 DS `VideoControl` 이 소유한다)
     private static let controlSize: CGFloat = 44
-    // @ds(icon): 34 — skip/pause/play 글리프. 에셋 원본 크기라 늘이지 않는다(image.md 크기 규칙)
-    private static let glyphSize: CGFloat = 34
-    // @ds(icon): 20 — script/cancel 글리프. 같은 이유로 에셋 원본 크기
+    // @ds(icon): 20 — script/cancel 글리프. 에셋 원본 크기라 늘이지 않는다(image.md 크기 규칙)
     private static let toggleGlyphSize: CGFloat = 20
-    // @ds(spacing): 46 — 화살표 ↔ 재생 버튼 간격(video-control gap). 스케일에 46 이 없다
-    private static let controlsSpacing: CGFloat = 46
     private static let timescale: CMTimeScale = 600
 }
 
