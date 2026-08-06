@@ -272,6 +272,33 @@ struct ReportVideoPlayerFeatureTests {
         #expect(state.nextChunkStart == nil)
     }
 
+    @Test("대본이 없으면 토글도 없고 하단 스크림이 그대로 남는다 — 빈 오버레이로 레이아웃이 틀어지지 않게")
+    func noTranscriptKeepsLayout() async {
+        let clock = TestClock()
+        let store = makeStore(clock: clock, state: ReportVideoPlayerFeature.State(
+            videoURL: Self.videoURL,
+            cards: [InterviewReportFixtures.lowResolutionCard]
+        ))
+
+        #expect(!store.state.hasTranscript)
+        // 버튼이 없어 눌릴 일이 없지만, 신호가 와도 상태를 만지지 않는다.
+        await store.send(.view(.userTappedTranscriptToggle))
+        #expect(!store.state.isTranscriptOverlayVisible)
+        #expect(store.state.isBottomScrimVisible)
+        #expect(store.state.isPlaybackControlVisible)
+    }
+
+    @Test("대본을 켜도 첫 발화 앞에서는 오버레이를 얹지 않는다 — 글자 없는 스크림이 화면을 덮지 않게")
+    func transcriptOverlayWaitsForFirstSentence() {
+        var state = ReportVideoPlayerFeature.State(videoURL: Self.videoURL, cards: Self.cards)
+        state.isTranscriptVisible = true
+        state.transcriptPosition = nil
+
+        #expect(state.hasTranscript)
+        #expect(!state.isTranscriptOverlayVisible)
+        #expect(state.isBottomScrimVisible)
+    }
+
     @Test("하이라이트를 누르면 영상이 멈추고 시트가 올라온다")
     func highlightTapPausesAndPresentsSheet() async {
         let clock = TestClock()
