@@ -37,7 +37,9 @@ let project = Project.makeModule(
                 "CFBundleIconName": "AppIcon",
                 // 카메라·마이크는 사용 시점 요청(ai-interview.md §권한) — 목적 문구 없으면 요청 즉시 크래시.
                 "NSCameraUsageDescription": "AI 면접에서 얼굴과 답변 영상 녹화를 위해 카메라를 사용합니다.",
-                "NSMicrophoneUsageDescription": "AI 면접에서 음성 답변 인식과 녹음을 위해 마이크를 사용합니다."
+                "NSMicrophoneUsageDescription": "AI 면접에서 음성 답변 인식과 녹음을 위해 마이크를 사용합니다.",
+                // 진단 탐침(HILIT_STT_PROBE) 전용 — 문구 없으면 인식 권한 요청 즉시 크래시.
+                "NSSpeechRecognitionUsageDescription": "마이크에 들어온 소리를 글로 옮겨 점검하기 위해 음성 인식을 사용합니다."
             ]),
             // 번들 샘플 답변 오디오(SampleAnswer.m4a) — live 하네스가 answerAudio seam 으로 주입.
             resources: ["Example/Resources/**"],

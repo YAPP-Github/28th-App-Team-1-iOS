@@ -27,6 +27,7 @@ actor AudioPlaybackManager {
             try activatePlaybackSession()
             let player = try AVAudioPlayer(data: data)
             let delegate = DataPlayerDelegate { event in
+                SpeechDiagnostics.log("🔊 [TTS] ■ 멘트 재생 종료 — \(event)")
                 continuation.yield(event)
                 continuation.finish()
             }
@@ -34,6 +35,7 @@ actor AudioPlaybackManager {
             guard player.play() else {
                 throw PlaybackSetupError.playRefused
             }
+            SpeechDiagnostics.log("🔊 [TTS] ▶︎ 멘트 재생 시작 (\(data.count) bytes)")
             dataPlayer = player
             dataPlayerDelegate = delegate
         } catch {
@@ -62,11 +64,13 @@ actor AudioPlaybackManager {
         let center = NotificationCenter.default
         streamObservers = [
             center.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: nil) { _ in
+                SpeechDiagnostics.log("🔊 [TTS] ■ 질문 재생 완료")
                 continuation.yield(.finished)
                 continuation.finish()
             },
             center.addObserver(forName: .AVPlayerItemFailedToPlayToEndTime, object: item, queue: nil) { note in
                 let error = note.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error
+                SpeechDiagnostics.log("🔊 [TTS] ❌ 질문 재생 중단")
                 continuation.yield(.failed(error.map { String(describing: $0) } ?? "재생 중단"))
                 continuation.finish()
             }
@@ -77,6 +81,7 @@ actor AudioPlaybackManager {
             continuation.finish()
         }
         player.play()
+        SpeechDiagnostics.log("🔊 [TTS] ▶︎ 질문 재생 시작")
         streamPlayer = player
         return stream
     }
