@@ -288,6 +288,27 @@ struct ReportVideoPlayerFeatureTests {
         #expect(!store.state.isBottomBarVisible)
     }
 
+    @Test("«다시 시도» 는 안내를 걷고 플레이어 재생성을 명령한다")
+    func playbackRetryRebuildsPlayer() async {
+        let clock = TestClock()
+        var state = ReportVideoPlayerFeature.State(videoURL: Self.videoURL, cards: Self.cards)
+        state.playbackFailureMessage = ReportVideoPlayerFeature.playbackFailureMessage
+        state.isPlaying = false
+        let store = makeStore(clock: clock, state: state)
+
+        await store.send(.view(.userTappedPlaybackRetry)) {
+            $0.playbackFailureMessage = nil
+            // 뷰는 이 토큰 변화만 보고 AVPlayer 를 새로 만든다 — 리듀서는 플레이어를 갖지 않는다.
+            $0.reloadToken = 1
+            $0.isPlaying = true
+        }
+        #expect(store.state.isPlaybackControlVisible)
+        await clock.advance(by: .seconds(3))
+        await store.receive(\.inner.controlsHideElapsed) {
+            $0.areControlsVisible = false
+        }
+    }
+
     @Test("X 는 리포트로 돌아간다")
     func backRequestPropagates() async {
         let clock = TestClock()
