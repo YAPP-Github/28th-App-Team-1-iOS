@@ -89,13 +89,14 @@ public struct ReportFeature {
         _ action: ReportMainFeature.Action.Delegate
     ) -> Effect<Action> {
         switch action {
-        case let .videoRequested(startAt):
+        case let .videoRequested(startAt, entry):
             guard let url = state.main.playableVideoURL else { return .none }
             state.path.append(.videoPlayer(ReportVideoPlayerFeature.State(
                 videoURL: url,
                 startAt: startAt,
                 cards: state.main.cards,
-                script: state.main.report?.script ?? []
+                script: state.main.report?.script ?? [],
+                entry: entry
             )))
             return .none
 
