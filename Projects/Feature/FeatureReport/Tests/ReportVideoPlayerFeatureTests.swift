@@ -62,7 +62,7 @@ struct ReportVideoPlayerFeatureTests {
         #expect(store.state.isBottomScrimVisible)
     }
 
-    @Test("«이전 화면으로 가기» 는 시트로 들어온 판에만 있고, X 와 같은 «뒤로» 다")
+    @Test("«이전 화면으로 가기» 는 시트로 들어온 판에만 있고, X 와 달리 시트로 돌아간다")
     func returnToPreviousOnlyForSheetEntry() async {
         let clock = TestClock()
         #expect(!makeStore(clock: clock).state.isReturnToPreviousVisible)
@@ -75,6 +75,9 @@ struct ReportVideoPlayerFeatureTests {
         #expect(store.state.isReturnToPreviousVisible)
 
         await store.send(.view(.userTappedReturnToPrevious))
+        await store.receive(\.delegate.returnToHighlightSheetRequested)
+
+        await store.send(.view(.userTappedBack))
         await store.receive(\.delegate.backRequested)
     }
 

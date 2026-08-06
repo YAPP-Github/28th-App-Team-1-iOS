@@ -39,21 +39,30 @@ struct ReportFeatureTests {
         }
     }
 
+    /// 하이라이트 상세 시트를 열어 둔 메인.
+    private func sheetOpenedState() -> ReportFeature.State {
+        var state = loadedState()
+        state.main.highlightDetail = Self.highlightDetail
+        return state
+    }
+
+    private static let highlightDetail = ReportHighlightDetailFeature.State(
+        context: HighlightContext(
+            transcript: "문장",
+            span: HighlightSpan(startIndex: 0, endIndex: 2, tone: "GOOD", analysis: nil),
+            evidenceAt: 12
+        ),
+        showsVideoJump: true
+    )
+
     @Test("시트 «영상 보러가기» 로 들어온 플레이어는 하단 «이전 화면으로 가기» 판이다")
     func sheetEntryPushesReturnablePlayer() async {
-        var state = loadedState()
-        state.main.highlightDetail = ReportHighlightDetailFeature.State(
-            context: HighlightContext(
-                transcript: "문장",
-                span: HighlightSpan(startIndex: 0, endIndex: 2, tone: "GOOD", analysis: nil),
-                evidenceAt: 12
-            ),
-            showsVideoJump: true
-        )
-        let store = TestStore(initialState: state) { ReportFeature() }
+        let store = TestStore(initialState: sheetOpenedState()) { ReportFeature() }
 
         await store.send(.main(.highlightDetail(.presented(.view(.userTappedVideoJump)))))
         await store.receive(\.main.highlightDetail.presented.delegate.videoJumpRequested) {
+            // 시트는 닫되 버리지 않는다 — 하단 버튼이 되살릴 재료다.
+            $0.main.stashedHighlightDetail = $0.main.highlightDetail
             $0.main.highlightDetail = nil
         }
         await store.receive(\.main.delegate.videoRequested) {
@@ -99,6 +108,41 @@ struct ReportFeatureTests {
         await store.send(.path(.element(id: 0, action: .peerFeedback(.view(.userTappedBack)))))
         await store.receive(\.path[id: 0].peerFeedback.delegate.backRequested) {
             $0.path = StackState()
+        }
+    }
+
+    /// 시트 «영상 보러가기» 로 플레이어까지 들어와 있는 상태 — 접어 둔 시트가 옆에 있다.
+    private func playerFromSheetState() -> ReportFeature.State {
+        var state = loadedState()
+        state.main.stashedHighlightDetail = Self.highlightDetail
+        state.path.append(.videoPlayer(ReportVideoPlayerFeature.State(
+            videoURL: URL(string: "https://example.com/interview/1.mp4")!,
+            startAt: 12,
+            entry: .highlightSheet
+        )))
+        return state
+    }
+
+    @Test("플레이어 하단 «이전 화면으로 가기» → pop 하고 왔던 상세 시트를 다시 올린다")
+    func returnToPreviousReopensSheet() async {
+        let store = TestStore(initialState: playerFromSheetState()) { ReportFeature() }
+
+        await store.send(.path(.element(id: 0, action: .videoPlayer(.view(.userTappedReturnToPrevious)))))
+        await store.receive(\.path[id: 0].videoPlayer.delegate.returnToHighlightSheetRequested) {
+            $0.path = StackState()
+            $0.main.highlightDetail = Self.highlightDetail
+            $0.main.stashedHighlightDetail = nil
+        }
+    }
+
+    @Test("플레이어 상단 X → 리포트 메인까지만, 접어 둔 시트는 버린다")
+    func playerCloseDropsStashedSheet() async {
+        let store = TestStore(initialState: playerFromSheetState()) { ReportFeature() }
+
+        await store.send(.path(.element(id: 0, action: .videoPlayer(.view(.userTappedBack)))))
+        await store.receive(\.path[id: 0].videoPlayer.delegate.backRequested) {
+            $0.path = StackState()
+            $0.main.stashedHighlightDetail = nil
         }
     }
 

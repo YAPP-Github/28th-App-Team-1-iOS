@@ -43,6 +43,10 @@ public struct ReportMainFeature {
         /// 코멘트를 펼쳐 둔 태도 항목 코드 — 지인을 바꾸면 비운다.
         public var expandedCommentAxes: Set<String> = []
         @Presents public var highlightDetail: ReportHighlightDetailFeature.State?
+        /// 영상으로 넘어가며 접어 둔 상세 시트 — 플레이어 하단 «이전 화면으로 가기» 가 이걸 되살린다.
+        /// 시트와 push 를 동시에 띄울 수 없어 잠깐 옆에 둔다. 플레이어 상단 X 로 나오면 코디네이터가 비운다
+        /// (X 는 리포트 메인까지, 하단 버튼은 시트까지 — 사용자 결정 2026-08-06).
+        public var stashedHighlightDetail: ReportHighlightDetailFeature.State?
 
         public enum LoadState: Equatable, Sendable {
             /// 최초 조회 전 또는 채점 진행 중
@@ -126,7 +130,9 @@ public struct ReportMainFeature {
                 return reduceInner(&state, action)
 
             // 시트가 «이 장면 영상으로 보기» 를 올리면 닫고 영상 요청으로 번역한다.
+            // 닫되 버리지 않는다 — 플레이어 하단 버튼이 이 시트로 되돌아온다.
             case let .highlightDetail(.presented(.delegate(.videoJumpRequested(at)))):
+                state.stashedHighlightDetail = state.highlightDetail
                 state.highlightDetail = nil
                 return .send(.delegate(.videoRequested(startAt: at, entry: .highlightSheet)))
 

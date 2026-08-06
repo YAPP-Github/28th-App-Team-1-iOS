@@ -196,7 +196,7 @@ public struct ReportVideoPlayerView: View {
     }
 
     /// 시안 443:7843 «button-medium» filled black — DS `.medium(.black)` 그대로.
-    /// 하는 일은 상단 X 와 같은 «뒤로» 다(리듀서가 같은 delegate 로 접는다).
+    /// 상단 X 와 다르다 — X 는 리포트 메인까지, 이 버튼은 왔던 상세 시트까지 되돌린다.
     private var returnToPrevious: some View {
         Button("이전 화면으로 가기") { send(.userTappedReturnToPrevious) }
             .buttonStyle(.medium(.black))

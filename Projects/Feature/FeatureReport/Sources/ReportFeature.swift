@@ -112,10 +112,22 @@ public struct ReportFeature {
     private func reducePath(_ state: inout State, _ action: StackActionOf<Path>) -> Effect<Action> {
         switch action {
         // 뒤로 — 어느 화면에서든 pop. 두 화면 다 X 가 «뒤로» 라서 이탈 신호는 없다
-        // (리포트 이탈은 메인의 X 만 담당한다).
-        case .element(id: _, action: .videoPlayer(.delegate(.backRequested))),
-             .element(id: _, action: .peerFeedback(.delegate(.backRequested))):
+        // (리포트 이탈은 메인의 X 만 담당한다). 플레이어 X 는 메인까지다 — 접어 둔 시트는 버린다.
+        case .element(id: _, action: .videoPlayer(.delegate(.backRequested))):
             _ = state.path.popLast()
+            state.main.stashedHighlightDetail = nil
+            return .none
+
+        case .element(id: _, action: .peerFeedback(.delegate(.backRequested))):
+            _ = state.path.popLast()
+            return .none
+
+        // 플레이어 하단 «이전 화면으로 가기» — pop 하고 왔던 상세 시트를 다시 올린다.
+        // 시트에서 온 판에만 있는 버튼이라 접어 둔 시트가 있다(없으면 메인까지만).
+        case .element(id: _, action: .videoPlayer(.delegate(.returnToHighlightSheetRequested))):
+            _ = state.path.popLast()
+            state.main.highlightDetail = state.main.stashedHighlightDetail
+            state.main.stashedHighlightDetail = nil
             return .none
 
         default:

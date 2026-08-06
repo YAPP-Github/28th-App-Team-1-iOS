@@ -32,6 +32,7 @@ public struct ReportVideoPlayerFeature {
     /// (Figma 443:7828 은 시트 진입 판, 443:7804 는 메인 진입 판).
     public enum Entry: Equatable, Sendable {
         /// 하이라이트 상세 시트의 «영상 보러가기» — 하단에 «이전 화면으로 가기» 를 둔다.
+        /// 그 버튼은 왔던 시트까지 되돌린다(상단 X 는 리포트 메인까지만).
         case highlightSheet
         /// 메인 CTA «영상 다시보기» — 하단 버튼 없이 상단 X 만.
         case reportMain
@@ -105,7 +106,7 @@ public struct ReportVideoPlayerFeature {
             case onAppear
             /// 좌상단 X — 플레이어를 닫고 리포트로 돌아간다 (Figma 는 버튼 하나뿐).
             case userTappedBack
-            /// 하단 «이전 화면으로 가기» — 시트 진입 판에만 있는 버튼이고, 하는 일은 X 와 같다.
+            /// 하단 «이전 화면으로 가기» — 시트 진입 판에만 있고, X 와 달리 왔던 상세 시트까지 되돌린다.
             case userTappedReturnToPrevious
             /// 영상 아무 곳 — 컨트롤 표시 토글.
             case userTappedSurface
@@ -141,8 +142,10 @@ public struct ReportVideoPlayerFeature {
 
         @CasePathable
         public enum Delegate: Equatable, Sendable {
-            /// 뒤로 — 코디네이터가 스택을 pop.
+            /// 뒤로 — 코디네이터가 스택을 pop. 리포트 메인까지다(시트는 닫힌 채).
             case backRequested
+            /// 왔던 하이라이트 상세 시트로 — pop 하고 그 시트를 다시 올린다 (사용자 결정 2026-08-06).
+            case returnToHighlightSheetRequested
         }
     }
 
@@ -191,8 +194,11 @@ public struct ReportVideoPlayerFeature {
         case .onAppear:
             return startControlsHideTimer()
 
-        case .userTappedBack, .userTappedReturnToPrevious:
+        case .userTappedBack:
             return .send(.delegate(.backRequested))
+
+        case .userTappedReturnToPrevious:
+            return .send(.delegate(.returnToHighlightSheetRequested))
 
         case .userTappedSurface:
             // 대본을 켜 둔 동안은 화면 탭이 딤·재생 버튼을 만지지 않는다 (대본이 화면 주인).
@@ -370,7 +376,7 @@ extension ReportVideoPlayerFeature.State {
     /// 대본을 켜면 오버레이가 제 스크림(`.darkOpen`)을 갖고 있어 겹쳐 깔지 않는다.
     var isBottomScrimVisible: Bool { isBottomBarVisible && !isTranscriptVisible }
 
-    /// 하단 «이전 화면으로 가기» 노출 조건 — 시트로 들어온 판에만 있다.
+    /// 하단 «이전 화면으로 가기» 노출 조건 — 시트로 들어온 판에만 있다(돌아갈 시트가 있는 판).
     var isReturnToPreviousVisible: Bool { entry == .highlightSheet }
 
     /// 상단 X 노출 조건 — 시트를 보는 동안은 비운다.
