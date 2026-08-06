@@ -131,10 +131,10 @@ public struct ReportMainView: View {
         }
     }
 
-    /// 제목 + 레드플래그 느낌표·툴팁. 배치는 `DetailReportHeader` 가 갖고, 여기선 상태만 넘긴다.
+    /// 제목 + 안내 느낌표·툴팁. 배치는 `DetailReportHeader` 가 갖고, 여기선 상태만 넘긴다.
     private var detailReportHeader: some View {
         DetailReportHeader(
-            notice: store.hasRedFlagNotices ? store.redFlagTooltipMessage : nil,
+            notice: store.hasDetailReportNotices ? store.detailReportTooltipMessage : nil,
             isTooltipVisible: store.isRedFlagTooltipVisible,
             onTapIcon: { send(.userTappedRedFlagInfo) },
             onTapTooltip: { send(.userTappedRedFlagTooltip) }
@@ -152,15 +152,9 @@ public struct ReportMainView: View {
                 if let questionIntent = card.questionIntent {
                     QuestionAnalysisCard(title: card.questionIntentTitle, contents: questionIntent)
                 }
-                // 해상도 낮음 안내 — 이 카드는 하이라이트가 없어 시트로 가지 않는다.
-                // 분석이 아니라 «안내» 라 분석 카드(36pt 아이콘 + 라벨) 대신 한 줄 판을 쓴다.
-                if let resolutionNotice = card.resolutionNotice {
-                    MessageCard(.mini(resolutionNotice))
-                }
-                // 카드 레드플래그 — 해상도와 독립이라 해상도 낮음 카드에도 표기한다(안내 줄과 같은 한 줄 판).
-                ForEach(Array((card.cardRedFlagNotices ?? []).enumerated()), id: \.offset) { _, notice in
-                    MessageCard(.mini(notice.message))
-                }
+                // 해상도 안내·카드 레드플래그는 카드 본문에 한 줄 판으로 세우지 않는다 —
+                // 제목 옆 느낌표 툴팁(`detailReportHeader`) 한 곳으로 모았다. 시안의 `MessageCard(.mini)`
+                // 한 줄 판은 하이라이트 상세 시트 전용이다.
             }
 
             if let transcript = card.transcript {
@@ -301,8 +295,10 @@ public struct ReportMainView: View {
 #Preview("레드플래그 · 영상 만료 — 443:7204") {
     reportMainPreview(
         cardRedFlagNotices: [
+            RedFlagNotice(type: "CONTRADICTION", message: "면접 앞부분과 뒷부분의 답변이 서로 어긋나는 지점이 있었어요."),
             RedFlagNotice(type: "LOW_RESOLUTION", message: "영상 해상도가 낮아 분석율이 떨어질 수 있어요.")
         ],
+        resolutionNotice: "AI가 분석을 제공하기에는 이번 질문에 대한 답변이 충분하지 않아요.",
         video: InterviewReportVideo(url: nil, expired: true, expiresAt: nil)
     )
 }
@@ -336,11 +332,12 @@ private let previewAttitudeRatings = [
     GuestAttitudeRating(axis: "VOICE", level: 1, comment: "꼬리질문에서 눈빛이 흔들려서 자신감이 없어 보였어요.")
 ]
 
-/// 시안 대조용 화면 — 상태를 가르는 세 필드(레드플래그·영상·지인 피드백)만 바꿔 끼운다.
-/// 레드플래그는 보고서 단위 필드가 없어 첫 카드에 싣는다(메인은 카드들에서 모아 보여준다).
+/// 시안 대조용 화면 — 상태를 가르는 네 필드(레드플래그·해상도 안내·영상·지인 피드백)만 바꿔 끼운다.
+/// 안내는 보고서 단위 필드가 없어 첫 카드에 싣는다(메인은 카드들에서 모아 툴팁 한 곳에 보여준다).
 @ViewBuilder
 private func reportMainPreview(
     cardRedFlagNotices: [RedFlagNotice]? = nil,
+    resolutionNotice: String? = nil,
     video: InterviewReportVideo,
     guestFeedback: GuestFeedbackSection? = nil
 ) -> some View {
@@ -357,7 +354,7 @@ private func reportMainPreview(
                 highlightSpans: [
                     HighlightSpan(startIndex: 40, endIndex: 62, tone: "IMPROVE", analysis: nil)
                 ],
-                resolutionNotice: nil,
+                resolutionNotice: depth == 1 ? resolutionNotice : nil,
                 cardRedFlagNotices: depth == 1 ? cardRedFlagNotices : nil,
                 questionIntent: "트래픽이 증가했을 때 발생할 병목 지점과 시스템의 한계, 그리고 이를 어떻게 판단할지 설명하는 질문입니다."
             )
