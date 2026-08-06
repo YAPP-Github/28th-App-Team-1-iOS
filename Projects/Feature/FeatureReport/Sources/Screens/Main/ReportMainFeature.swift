@@ -314,15 +314,15 @@ public struct ReportMainFeature {
 // MARK: - 표시 파생값
 
 public extension ReportMainFeature.State {
-    /// «상세 리포트» 제목 옆 툴팁에 서는 안내 줄 — 보고서 단위 필드가 없어 카드에서 모은다.
-    /// 카드 순서대로 `resolutionNotice`(카드당 최대 1건) → `cardRedFlagNotices`(전부) 를 잇고,
+    /// «상세 리포트» 제목 옆 툴팁에 서는 안내 줄 — **지금 보고 있는 질문 카드 것만** 세운다.
+    /// 안내는 카드 소유라 탭을 바꾸면 툴팁 내용도 바뀐다. 한 카드 안에서는
+    /// `resolutionNotice`(최대 1건) → `cardRedFlagNotices`(전부) 순으로 잇고,
     /// 빈 문자열은 줄만 차지하므로 버린다. 둘 다 없으면 비고, 그때 뷰가 느낌표·툴팁을 함께 감춘다.
     var detailReportNotices: [String] {
-        cards.flatMap { card in
-            let redFlags = (card.cardRedFlagNotices ?? []).map(\.message)
-            let notices = card.resolutionNotice.map { [$0] + redFlags } ?? redFlags
-            return notices.filter { !$0.isEmpty }
-        }
+        guard let card = selectedCard else { return [] }
+        let redFlags = (card.cardRedFlagNotices ?? []).map(\.message)
+        let notices = card.resolutionNotice.map { [$0] + redFlags } ?? redFlags
+        return notices.filter { !$0.isEmpty }
     }
 
     var cards: [InterviewReportCard] { report?.cards ?? [] }

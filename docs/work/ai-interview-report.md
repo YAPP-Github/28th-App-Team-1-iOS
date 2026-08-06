@@ -73,7 +73,7 @@ ReportMain ─[영상 다시보기]─────────────→ Re
 |---|---|---|
 | `status: InterviewReportPhase` | 화면 상태 분기 | `.generating` 폴링 · `.ready` 정상 · `.insufficientAnalysis` 분석 부족 · `.failed` §13 미확정 |
 | `headline: String?` | 리포트 맨 위 한 줄 요약 | **서버 소유 문구.** 3갈래 분기(정상/분석부족/레드플래그)는 서버가 반영해 내려준다 — 클라는 그대로 표시, nil 이면 §6 폴백 |
-| `card.cardRedFlagNotices` (보고서 단위 필드 없음) | «상세 리포트» 제목 옆 느낌표 툴팁 | 걸린 카드들에서 카드 순서대로 모아 **줄바꿈으로 전부** 잇는다(건수 상한 없음). `message` 그대로 노출, `type` 은 표시하지 않는다(로깅·분기용) |
+| `card.cardRedFlagNotices` (보고서 단위 필드 없음) | «상세 리포트» 제목 옆 느낌표 툴팁 | **보고 있는 질문 카드 것만** — 그 카드 배열을 **줄바꿈으로 전부** 잇는다(건수 상한 없음). `message` 그대로 노출, `type` 은 표시하지 않는다(로깅·분기용) |
 | `video.url: String?` | `[영상 다시보기]` | `String` → `URL(string:)` 변환 실패 시 만료와 동일 취급 |
 | `video.expired: Bool?` / `expiresAt: Date?` | 버튼 활성/비활성 + 만료 안내 | `expired == true` **또는** `url == nil` → 비활성 + §6 만료 문구 |
 | `cards: [InterviewReportCard]?` | 항목 카드 2~4개 | 순서는 서버 배열 순서를 따른다(클라 재정렬 금지) |
@@ -84,8 +84,8 @@ ReportMain ─[영상 다시보기]─────────────→ Re
 | `card.highlightSpans: [HighlightSpan]?` | 대본 하이라이트 + 시트 진입점 | `startIndex/endIndex` 는 `transcript` 문자열 인덱스 — §9-2 안전 슬라이싱 필수 |
 | `script` · `card.scriptSegments` | 플레이어 진행바 칸·오버레이 문장·시각 폴백은 전부 후자 — `script` 는 화면 사용처 없음(2026-08-07) | 칸 하나 = 카드(질문 턴) 하나. 서버 정렬을 믿지 않고 `startSec` 으로 다시 세운다(`orderedSegments`) |
 | `card.words: [TranscriptWord]?` | (없음 — 계약만 보존) | 단어 강조가 필요해질 때 쓴다. **말속도·군말·침묵 산출에 쓰지 않는다** (§0-2 MVP 제외) |
-| `card.resolutionNotice: String?` | 느낌표 툴팁 (카드 본문에는 안 세운다) | **서버 소유 문구.** 있으면 해상도 낮음 카드 → 하이라이트가 없어 시트로 진입하지 않는다 |
-| `card.cardRedFlagNotices: [RedFlagNotice]?` | 느낌표 툴팁 (카드 본문에는 안 세운다) | 해상도와 **독립** — 해상도 낮음 카드의 안내와 나란히 툴팁에 선다. 원소는 문구 문자열 또는 `{type, message}` 둘 다 — `RedFlagNotice` 가 양쪽 디코딩 |
+| `card.resolutionNotice: String?` | 느낌표 툴팁 — 그 카드를 보고 있을 때만 (카드 본문에는 안 세운다) | **서버 소유 문구.** 있으면 해상도 낮음 카드 → 하이라이트가 없어 시트로 진입하지 않는다 |
+| `card.cardRedFlagNotices: [RedFlagNotice]?` | 느낌표 툴팁 — 그 카드를 보고 있을 때만 (카드 본문에는 안 세운다) | 해상도와 **독립** — 같은 카드면 해상도 안내와 나란히 툴팁에 선다. 원소는 문구 문자열 또는 `{type, message}` 둘 다 — `RedFlagNotice` 가 양쪽 디코딩 |
 | `guestFeedback: GuestFeedbackSection?` | 지인 피드백 섹션 | 4.6 소관 — 이 문서 범위에서는 렌더하지 않는다(§13) |
 
 `span.tone` / `span.analysis` 는 §9-1 확장과 함께 확정한다.
@@ -133,7 +133,7 @@ Path 케이스 3개는 유지, **트리거만 §1-1 허브형으로 교체**한�
 
 1. 내비게이션 바 (닫기 X)
 2. **한 줄 요약** — `headline`
-3. **안내 툴팁** — «상세 리포트» 제목 옆 느낌표. 카드 `resolutionNotice`·`cardRedFlagNotices` 가 하나라도 있을 때만, 모인 순서대로 전부
+3. **안내 툴팁** — «상세 리포트» 제목 옆 느낌표. **지금 보고 있는 질문 카드**의 `resolutionNotice`·`cardRedFlagNotices` 가 있을 때만, 그 카드 것만 순서대로 전부 (탭을 옮기면 내용도 바뀐다)
 4. `[영상 다시보기]` — 영상 유효할 때만 활성
 5. **항목 카드 2~4개** — 각 카드: 제목(`질문 n-m`) · 질문 텍스트 · 질문 분석 · 대본+하이라이트 (해상도 안내·카드 레드플래그는 3의 툴팁 몫)
 6. `[지인에게 면접 영상 보내기]` — 4.5 진입
@@ -211,7 +211,7 @@ public enum Action: ViewAction {
 | `loadState == .loading` | 로딩 — 폴링 진행, 진행 문구만(스켈레톤 없음, §10) |
 | `status == .ready` | 정상 — 한 줄 요약 + 카드 전체 |
 | `status == .insufficientAnalysis` | **분석 부족** — 한 줄 요약 자리에 분석 부족 문구, 채점된 카드만 노출, `[영상 다시보기]`. 재도전 CTA 는 없다(2026-08-06 제거 — 재도전은 홈 «면접 시작») |
-| 카드 레드플래그 합계 비어있지 않음 | 위 분기와 **직교** — «상세 리포트» 제목 옆 느낌표 툴팁으로만 알린다(요약 자체는 서버가 중립 문장으로 내려줌) |
+| 보고 있는 카드에 레드플래그 있음 | 위 분기와 **직교** — «상세 리포트» 제목 옆 느낌표 툴팁으로만 알린다(요약 자체는 서버가 중립 문장으로 내려줌) |
 | `loadState == .pollTimedOut` | 채점 지연 안내 + 수동 재시도 |
 | `.failed(.reportNotFound)` | **폴링 계속** (보고서 미생성 상태 = 에러 코드로 옴, [[api#Interview Report]]) |
 | `.failed(.sessionNotFound)` | 복구 불가(세션 없음·타인 소유) — 재시도 버튼 없이 닫기만 |
@@ -439,7 +439,7 @@ Domain 추가분에 `TranscriptSegment`·`TranscriptWord`(서버 타임스탬프
 - 폴링 상한 초과 → `.pollTimedOut`, effect 정지
 - 화면 이탈 시 폴링 취소, `CancellationError` 가 에러 상태를 만들지 않음
 - `.insufficientAnalysis` → 분석 부족 분기 + 채점된 카드만
-- 해상도 안내 + 카드 레드플래그 3건 → 툴팁 4줄로 전부 (둘 다 없으면 느낌표·툴팁 없음)
+- 툴팁은 선택 카드 것만 — 해상도 안내 카드 → 1줄, 레드플래그 3건 카드 → 3줄, 안내 없는 카드 → 느낌표·툴팁 없음
 - `video.expired == true` / `url == nil` / 형식 오류 → `playableVideoURL == nil`
 - 하이라이트 탭 → 시트 present, `tone` 매핑(`"GOOD"`→`.good`, 미지값→`.unknown`)
 - 범위 밖 `startIndex/endIndex` → 시트 미present (크래시 없음)

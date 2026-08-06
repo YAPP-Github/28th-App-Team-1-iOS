@@ -116,21 +116,35 @@ struct ReportMainFeatureTests {
         }
     }
 
-    @Test("툴팁은 해상도 안내와 카드 레드플래그를 카드 순서대로 전부 잇는다")
-    func tooltipJoinsResolutionAndRedFlagNotices() {
+    @Test("툴팁은 보고 있는 질문 카드의 안내만 세운다 — 탭을 바꾸면 내용도 바뀐다")
+    func tooltipShowsSelectedCardNoticesOnly() {
         var state = ReportMainFeature.State(sessionId: 1)
         state.report = InterviewReport(
             status: .ready,
             headline: nil,
             video: nil,
-            cards: [InterviewReportFixtures.lowResolutionCard, InterviewReportFixtures.redFlaggedCard],
+            cards: [
+                InterviewReportFixtures.lowResolutionCard,
+                InterviewReportFixtures.strongCard,
+                InterviewReportFixtures.redFlaggedCard,
+            ],
             guestFeedback: nil
         )
 
-        let expected = [InterviewReportFixtures.lowResolutionCard.resolutionNotice].compactMap { $0 }
-            + (InterviewReportFixtures.redFlaggedCard.cardRedFlagNotices ?? []).map(\.message)
-        #expect(state.detailReportNotices == expected)
-        #expect(state.detailReportTooltipMessage == expected.joined(separator: "\n"))
+        let lowResolution = [InterviewReportFixtures.lowResolutionCard.resolutionNotice].compactMap { $0 }
+        #expect(state.detailReportNotices == lowResolution)
+        #expect(state.detailReportTooltipMessage == lowResolution.joined(separator: "\n"))
+
+        // 안내가 없는 카드로 옮기면 느낌표·툴팁이 함께 사라진다.
+        state.selectedCardIndex = 1
+        #expect(state.detailReportNotices.isEmpty)
+        #expect(!state.hasDetailReportNotices)
+
+        // 레드플래그 카드에서는 그 카드의 배열만, 순서대로 전부.
+        state.selectedCardIndex = 2
+        let redFlags = (InterviewReportFixtures.redFlaggedCard.cardRedFlagNotices ?? []).map(\.message)
+        #expect(state.detailReportNotices == redFlags)
+        #expect(state.detailReportTooltipMessage == redFlags.joined(separator: "\n"))
     }
 
     @Test("안내가 둘 다 없으면 느낌표·툴팁을 그리지 않는다")
