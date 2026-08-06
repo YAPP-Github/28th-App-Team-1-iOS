@@ -142,11 +142,14 @@ public enum InterviewReportFixtures {
             ScriptSegment(role: .interviewer, text: "수고하셨습니다. 면접을 마치겠습니다.", startSec: 12, endSec: 14)
         ]
     }
+}
 
-    // MARK: - 카드
+// MARK: - 카드
 
+/// 카드는 별도 extension — 한 타입 본문에 다 넣으면 길이 제한(250줄)을 넘긴다.
+public extension InterviewReportFixtures {
     /// 잘함(파고들 여지) 하이라이트가 있는 카드 — 꼬리질문 판 확인용.
-    public static var strongCard: InterviewReportCard {
+    static var strongCard: InterviewReportCard {
         let transcript = "프로파일링하니 DB 왕복이 7번 도는 N+1이 원인이었고, 안 바뀌는 6번을 캐시로 흡수해 600ms를 깎았어요."
         return InterviewReportCard(
             axisOrder: 1,
@@ -192,7 +195,7 @@ public enum InterviewReportFixtures {
     }
 
     /// 개선(딴 답) 하이라이트가 있는 카드 — «질문 의도 ↔ 내 답변» 대조 판 확인용.
-    public static var improveCard: InterviewReportCard {
+    static var improveCard: InterviewReportCard {
         let transcript = "결제가 느려서 캐시를 써서 빠르게 만들었어요. 그 캐시는 팀이 원래 쓰던 것이라 저는 운영만 했어요."
         return InterviewReportCard(
             axisOrder: 2,
@@ -245,7 +248,7 @@ public enum InterviewReportFixtures {
     }
 
     /// 레드플래그 3건이 걸린 카드 — 툴팁이 배열 전부를 줄바꿈으로 잇는지 확인용.
-    public static var redFlaggedCard: InterviewReportCard {
+    static var redFlaggedCard: InterviewReportCard {
         InterviewReportCard(
             axisOrder: 1,
             depthLevel: 1,
@@ -271,7 +274,7 @@ public enum InterviewReportFixtures {
     }
 
     /// 해상도 낮음 카드 — 안내 문구가 있고 하이라이트는 비어 있다.
-    public static var lowResolutionCard: InterviewReportCard {
+    static var lowResolutionCard: InterviewReportCard {
         InterviewReportCard(
             axisOrder: 3,
             depthLevel: 1,
