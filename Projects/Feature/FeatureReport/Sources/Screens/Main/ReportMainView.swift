@@ -333,7 +333,8 @@ private let previewAttitudeRatings = [
 ]
 
 /// 시안 대조용 화면 — 상태를 가르는 네 필드(레드플래그·해상도 안내·영상·지인 피드백)만 바꿔 끼운다.
-/// 안내는 보고서 단위 필드가 없어 첫 카드에 싣는다(메인은 카드들에서 모아 툴팁 한 곳에 보여준다).
+/// 안내는 카드 소유라 첫 카드에만 싣는다 — 툴팁은 보고 있는 카드 것만 세우므로
+/// 질문 탭을 옮기면 느낌표·툴팁이 사라지는 것까지 프리뷰에서 확인된다.
 @ViewBuilder
 private func reportMainPreview(
     cardRedFlagNotices: [RedFlagNotice]? = nil,
