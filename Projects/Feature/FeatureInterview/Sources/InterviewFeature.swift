@@ -85,17 +85,26 @@ public struct InterviewFeature {
                 state.screen = .failure(InterviewFailureFeature.State(kind: .questionPrep))
                 return stopCaptureDevicesAndPlayback()
 
-            case .screen(.session(.delegate(.finished))):
-                state.screen = .reportPending(InterviewReportPendingFeature.State())
+            case let .screen(.session(.delegate(.finished(ref, wrapUp)))):
+                // 화면 교체는 세션 effect 를 취소하지 않는다(Scope-on-enum) — 「정지+합성」 구간에서 뒤늦은
+                // 두 번째 통보가 도달할 수 있어, 이미 넘어갔으면 무시한다(업로드 재시작·산출물 유실 방지).
+                guard case .session = state.screen else { return .none }
+                // 녹화 산출물은 리포트 대기 화면이 조용히 업로드한다 → [[interview#리포트 대기]].
+                state.screen = .reportPending(InterviewReportPendingFeature.State(
+                    recording: ref, wrapUp: wrapUp
+                ))
                 return stopCaptureDevices()
 
             case .screen(.reportPending(.delegate(.goHomeRequested))):
                 return .send(.delegate(.finished))
 
             case .screen(.session(.delegate(.aborted))):
+                // finished 와 같은 창(위 주석) — 뒤늦게 도달하면 폐기가 **업로드 중인 파일**을 지운다.
+                guard case .session = state.screen else { return .none }
                 return stopCaptureDevicesThenNotifyClosed()
 
             case let .screen(.session(.delegate(.failed(kind)))):
+                guard case .session = state.screen else { return .none }
                 state.screen = .failure(InterviewFailureFeature.State(kind: kind))
                 return stopCaptureDevicesAndPlayback()
 
@@ -114,6 +123,7 @@ public struct InterviewFeature {
 
     /// 캡처 화면(준비·세션)을 떠나는 전환 공통 — 카메라 프리뷰·마이크 캡처 정지(둘 다 멱등).
     /// 재생(stopPlayback)은 끄지 않는다 — 정상 종료(리포트 대기 전환)가 이 경로라 마무리 멘트를 살린다.
+    /// 녹화도 폐기하지 않는다 — 산출 파일은 리포트 대기 화면의 업로드가 쓴다(스펙 §④).
     /// 실패 화면 «다시 시작하기» 재진입은 Readiness onAppear(카메라)·세션 onAppear(마이크)가 다시 켠다.
     private func stopCaptureDevices() -> Effect<Action> {
         .run { _ in
@@ -123,8 +133,10 @@ public struct InterviewFeature {
     }
 
     /// 실패 전환 공통 — 캡처에 더해 진행 중 질문 재생도 끊는다(실패 화면 뒤에서 소리가 이어지지 않게).
+    /// 진행 중 녹화가 있으면 정지·폐기한다(스펙 §① 실패 = 즉시 정지 + 파일 폐기) — 멱등이라 준비 화면 경로에선 no-op.
     private func stopCaptureDevicesAndPlayback() -> Effect<Action> {
         .run { _ in
+            await recordingClient.discardRecording()
             await recordingClient.stopPreview()
             await speechClient.stopCapture()
             await speechClient.stopPlayback()
@@ -133,8 +145,10 @@ public struct InterviewFeature {
 
     /// 흐름 이탈 공통 — 정지(재생 포함) 완료 후 상위 통보. merge 로 두면 상위 dismiss 가 정지 effect 를
     /// 취소할 수 있어(작업 D: ifLet 해제 시 자식 effect 취소) 순서를 보장한다.
+    /// 진행 중 녹화가 있으면 정지·폐기한다(스펙 §① BACK_EXIT = 즉시 정지 + 파일 폐기) — 준비 화면 경로에선 no-op.
     private func stopCaptureDevicesThenNotifyClosed() -> Effect<Action> {
         .run { send in
+            await recordingClient.discardRecording()
             await recordingClient.stopPreview()
             await speechClient.stopCapture()
             await speechClient.stopPlayback()

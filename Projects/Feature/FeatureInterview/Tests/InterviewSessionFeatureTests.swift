@@ -28,13 +28,21 @@ struct InterviewSessionFeatureTests {
         } withDependencies: {
             $0.continuousClock = clock
             $0.recordingClient.startPreview = { handle }
+            $0.recordingClient.startRecording = { _ in }
             $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
             $0.speechClient.playStream = { _, _ in finishedPlayback() }
+            $0.speechClient.startSessionAudioRecording = {}
+            $0.speechClient.setSessionAudioMuted = { _ in }
+            $0.speechClient.startAnswerRecording = {}
             $0.interviewClient.questionAudioStream = stubAudioStream
         }
         store.exhaustivity = .off   // 세션 시계·재생 전이는 다른 테스트가 고정 — 여기선 핸들 확보만 본다.
 
         await store.send(.view(.onAppear))
+        await store.receive(\.inner.recordingStarted) {
+            $0.hasRecording = true
+            $0.questionAudioStartedAt = 0
+        }
         await store.skipReceivedActions()
         #expect(store.state.previewHandle == handle)
     }
@@ -50,6 +58,7 @@ struct InterviewSessionFeatureTests {
         } withDependencies: {
             $0.continuousClock = clock
             $0.recordingClient.startPreview = { nil }
+            $0.recordingClient.startRecording = { _ in }
             $0.speechClient.startCapture = {
                 captureStarted.setValue(true)
                 return AsyncStream { $0.finish() }
@@ -58,10 +67,17 @@ struct InterviewSessionFeatureTests {
                 played.setValue(data)
                 return finishedPlayback()
             }
+            $0.speechClient.startSessionAudioRecording = {}
+            $0.speechClient.setSessionAudioMuted = { _ in }
+            $0.speechClient.startAnswerRecording = {}
         }
         store.exhaustivity = .off
 
         await store.send(.view(.onAppear))
+        await store.receive(\.inner.recordingStarted) {
+            $0.hasRecording = true
+            $0.questionAudioStartedAt = 0
+        }
         await store.skipReceivedActions()
         #expect(captureStarted.value)
         #expect(played.value == Data("mp3".utf8))
@@ -76,8 +92,14 @@ struct InterviewSessionFeatureTests {
         } withDependencies: {
             $0.continuousClock = clock
             $0.recordingClient.startPreview = { nil }
+            $0.recordingClient.startRecording = { _ in }
+            $0.recordingClient.stopRecording = { _, _ in .stub }
             $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
             $0.speechClient.playStream = { _, _ in finishedPlayback() }
+            $0.speechClient.startSessionAudioRecording = {}
+            $0.speechClient.finishSessionAudioRecording = { .stub }
+            $0.speechClient.setSessionAudioMuted = { _ in }
+            $0.speechClient.startAnswerRecording = {}
             $0.speechClient.answerAudio = { nil }
             $0.interviewClient.questionAudioStream = stubAudioStream
             $0.interviewClient.submitAnswer = { _, _ in .ended(.manualEnd) }
@@ -85,6 +107,7 @@ struct InterviewSessionFeatureTests {
         store.exhaustivity = .off   // 1초 틱 480회를 개별 검증하지 않는다.
 
         await store.send(.view(.onAppear))
+        await store.receive(\.inner.recordingStarted)
         await clock.advance(by: .seconds(480))
         await store.skipReceivedActions()
         #expect(store.state.isExitAvailable)
@@ -107,8 +130,14 @@ struct InterviewSessionFeatureTests {
         } withDependencies: {
             $0.continuousClock = clock
             $0.recordingClient.startPreview = { nil }
+            $0.recordingClient.startRecording = { _ in }
+            $0.recordingClient.stopRecording = { _, _ in .stub }
             $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
             $0.speechClient.playStream = { _, _ in finishedPlayback() }
+            $0.speechClient.startSessionAudioRecording = {}
+            $0.speechClient.finishSessionAudioRecording = { .stub }
+            $0.speechClient.setSessionAudioMuted = { _ in }
+            $0.speechClient.startAnswerRecording = {}
             $0.speechClient.answerAudio = { nil }
             $0.interviewClient.questionAudioStream = stubAudioStream
             $0.interviewClient.submitAnswer = { _, submission in
@@ -119,6 +148,7 @@ struct InterviewSessionFeatureTests {
         store.exhaustivity = .off
 
         await store.send(.view(.onAppear))
+        await store.receive(\.inner.recordingStarted)
         await clock.advance(by: .seconds(710))   // 11:50
         await store.skipReceivedActions()
         #expect(store.state.phase == .finalCountdown)
@@ -126,6 +156,7 @@ struct InterviewSessionFeatureTests {
         #expect(store.state.countdownRemaining == 10)
 
         await clock.advance(by: .seconds(10))    // 12:00 hard cap — 제출 경유 종료
+        await store.receive(\.inner.recordingStopped)   // 마무리 멘트 없음 — 즉시 정지+합성
         await store.receive(\.delegate.finished)
         #expect(captured.value?.endType == .hardCap)
         #expect(captured.value?.isWrapUp == true)
@@ -155,14 +186,18 @@ struct InterviewSessionFeatureTests {
         } withDependencies: {
             $0.continuousClock = clock
             $0.recordingClient.startPreview = { nil }
+            $0.recordingClient.startRecording = { _ in }
             $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
             // 끝나지 않는 재생 스트림 — 정리(cancel)가 안 되면 finish 에서 잡힌다.
             $0.speechClient.playStream = { _, _ in AsyncStream { _ in } }
+            $0.speechClient.startSessionAudioRecording = {}
+            $0.speechClient.setSessionAudioMuted = { _ in }
             $0.interviewClient.questionAudioStream = stubAudioStream
         }
         store.exhaustivity = .off   // 시계 틱은 기존 테스트가 고정 — 여기선 정리·통보만 본다.
 
         await store.send(.view(.onAppear))
+        await store.receive(\.inner.recordingStarted)
         await clock.advance(by: .seconds(1))   // 세션 시계·재생 effect 가 실제로 돌고 있는 상태를 만든다.
         await store.skipReceivedActions()
 
@@ -190,6 +225,8 @@ struct InterviewSessionSubmissionTests {
         } withDependencies: {
             $0.speechClient.answerAudio = { Data("answer".utf8) }
             $0.speechClient.playStream = { _, _ in finishedPlayback() }
+            $0.speechClient.setSessionAudioMuted = { _ in }
+            $0.speechClient.startAnswerRecording = {}
             $0.interviewClient.questionAudioStream = stubAudioStream
             $0.interviewClient.submitAnswer = { _, submission in
                 captured.setValue(submission)
@@ -227,7 +264,9 @@ struct InterviewSessionSubmissionTests {
         #expect(submission?.endType == nil)
     }
 
-    @Test("NORMAL_END 응답은 마무리 멘트 재생을 걸어두기만 하고 즉시 종료를 통보한다")
+    // 녹화 없는(hasRecording == false) 세션의 NORMAL_END — 영상 없는 리포트라 멘트를 기다리지 않는다.
+    // 녹화가 있는 경우의 «멘트 재생 완료 후 정지» 는 InterviewSessionRecordingTests 가 고정한다.
+    @Test("녹화 없는 NORMAL_END 응답은 마무리 멘트 재생을 걸어두기만 하고 즉시 종료를 통보한다")
     func normalEndPlaysWrapUpFireAndForget() async {
         let played = LockIsolated<Data?>(nil)
         var initialState = InterviewSessionFeature.State.fixture(hasStarted: true)
@@ -512,8 +551,14 @@ struct InterviewSessionSubmissionTests {
         } withDependencies: {
             $0.continuousClock = clock
             $0.recordingClient.startPreview = { nil }
+            $0.recordingClient.startRecording = { _ in }
+            $0.recordingClient.stopRecording = { _, _ in .stub }
             $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
             $0.speechClient.playStream = { _, _ in finishedPlayback() }
+            $0.speechClient.startSessionAudioRecording = {}
+            $0.speechClient.finishSessionAudioRecording = { .stub }
+            $0.speechClient.setSessionAudioMuted = { _ in }
+            $0.speechClient.startAnswerRecording = {}
             $0.speechClient.answerAudio = { nil }
             $0.interviewClient.questionAudioStream = stubAudioStream
             $0.interviewClient.submitAnswer = { _, _ in .ended(.manualEnd) }
@@ -521,6 +566,7 @@ struct InterviewSessionSubmissionTests {
         store.exhaustivity = .off
 
         await store.send(.view(.onAppear))
+        await store.receive(\.inner.recordingStarted)
         await clock.advance(by: .seconds(479))   // 7:59
         await store.skipReceivedActions()
 
@@ -538,57 +584,345 @@ struct InterviewSessionSubmissionTests {
     }
 }
 
-// MARK: - 픽스처
+// 실녹화 시작 배선을 고정한다 — 타임라인 0점, 시작 실패 폴백(영상 없는 리포트), 마무리 멘트 구간 계측.
+@MainActor
+struct InterviewSessionRecordingTests {
+    @Test("녹화 시작 실패면 영상 없이 진행되고 종료 delegate 에 ref 가 없다")
+    func recordingStartFailureProceedsWithoutVideo() async {
+        let store = TestStore(initialState: .fixture()) {
+            InterviewSessionFeature()
+        } withDependencies: {
+            $0.continuousClock = TestClock()
+            $0.recordingClient.startPreview = { nil }
+            $0.recordingClient.startRecording = { _ in throw RecordingError.startFailed("스텁") }
+            $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
+            $0.speechClient.playStream = { _, _ in finishedPlayback() }
+            $0.speechClient.setSessionAudioMuted = { _ in }
+            $0.speechClient.startAnswerRecording = {}
+            $0.speechClient.answerAudio = { nil }
+            $0.interviewClient.questionAudioStream = stubAudioStream
+            $0.interviewClient.submitAnswer = { _, _ in .ended(.normalEnd) }
+        }
+        // 세션 오디오 기록·정지+합성은 스텁하지 않는다 — 불리면 unimplemented 가 잡는다.
+        store.exhaustivity = .off
 
-private extension InterviewSessionFeature.State {
-    /// 표준 시작 상태 — sessionId 7, 요약 질문(questionId 1). summaryAudio 는 base64 mp3(없으면 스트림 폴백).
-    static func fixture(hasStarted: Bool = false, summaryAudio: String? = nil) -> Self {
-        var state = InterviewSessionFeature.State(
-            sessionId: 7,
-            summaryQuestion: SummaryQuestion(
-                questionId: 1,
-                ttsAudio: summaryAudio,
-                turn: TurnInfo(turnLevel: 0, depthLevel: 0)
+        await store.send(.view(.onAppear))
+        await store.receive(\.inner.recordingStarted) {
+            $0.hasRecording = false
+            $0.questionAudioStartedAt = 0
+        }
+        await store.receive(\.inner.questionPlaybackFinished)
+        await store.send(.view(.userTappedAnswerComplete))
+        await store.receive({ action in
+            guard case let .delegate(.finished(ref, wrapUp)) = action else { return false }
+            return ref == nil && wrapUp == nil
+        })
+    }
+
+    @Test("마무리 멘트 재생 구간을 계측해 정지 후 ref 와 함께 통보한다")
+    func wrapUpSpanMeasuredThenStops() async {
+        let clock = TestClock()
+        let ref = RecordingRef(sessionId: 7, fileURL: URL(fileURLWithPath: "/tmp/v.mp4"), durationSeconds: 60)
+        let sessionAudio = SessionAudioRecording(fileURL: URL(fileURLWithPath: "/tmp/s.m4a"), startedAtHostSeconds: 12.5)
+        let stopArgs = LockIsolated<(URL?, Double?)?>(nil)
+        // 재생 종료 시점을 테스트가 쥔다 — 그 사이 흐른 시계가 곧 계측 구간이 된다.
+        let wrapUpPlayback = AsyncStream<PlaybackEvent>.makeStream()
+        let store = TestStore(initialState: .fixture()) {
+            InterviewSessionFeature()
+        } withDependencies: {
+            $0.continuousClock = clock
+            $0.recordingClient.startPreview = { nil }
+            $0.recordingClient.startRecording = { _ in }
+            $0.recordingClient.stopRecording = { fileURL, startedAt in
+                stopArgs.setValue((fileURL, startedAt))
+                return ref
+            }
+            $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
+            $0.speechClient.playStream = { _, _ in finishedPlayback() }
+            $0.speechClient.play = { _ in wrapUpPlayback.stream }
+            $0.speechClient.startSessionAudioRecording = {}
+            $0.speechClient.finishSessionAudioRecording = { sessionAudio }
+            $0.speechClient.setSessionAudioMuted = { _ in }
+            $0.speechClient.startAnswerRecording = {}
+            $0.speechClient.answerAudio = { nil }
+            $0.interviewClient.questionAudioStream = stubAudioStream
+            $0.interviewClient.submitAnswer = { _, _ in .ended(.normalEnd, wrapUp: "bXAz") }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.view(.onAppear))
+        await store.receive(\.inner.recordingStarted)
+        await store.receive(\.inner.questionPlaybackFinished)
+        await store.send(.view(.userTappedAnswerComplete))
+        await store.receive(\.inner.answerSubmitted) {
+            $0.isWrappingUp = true
+            $0.wrapUpStartedAt = 0
+        }
+        // 멘트가 3초 재생되는 동안 시계는 계측용으로 계속 돈다 — 구간 끝은 그때의 세션 시계다.
+        await clock.advance(by: .seconds(3))
+        await store.skipReceivedActions()
+        #expect(store.state.elapsedSeconds == 3)
+
+        wrapUpPlayback.continuation.yield(.finished)
+        await store.receive(\.inner.wrapUpPlaybackFinished) {
+            $0.isWrappingUp = false
+            $0.wrapUpSpan = InterviewVideoWrapUpSpan(wrapUpStartSec: 0, wrapUpEndSec: 3)
+        }
+        await store.receive({ action in
+            guard case let .delegate(.finished(stoppedRef, wrapUp)) = action else { return false }
+            return stoppedRef == ref && wrapUp == InterviewVideoWrapUpSpan(wrapUpStartSec: 0, wrapUpEndSec: 3)
+        })
+        // 세션 오디오 마감 산출물이 그대로 합성 입력으로 넘어간다(립싱크 오프셋 포함).
+        #expect(stopArgs.value?.0 == sessionAudio.fileURL)
+        #expect(stopArgs.value?.1 == sessionAudio.startedAtHostSeconds)
+        await store.finish()
+    }
+
+    @Test("HARD_CAP 마감의 마무리 멘트도 구간이 계측된다 — 취소됐던 시계를 계측용으로 되돌린다")
+    func hardCapWrapUpRestartsClockForMeasurement() async {
+        let clock = TestClock()
+        let wrapUpPlayback = AsyncStream<PlaybackEvent>.makeStream()
+        var initialState = InterviewSessionFeature.State.fixture(hasStarted: true)
+        initialState.hasRecording = true
+        initialState.phase = .answering
+        initialState.elapsedSeconds = InterviewSessionFeature.hardCapSeconds - 1
+        let store = TestStore(initialState: initialState) {
+            InterviewSessionFeature()
+        } withDependencies: {
+            $0.continuousClock = clock
+            $0.recordingClient.stopRecording = { _, _ in .stub }
+            $0.speechClient.setSessionAudioMuted = { _ in }
+            $0.speechClient.play = { _ in wrapUpPlayback.stream }
+            $0.speechClient.finishSessionAudioRecording = { .stub }
+            $0.speechClient.answerAudio = { nil }
+            $0.interviewClient.submitAnswer = { _, _ in .ended(.hardCap, wrapUp: "bXAz") }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.inner(.clockTicked))   // 12:00 — 시계를 끊고 HARD_CAP 을 제출한다
+        await store.receive(\.inner.answerSubmitted) {
+            $0.isWrappingUp = true
+            $0.wrapUpStartedAt = InterviewSessionFeature.hardCapSeconds
+        }
+        // 되살아난 시계가 계측만 한다 — 상한 로직이 다시 걸리면 제출이 반복돼 잡힌다.
+        await clock.advance(by: .seconds(3))
+        await store.skipReceivedActions()
+        #expect(store.state.elapsedSeconds == InterviewSessionFeature.hardCapSeconds + 3)
+
+        wrapUpPlayback.continuation.yield(.finished)
+        await store.receive(\.inner.wrapUpPlaybackFinished) {
+            $0.isWrappingUp = false
+            $0.wrapUpSpan = InterviewVideoWrapUpSpan(
+                wrapUpStartSec: Double(InterviewSessionFeature.hardCapSeconds),
+                wrapUpEndSec: Double(InterviewSessionFeature.hardCapSeconds + 3)
             )
-        )
-        state.hasStarted = hasStarted
-        return state
+        }
+        await store.receive(\.inner.recordingStopped)
+        await store.receive(\.delegate.finished)
+        await store.finish()
+    }
+
+    // 세션 오디오 기록은 캡처 엔진이 세팅하는 tap 포맷을 전제로 한다 — 먼저 열리면 조용히 무시돼
+    // finish 가 늘 nil 이 되고 모든 세션이 «영상 없는 리포트» 로 수렴한다. 순서를 코드가 아니라 여기서 못 박는다.
+    @Test("세션 오디오 기록은 마이크 캡처가 선 다음에 열린다", .timeLimit(.minutes(1)))
+    func sessionAudioOpensAfterCaptureEngine() async {
+        let calls = AsyncStream<String>.makeStream()
+        let store = TestStore(initialState: .fixture()) {
+            InterviewSessionFeature()
+        } withDependencies: {
+            $0.continuousClock = TestClock()
+            $0.recordingClient.startPreview = { nil }
+            $0.recordingClient.startRecording = { _ in }
+            $0.speechClient.startCapture = {
+                calls.continuation.yield("startCapture")
+                return AsyncStream { $0.finish() }
+            }
+            $0.speechClient.startSessionAudioRecording = { calls.continuation.yield("startSessionAudioRecording") }
+            $0.speechClient.playStream = { _, _ in finishedPlayback() }
+            $0.speechClient.setSessionAudioMuted = { _ in }
+            $0.speechClient.startAnswerRecording = {}
+            $0.interviewClient.questionAudioStream = stubAudioStream
+        }
+        store.exhaustivity = .off
+
+        await store.send(.view(.onAppear))
+        await store.receive(\.inner.recordingStarted)
+        var observed: [String] = []
+        for await call in calls.stream {
+            observed.append(call)
+            if observed.count == 2 { break }
+        }
+        #expect(observed == ["startCapture", "startSessionAudioRecording"])
+    }
+
+    @Test("녹화 시작 실패면 세션 오디오도 열지 않는다 — 합성 입력 없이 기록만 남기지 않는다")
+    func sessionAudioStaysClosedWhenRecordingFails() async {
+        let sessionAudioOpened = LockIsolated(false)
+        let store = TestStore(initialState: .fixture()) {
+            InterviewSessionFeature()
+        } withDependencies: {
+            $0.continuousClock = TestClock()
+            $0.recordingClient.startPreview = { nil }
+            $0.recordingClient.startRecording = { _ in throw RecordingError.startFailed("스텁") }
+            $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
+            $0.speechClient.startSessionAudioRecording = { sessionAudioOpened.setValue(true) }
+            $0.speechClient.playStream = { _, _ in finishedPlayback() }
+            $0.speechClient.setSessionAudioMuted = { _ in }
+            $0.speechClient.startAnswerRecording = {}
+            $0.interviewClient.questionAudioStream = stubAudioStream
+        }
+        store.exhaustivity = .off
+
+        await store.send(.view(.onAppear))
+        await store.receive(\.inner.recordingStarted)
+        await store.receive(\.inner.questionPlaybackFinished)
+        #expect(sessionAudioOpened.value == false)
     }
 }
 
-private extension AnswerResult {
-    /// 다음 질문 응답 — 세션 계속.
-    static func next(_ questionId: Int) -> Self {
-        AnswerResult(
-            answerId: 1,
-            nextQuestion: NextQuestion(questionId: questionId, isLast: false, turn: TurnInfo(turnLevel: 1, depthLevel: 1)),
-            sessionEnded: false,
-            wrapUpMessage: nil,
-            endType: nil
-        )
+// 종료가 확정된 뒤(마무리 계측 ~ 정지+합성)의 잠금과 순서를 고정한다 — 여기서 새면 delegate 가 두 번 나가거나
+// 세션 오디오가 폐기돼 영상이 조용히 사라진다. 시작·타임라인 0점은 위 스위트.
+@MainActor
+struct InterviewSessionFinishTests {
+    @Test("마무리 멘트 계측 중엔 종료·이탈 입력이 먹지 않는다 — 종료가 두 번 통보되지 않게")
+    func wrappingUpIgnoresExitInputs() async {
+        var initialState = InterviewSessionFeature.State.fixture(hasStarted: true)
+        initialState.hasRecording = true
+        initialState.isWrappingUp = true
+        initialState.isExitAvailable = true
+        initialState.phase = .processingAnswer
+        // 제출·정지 스텁 없음 — 입력이 하나라도 새면 unimplemented 가 잡는다.
+        let store = TestStore(initialState: initialState) {
+            InterviewSessionFeature()
+        }
+
+        // 넷 다 상태 무변화·effect 없음(모달조차 열리지 않는다).
+        await store.send(.view(.userTappedClose))
+        await store.send(.view(.userTappedExit))
+        await store.send(.view(.userTappedFinishInterview))
+        await store.send(.view(.userTappedLeaveInterview))
     }
 
-    /// 세션 종료 응답 — endType 별 분기 검증용.
-    static func ended(_ type: SessionEndType, wrapUp: String? = nil) -> Self {
-        AnswerResult(
-            answerId: nil,
-            nextQuestion: nil,
-            sessionEnded: true,
-            wrapUpMessage: wrapUp.map(WrapUpMessage.init(ttsAudio:)),
-            endType: type
-        )
-    }
-}
+    // 마이크 취소는 스트림 종료 → live 의 `stopCapture()` → **진행 중 세션 기록 폐기**로 이어진다.
+    // 마감보다 먼저 도착하면 산출물이 통째로 날아가므로 순서를 여기서 못 박는다(정상 종료마다 도는 경로).
+    @Test("정지 경로는 세션 오디오를 마감한 뒤에야 마이크를 끊는다", .timeLimit(.minutes(1)))
+    func micCaptureStopsOnlyAfterSessionAudioIsFinished() async {
+        let calls = AsyncStream<String>.makeStream()
+        let store = TestStore(initialState: .fixture()) {
+            InterviewSessionFeature()
+        } withDependencies: {
+            $0.continuousClock = TestClock()
+            $0.recordingClient.startPreview = { nil }
+            $0.recordingClient.startRecording = { _ in }
+            $0.recordingClient.stopRecording = { _, _ in .stub }
+            // 스스로 끝나지 않는 캡처 스트림 — 종료는 effect 취소뿐이라 onTermination 이 곧 stopCapture 시점이다.
+            $0.speechClient.startCapture = {
+                AsyncStream { continuation in
+                    continuation.onTermination = { _ in calls.continuation.yield("micCaptureStopped") }
+                }
+            }
+            $0.speechClient.startSessionAudioRecording = {}
+            $0.speechClient.finishSessionAudioRecording = {
+                calls.continuation.yield("sessionAudioFinished")
+                return .stub
+            }
+            $0.speechClient.playStream = { _, _ in finishedPlayback() }
+            $0.speechClient.setSessionAudioMuted = { _ in }
+            $0.speechClient.startAnswerRecording = {}
+            $0.speechClient.answerAudio = { nil }
+            $0.interviewClient.questionAudioStream = stubAudioStream
+            $0.interviewClient.submitAnswer = { _, _ in .ended(.normalEnd) }
+        }
+        store.exhaustivity = .off
 
-/// 즉시 완료되는 재생 스트림 — 재생 자체는 다른 계층(AudioPlaybackManager) 몫이라 이벤트만 흘린다.
-private func finishedPlayback() -> AsyncStream<PlaybackEvent> {
-    AsyncStream {
-        $0.yield(.finished)
-        $0.finish()
+        await store.send(.view(.onAppear))
+        await store.receive(\.inner.recordingStarted)
+        await store.receive(\.inner.questionPlaybackFinished)
+        await store.send(.view(.userTappedAnswerComplete))
+        var observed: [String] = []
+        for await call in calls.stream {
+            observed.append(call)
+            if observed.count == 2 { break }
+        }
+        #expect(observed == ["sessionAudioFinished", "micCaptureStopped"])
     }
-}
 
-/// questionAudioStream 스텁 — 경로 조립만 흉내 낸다. (전역 함수는 캡처가 없어 @Sendable 로 승격된다)
-private func stubAudioStream(_ sessionId: Int, _ questionId: Int) -> InterviewAudioStream {
-    InterviewAudioStream(url: URL(string: "stub://\(sessionId)/\(questionId)")!, headers: [:])
+    @Test("이미 종료된 세션(409)이어도 녹화가 있으면 정지·합성을 거쳐 ref 와 함께 통보한다")
+    func sessionAlreadyEndedStillStopsRecording() async {
+        let ref = RecordingRef(sessionId: 7, fileURL: URL(fileURLWithPath: "/tmp/v.mp4"), durationSeconds: 42)
+        var initialState = InterviewSessionFeature.State.fixture(hasStarted: true)
+        initialState.phase = .answering
+        initialState.hasRecording = true
+        let store = TestStore(initialState: initialState) {
+            InterviewSessionFeature()
+        } withDependencies: {
+            $0.recordingClient.stopRecording = { _, _ in ref }
+            $0.speechClient.answerAudio = { nil }
+            $0.speechClient.finishSessionAudioRecording = { .stub }
+            $0.interviewClient.submitAnswer = { _, _ in throw InterviewError.sessionAlreadyEnded }
+        }
+
+        await store.send(.view(.userTappedAnswerComplete)) {
+            $0.phase = .processingAnswer
+            $0.isSubmitting = true
+        }
+        await store.receive(\.inner.answerSubmissionFailed) {
+            $0.isSubmitting = false
+            $0.isFinishing = true
+        }
+        await store.receive(\.inner.recordingStopped)
+        await store.receive({ action in
+            guard case let .delegate(.finished(stoppedRef, wrapUp)) = action else { return false }
+            return stoppedRef == ref && wrapUp == nil   // 멘트 없이 끝난 세션이라 span 은 없다
+        })
+    }
+
+    @Test("정지+합성이 이미 걸렸으면 두 번째 종료 신호는 아무 일도 하지 않는다 — 재진입 가드")
+    func stopRecordingIsNotReentered() async {
+        var initialState = InterviewSessionFeature.State.fixture(hasStarted: true)
+        initialState.hasRecording = true
+        initialState.isFinishing = true
+        // 마감·정지 스텁 없음 — 재진입하면 unimplemented 가 잡는다.
+        // (두 번째 stopRecording 은 액터에 recording 이 없어 즉시 throw → 빈 결과가 진짜를 앞지른다.)
+        let store = TestStore(initialState: initialState) {
+            InterviewSessionFeature()
+        }
+
+        await store.send(.inner(.answerSubmissionFailed(.sessionAlreadyEnded)))
+    }
+
+    @Test("정지+합성 구간에도 종료·이탈 입력이 먹지 않는다")
+    func finishingIgnoresExitInputs() async {
+        var initialState = InterviewSessionFeature.State.fixture(hasStarted: true)
+        initialState.hasRecording = true
+        initialState.isFinishing = true
+        initialState.isExitAvailable = true
+        initialState.phase = .processingAnswer
+        // 제출·정지 스텁 없음 — 입력이 하나라도 새면 unimplemented 가 잡는다.
+        let store = TestStore(initialState: initialState) {
+            InterviewSessionFeature()
+        }
+
+        await store.send(.view(.userTappedClose))
+        await store.send(.view(.userTappedExit))
+        await store.send(.view(.userTappedFinishInterview))
+        await store.send(.view(.userTappedLeaveInterview))
+    }
+
+    @Test("마무리 계측 중 tick 은 시간만 흘리고 상한 마감을 다시 걸지 않는다")
+    func wrappingUpTickDoesNotRetriggerHardCap() async {
+        var initialState = InterviewSessionFeature.State.fixture(hasStarted: true)
+        initialState.hasRecording = true
+        initialState.isWrappingUp = true
+        initialState.wrapUpStartedAt = InterviewSessionFeature.hardCapSeconds - 1
+        initialState.elapsedSeconds = InterviewSessionFeature.hardCapSeconds - 1
+        // 제출·재생 스텁 없음 — 상한 마감이 다시 걸리면 unimplemented 가 잡는다.
+        let store = TestStore(initialState: initialState) {
+            InterviewSessionFeature()
+        }
+
+        await store.send(.inner(.clockTicked)) {
+            $0.elapsedSeconds = InterviewSessionFeature.hardCapSeconds
+        }
+    }
 }
