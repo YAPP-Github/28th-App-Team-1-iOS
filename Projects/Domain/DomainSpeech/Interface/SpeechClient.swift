@@ -70,7 +70,7 @@ public struct SpeechClient: Sendable {
     /// 답변 구간 기록을 닫고 m4a(AAC) Data 를 반환 — 반환 후 파일 즉시 삭제. 기록 없음·실패는 nil.
     public var answerAudio: @Sendable () async -> Data?
     /// 재생 정지(멱등) — 흐름 이탈·실패 전환에서 코디네이터가 캡처와 함께 부른다.
-    /// 정상 종료(리포트 대기 전환)는 부르지 않는다 — 마무리 멘트 재생을 살리기 위해.
+    /// 정상 종료(홈 전환)는 부르지 않는다 — 마무리 멘트 재생을 살리기 위해.
     public var stopPlayback: @Sendable () async -> Void
 
     public init(

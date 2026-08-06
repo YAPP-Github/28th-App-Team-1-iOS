@@ -25,7 +25,7 @@ public struct CameraPreviewHandle: Equatable, @unchecked Sendable {
     }
 }
 
-/// 녹화 산출물 참조 — ReportPending 업로드 배선이 소비한다 (스펙 §①).
+/// 녹화 산출물 참조 — 정상 종료 시 코디네이터가 업로드 큐에 넘겨 소유권을 이전한다 (2026-08-06 스펙 §①).
 public struct RecordingRef: Equatable, Sendable {
     public let sessionId: Int
     public let fileURL: URL

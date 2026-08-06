@@ -18,85 +18,76 @@ import Testing
 // 코디네이터 delegate 라우팅을 분기별로 고정한다 — 화면 전환·캡처 정지·상위 통보.
 @MainActor
 struct InterviewFeatureTests {
-    @Test("세션 종료는 녹화 산출물을 리포트 대기 화면에 넘기고, 홈으로 탭이 상위에 종료를 통보한다")
-    func sessionFinishRoutesThroughReportPending() async {
+    @Test("세션 종료는 산출물을 업로드 큐에 넘기고 장치를 정지한 뒤 즉시 상위에 종료를 통보한다 — 경유 화면 없음")
+    func sessionFinishEnqueuesUploadThenNotifiesFinished() async {
+        let enqueued = LockIsolated<[(Int, URL)]>([])
+        let previewStopped = LockIsolated(0)
+        let captureStopped = LockIsolated(0)
         var initialState = InterviewFeature.State(sessionId: 1)
         initialState.screen = .session(.fixture)
-        // stopPlayback 은 스텁하지 않는다 — 정상 종료가 마무리 멘트 재생을 끊으면 unimplemented 가 잡는다.
+        // discardRecording·stopPlayback 미스텁 — 정상 종료가 산출 파일을 지우거나 마무리 멘트를 끊으면 잡힌다.
+        let store = TestStore(initialState: initialState) {
+            InterviewFeature()
+        } withDependencies: {
+            $0.interviewVideoUploadQueue.enqueue = { sessionId, fileURL, _ in
+                enqueued.withValue { $0.append((sessionId, fileURL)) }
+            }
+            $0.recordingClient.stopPreview = { previewStopped.withValue { $0 += 1 } }
+            $0.speechClient.stopCapture = { captureStopped.withValue { $0 += 1 } }
+        }
+
+        await store.send(.screen(.session(.delegate(.finished(.fixture, .fixture))))) {
+            $0.isClosing = true
+        }
+        await store.receive(\.delegate.finished)
+        await store.finish()
+        #expect(enqueued.value.map(\.0) == [1])
+        #expect(enqueued.value.map(\.1) == [RecordingRef.fixture.fileURL])
+        #expect(previewStopped.value == 1)
+        #expect(captureStopped.value == 1)
+    }
+
+    @Test("녹화 없는 종료(ref nil)는 큐를 부르지 않고 종료만 통보한다")
+    func sessionFinishWithoutRecordingSkipsQueue() async {
+        var initialState = InterviewFeature.State(sessionId: 1)
+        initialState.screen = .session(.fixture)
+        // interviewVideoUploadQueue 미스텁 — enqueue 가 불리면 unimplemented 가 잡는다.
         let store = TestStore(initialState: initialState) {
             InterviewFeature()
         } withDependencies: {
             $0.recordingClient.stopPreview = {}
-            $0.recordingClient.discardRecording = {}   // 홈으로 이탈이 부른다(업로드 미완 정리)
             $0.speechClient.stopCapture = {}
         }
 
-        await store.send(.screen(.session(.delegate(.finished(.fixture, .fixture))))) {
-            $0.screen = .reportPending(InterviewReportPendingFeature.State(
-                recording: .fixture, wrapUp: .fixture
-            ))
+        await store.send(.screen(.session(.delegate(.finished(nil, nil))))) {
+            $0.isClosing = true
         }
-        await store.send(.screen(.reportPending(.view(.userTappedGoHome))))
-        await store.receive(\.screen.reportPending.delegate.goHomeRequested)
         await store.receive(\.delegate.finished)
         await store.finish()
     }
 
-    @Test("리포트 대기 전환 후 도착한 두 번째 세션 종료 통보는 화면을 다시 갈아끼우지 않는다")
-    func duplicateSessionFinishDoesNotResetReportPending() async {
+    @Test("종료 확정 후 도착한 늦은 두 번째 종료·중단·실패 통보는 무시한다 — 업로드 재접수·이중 통보·파일 폐기 방지")
+    func lateDuplicateSessionSignalsAreIgnoredAfterFinish() async {
         var initialState = InterviewFeature.State(sessionId: 1)
         initialState.screen = .session(.fixture)
         let store = TestStore(initialState: initialState) {
             InterviewFeature()
         } withDependencies: {
+            $0.interviewVideoUploadQueue.enqueue = { _, _, _ in }
             $0.recordingClient.stopPreview = {}
             $0.speechClient.stopCapture = {}
         }
-        let reportPending = InterviewFeature.Screen.State.reportPending(
-            InterviewReportPendingFeature.State(recording: .fixture, wrapUp: .fixture)
-        )
 
         await store.send(.screen(.session(.delegate(.finished(.fixture, .fixture))))) {
-            $0.screen = reportPending
+            $0.isClosing = true
         }
-        // 세션 effect 는 화면 교체로 취소되지 않는다(Scope-on-enum) — 뒤늦은 두 번째 통보가 도달할 수 있다.
-        // 상태가 다른 case 라 ifCaseLet 이 경고를 남기는 것까지가 재현하려는 상황.
-        await withKnownIssue {
-            await store.send(.screen(.session(.delegate(.finished(nil, nil)))))
-        } matching: {
-            isStaleChildActionWarning($0)
-        }
-        // 블록 **밖에서** 단언한다 — 안에 두면 가드를 지운 뮤턴트의 상태 불일치까지 known 으로 흡수된다.
-        // 가드가 없으면 payload 가 nil 로 씻긴 새 State 로 갈아끼워져 여기서 죽는다.
-        #expect(store.state.screen == reportPending)
-        await store.finish()
-    }
-
-    @Test("리포트 대기 전환 후 도착한 늦은 중단·실패 통보도 무시한다 — 업로드 중인 파일을 지우지 않는다")
-    func staleSessionAbortOrFailureLeavesReportPendingIntact() async {
-        var initialState = InterviewFeature.State(sessionId: 1)
-        initialState.screen = .session(.fixture)
-        // discardRecording·stopPlayback 미스텁 — 가드가 뚫려 이탈·실패 헬퍼가 돌면 unimplemented 가 잡는다.
-        let store = TestStore(initialState: initialState) {
-            InterviewFeature()
-        } withDependencies: {
-            $0.recordingClient.stopPreview = {}
-            $0.speechClient.stopCapture = {}
-        }
-        let reportPending = InterviewFeature.Screen.State.reportPending(
-            InterviewReportPendingFeature.State(recording: .fixture, wrapUp: .fixture)
-        )
-
-        await store.send(.screen(.session(.delegate(.finished(.fixture, .fixture))))) {
-            $0.screen = reportPending
-        }
-        await withKnownIssue {
-            await store.send(.screen(.session(.delegate(.aborted))))
-            await store.send(.screen(.session(.delegate(.failed(.network)))))
-        } matching: {
-            isStaleChildActionWarning($0)
-        }
-        #expect(store.state.screen == reportPending)
+        await store.receive(\.delegate.finished)
+        // isClosing 가드 — 스텁을 최소로 유지한 채(폐기·재생 정지 미스텁) 세 신호가 조용히 무시되는지 본다.
+        await store.send(.screen(.session(.delegate(.finished(nil, nil)))))
+        await store.send(.screen(.session(.delegate(.aborted))))
+        // 실패는 화면을 갈아끼우므로 case 가드가 아니라 isClosing 만이 막는다 —
+        // 뚫리면 실패 헬퍼의 discardRecording 이 이미 큐에 넘긴 파일을 지운다(미스텁이라 unimplemented 로 잡힌다).
+        await store.send(.screen(.session(.delegate(.failed(.speechRecognition)))))
         await store.finish()
     }
 
@@ -136,31 +127,6 @@ struct InterviewFeatureTests {
             $0.screen = .failure(InterviewFailureFeature.State(kind: .questionPrep))
         }
         await store.finish()
-    }
-
-    @Test("정상 종료 전환은 카메라·마이크만 정지한다 — 재생도 녹화 폐기도 하지 않는다")
-    func leavingCaptureScreensStopsDevices() async {
-        let previewStopped = LockIsolated(0)
-        let captureStopped = LockIsolated(0)
-        var initialState = InterviewFeature.State(sessionId: 1)
-        initialState.screen = .session(.fixture)
-        // stopPlayback·discardRecording 미스텁 — 정상 종료가 마무리 멘트를 끊거나 산출 파일을 지우면
-        // (업로드가 그 파일을 써야 한다) unimplemented 가 잡는다.
-        let store = TestStore(initialState: initialState) {
-            InterviewFeature()
-        } withDependencies: {
-            $0.recordingClient.stopPreview = { previewStopped.withValue { $0 += 1 } }
-            $0.speechClient.stopCapture = { captureStopped.withValue { $0 += 1 } }
-        }
-
-        await store.send(.screen(.session(.delegate(.finished(.fixture, .fixture))))) {
-            $0.screen = .reportPending(InterviewReportPendingFeature.State(
-                recording: .fixture, wrapUp: .fixture
-            ))
-        }
-        await store.finish()
-        #expect(previewStopped.value == 1)
-        #expect(captureStopped.value == 1)
     }
 
     @Test("실패 화면 X(닫기)로 흐름을 떠날 때도 캡처 장치·재생을 정지하고 녹화를 폐기한 뒤 종료를 통보한다")
@@ -231,7 +197,9 @@ struct InterviewFeatureTests {
             $0.speechClient.stopPlayback = { playbackStopped.withValue { $0 += 1 } }
         }
 
-        await store.send(.screen(.session(.delegate(.aborted))))
+        await store.send(.screen(.session(.delegate(.aborted)))) {
+            $0.isClosing = true
+        }
         await store.receive(\.delegate.closed)
         await store.finish()
         #expect(previewStopped.value == 1)
@@ -248,6 +216,7 @@ struct InterviewFeatureTests {
         let recordingDiscarded = LockIsolated(0)
         var initialState = InterviewFeature.State(sessionId: 1)
         initialState.screen = .session(.fixture)
+        // 코디네이터에 도달하는 실패는 STT 뿐이다 — network 는 세션이 오버레이로 직접 소유한다(스펙 ③).
         let store = TestStore(initialState: initialState) {
             InterviewFeature()
         } withDependencies: {
@@ -257,8 +226,8 @@ struct InterviewFeatureTests {
             $0.speechClient.stopPlayback = { playbackStopped.withValue { $0 += 1 } }
         }
 
-        await store.send(.screen(.session(.delegate(.failed(.network))))) {
-            $0.screen = .failure(InterviewFailureFeature.State(kind: .network))
+        await store.send(.screen(.session(.delegate(.failed(.speechRecognition))))) {
+            $0.screen = .failure(InterviewFailureFeature.State(kind: .speechRecognition))
         }
         await store.finish()
         #expect(previewStopped.value == 1)
@@ -266,29 +235,6 @@ struct InterviewFeatureTests {
         #expect(playbackStopped.value == 1)
         #expect(recordingDiscarded.value == 1)
     }
-
-    @Test("실패 화면 다시 시작하기는 같은 세션 id 로 준비 화면에 재진입한다")
-    func restartReentersReadinessWithSameSession() async {
-        var initialState = InterviewFeature.State(sessionId: 7)
-        initialState.screen = .failure(InterviewFailureFeature.State(kind: .speechRecognition))
-        let store = TestStore(initialState: initialState) {
-            InterviewFeature()
-        }
-
-        await store.send(.screen(.failure(.delegate(.restartRequested)))) {
-            $0.screen = .readiness(InterviewReadinessFeature.State(sessionId: 7))
-        }
-    }
-}
-
-// MARK: - 늦은 자식 delegate 재현 보조
-
-/// ifCaseLet 이 «다른 case 의 자식 액션» 에 남기는 경고 — 늦은 delegate 재현 테스트가 의도적으로 유발한다.
-/// `withKnownIssue` 를 필터 없이 쓰면 블록 안의 TestStore 단언 실패까지 known 으로 흡수돼
-/// 가드를 지운 뮤턴트가 살아남는다. 이 필터가 그 흡수 범위를 프레임워크 경고 하나로 좁힌다.
-private func isStaleChildActionWarning(_ issue: Issue) -> Bool {
-    issue.description.contains("child action")
-        || issue.comments.contains { $0.description.contains("child action") }
 }
 
 // MARK: - 픽스처
@@ -313,6 +259,6 @@ private extension RecordingRef {
 }
 
 private extension InterviewVideoWrapUpSpan {
-    /// 마무리 멘트 구간 — 리포트 대기 화면까지 그대로 실려 간다.
+    /// 마무리 멘트 구간 — 코디네이터가 그대로 업로드 큐에 실어 보낸다.
     static let fixture = InterviewVideoWrapUpSpan(wrapUpStartSec: 500, wrapUpEndSec: 512)
 }

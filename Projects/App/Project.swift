@@ -12,6 +12,7 @@ let project = Project.makeModule(
             .domain(interface: .appVersion),     // Splash 버전 게이트 — 강제·권장 업데이트 판정
             .domain(interface: .auth),
             .domain(interface: .consent),        // Splash 세션 복구 판정 — 게이트 2단(pending)
+            .domain(interface: .interview),      // 앱 시작·background wake 시 미완 영상 업로드 재개
             .shared(interface: .designSystem),   // AppView 전역 로딩 — LoadingModal 표출
             .composableArchitecture
         ])),

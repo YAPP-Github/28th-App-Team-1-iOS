@@ -76,7 +76,7 @@ public enum SessionEndType: String, Decodable, Equatable, Sendable {
     case sttReset = "STT_RESET"
 }
 
-/// 마무리 멘트 — base64 mp3. 재생은 fire-and-forget(리포트 대기 전환을 멈춰 세우지 않는다, PRD §3.7).
+/// 마무리 멘트 — base64 mp3. 재생은 fire-and-forget(녹화 없는 종료가 홈 전환을 기다리지 않는다, PRD §3.7).
 public struct WrapUpMessage: Decodable, Equatable, Sendable {
     public let ttsAudio: String?
 

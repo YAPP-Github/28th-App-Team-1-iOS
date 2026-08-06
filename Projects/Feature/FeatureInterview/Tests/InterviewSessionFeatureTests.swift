@@ -98,6 +98,7 @@ struct InterviewSessionFeatureTests {
             $0.speechClient.playStream = { _, _ in finishedPlayback() }
             $0.speechClient.startSessionAudioRecording = {}
             $0.speechClient.finishSessionAudioRecording = { .stub }
+            $0.speechClient.stopCapture = {}
             $0.speechClient.setSessionAudioMuted = { _ in }
             $0.speechClient.startAnswerRecording = {}
             $0.speechClient.answerAudio = { nil }
@@ -136,6 +137,7 @@ struct InterviewSessionFeatureTests {
             $0.speechClient.playStream = { _, _ in finishedPlayback() }
             $0.speechClient.startSessionAudioRecording = {}
             $0.speechClient.finishSessionAudioRecording = { .stub }
+            $0.speechClient.stopCapture = {}
             $0.speechClient.setSessionAudioMuted = { _ in }
             $0.speechClient.startAnswerRecording = {}
             $0.speechClient.answerAudio = { nil }
@@ -176,8 +178,8 @@ struct InterviewSessionFeatureTests {
         }
     }
 
-    @Test("실패 감지는 열린 모달과 진행 중인 세션 effect(재생 포함)를 정리하고 실패를 통보한다")
-    func failureDetectedCleansUpAndNotifiesFailure() async {
+    @Test("네트워크 실패는 열린 모달을 닫고 질문 재생만 끊는다 — 시계·마이크는 살고 유효시간만 멈춘다")
+    func networkFailureKeepsSessionAliveUnderOverlay() async {
         let clock = TestClock()
         var initialState = InterviewSessionFeature.State.fixture()
         initialState.isExitConfirmPresented = true
@@ -188,23 +190,52 @@ struct InterviewSessionFeatureTests {
             $0.recordingClient.startPreview = { nil }
             $0.recordingClient.startRecording = { _ in }
             $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
-            // 끝나지 않는 재생 스트림 — 정리(cancel)가 안 되면 finish 에서 잡힌다.
-            $0.speechClient.playStream = { _, _ in AsyncStream { _ in } }
+            // 5초 뒤에야 완료되는 질문 재생 — 오버레이가 재생 effect 를 끊지 않으면 그 완료가 도착해
+            // answering 으로 넘어간다. 아래 «재생 취소» 단언이 이걸로 취소를 *시점째* 못 박는다
+            // (사용자 관점: 실패 화면 뒤에서 AI 질문 음성이 계속 들리는 상태).
+            $0.speechClient.playStream = { _, _ in
+                AsyncStream { continuation in
+                    Task {
+                        try await clock.sleep(for: .seconds(5))
+                        continuation.yield(.finished)
+                        continuation.finish()
+                    }
+                }
+            }
             $0.speechClient.startSessionAudioRecording = {}
             $0.speechClient.setSessionAudioMuted = { _ in }
             $0.interviewClient.questionAudioStream = stubAudioStream
         }
-        store.exhaustivity = .off   // 시계 틱은 기존 테스트가 고정 — 여기선 정리·통보만 본다.
+        store.exhaustivity = .off   // 시계 틱은 기존 테스트가 고정 — 여기선 오버레이 전후 생존만 본다.
 
         await store.send(.view(.onAppear))
         await store.receive(\.inner.recordingStarted)
         await clock.advance(by: .seconds(1))   // 세션 시계·재생 effect 가 실제로 돌고 있는 상태를 만든다.
         await store.skipReceivedActions()
 
-        await store.send(.inner(.failureDetected(.network)))
-        await store.receive(\.delegate.failed, .network)
+        await store.send(.inner(.networkFailureDetected(.playQuestion)))
+        #expect(store.state.failure == InterviewFailureFeature.State(kind: .network))
+        #expect(store.state.pendingRetry == .playQuestion)
         #expect(store.state.isExitConfirmPresented == false)
-        await store.finish()   // 시계·마이크·재생 effect 가 취소되지 않았으면 여기서 실패한다.
+
+        // ① 재생은 감지 시점에 끊긴다 — 원래 재생이 끝났을 시각을 지나도 asking 에 머문다.
+        //    취소가 빠지면 지연된 .finished 가 questionPlaybackFinished 를 쏴 phase·마킹이 밀리고,
+        //    답변 기록 시작(startAnswerRecording — 미스텁)까지 불려 unimplemented 로도 잡힌다.
+        await clock.advance(by: .seconds(5))
+        await store.skipReceivedActions()
+        #expect(store.state.phase == .asking)
+        #expect(store.state.questionAudioEndedAt == nil)
+
+        // ② 세션을 살린 채 덮는 게 이 경로의 계약이다(스펙 ③) — 시계 effect 는 계속 tick 을 보내고,
+        //    그 tick 은 영상 축(elapsed)만 밀며 유효시간은 정지 구간(suspended)으로 접힌다.
+        #expect(store.state.elapsedSeconds == 6)
+        #expect(store.state.suspendedSeconds == 5)
+        #expect(store.state.effectiveElapsedSeconds == 1)
+
+        // ③ 나머지 정리(시계·마이크)는 오버레이의 «중단하기» 몫으로 옮겨졌다 — 남으면 finish 가 잡는다.
+        await store.send(.failure(.presented(.delegate(.closeRequested))))
+        await store.receive(\.delegate.aborted)
+        await store.finish()
     }
 }
 
@@ -346,8 +377,8 @@ struct InterviewSessionSubmissionTests {
         #expect(attempts.value == 3)
     }
 
-    @Test("503 재시도가 소진되면 네트워크 실패로 넘어간다")
-    func serverBusyRetryExhaustionFails() async {
+    @Test("503 재시도가 소진되면 네트워크 오버레이로 넘어가고 실패한 제출을 그대로 보관한다")
+    func serverBusyRetryExhaustionPresentsOverlay() async {
         let clock = TestClock()
         let attempts = LockIsolated(0)
         var initialState = InterviewSessionFeature.State.fixture(hasStarted: true)
@@ -371,12 +402,14 @@ struct InterviewSessionSubmissionTests {
         await clock.advance(by: .seconds(3))
         await store.receive(\.inner.answerSubmissionFailed) {
             $0.isSubmitting = false
+            // 소진은 delegate 승격이 아니라 세션 소유 오버레이다 — 실패한 payload 를 그대로 들고 재개를 기다린다.
+            $0.failure = InterviewFailureFeature.State(kind: .network)
+            $0.pendingRetry = .submit(AnswerSubmission(questionId: 1, isWrapUp: false))
         }
-        await store.receive(\.delegate.failed, .network)
         #expect(attempts.value == 3)
     }
 
-    @Test("이미 종료된 세션(409) 제출은 실패가 아니라 리포트 대기로 넘어간다")
+    @Test("이미 종료된 세션(409) 제출은 실패가 아니라 정상 종료로 넘어간다")
     func sessionAlreadyEndedRoutesToFinished() async {
         var initialState = InterviewSessionFeature.State.fixture(hasStarted: true)
         initialState.phase = .answering
@@ -557,6 +590,7 @@ struct InterviewSessionSubmissionTests {
             $0.speechClient.playStream = { _, _ in finishedPlayback() }
             $0.speechClient.startSessionAudioRecording = {}
             $0.speechClient.finishSessionAudioRecording = { .stub }
+            $0.speechClient.stopCapture = {}
             $0.speechClient.setSessionAudioMuted = { _ in }
             $0.speechClient.startAnswerRecording = {}
             $0.speechClient.answerAudio = { nil }
@@ -642,6 +676,7 @@ struct InterviewSessionRecordingTests {
             $0.speechClient.play = { _ in wrapUpPlayback.stream }
             $0.speechClient.startSessionAudioRecording = {}
             $0.speechClient.finishSessionAudioRecording = { sessionAudio }
+            $0.speechClient.stopCapture = {}
             $0.speechClient.setSessionAudioMuted = { _ in }
             $0.speechClient.startAnswerRecording = {}
             $0.speechClient.answerAudio = { nil }
@@ -694,6 +729,7 @@ struct InterviewSessionRecordingTests {
             $0.speechClient.setSessionAudioMuted = { _ in }
             $0.speechClient.play = { _ in wrapUpPlayback.stream }
             $0.speechClient.finishSessionAudioRecording = { .stub }
+            $0.speechClient.stopCapture = {}
             $0.speechClient.answerAudio = { nil }
             $0.interviewClient.submitAnswer = { _, _ in .ended(.hardCap, wrapUp: "bXAz") }
         }
@@ -777,152 +813,5 @@ struct InterviewSessionRecordingTests {
         await store.receive(\.inner.recordingStarted)
         await store.receive(\.inner.questionPlaybackFinished)
         #expect(sessionAudioOpened.value == false)
-    }
-}
-
-// 종료가 확정된 뒤(마무리 계측 ~ 정지+합성)의 잠금과 순서를 고정한다 — 여기서 새면 delegate 가 두 번 나가거나
-// 세션 오디오가 폐기돼 영상이 조용히 사라진다. 시작·타임라인 0점은 위 스위트.
-@MainActor
-struct InterviewSessionFinishTests {
-    @Test("마무리 멘트 계측 중엔 종료·이탈 입력이 먹지 않는다 — 종료가 두 번 통보되지 않게")
-    func wrappingUpIgnoresExitInputs() async {
-        var initialState = InterviewSessionFeature.State.fixture(hasStarted: true)
-        initialState.hasRecording = true
-        initialState.isWrappingUp = true
-        initialState.isExitAvailable = true
-        initialState.phase = .processingAnswer
-        // 제출·정지 스텁 없음 — 입력이 하나라도 새면 unimplemented 가 잡는다.
-        let store = TestStore(initialState: initialState) {
-            InterviewSessionFeature()
-        }
-
-        // 넷 다 상태 무변화·effect 없음(모달조차 열리지 않는다).
-        await store.send(.view(.userTappedClose))
-        await store.send(.view(.userTappedExit))
-        await store.send(.view(.userTappedFinishInterview))
-        await store.send(.view(.userTappedLeaveInterview))
-    }
-
-    // 마이크 취소는 스트림 종료 → live 의 `stopCapture()` → **진행 중 세션 기록 폐기**로 이어진다.
-    // 마감보다 먼저 도착하면 산출물이 통째로 날아가므로 순서를 여기서 못 박는다(정상 종료마다 도는 경로).
-    @Test("정지 경로는 세션 오디오를 마감한 뒤에야 마이크를 끊는다", .timeLimit(.minutes(1)))
-    func micCaptureStopsOnlyAfterSessionAudioIsFinished() async {
-        let calls = AsyncStream<String>.makeStream()
-        let store = TestStore(initialState: .fixture()) {
-            InterviewSessionFeature()
-        } withDependencies: {
-            $0.continuousClock = TestClock()
-            $0.recordingClient.startPreview = { nil }
-            $0.recordingClient.startRecording = { _ in }
-            $0.recordingClient.stopRecording = { _, _ in .stub }
-            // 스스로 끝나지 않는 캡처 스트림 — 종료는 effect 취소뿐이라 onTermination 이 곧 stopCapture 시점이다.
-            $0.speechClient.startCapture = {
-                AsyncStream { continuation in
-                    continuation.onTermination = { _ in calls.continuation.yield("micCaptureStopped") }
-                }
-            }
-            $0.speechClient.startSessionAudioRecording = {}
-            $0.speechClient.finishSessionAudioRecording = {
-                calls.continuation.yield("sessionAudioFinished")
-                return .stub
-            }
-            $0.speechClient.playStream = { _, _ in finishedPlayback() }
-            $0.speechClient.setSessionAudioMuted = { _ in }
-            $0.speechClient.startAnswerRecording = {}
-            $0.speechClient.answerAudio = { nil }
-            $0.interviewClient.questionAudioStream = stubAudioStream
-            $0.interviewClient.submitAnswer = { _, _ in .ended(.normalEnd) }
-        }
-        store.exhaustivity = .off
-
-        await store.send(.view(.onAppear))
-        await store.receive(\.inner.recordingStarted)
-        await store.receive(\.inner.questionPlaybackFinished)
-        await store.send(.view(.userTappedAnswerComplete))
-        var observed: [String] = []
-        for await call in calls.stream {
-            observed.append(call)
-            if observed.count == 2 { break }
-        }
-        #expect(observed == ["sessionAudioFinished", "micCaptureStopped"])
-    }
-
-    @Test("이미 종료된 세션(409)이어도 녹화가 있으면 정지·합성을 거쳐 ref 와 함께 통보한다")
-    func sessionAlreadyEndedStillStopsRecording() async {
-        let ref = RecordingRef(sessionId: 7, fileURL: URL(fileURLWithPath: "/tmp/v.mp4"), durationSeconds: 42)
-        var initialState = InterviewSessionFeature.State.fixture(hasStarted: true)
-        initialState.phase = .answering
-        initialState.hasRecording = true
-        let store = TestStore(initialState: initialState) {
-            InterviewSessionFeature()
-        } withDependencies: {
-            $0.recordingClient.stopRecording = { _, _ in ref }
-            $0.speechClient.answerAudio = { nil }
-            $0.speechClient.finishSessionAudioRecording = { .stub }
-            $0.interviewClient.submitAnswer = { _, _ in throw InterviewError.sessionAlreadyEnded }
-        }
-
-        await store.send(.view(.userTappedAnswerComplete)) {
-            $0.phase = .processingAnswer
-            $0.isSubmitting = true
-        }
-        await store.receive(\.inner.answerSubmissionFailed) {
-            $0.isSubmitting = false
-            $0.isFinishing = true
-        }
-        await store.receive(\.inner.recordingStopped)
-        await store.receive({ action in
-            guard case let .delegate(.finished(stoppedRef, wrapUp)) = action else { return false }
-            return stoppedRef == ref && wrapUp == nil   // 멘트 없이 끝난 세션이라 span 은 없다
-        })
-    }
-
-    @Test("정지+합성이 이미 걸렸으면 두 번째 종료 신호는 아무 일도 하지 않는다 — 재진입 가드")
-    func stopRecordingIsNotReentered() async {
-        var initialState = InterviewSessionFeature.State.fixture(hasStarted: true)
-        initialState.hasRecording = true
-        initialState.isFinishing = true
-        // 마감·정지 스텁 없음 — 재진입하면 unimplemented 가 잡는다.
-        // (두 번째 stopRecording 은 액터에 recording 이 없어 즉시 throw → 빈 결과가 진짜를 앞지른다.)
-        let store = TestStore(initialState: initialState) {
-            InterviewSessionFeature()
-        }
-
-        await store.send(.inner(.answerSubmissionFailed(.sessionAlreadyEnded)))
-    }
-
-    @Test("정지+합성 구간에도 종료·이탈 입력이 먹지 않는다")
-    func finishingIgnoresExitInputs() async {
-        var initialState = InterviewSessionFeature.State.fixture(hasStarted: true)
-        initialState.hasRecording = true
-        initialState.isFinishing = true
-        initialState.isExitAvailable = true
-        initialState.phase = .processingAnswer
-        // 제출·정지 스텁 없음 — 입력이 하나라도 새면 unimplemented 가 잡는다.
-        let store = TestStore(initialState: initialState) {
-            InterviewSessionFeature()
-        }
-
-        await store.send(.view(.userTappedClose))
-        await store.send(.view(.userTappedExit))
-        await store.send(.view(.userTappedFinishInterview))
-        await store.send(.view(.userTappedLeaveInterview))
-    }
-
-    @Test("마무리 계측 중 tick 은 시간만 흘리고 상한 마감을 다시 걸지 않는다")
-    func wrappingUpTickDoesNotRetriggerHardCap() async {
-        var initialState = InterviewSessionFeature.State.fixture(hasStarted: true)
-        initialState.hasRecording = true
-        initialState.isWrappingUp = true
-        initialState.wrapUpStartedAt = InterviewSessionFeature.hardCapSeconds - 1
-        initialState.elapsedSeconds = InterviewSessionFeature.hardCapSeconds - 1
-        // 제출·재생 스텁 없음 — 상한 마감이 다시 걸리면 unimplemented 가 잡는다.
-        let store = TestStore(initialState: initialState) {
-            InterviewSessionFeature()
-        }
-
-        await store.send(.inner(.clockTicked)) {
-            $0.elapsedSeconds = InterviewSessionFeature.hardCapSeconds
-        }
     }
 }

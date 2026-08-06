@@ -13,16 +13,25 @@ import Foundation
 import OSLog
 
 // @lat: [[interview#세션]]
+/// 면접 진행 화면 — 턴 상태머신 + 세션 시계. 네트워크 실패는 화면을 갈아치우지 않고 세션이 소유한
+/// `@Presents` 오버레이로 덮는다(상태·녹화 유지, 유효시간은 정지 — 스펙 ③).
 @Reducer
 public struct InterviewSessionFeature {
     static let clockTick: Duration = .seconds(1)
-    static let exitUnlockSeconds = 8 * 60
+    /// 실기기 종료 경로를 반복 검증할 때 8분을 기다리지 않게 하는 단축 스위치 — 스킴 환경변수
+    /// `HILIT_FAST_EXIT` 가 있을 때만 켜진다(STT 탐침·AV 스파이크와 같은 패턴). 제품 경로엔 없는 것과 같다.
+    /// 테스트에선 항상 꺼둔다 — Xcode 의 Test 액션이 Run 액션 환경변수를 상속하는 설정이면 8분 상수를
+    /// 검증하는 테스트들이 단축값을 보고 깨진다(실측 2026-08-07). `XCTestBundlePath` 는 테스트 런에만 있다.
+    static let isFastExitEnabled = ProcessInfo.processInfo.environment["HILIT_FAST_EXIT"] != nil
+        && ProcessInfo.processInfo.environment["XCTestBundlePath"] == nil
+    static let exitUnlockSeconds = isFastExitEnabled ? 20 : 8 * 60
     static let hardCapSeconds = 12 * 60
     static let finalCountdownSeconds = 10
     /// 8분 해금 안내 토스트 유지 시간.
     static let exitNoticeHold: Duration = .seconds(3)
     /// 랩업 임계(8:45) — 이후 제출은 isWrapUp=true 로 서버에 마무리 국면을 알린다.
-    static let wrapUpThresholdSeconds = 8 * 60 + 45
+    /// 단축 모드에선 해금(20초)보다 앞에 둬야 «종료 → 마무리 멘트 → 합성» 전체 경로가 그대로 재현된다.
+    static let wrapUpThresholdSeconds = isFastExitEnabled ? 15 : 8 * 60 + 45
     /// 503(aiTemporarilyUnavailable) 백오프 — 같은 제출을 지연 후 재시도(서버에 아무것도 저장 안 됨 계약).
     static let submissionRetryDelays: [Duration] = [.seconds(1), .seconds(3)]
 
@@ -60,6 +69,13 @@ public struct InterviewSessionFeature {
             case finalCountdown
         }
 
+        /// 오버레이가 보관하는 실패 단계 — 질문 재생 또는 제출(오디오 포함 payload 그대로).
+        /// 제출을 payload 로 저장하는 이유: `answerAudio()` 가 1회 소모성(반환 후 파일 삭제)이라 재조회가 불가능하다.
+        public enum PendingRetry: Equatable, Sendable {
+            case playQuestion
+            case submit(AnswerSubmission)
+        }
+
         public enum Toast: Equatable, Sendable {
             case exitUnlocked
             case timeExpired
@@ -80,7 +96,8 @@ public struct InterviewSessionFeature {
         public let summaryQuestion: SummaryQuestion
 
         public var phase: Phase = .asking
-        /// 세션 경과 시간(초) — 상단 칩 m:ss.
+        /// 세션 경과 시간(초) — **영상 타임라인 축**(0점 = 녹화 시작). 시간 마킹은 전부 이 값이다.
+        /// 면접 판정·표시는 정지 구간을 뺀 `effectiveElapsedSeconds` 를 쓴다.
         public var elapsedSeconds = 0
         /// 8:00 경과 — «면접 종료하기» 노출.
         public var isExitAvailable = false
@@ -117,10 +134,20 @@ public struct InterviewSessionFeature {
         public var wrapUpSpan: InterviewVideoWrapUpSpan?
         /// 정지+합성 진행 중 — 재진입(두 번째 stopRecording)과 종료·이탈 입력을 함께 막는다.
         public var isFinishing = false
+        /// 네트워크 실패 오버레이 — 세션 상태·녹화를 살린 채 위에 얹는다(스펙 ③). nil 복귀 = 재개.
+        @Presents public var failure: InterviewFailureFeature.State?
+        /// 오버레이가 보관한 «실패한 단계» — 이어서 진행하기가 이것을 재실행한다.
+        public var pendingRetry: PendingRetry?
+        /// 오버레이 동안 흐른 tick — 시계는 영상 축(elapsed)으로 계속 돌고, 면접 판정·표시는
+        /// 유효시간(elapsed − suspended)으로 계산해 «일시정지»를 만든다(isWrappingUp 계측 tick 과 같은 장치).
+        public var suspendedSeconds = 0
+
+        /// 면접 로직·표시용 유효시간 — 해금·상한·랩업·시간 칩이 이 값을 쓴다. 시간 마킹은 raw(영상 축).
+        public var effectiveElapsedSeconds: Int { elapsedSeconds - suspendedSeconds }
 
         /// 최종 카운트다운 잔여 초 — 상한까지 남은 시간.
         public var countdownRemaining: Int {
-            max(0, InterviewSessionFeature.hardCapSeconds - elapsedSeconds)
+            max(0, InterviewSessionFeature.hardCapSeconds - effectiveElapsedSeconds)
         }
 
         public init(
@@ -139,6 +166,7 @@ public struct InterviewSessionFeature {
         case view(View)
         case inner(Inner)
         case delegate(Delegate)
+        case failure(PresentationAction<InterviewFailureFeature.Action>)
 
         /// 사용자 입력·생명주기. View 의 send(...) 로만 방출된다.
         public enum View: Equatable, Sendable {
@@ -175,12 +203,14 @@ public struct InterviewSessionFeature {
             case exitNoticeExpired
             /// 답변 제출 성공 — 다음 질문 재생 또는 세션 종료(endType) 분기.
             case answerSubmitted(AnswerResult)
-            /// 답변 제출 실패(503 재시도 소진 포함) — 종료됐던 세션이면 리포트 대기로, 그 외 실패 화면.
-            case answerSubmissionFailed(InterviewError)
+            /// 답변 제출 실패(503 재시도 소진 포함) — 종료됐던 세션이면 정상 종료로, 그 외 네트워크 오버레이.
+            /// 실패한 payload 를 동봉한다 — 오버레이의 «이어서 진행하기» 가 그대로 재전송한다.
+            case answerSubmissionFailed(InterviewError, AnswerSubmission)
             /// 8분 전 이탈의 최선 노력 제출 종료(성공·실패 무관) — 이탈을 진행한다.
             case earlyExitSubmissionFinished
-            /// STT 연속 실패·네트워크 단절 감지 — 실패 화면 전환은 코디네이터 몫.
-            case failureDetected(InterviewFailureKind)
+            /// 네트워크 단절 감지 — delegate 승격 대신 세션이 소유한 오버레이를 얹는다(세션·녹화 유지).
+            /// STT 는 이 경로가 아니다 — `endSession` 이 delegate(.failed(.speechRecognition))로 직행한다.
+            case networkFailureDetected(State.PendingRetry)
         }
 
         @CasePathable
@@ -190,7 +220,8 @@ public struct InterviewSessionFeature {
             case finished(RecordingRef?, InterviewVideoWrapUpSpan?)
             /// 중도 이탈·세션 무결성 훼손 — 그때까지의 턴은 서버가 보존한다(차감 D1, PRD §3.7). 클라는 이탈 신호만.
             case aborted
-            /// STT·네트워크 실패 — 코디네이터가 실패 화면으로 전환.
+            /// STT 실패(`.speechRecognition` 전용) — 코디네이터가 실패 화면으로 전환한다.
+            /// 네트워크 실패는 여기로 오지 않는다 — 세션이 오버레이로 직접 소유한다(스펙 ③).
             case failed(InterviewFailureKind)
         }
     }
@@ -218,9 +249,14 @@ public struct InterviewSessionFeature {
                 return reduceView(&state, action)
             case let .inner(action):
                 return reduceInner(&state, action)
+            case let .failure(action):
+                return reduceFailure(&state, action)
             case .delegate:
                 return .none
             }
+        }
+        .ifLet(\.$failure, action: \.failure) {
+            InterviewFailureFeature()
         }
     }
 
@@ -355,7 +391,7 @@ extension InterviewSessionFeature {
         case .questionPlaybackFailed:
             guard state.phase == .asking else { return .none }
             guard !state.hasRetriedPlayback else {
-                return reduceInner(&state, .failureDetected(.network))
+                return reduceInner(&state, .networkFailureDetected(.playQuestion))
             }
             // 같은 questionId 재호출 = 서버가 TTS 를 처음부터 재생성한다([[api#Interview]] 스트리밍 규약).
             state.hasRetriedPlayback = true
@@ -391,28 +427,71 @@ extension InterviewSessionFeature {
                 return playCurrentQuestion(state)
             }
             // sessionEnded 도 다음 질문도 아니다 — 계약 위반 응답.
-            return reduceInner(&state, .failureDetected(.network))
+            // 도달 불가 가정이라 재시도 단계는 질문 재생으로 접는다(«중단하기» 가 탈출구).
+            return reduceInner(&state, .networkFailureDetected(.playQuestion))
 
-        case let .answerSubmissionFailed(error):
+        case let .answerSubmissionFailed(error, submission):
             state.isSubmitting = false
             switch error {
             case .sessionAlreadyEnded:
-                // 이미 종료된 세션(409) — 리포트 대기로 넘어간다. 녹화가 있으면 그래도 정지·업로드 경로를 탄다.
+                // 이미 종료된 세션(409) — 정상 종료로 수습한다. 녹화가 있으면 그래도 정지·합성 후 업로드 경로를 탄다.
                 state.isExitConfirmPresented = false
                 guard state.hasRecording else {
                     return .merge(sessionCleanup(), .send(.delegate(.finished(nil, nil))))
                 }
                 return stopRecordingAndFinish(&state)
             default:
-                return reduceInner(&state, .failureDetected(.network))
+                return reduceInner(&state, .networkFailureDetected(.submit(submission)))
             }
 
         case .earlyExitSubmissionFinished:
             return .send(.delegate(.aborted))
 
-        case let .failureDetected(kind):
+        case let .networkFailureDetected(retry):
+            // 세션을 살린 채 오버레이만 얹는다 — 시계 tick 은 유지(clockTicked 가 suspended 로 접는다),
+            // 녹화·마이크도 유지(영상에 공백 구간 — 허용, 스펙 ③). 재생·토스트·제출만 끊는다.
+            state.failure = InterviewFailureFeature.State(kind: .network)
+            state.isEarlyExitWarningPresented = false
             state.isExitConfirmPresented = false
-            return .merge(sessionCleanup(), .send(.delegate(.failed(kind))))
+            state.pendingRetry = retry
+            state.toast = nil
+            return .merge(
+                .cancel(id: CancelID.playback),
+                .cancel(id: CancelID.submission),
+                .cancel(id: CancelID.toast)
+            )
+        }
+    }
+
+    /// 오버레이(네트워크 실패)의 delegate — 재개는 보관한 단계를 재실행, 중단은 **제출 없이** 이탈.
+    /// BACK_EXIT 제출을 태우면 이용권이 차감돼 화면 문구(«차감되지 않아요»)와 어긋난다(스펙 «결정 요약»).
+    private func reduceFailure(
+        _ state: inout State, _ action: PresentationAction<InterviewFailureFeature.Action>
+    ) -> Effect<Action> {
+        switch action {
+        case .presented(.delegate(.resumeRequested)):
+            let retry = state.pendingRetry
+            state.failure = nil
+            state.pendingRetry = nil
+            switch retry {
+            case .playQuestion:
+                // 계약 위반 진입은 processingAnswer 로 굳어 있다 — asking 으로 되돌려야 재생 완료 전환이 산다.
+                state.phase = .asking
+                // 재생 재시작 시점을 영상 축으로 다시 마킹 — 서버가 이 값으로 영상과 정렬한다.
+                state.questionAudioStartedAt = state.elapsedSeconds
+                return playCurrentQuestion(state)
+            case let .submit(submission):
+                state.isSubmitting = true
+                return submissionEffect(state.sessionId, submission, fillsAudio: false)
+            case nil:
+                return .none
+            }
+        case .presented(.delegate(.closeRequested)):
+            state.failure = nil
+            state.pendingRetry = nil
+            return .merge(sessionCleanup(), .send(.delegate(.aborted)))
+        case .presented, .dismiss:
+            return .none
         }
     }
 
@@ -440,12 +519,17 @@ extension InterviewSessionFeature {
         state.elapsedSeconds += 1
 
         if state.isWrappingUp { return .none }   // 계측 전용 tick — 해금·상한 로직 잠금
+        if state.failure != nil {
+            // 오버레이 동안도 계측 전용 — 영상 축은 흐르고 유효시간(판정·표시)은 멈춘다(스펙 ③).
+            state.suspendedSeconds += 1
+            return .none
+        }
 
-        if state.elapsedSeconds >= Self.hardCapSeconds {
+        if state.effectiveElapsedSeconds >= Self.hardCapSeconds {
             return reachHardCap(&state)
         }
 
-        if state.elapsedSeconds >= Self.hardCapSeconds - Self.finalCountdownSeconds {
+        if state.effectiveElapsedSeconds >= Self.hardCapSeconds - Self.finalCountdownSeconds {
             if state.phase != .finalCountdown {
                 state.phase = .finalCountdown
                 state.toast = .timeExpired   // 카운트다운 동안 상시 유지 — 만료 타이머 없음.
@@ -454,7 +538,7 @@ extension InterviewSessionFeature {
             return .none
         }
 
-        if state.elapsedSeconds == Self.exitUnlockSeconds {
+        if state.effectiveElapsedSeconds == Self.exitUnlockSeconds {
             state.isExitAvailable = true
             // 해금과 함께 낡은 차감 경고는 닫는다 — 안내는 아래 해금 토스트가 잇는다.
             state.isEarlyExitWarningPresented = false
@@ -532,12 +616,19 @@ extension InterviewSessionFeature {
         }
     }
 
-    /// 세션 오디오 마감 → 녹화 정지+합성 → 종료 통보 — 실패는 nil ref(영상 없는 리포트, 스펙 §⑥).
+    /// 세션 오디오 마감 → 마이크 정지 → 녹화 정지+합성 → 종료 통보 — 실패는 nil ref(영상 없는 리포트, 스펙 §⑥).
     ///
-    /// **마이크 취소를 여기서 빼는 이유(경합 제거)**: `.cancel(id: .micCapture)` → 스트림 종료 → `stopCapture()`
-    /// → 진행 중이던 세션 기록 **폐기**다. 마감(`finishSessionAudioRecording`)과 merge 로 같이 걸면 어느 쪽이
-    /// 먼저인지 미보장이라 정상 종료마다 산출물이 통째로 날아갈 수 있다. 그래서 마감이 끝난 뒤
-    /// `recordingStopped` 가 마이크를 끊는다 — 그 사이 캡처가 조금 더 도는 건 무해하다(파일은 이미 닫힘).
+    /// **마이크를 마감 «뒤에» 끊는 이유(경합 제거)**: `stopCapture()` 는 진행 중이던 세션 기록을 **폐기**한다
+    /// (파일 삭제). 마감(`finishSessionAudioRecording`)과 merge 로 같이 걸면 어느 쪽이 먼저인지 미보장이라
+    /// 정상 종료마다 산출물이 통째로 날아갈 수 있다. 마감이 반환한 뒤엔 기록기 url 이 비어 있어
+    /// (`TapFileRecorder.finishKeepingFile` 의 defer) 폐기가 아무것도 지우지 않으므로, 같은 effect 안에서
+    /// 순서를 세워 곧바로 끊는다. `.cancel(id: .micCapture)` 는 `recordingStopped` 에 백스톱으로 남겨 둔다.
+    ///
+    /// **합성 «앞에서» 끊는 이유(장치 즉시 해제)**: 합성(AVAssetExportSession)은 실기기에서 8~10초 걸리고
+    /// 그 대기는 영상 길이와 무관한 고정 비용이다(2026-08-07 실측 — 37초 세션도 555초 세션도 같았다).
+    /// 그 구간 동안 마이크가 살아 있으면 «종료했는데 계속 듣고 있다» 가 된다. 카메라도 같은 이유로
+    /// 놓아주지만 그건 여기가 아니다 — mp4 의 moov 가 캡처세션이 도는 동안 써지므로, 파일 마감 뒤·합성 앞이라는
+    /// 좁은 자리가 필요해 `CameraSessionManager.stopRecording` 안에서 처리한다.
     ///
     /// **재진입 가드(`isFinishing`)**: 정지+합성은 수 초 걸리고 그동안 액터의 recording 은 이미 비어 있어,
     /// 두 번째 호출은 즉시 throw 해 `finished(nil, nil)` 을 진짜 결과보다 **먼저** 내보낸다 —
@@ -549,6 +640,7 @@ extension InterviewSessionFeature {
             sessionCleanup(includingMicCapture: false),
             .run { send in
                 let audio = await speechClient.finishSessionAudioRecording()
+                await speechClient.stopCapture()
                 let ref: RecordingRef?
                 do {
                     ref = try await recordingClient.stopRecording(audio?.fileURL, audio?.startedAtHostSeconds)
@@ -617,16 +709,24 @@ extension InterviewSessionFeature {
     /// 제출형 종료(마치기·상한)도 이 경로다 — endType 만 다르다.
     private func submitCurrentAnswer(_ state: inout State, endType: AnswerEndType?) -> Effect<Action> {
         state.isSubmitting = true
-        let submission = makeSubmission(state, endType: endType)
-        let sessionId = state.sessionId
-        return .run { send in
+        return submissionEffect(state.sessionId, makeSubmission(state, endType: endType), fillsAudio: true)
+    }
+
+    /// 제출 공용 effect — 오버레이 재시도(fillsAudio: false)는 보관한 payload 를 그대로 재전송한다
+    /// (`answerAudio()` 는 1회 소모성 — 재호출하면 nil 로 씻긴다). 실패 액션에 payload 를 동봉하는 이유다.
+    private func submissionEffect(
+        _ sessionId: Int, _ submission: AnswerSubmission, fillsAudio: Bool
+    ) -> Effect<Action> {
+        .run { send in
+            var submission = submission
+            if fillsAudio { submission.audio = await speechClient.answerAudio() }
             do {
                 await send(.inner(.answerSubmitted(try await submitWithRetry(sessionId, submission))))
             } catch is CancellationError {
             } catch let error as InterviewError {
-                await send(.inner(.answerSubmissionFailed(error)))
+                await send(.inner(.answerSubmissionFailed(error, submission)))
             } catch {
-                await send(.inner(.answerSubmissionFailed(.unexpected)))
+                await send(.inner(.answerSubmissionFailed(.unexpected, submission)))
             }
         }
         .cancellable(id: CancelID.submission, cancelInFlight: true)
@@ -642,14 +742,12 @@ extension InterviewSessionFeature {
             answerEndAt: state.answerStartedAt.map { _ in Double(state.elapsedSeconds) },
             answerDuration: state.answerStartedAt.map { Double(state.elapsedSeconds - $0) },
             endType: endType,
-            isWrapUp: state.elapsedSeconds >= Self.wrapUpThresholdSeconds
+            isWrapUp: state.effectiveElapsedSeconds >= Self.wrapUpThresholdSeconds
         )
     }
 
     /// 제출 + 503 백오프 — `aiTemporarilyUnavailable`(서버에 아무것도 저장 안 됨)만 같은 요청을 재시도한다.
     private func submitWithRetry(_ sessionId: Int, _ submission: AnswerSubmission) async throws -> AnswerResult {
-        var submission = submission
-        submission.audio = await speechClient.answerAudio()
         for delay in Self.submissionRetryDelays {
             do {
                 return try await interviewClient.submitAnswer(sessionId, submission)
