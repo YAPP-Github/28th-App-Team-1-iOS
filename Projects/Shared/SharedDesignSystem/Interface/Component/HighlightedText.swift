@@ -31,7 +31,8 @@ import SwiftUI
 /// 한 줄을 넘길 만큼 길면 넘친다. 마커는 짧은 구절에 쓰는 게 전제다.
 ///
 /// **여러 구간·긴 구간·구간별 탭은 이 컴포넌트가 아니다** — 강조 하나에 짧은 구절이라는 전제가 셋 다 깨진다.
-/// 그런 본문은 `AttributedString`(`backgroundColor` + `link` 태그)으로 직접 그린다 —
+/// 그런 본문은 `AttributedString` 으로 직접 그린다(밴드는 `backgroundColor` 층, 탭은 `link` 층 —
+/// 한 `Text` 에 겹치면 밴드가 줄 높이만 한 네모로 커진다).
 /// 마커가 평평한 사각이 되므로 형광펜 룩과 다른 물건이고, 승격 조건 ①(시안에 이름 붙은 DS 컴포넌트)이
 /// 안 서서 DS 로 올리지 않았다(사용처 FeatureReport 대본 3곳 — 그 피처 안 `TranscriptText`).
 public struct HighlightedText: View {

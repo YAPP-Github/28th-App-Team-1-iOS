@@ -14,6 +14,11 @@ import SwiftUI
 /// 한 문단 안의 일부 범위만 탭 대상으로 만들어야 해서 `AttributedString` 의 `link` 속성을 태그로 쓰고
 /// `openURL` 로 가로챈다 — SwiftUI 에는 텍스트 하위 범위에 제스처를 붙이는 API 가 없다.
 /// 링크 URL 은 화면 밖으로 나가지 않는 내부 스킴이라 실제로 열리지 않는다.
+///
+/// **밴드는 글자와 다른 층에 그린다** — 같은 `Text` 안에서 `backgroundColor` 와 `link` 가 겹치면
+/// 밴드가 글자에 붙지 않고 줄 높이만 한 네모로 커진다(탭이 없는 상세 시트만 글자에 붙어 두 화면이 달랐다).
+/// 그래서 글자를 지운 같은 문장을 뒤에 깔아 밴드만 그리고, 앞 층은 색과 링크만 갖는다 —
+/// 두 층은 문자열·폰트·폭이 같아 줄바꿈이 같으므로 밴드가 글자 자리에 정확히 앉는다.
 struct TranscriptText: View {
     /// 하이라이트 구간 탭을 식별하는 내부 스킴 — 외부에 노출되지 않는다.
     private static let scheme = "hilit-span"
@@ -47,10 +52,8 @@ struct TranscriptText: View {
     }
 
     var body: some View {
-        Text(attributed)
-            .dsTypography(.body3)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        line(attributed(layer: .text))
+            .background { band }
             .environment(\.openURL, OpenURLAction { url in
                 guard let index = Self.spanIndex(from: url) else { return .discarded }
                 onTapSpan?(index)
@@ -58,9 +61,31 @@ struct TranscriptText: View {
             })
     }
 
-    private var attributed: AttributedString {
+    /// 밴드 층 — 글자는 투명하고 배경만 남는다. 링크가 없어야 밴드가 글자에 붙는다.
+    private var band: some View {
+        line(attributed(layer: .band))
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
+    /// 두 층이 같은 자리에 겹치려면 글꼴·줄바꿈 규칙이 한 글자도 어긋나면 안 된다 — 한 곳에서만 정한다.
+    private func line(_ value: AttributedString) -> some View {
+        Text(value)
+            .dsTypography(.body3)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private enum Layer {
+        /// 글자 색 + 구간 탭.
+        case text
+        /// 하이라이트 구간 밴드.
+        case band
+    }
+
+    private func attributed(layer: Layer) -> AttributedString {
         var result = AttributedString(transcript)
-        result.foregroundColor = baseColor
+        result.foregroundColor = layer == .band ? .clear : baseColor
 
         let characterCount = transcript.count
         for (index, span) in spans.enumerated() {
@@ -71,10 +96,14 @@ struct TranscriptText: View {
                   let range = range(in: result, from: span.startIndex, to: span.endIndex)
             else { continue }
 
-            result[range].foregroundColor = color(for: span.highlightTone)
-            result[range].backgroundColor = bandColor
-            if onTapSpan != nil {
-                result[range].link = URL(string: "\(Self.scheme):\(index)")
+            switch layer {
+            case .text:
+                result[range].foregroundColor = color(for: span.highlightTone)
+                if onTapSpan != nil {
+                    result[range].link = URL(string: "\(Self.scheme):\(index)")
+                }
+            case .band:
+                result[range].backgroundColor = bandColor
             }
         }
         return result
