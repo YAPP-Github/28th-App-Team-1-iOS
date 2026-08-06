@@ -33,7 +33,7 @@ struct LiveInterviewBootstrap: View {
         case idle
         case running(String)
         case failed(String)
-        case ready(StoreOf<InterviewFeature>)
+        case ready(StoreOf<ExampleInterviewCoordinator>)
     }
 
     @State private var stage: Stage = .idle
@@ -58,10 +58,31 @@ struct LiveInterviewBootstrap: View {
                     }
                 }
             case let .ready(store):
-                InterviewView(store: store)
+                if let outcome = store.outcome {
+                    finishedView(outcome)
+                } else {
+                    InterviewView(store: store.scope(state: \.interview, action: \.interview))
+                }
             }
         }
         .task { await bootstrap() }
+    }
+
+    /// 실앱이라면 홈으로 돌아갔을 자리 — 하네스엔 홈이 없어 결과만 보여주고 새 세션 동선을 준다.
+    /// 여기까지 왔다는 건 코디네이터가 종료 신호를 받았다는 뜻이고, 그 시점엔 카메라·마이크가 이미 꺼져 있다.
+    private func finishedView(_ outcome: ExampleInterviewCoordinator.State.Outcome) -> some View {
+        VStack(spacing: 16) {
+            Text(outcome == .finished ? "면접 정상 종료" : "면접 흐름 이탈").font(.headline)
+            Text(outcome == .finished
+                ? "산출물이 업로드 큐로 넘어갔어요. 업로드 완주는 콘솔 로그에서 확인하세요."
+                : "녹화는 폐기됐어요.")
+                .font(.caption)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+            Button("새 세션으로 다시") {
+                Task { await bootstrap() }
+            }
+        }
     }
 
     @MainActor
@@ -120,8 +141,8 @@ struct LiveInterviewBootstrap: View {
             let created = try await interviewClient.createSession(InterviewConfig(portfolioId: portfolio.portfolioId))
 
             stage = .ready(Store(
-                initialState: InterviewFeature.State(sessionId: created.sessionId),
-                reducer: { InterviewFeature() },
+                initialState: ExampleInterviewCoordinator.State(sessionId: created.sessionId),
+                reducer: { ExampleInterviewCoordinator() },
                 withDependencies: {
                     // 실녹음(작업 B) 전 — 번들 샘플로 답변 오디오 seam 만 채운다.
                     // 직접 키 오버라이드는 스코프에 즉시 적용된다(엔진 같은 캐시 싱글턴 내부 전파와는 다른 경로).
