@@ -97,8 +97,8 @@ public extension InterviewReportCard {
     }
 
     /// 재생 순서대로 정렬된 **면접자 발화**. 면접관 질문은 카드 대본(`transcript`)에 없어
-    /// 하이라이트·현재 줄 판정에 못 쓴다. 서버 정렬을 신뢰하지 않고 시작 시각으로 다시 세운다 —
-    /// 진행바 칸 순서가 뒤집히면 이동 지점이 어긋난다.
+    /// 하이라이트·오버레이 문장에 못 쓴다. 서버 정렬을 신뢰하지 않고 시작 시각으로 다시 세운다 —
+    /// 문장 순서가 뒤집히면 오버레이 누적·이동 지점이 어긋난다.
     var orderedSegments: [ScriptSegment] {
         (scriptSegments ?? [])
             .filter { $0.role == .interviewee }
