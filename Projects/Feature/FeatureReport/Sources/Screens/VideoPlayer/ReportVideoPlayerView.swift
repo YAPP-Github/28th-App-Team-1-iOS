@@ -70,6 +70,12 @@ public struct ReportVideoPlayerView: View {
         .onChange(of: store.seekToken) { _, _ in
             player?.seek(to: cmTime(store.seekTarget), toleranceBefore: .zero, toleranceAfter: .zero)
         }
+        // 재생 재시도 — 실패한 AVPlayer 는 되살아나지 않아 통째로 새로 만든다(플레이어는 뷰 소유).
+        .onChange(of: store.reloadToken) { _, _ in
+            tearDownPlayback()
+            player = nil
+            startPlayback()
+        }
         .sheet(item: $store.scope(state: \.highlightDetail, action: \.highlightDetail)) { store in
             ReportHighlightDetailView(store: store)
         }
@@ -92,8 +98,10 @@ public struct ReportVideoPlayerView: View {
             return
         }
         let player = AVPlayer(url: store.videoURL)
-        if let startAt = store.startAt {
-            player.seek(to: cmTime(startAt))
+        // 진입은 `startAt`, 재시도는 보고 있던 시각부터 — 둘 다 State 의 현재 시각이 답이다
+        // (`currentTime` 초기값이 `startAt` 이고, 이후엔 재생 위치를 따라간다).
+        if store.currentTime > 0 {
+            player.seek(to: cmTime(store.currentTime))
         }
         // 0.2초 간격 — 진행바 칸 채움과 대본의 «현재 줄» 이 따라올 만큼만 촘촘하게.
         timeObserver = player.addPeriodicTimeObserver(
@@ -220,14 +228,20 @@ public struct ReportVideoPlayerView: View {
 
     // MARK: - 재생 실패
 
+    /// 문구만 두면 막다른 화면이 된다(X 로 나가는 것 말고 할 게 없다) — 리포트 메인의
+    /// «다시 시도하기» 와 같은 톤·같은 버튼으로 재생을 한 번 더 걸 길을 준다.
     private func failure(_ message: String) -> some View {
-        Text(message)
-            .dsTypography(.body3)
-            .foregroundStyle(Color.GrayScale.g200)
-            .multilineTextAlignment(.center)
-            .padding(.ds(.p20))
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.HilitBlack.b900)
+        VStack(spacing: .ds(.p12)) {
+            Text(message)
+                .dsTypography(.body3)
+                .foregroundStyle(Color.GrayScale.g200)
+                .multilineTextAlignment(.center)
+            Button("다시 시도하기") { send(.userTappedPlaybackRetry) }
+                .buttonStyle(.mini(.black))
+        }
+        .padding(.ds(.p20))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.HilitBlack.b900)
     }
 
     // MARK: - 수치 (Figma 스케일에 없는 컴포넌트 고유값은 여기 상수로 모은다)

@@ -50,6 +50,10 @@ public struct ReportVideoPlayerFeature {
         public var isTranscriptVisible = false
         /// 재생 실패 — 표시할 문구를 동봉한다.
         public var playbackFailureMessage: String?
+        /// 플레이어 재생성 명령 일련번호 — 뷰가 값 변화를 보고 AVPlayer 를 통째로 새로 만든다.
+        /// 실패한 AVPlayer 는 `play()` 로 되살아나지 않고, 플레이어는 뷰 소유라 리듀서가 못 만진다
+        /// (`seekToken` 과 같은 방식의 명령 전달).
+        public var reloadToken = 0
         /// 뷰가 실행할 이동 목표(초).
         public var seekTarget: TimeInterval = 0
         /// 이동 명령 일련번호. 같은 시각으로 두 번 이동해도 뷰가 알아채게 한다.
@@ -90,6 +94,9 @@ public struct ReportVideoPlayerFeature {
             /// 영상 아무 곳 — 컨트롤 표시 토글.
             case userTappedSurface
             case userTappedPlayPause
+            /// 재생 실패 안내의 «다시 시도» — 플레이어를 새로 만들어 보던 시각부터 다시 건다.
+            // TODO(prd-외): PRD 에 재생 실패 UX 가 없어 관례(재시도 버튼)로 메운 재량 구현 — 시안 나오면 재검토.
+            case userTappedPlaybackRetry
             /// 왼쪽 화살표 — 진행바 한 칸(대본 구간) 되돌리기. 초 단위가 아니다.
             case userTappedPreviousChunk
             /// 오른쪽 화살표 — 진행바 한 칸(대본 구간) 앞으로.
@@ -186,6 +193,15 @@ public struct ReportVideoPlayerFeature {
             state.areControlsVisible = true
             // 멈춰 둔 채로는 컨트롤을 숨기지 않는다 — 다시 재생할 방법이 사라진다.
             return state.isPlaying ? startControlsHideTimer() : .cancel(id: CancelID.controlsHide)
+
+        case .userTappedPlaybackRetry:
+            // 실패 안내를 걷고 플레이어 재생성을 명령한다 — 만료가 아니라 전송·디코딩 실패라
+            // 같은 URL 로 다시 걸면 살아날 수 있다(만료면 진입 자체가 없다).
+            state.playbackFailureMessage = nil
+            state.reloadToken += 1
+            state.isPlaying = true
+            state.areControlsVisible = true
+            return startControlsHideTimer()
 
         // 화살표는 «구간 = 이동 단위» 규약을 그대로 따른다 — 진행바 칸과 같은 눈금으로 움직여서
         // 어디로 가는지 하단 바가 미리 보여준다(초 단위 건너뛰기면 칸과 어긋난다).

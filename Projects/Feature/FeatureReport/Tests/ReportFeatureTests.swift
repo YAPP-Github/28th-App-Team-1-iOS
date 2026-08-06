@@ -29,10 +29,12 @@ struct ReportFeatureTests {
 
         await store.send(.main(.view(.userTappedWatchVideo)))
         await store.receive(\.main.delegate.videoRequested) {
+            // 대본 타임라인까지 함께 넘긴다 — 진행바 칸이 세션 전체 `script` 를 재료로 쓴다.
             $0.path[id: 0] = .videoPlayer(ReportVideoPlayerFeature.State(
                 videoURL: URL(string: "https://example.com/interview/1.mp4")!,
                 startAt: nil,
-                cards: InterviewReportFixtures.ready.cards ?? []
+                cards: InterviewReportFixtures.ready.cards ?? [],
+                script: InterviewReportFixtures.ready.script ?? []
             ))
         }
     }
