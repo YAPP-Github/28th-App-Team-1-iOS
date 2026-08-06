@@ -9,7 +9,8 @@ Interface 에 계약 + `testValue`(unimplemented) + `previewValue`(샘플), Impl
 
 - 입력 모델 `InterviewConfig` 는 Setup 위저드 산출물 — jdUrl/jdText 상호 배타는 `JobDescriptionInput` enum 으로 타입에 새겼다.
 - `questionAudioStream` 은 Data 가 아니라 `InterviewAudioStream(url·headers)` 를 준다 — chunked TTS 를 AVPlayer 로 점진 재생해야 해서다([[api#Interview]] 스트리밍 규약).
-- 영상 업로드는 3단(발급 → S3 presigned PUT → 완료 확정)이지만 호출처는 `uploadInterviewVideo(sessionId·fileURL·wrapUp)` 하나만 안다 — 순서·PUT 실패 시 complete 생략을 도메인이 보장하고, PUT 은 [[domain.map#네트워킹 인프라]] `FileTransferClient`(발급 응답 `contentType` 원문 전달) 로 스트리밍한다. **1시도 계약** — 만료·실패 시 재시도(발급부터 재시작) 정책은 호출처 몫이다. 단계 seam(`videoUploadURL`·`completeVideoUpload`)은 그대로 남아 검증·수동 조작에 쓴다([[api#Interview]]).
+- 영상 업로드 3단(발급 → S3 presigned PUT → 완료 확정)은 응집형 `uploadInterviewVideo(sessionId·fileURL·wrapUp)` 와 단계 seam(`videoUploadURL`·`completeVideoUpload`) 두 벌로 노출된다([[api#Interview]]). 응집형은 순서·PUT 실패 시 complete 생략을 도메인이 보장하는 **1시도 계약**(PUT 은 [[domain.map#네트워킹 인프라]] `FileTransferClient` 로 스트리밍, 발급 응답 `contentType` 원문 전달)이고, 재시도(발급부터 재시작) 정책은 호출처 몫이다.
+- **실 면접 경로는 그 응집형을 쓰지 않는다**(2026-08-06) — [[interview#업로드 큐]] 가 단계 seam 을 직접 조립한다. background 전송은 등록(발급→PUT 등록)과 완료(complete)가 **프로세스 경계를 넘어 갈라지므로**(앱이 죽어도 PUT 은 이어지고 완료 이벤트는 다음 실행에 온다) 한 함수의 await 안에 응집할 수 없다. 응집형은 계약·단독 검증·수동 조작용으로 존치한다 — 현재 프로덕션 호출처 0, 호출은 `InterviewClientLiveTests` 뿐이다.
 - 에러는 `InterviewError`(도메인) 로 노출한다 — liveValue 가 Core `ServerError` 코드를 전용 케이스(`.freeTextNotRelevant`·`.noRemainingTicket`·`.answerAlreadySubmitted` 등, 전체 표는 [[api#Interview]])로 매핑하고, 입력 검증군은 `.invalid(message)`, 미승격 코드는 `.server(code,message)` 로 동봉해 Feature 가 Core 를 모르고도(레이어) 코드별 분기한다. 온보딩 분석 스텝이 `.freeTextNotRelevant` 를 잡아 집중 프로젝트로 되돌린다 → [[onboarding#분석]].
 
 ## API
@@ -21,20 +22,23 @@ Interface 에 계약 + `testValue`(unimplemented) + `previewValue`(샘플), Impl
 
 ## 면접 흐름
 
-Part 2 «10분 음성 면접» 화면군 (`FeatureInterview`, Figma «[2] Interview_*» 프레임). 준비 → 세션 → 리포트 대기 / 실패의 단일 흐름이며 화면 전환은 전부 [[interview#코디네이터]] 담당. 설계 근거·남은 배선(STT)은 [ai-interview](../docs/work/ai-interview.md) §6.
+Part 2 «10분 음성 면접» 화면군 (`FeatureInterview`, Figma «[2] Interview_*» 프레임). 준비 → 세션(네트워크 실패는 세션 위 오버레이) → 정상 종료는 홈 직행·그 외는 실패 화면인 단일 흐름이고, 화면 전환은 전부 [[interview#코디네이터]] 담당. 설계 근거·남은 배선(STT)은 [ai-interview](../docs/work/ai-interview.md) §6.
 
 화면·타이밍·문구는 Part 2 PRD v3 에 정합된 상태(2026-07-27) — 카메라 프리뷰·녹화는 실동작(DomainRecording, [[interview#프리뷰]]), 서버 턴 루프는 실 API(`submitAnswer` — [[interview#세션]], 2026-08-02 작업 C), 질문 TTS·마무리 멘트·세션/답변 실녹음은 [[interview#음성 캡처]] 계약(작업B 슬라이스1). 발화 감지·침묵 판정(슬라이스a)만 남았다.
 
+종료 뒤 영상 업로드는 흐름을 떠나 [[interview#업로드 큐]] 가 이어받는다(2026-08-06 개편) — 화면이 사라져도, 앱이 죽어도 완주시키기 위해서다.
+
 ## 코디네이터
 
-`InterviewFeature` 가 흐름 루트 — screen enum destination(준비/세션/리포트 대기/실패)을 전면 교체한다. push 스택이 없어 StackState 대신 `@Reducer enum`. 하위 화면의 delegate 만 매칭하고, 흐름 밖(보고서 진입·닫기)은 delegate(.finished/.closed)로 AppFeature 에 올린다.
+`InterviewFeature` 가 흐름 루트 — screen enum destination(준비/세션/실패)을 전면 교체한다. push 스택이 없어 StackState 대신 `@Reducer enum`. 하위 화면의 delegate 만 매칭하고, 흐름 밖(보고서 진입·닫기)은 delegate(.finished/.closed)로 AppFeature 에 올린다. **정상 종료엔 화면이 없다** — 바로 홈이다.
 
-- `State(sessionId:)` 로 온보딩 분석이 만든 세션 id 를 들고 있다 — 준비 화면의 질문 준비 폴링과, 실패 후 «다시 시작하기» 재진입이 같은 세션을 쓴다.
+- `State(sessionId:)` 로 온보딩 분석이 만든 세션 id 를 들고 있다 — 준비 화면의 질문 준비 폴링과 세션 시드가 같은 세션을 쓴다.
 - 시작 전환(startRequested)은 준비 화면의 READY 페이로드(요약 질문)와 프리뷰 핸들을 `InterviewSessionFeature.State(sessionId:summaryQuestion:previewHandle:)` 로 시드한다 — 세션이 첫 턴을 바로 재생한다.
-- 알려진 제약: STT_RESET 후 «다시 시작하기» 는 같은 sessionId 로 재진입하지만 세션은 서버에서 무효화돼 거부된다 — 새 세션 생성 동선은 미해결(Example 은 부트스트랩 재실행으로 갈음).
-- 세션 `finished` 는 상위로 바로 올리지 않는다 — [[interview#리포트 대기]] 를 먼저 띄우고, 거기서 온 `goHomeRequested` 만 `delegate(.finished)` 로 승격한다. 세션 `aborted`·실패 화면 `closeRequested` 는 `delegate(.closed)`.
-- `finished` 의 페이로드(녹화 산출물 ref·마무리 멘트 구간)는 손대지 않고 리포트 대기 State 로 넘긴다 — 업로드 정책은 그 화면 몫이고 코디네이터는 라우팅만 한다. 대신 **폐기 책임**은 코디네이터에 있다: 이탈·실패 전환이 `discardRecording()` 을 부르고(멱등), 정상 종료 전환만 파일을 남긴다 → [[interview#프리뷰]].
-- 준비 `prepFailed` → 실패 화면(kind: questionPrep). 실패 `restartRequested`(STT 전용) → 같은 sessionId 로 준비 화면 재진입.
+- 세션 `finished(ref, wrapUp)` 는 산출물을 [[interview#업로드 큐]] 에 접수(`enqueue`)하고 장치를 정지한 뒤 **즉시** `delegate(.finished)` 를 올린다(2026-08-06 개편 — 리포트 대기 화면 소멸). enqueue 는 파일 이동+저널까지라 밀리초고, 전송은 큐가 뒤에서 잇는다. 세션 `aborted`·실패 화면 `closeRequested` 는 `delegate(.closed)`.
+- 종료 신호는 **first-wins**(`isClosing`)다 — 종료 후에도 화면이 `.session` 에 머물러(갈아탈 화면이 없다) `guard case .session` 만으론 늦은 두 번째 세션 delegate 를 못 거른다.
+- 화면을 치우는 건 **부모**다 — 코디네이터는 `delegate(.finished/.closed)` 를 올릴 뿐이고, `AppFeature` 가 `state.interview = nil` 로 cover 를 닫는다. 그래서 `InterviewFeature` 를 맨몸 스토어로 띄우면 종료 신호가 정상적으로 올라가는데도 세션 화면에 영영 머문다 — Example 하네스가 그랬고 이걸 제품 버그로 오진했다(2026-08-07). 하네스에도 최소 부모(`ExampleInterviewCoordinator`)를 둬 실앱과 같은 모양으로 맞췄다. 뚫리면 이중 통보이거나, 실패·이탈 경로의 폐기가 **큐에 넘긴 파일**을 지운다 → [[interview#프리뷰]].
+- **폐기 책임**은 코디네이터에 있다: 이탈·실패 전환이 `discardRecording()` 을 부르고(멱등), 정상 종료 전환만 부르지 않는다 — 그 파일은 이미 큐 소유라 지우면 안 된다 → [[interview#프리뷰]].
+- 준비 `prepFailed` → 실패 화면(kind: questionPrep). 코디네이터가 받는 실패 화면 신호는 `closeRequested` 하나뿐 — 재진입 배선은 없다(`resumeRequested` 는 세션 오버레이 몫, [[interview#실패]]).
 - AppFeature 배선 완료(2026-08-03) — 온보딩 `finished(sessionId)` 가 `@Presents var interview` 를 세워 `fullScreenCover` 로 열고, 종료 두 신호(`finished`·`closed`)는 cover 를 닫고 홈을 재조회시킨다(BACK_EXIT 이탈도 리포트 생성 트리거). 케이스를 합치지 않는 건 정상 종료 → 리포트 상세(r1) 연결이 붙을 자리라서다(아직 TODO) → [[app#Cross-feature Routing]].
 
 ## 권한
@@ -64,13 +68,14 @@ Figma 2479:7569 · 2514:12754 · 2514:12799 · 2529:458.
 
 ## 프리뷰
 
-`DomainRecording`(RecordingClient) 이 단일 AVCaptureSession 을 actor 로 소유한다. startPreview 는 멱등 — 준비 화면이 켜고, 정지는 코디네이터가 카메라 화면 이탈 전환에서만 수행한다. 프리뷰 뷰(backdrop)는 화면이 아닌 `InterviewView` 에 상주해 화면 교체에도 레이어가 유지된다.
+`DomainRecording`(RecordingClient) 이 단일 AVCaptureSession 을 actor 로 소유한다. startPreview 는 멱등 — 준비 화면이 켜고, 핸들 해제(`stopPreview`)는 코디네이터 몫이다. 프리뷰 뷰(backdrop)는 화면이 아닌 `InterviewView` 에 상주해 화면 교체에도 레이어가 유지된다.
 
 - 핸들(`CameraPreviewHandle`)은 identity-Equatable 래퍼 — TCA State 에 저장, 뷰(`InterviewCameraBackdrop`)는 핸들 유무로 실카메라/placeholder 분기.
 - backdrop 을 각 화면에 두고 State 시드로 핸들만 이어줘도 전환 시 카메라가 끊겨 보인다(실기기 확인) — `AVCaptureVideoPreviewLayer` 가 화면 교체와 함께 파괴·재생성되기 때문. 그래서 backdrop 은 코디네이터 뷰 상주, 핸들·스크림·모달 배경 블러는 화면 State 에서 파생만 한다(시작 전환 핸들 시드·onAppear 재요청은 백스톱으로 유지).
 - 녹화 3종은 세션 화면(`startRecording`/`stopRecording` — [[interview#세션]])과 코디네이터(`discardRecording`)가 나눠 부른다. 폐기는 멱등·비던짐이라 «녹화가 있었는지» 분기 없이 이탈·실패 경로에서 무조건 부른다.
-- 정지 지점: 준비→실패, 세션→리포트 대기, 세션→실패, 세션 중도 이탈. 실패·이탈 전환은 재생(stopPlayback)과 **녹화 폐기**(`discardRecording`)도 함께 하고, 리포트 대기 전환만 재생을 살리고(마무리 멘트) 파일도 남긴다 — 그 파일은 [[interview#리포트 대기]] 의 업로드가 쓴다. 재진입은 Readiness onAppear 가 다시 켠다.
-- Scope-on-enum 코디네이터는 화면 교체 시 자식 effect 를 취소하지 않는다(`Screen.body` 의 `ifCaseLet` 은 **자기 안에서** 일어난 case 변경만 취소 신호로 본다 — 코디네이터 `Reduce` 의 교체는 그 밖이다). readiness 의 프리뷰 시작 effect 가 화면 교체를 넘겨 살아남을 수 있어, 흐름 이탈(aborted·closeRequested)은 정지 완료 후 상위 통보로 순서를 보장한다(`stopCaptureDevicesThenNotifyClosed` — 마이크 캡처도 함께 정지, [[interview#음성 캡처]]). 같은 이유로 뒤늦은 세션 delegate 가 도달할 수 있어 **세션발 3종(`finished`·`aborted`·`failed`) 전부**에 `guard case .session` 을 둔다 — 늦은 finished 는 업로드를 재시작시키고, 늦은 aborted·failed 는 헬퍼의 `discardRecording()` 이 **업로드 중인 파일**을 지운다.
+- 정지 지점: 준비→실패, 세션→홈(정상 종료), 세션→실패, 세션 중도 이탈. 실패·이탈 전환은 재생(stopPlayback)과 **녹화 폐기**(`discardRecording`)도 함께 하고, 정상 종료 전환만 재생을 살리고(마무리 멘트) 폐기도 부르지 않는다 — 파일 소유권이 [[interview#업로드 큐]] 로 넘어가서다. 재진입은 Readiness onAppear 가 다시 켠다.
+- **정상 종료의 캡처세션 정지는 `stopRecording` 안**이다(2026-08-07) — 코디네이터의 `stopPreview()` 는 합성(8~10초)이 끝나야 도는데, 그때까지 카메라가 켜져 있으면 «종료했는데 카메라가 계속 켜져 있다» 가 된다. 자리가 «파일 마감 뒤·합성 앞» 인 건 mp4 의 moov 가 캡처세션이 도는 동안 써지기 때문 — `waitUntilFinished` 전에 끄면 영상이 깨진다(스파이크도 didFinishRecording 뒤에 stopRunning 하고 merge). 핸들은 남겨 `stopPreview()` 가 해제하게 둔다 — 그래야 다음 세션이 새 AVCaptureSession 을 연다.
+- Scope-on-enum 코디네이터는 화면 교체 시 자식 effect 를 취소하지 않는다(`Screen.body` 의 `ifCaseLet` 은 **자기 안에서** 일어난 case 변경만 취소 신호로 본다 — 코디네이터 `Reduce` 의 교체는 그 밖이다). readiness 의 프리뷰 시작 effect 가 화면 교체를 넘겨 살아남을 수 있어, 흐름 이탈(aborted·closeRequested)은 정지 완료 후 상위 통보로 순서를 보장한다(`stopCaptureDevicesThenNotifyClosed` — 마이크 캡처도 함께 정지, [[interview#음성 캡처]]). 같은 이유로 뒤늦은 세션 delegate 가 도달할 수 있어 **세션발 3종(`finished`·`aborted`·`failed`) 전부**에 `guard case .session` + `isClosing` 이중 가드를 둔다 — 늦은 aborted·failed 는 헬퍼의 `discardRecording()` 이 **큐에 넘긴 파일**을 지우고, 늦은 finished 는 이중 통보다(재접수 자체는 큐 dedup 이 한 겹 더 막는다 — [[interview#업로드 큐]]).
 - 백그라운드 전환은 iOS 의 AVCaptureSession 인터럽션 자동 복구(비디오 전용 세션)에 맡긴다.
 - 브래킷 프레임 Figma color-burn 블렌드는 `CameraGuideFrame(blendsColorBurn:)` 로 구현돼 있고 **기본 꺼짐** — 프리뷰가 UIKit 호스팅 레이어(`AVCaptureVideoPreviewLayer`)라 SwiftUI 블렌드가 그걸 backdrop 으로 합성하지 못한다(투명 배경에 걸려 새까매질 수 있다). 실기기 육안 확인이 끝나면 켠다.
 
@@ -81,7 +86,9 @@ Figma 2479:7569 · 2514:12754 · 2514:12799 · 2529:458.
 - 이벤트: `level`(1초 윈도 피크 dBFS) · `speechStarted`(−35 dBFS 상향 돌파) · `speechEnded`(−45 미만 1초 지속 — 히스테리시스) · `captureFailed`. 임계 상수는 실기기 튜닝 여지.
 - STT 교체 seam: Interface 에 transcription 엔드포인트를 추가하고 Implementation 이 같은 tap 버퍼를 STT 엔진에 공급 — 소비처(세션 Reducer)는 이벤트 매칭만 확장.
 - 소비처는 로그만(State 무변화, `os.Logger` category `MicCapture`) — STT 도입 시 inner 액션으로 승격.
-- AVAudioSession 은 `.playAndRecord` — 질문 TTS 재생과 마이크 캡처를 한 세션에서 쓴다. 카메라 AVCaptureSession(비디오 전용)과 무충돌.
+- AVAudioSession 은 `.playAndRecord`(mode `.default`) — 질문 TTS 재생과 마이크 캡처를 한 세션에서 쓴다. 카메라 AVCaptureSession(비디오 전용)과 무충돌.
+- 라우팅 옵션은 `[.defaultToSpeaker, .allowBluetoothA2DP]`(2026-08-06) — 이어폰이 있으면 그쪽으로 출력하고, 없으면 리시버 대신 하단 스피커로 떨어뜨린다(거치 상태에서 리시버는 거의 안 들린다). A2DP 는 `playAndRecord` 에선 명시해야 켜진다. **HFP 는 켜지 않는다** — AirPods 처럼 양쪽을 지원하는 기기에서 CoreAudio 가 HFP 를 우선해 면접관 음성이 통화 음질로 떨어지고 답변 녹음까지 8/16kHz 모노가 되어 서버 STT 정확도·최종 영상 음질이 함께 내려간다. 그래서 **마이크는 항상 내장**이다(A2DP 는 출력 전용). 같은 이유로 mode 는 `.voiceChat` 이 아니라 `.default` — `.voiceChat` 은 HFP 를 암묵적으로 켠다.
+- 이 설정은 캡처(`SpeechClientLive.startCapture`)와 재생(`AudioPlaybackManager.activatePlaybackSession`) **두 곳이 같은 값**을 들어야 한다 — 갈리면 어느 쪽이 나중에 활성화되느냐로 라우팅이 흔들린다. 세션 **도중** 착탈은 미대응(별도 이슈) — 라우트가 바뀌면 tap 포맷이 갈라져 기록이 조용히 멈춘다. `.defaultToSpeaker` + A2DP 조합이 일부 기기·버전에서 스피커로 되돌아간다는 보고가 있어, 실기기에서 재현되면 `.defaultToSpeaker` 를 빼고 «이어폰 없을 때만 `overrideOutputAudioPort(.speaker)`» 로 바꾼다.
 - 엔진 정지는 스트림 onTermination(effect 취소 시)과 `stopCapture`(코디네이터) 양쪽에서 보장 — 둘 다 멱등. 진행 중이던 세션·답변 기록도 이때 폐기(파일 삭제)된다.
 - 파일 기록 2계열은 `TapFileRecorder`(같은 tap 콜백이 나눠 씀, AAC — iOS 는 mp3 인코딩 미지원)가 맡는다 — 세션 전구간(`startSessionAudioRecording`/`finishSessionAudioRecording→SessionAudioRecording?`, 파일 유지·[[interview#프리뷰]] 합성 입력)과 답변 구간(`startAnswerRecording`/`answerAudio→Data?`, 반환 후 파일 즉시 삭제·[[api#Interview]] 제출). `SessionAudioRecording.startedAtHostSeconds` 는 첫 버퍼 호스트시각 — 합성 오프셋 보정 기준. 캡처 미가동이면 둘 다 조용히 무시(nil).
 - AI 발화 구간 무음(`setSessionAudioMuted(Bool)`, 2026-08-06)은 **세션 기록기에만** 건다 — 서버가 질문 TTS·마무리 멘트를 영상에 자체 합성하므로 `.playAndRecord` 스피커 에코까지 담으면 이중 음성이 된다. 무음은 버퍼 스킵이 아니라 **같은 길이의 zero-fill 버퍼 기록**이다(스킵하면 m4a 가 벽시계보다 짧아져 이후 오디오가 통째로 앞으로 밀리고 립싱크·startSec 정렬이 무너진다). 원본 버퍼는 뒤이어 감지기·탐침이 읽으므로 변조하지 않고 별도 캐시 버퍼(포맷은 `file.processingFormat`, 매번 명시 zero-fill)를 쓴다. 첫 버퍼 호스트시각 스탬프는 무음 중에도 찍는다 — 기준은 타임라인 연속성이지 소리 유무가 아니다. 답변 기록기는 answering 에만 돌아 무관하고, 토글 소유는 세션 리듀서다([[interview#세션]]). 길이 보존은 `TapFileRecorderTests` 가 유닛으로 고정한다(무음이 실제로 들리는지는 실기기 E2E 몫).
@@ -95,33 +102,44 @@ Figma: 2529:6309 · 2537:9397 · 2638:1750 · 2537:9442 · 2537:9525.
 
 - phase 4종이 상태 칩 3종(PRD §3.5)에 대응한다 — «질문 듣는 중»/«답변 녹음 중»/«답변을 정리하고 있어요», finalCountdown 은 칩 없이 빨간 초읽기. «답변이 기록 됐어요» 토스트는 칩이 역할을 대체해 소멸했고, 남은 토스트는 exitUnlocked·timeExpired 2종뿐이다.
 - «답변 완료하기» 는 침묵 판정을 기다리지 않고 즉시 `processingAnswer` 로 확정하고 `submitAnswer` 를 보낸다(중복 제출 가드 `isSubmitting`, 2026-08-02 작업 C — 2초 mock 소멸). 응답 분기: `nextQuestion` → asking 복귀+재생 / `sessionEnded` → endType 별 `finished(RecordingRef?, InterviewVideoWrapUpSpan?)`(NORMAL·MANUAL·HARD_CAP)·`aborted`(BACK_EXIT)·`failed(.speechRecognition)`(STT_RESET).
-- 종료 경로도 제출을 경유한다 — 마치기=MANUAL_END·12:00 상한=HARD_CAP(제출 완료까지 processingAnswer 로 대기, 제출 비행 중 상한 도달은 응답 수신 후 HARD_CAP 마감). 8분 전 이탈은 BACK_EXIT 최선 노력 1회 제출(실패해도 이탈 진행). 503 은 같은 제출을 1s·3s 백오프로 최대 2회 재시도, `SESSION_ALREADY_ENDED`(409)는 리포트 대기로.
-- 질문 재생: 요약 질문(턴 0)은 READY 동봉 mp3(`play`), 이후 질문은 `questionAudioStream`→`playStream`(chunked). 재생 실패는 같은 questionId 1회 재시도(TTS 재생성) 후 network 실패. 시간 마킹(questionAudioStart/End·answerStart)은 세션 시계 스냅샷 — 아래 0점 정렬로 녹화 타임라인과 같은 축이다.
+- 종료 경로도 제출을 경유한다 — 마치기=MANUAL_END·12:00 상한=HARD_CAP(제출 완료까지 processingAnswer 로 대기, 제출 비행 중 상한 도달은 응답 수신 후 HARD_CAP 마감). 8분 전 이탈은 BACK_EXIT 최선 노력 1회 제출(실패해도 이탈 진행). 503 은 같은 제출을 1s·3s 백오프로 최대 2회 재시도, `SESSION_ALREADY_ENDED`(409)는 정상 종료로 수습한다(녹화가 있으면 정지·합성까지 태우고 `finished`).
+- 질문 재생: 요약 질문(턴 0)은 READY 동봉 mp3(`play`), 이후 질문은 `questionAudioStream`→`playStream`(chunked). 재생 실패는 같은 questionId 1회 재시도(TTS 재생성) 후 네트워크 오버레이(아래). 시간 마킹(questionAudioStart/End·answerStart)은 세션 시계 **raw** 스냅샷 — 아래 0점 정렬로 녹화 타임라인과 같은 축이다(유효시간 아님).
 - 실녹화 타임라인(2026-08-05 작업 B): `startRecording` 반환이 **세션 시계 0점**이다 — 시계·마이크 캡처·첫 질문 재생을 `recordingStarted` 가 한꺼번에 연다. 시작 실패면 `hasRecording=false` 로 그대로 진행(영상 없는 리포트) — 세션 오디오도 열지 않는다. **세션 오디오(`startSessionAudioRecording`)는 별도 effect 로 떼지 않고 캡처 구독 effect 안에서 `startCapture()` 직후에 연다** — 캡처 엔진이 세팅하는 tap 포맷이 없으면 조용히 무시돼([[interview#음성 캡처]]) 마감이 늘 nil 이 되고 모든 세션이 영상 없는 리포트로 수렴한다(merge 는 두 Task 순서 미보장). 답변 구간 기록은 `questionPlaybackFinished`(answering 진입)가 연다.
 - AI 발화 구간 세션 오디오 무음 토글은 3곳뿐이다(2026-08-06): `playCurrentQuestion` effect 시작부에서 mute(요약·스트림·재시도가 전부 지나는 단일 진입점) → `questionPlaybackFinished`(answering 진입)에서 unmute 후 답변 기록 시작(순서 보장 위해 같은 effect 안 순차) → `endSession` 의 마무리 멘트 재생 effect 시작부에서 다시 mute(해제 없음 — 곧 세션 오디오 마감이라 이후 기록 자체가 없다). 캡처 미가동·기록 미시작 호출은 조용히 무시된다. zero-fill 계약은 [[interview#음성 캡처]].
-- 종료(NORMAL·MANUAL·HARD_CAP)는 녹화가 있으면 마무리 멘트를 **영상에 담고** 끝낸다 — 재생 완료까지 `isWrappingUp`(시계는 계측 전용, 해금·상한 로직 잠금)로 구간을 재고 「세션 오디오 마감 → `stopRecording`(정지+합성)」 후 `finished(ref, span)`. 녹화 없음·멘트 없음은 각각 fire-and-forget 재생·즉시 정지로 갈라진다. 정지·합성 실패는 ref nil 로 수렴(스펙 §⑥). BACK_EXIT·실패 경로의 폐기는 코디네이터 몫. **마이크 취소는 마감 뒤로 미룬다** — `stopCapture` 가 진행 중 세션 기록을 폐기하므로 마감과 merge 로 걸면 정상 종료마다 산출물이 날아간다(`recordingStopped` 가 끊는다). 계측(`isWrappingUp`)·정지+합성(`isFinishing`) 두 구간 모두 종료·이탈 입력 4종(close/exit/finishInterview/leaveInterview)을 닫고 정지 자체도 1회로 막는다 — 이미 종료가 확정돼 재제출은 409 를 부르고, 그 경로가 두 번째 정지를 태우면 빈 결과가 진짜 ref 보다 먼저 도착해 코디네이터의 first-wins 가 영상을 버린다.
+- 종료(NORMAL·MANUAL·HARD_CAP)는 녹화가 있으면 마무리 멘트를 **영상에 담고** 끝낸다 — 재생 완료까지 `isWrappingUp`(시계는 계측 전용, 해금·상한 로직 잠금)로 구간을 재고 「세션 오디오 마감 → `stopRecording`(정지+합성)」 후 `finished(ref, span)`. 녹화 없음·멘트 없음은 각각 fire-and-forget 재생·즉시 정지로 갈라진다. 정지·합성 실패는 ref nil 로 수렴(스펙 §⑥). BACK_EXIT·실패 경로의 폐기는 코디네이터 몫. **마이크는 마감 «직후·합성 앞»에 끊는다**(2026-08-07) — `stopCapture` 가 진행 중 세션 기록을 폐기하므로 마감과 merge 로 걸면 정상 종료마다 산출물이 날아가지만, 마감이 반환한 뒤엔 기록기 url 이 비어 있어 폐기가 아무것도 지우지 않는다. 같은 effect 안에서 순서를 세워 부르고 `.cancel(id:.micCapture)` 는 백스톱으로 남긴다. 합성 앞으로 당기는 이유는 합성이 **8~10초** 걸리기 때문 — 그동안 장치가 살아 있으면 «종료했는데 계속 보고·듣고 있다» 가 된다(카메라 쪽은 [[interview#프리뷰]]). 계측(`isWrappingUp`)·정지+합성(`isFinishing`) 두 구간 모두 종료·이탈 입력 4종(close/exit/finishInterview/leaveInterview)을 닫고 정지 자체도 1회로 막는다 — 이미 종료가 확정돼 재제출은 409 를 부르고, 그 경로가 두 번째 정지를 태우면 빈 결과가 진짜 ref 보다 먼저 도착해 코디네이터의 first-wins 가 영상을 버린다.
 - «12분» 숫자는 어떤 화면·문구에도 노출하지 않는다(§3.10 — 사용자에겐 «약 10분»). 경과 시계는 10분을 넘어도 m:ss 로 계속 오른다.
 - 좌상단은 **뒤로가기 `<`**(2026-08-03 시안 — 「Part2. 면접 녹화」 전 프레임 공통). DS `.hilitPresentedNavigationBar(surface: .dark, leading: .back)` — cover 라 present 판, 카메라 영상이 바닥이라 `.dark`(흰 글리프). 글리프만 X 에서 바뀌고 **배관은 그대로**다(아래 분기 유지). 브래킷(`CameraGuideFrame`)은 네비바 `safeAreaInset` **밖**(`.background`)에 둔다 — 안에 두면 콘텐츠가 44 밀려 327 정방형 중심이 22 내려간다. 같은 이유로 상단 칩·타이틀 offset 은 51 이 아니라 7(= Figma y94 − 바 하단 87).
 - 좌상단 뒤로가기는 8:00 전이면 중도 이탈 경고(«다음에 면접을 다시 진행할까요?», Figma modal 3907:890 — 아이콘 없음, «면접 계속하기»가 강조(검정) 쪽, 차감 사실만·리포트 언급 금지), 8:00 후면 종료 확인 모달(Figma 2555:7696)로 갈린다. 둘 다 destination 없이 Bool 플래그이고 같은 모달 컴포넌트를 쓴다 — 뷰가 두 Bool 을 enum 하나로 접어 DS `.hilitModal(item:)` 로 표출한다(종료 확인 우선, 동시 true 방어). 8:00 해금 틱이 열려 있던 경고를 닫아 «경고를 띄운 채 해금» 레이스를 막는다.
 - `aborted` 는 기록 폐기가 아니다 — 그때까지의 턴은 서버가 보존하고 이용권도 차감된다(PRD §3.7 D1). 클라는 이탈 신호만 올린다.
+- 정지+합성 구간(`isFinishing`)은 `LoadingModal` 로 덮는다(2026-08-07) — 합성은 실기기에서 **8~10초** 걸리는데 그 대부분이 `AVAssetExportSession` 의 `.waiting`(자원 획득)이고 실제 전송은 1~3초다. 대기가 영상 길이와 무관한 고정 비용이라(37초·555초 세션 모두 같았다) 짧은 세션도 줄지 않고, 캡처세션·오디오엔진을 미리 정지시켜도 줄지 않아 AVFoundation 내부 비용으로 본다. 그 구간엔 입력이 이미 잠겨 있어(위 4종 차단) 아무것도 안 띄우면 «앱이 멈췄다» 로 읽힌다 — 표출 우선순위는 종료 확인·이탈 경고보다 앞이다(같은 `.hilitModal(item:)` enum).
+- 네트워크 실패는 화면을 갈아치우지 않는다(2026-08-06) — 세션이 소유한 `@Presents var failure`(kind: .network) 오버레이가 덮고 세션 State·녹화·마이크는 그대로 산다(영상에 공백 구간이 남는다 — 허용). 진입점 3곳(질문 재생 재시도 소진 · 제출 실패(409 제외) · 계약 위반 응답)은 재생·제출·토스트 effect 와 모달 2종을 닫고 오버레이만 세운다. 화면 교체(코디네이터)로 하면 세션이 폐기돼 «이어서 진행하기» 가 불가능해서다 → [[interview#실패]].
+- 시간 축이 둘이다: `elapsedSeconds`(raw, 0점 = 녹화 시작)는 오버레이 중에도 계속 오른다 — **시간 마킹**이 이 축이라 여기서 멈추면 서버의 영상 정렬이 깨진다. 해금·상한·랩업 판정과 상단 시간 칩은 `effectiveElapsedSeconds`(= elapsed − `suspendedSeconds`)를 쓴다 — 오버레이 tick 이 suspended 를 올려 «일시정지» 를 만든다(`isWrappingUp` 계측 전용 tick 과 같은 장치). 정지로 클라 상한이 서버와 어긋나면 서버의 HARD_CAP 통보를 따른다.
+- 재개는 `pendingRetry` 가 보관한 **단계**를 재실행한다 — 질문 재생(phase 를 asking 으로 되돌리고 시작 마킹을 raw 축으로 다시 찍는다) 또는 제출. 제출은 실패한 `AnswerSubmission` **payload 째** 보관해 그대로 재전송한다: `answerAudio()` 는 1회 소모성(반환 후 파일 삭제)이라 재조회하면 오디오가 nil 로 씻긴다. 재실패는 오버레이 재표시(횟수 제한 없음 — 탈출구는 «중단하기»).
+- 오버레이 «중단하기» 는 **제출 없이** `aborted` 다 — BACK_EXIT 제출은 이용권 차감을 뜻해 화면 문구(«중단하기를 선택할 경우에, 이용권은 차감되지 않아요»)와 충돌한다. 서버 세션 정리는 타임아웃 몫으로 둔다.
 - asking→answering 은 재생 완료(questionPlaybackFinished)가 전환한다 — 배선 완료. 발화 감지·침묵 10초 확정·사고 5초는 작업 B 잔여. 랩업은 8:45 경과 시 `isWrapUp=true` 제출로 서버에 알린다(새 질문 금지는 서버 판단).
-- 시계 상태머신·이탈은 `InterviewSessionFeatureTests`, 턴 루프·제출 분기는 `InterviewSessionSubmissionTests`, 녹화 배선(시작 실패 폴백·마무리 구간 계측)은 `InterviewSessionRecordingTests`, 종료 확정 후 잠금·순서는 `InterviewSessionFinishTests` 가 고정 (TestClock). 무음 토글 순서만 별도 파일 `InterviewSessionAudioMuteTests.swift` 로 뺐다 — 한 파일 1000행(SwiftLint file_length 에러) 한계.
+- 시계 상태머신·이탈은 `InterviewSessionFeatureTests`, 턴 루프·제출 분기는 `InterviewSessionSubmissionTests`, 녹화 배선(시작 실패 폴백·마무리 구간 계측)은 `InterviewSessionRecordingTests`, 종료 확정 후 잠금·순서는 `InterviewSessionFinishTests`, 네트워크 오버레이(시계 두 축·pendingRetry 2종 재실행·제출 없는 중단)는 `InterviewSessionNetworkFailureTests` 가 고정 (TestClock). 무음 토글 순서만 별도 파일 `InterviewSessionAudioMuteTests.swift` 로 뺐다 — 한 파일 1000행(SwiftLint file_length 에러) 한계.
 
 ## 실패
 
 `InterviewFailureFeature` — 면접 중단 안내 공통 화면. kind 3종(speechRecognition·network·questionPrep)이 배지·문구·하단 버튼만 바꾸는 같은 레이아웃이라 리듀서는 kind 파라미터 하나뿐이다(Figma 2550:7504 · 2638:17018). 이용권 미차감 안내(서버 자동 환불 — [[interview#API]])는 공통.
 
-- 하단 버튼이 kind 별로 다르다: speechRecognition = «다시 시작하기»(restartRequested — 준비부터 재시작, PRD §3.9) / network = «홈으로» / questionPrep = «처음으로». 뒤 둘은 closeRequested 뿐 — 재시도 버튼을 주지 않는 것이 PRD 확정(§3.7·§3.2)이라 restartRequested 는 STT 전용 경로다.
+- **표시 주체가 kind 별로 다르다**(2026-08-06): speechRecognition·questionPrep 은 코디네이터가 화면을 교체해 띄우는 터미널([[interview#코디네이터]]), network 는 세션이 `@Presents` 오버레이로 얹는 복구 지점([[interview#세션]]) — 한 리듀서가 두 부모를 섬긴다. delegate 는 `closeRequested`(X·«중단하기»·«처음으로» 공통)와 network 전용 `resumeRequested` 둘뿐.
+- 하단 버튼: speechRecognition = «중단하기» 단일 / network = «이어서 진행하기»|«중단하기» 2분할(dark) / questionPrep = «처음으로». STT 의 재시작 버튼·delegate 는 2026-08-06 시안에서 소멸했다 — STT_RESET 은 서버가 세션을 무효화해 같은 sessionId 재진입이 거부되므로 지킬 수 없는 약속이었다(옛 «무효 세션 재진입» 제약도 이로써 소멸).
+- 이용권 문구도 kind 별로 갈린다 — network 만 «중단하기를 선택할 경우에, …» 조건형이다(재개가 가능해 차감 여부가 선택에 달렸다). 오버레이 «중단하기» 가 BACK_EXIT 제출을 태우지 않는 근거가 이 문구다.
 - questionPrep 은 세션이 아니라 준비 화면의 폴링이 올린다([[interview#준비]]) — 질문 준비 최종 실패(서버 FAILED).
 - 질문 준비 실패 화면(`Interview_QuestionPrepFailure`)은 Figma 시안 미출 — 레이아웃·배지를 network 실패에서 임시 재사용 중이라 시안 확정 시 교체한다.
 
-## 리포트 대기
+## 업로드 큐
 
-`InterviewReportPendingFeature` — 면접 정상 종료 직후의 «리포트를 만들고 있어요» 안내 화면(`Interview_ReportPending`, PRD §3.8). 화면에 보이는 건 버튼 하나(«홈으로» → delegate(.goHomeRequested))뿐이지만, 세션이 넘긴 녹화 산출물을 **조용히** 업로드하는 자리이기도 하다. 리포트 완료 폴링·재진입 표시는 Part 3/홈 몫.
+`InterviewVideoUploadQueue`(DomainInterview) 가 면접 영상을 화면·앱 수명과 무관하게 완주시킨다 — 정상 종료가 산출물을 접수하면(파일 소유권 이전) 코디네이터는 즉시 홈으로 가고 전송은 뒤에서 이어진다. 진행·성공·실패 UI 는 없고(조용한 업로드), 리포트 완료 표시·통지는 Part 3/홈 몫이다.
 
-- 세션이 어떻게 끝났든(마치기·12:00 상한·자연 종료) 이 화면을 거친다 — 코디네이터가 `finished(ref, wrapUp)` 을 여기로 받고, 여기서 온 goHomeRequested 만 상위로 승격한다([[interview#코디네이터]]).
-- 조용한 업로드(2026-08-05): onAppear 에 ref 가 있으면 `uploadInterviewVideo` 를 부른다 — 진행률·성공·에러 UI 가 **없다**. 1차 실패는 즉시 1회 재시도(발급부터 재시작 — 만료 URL 을 새로 받고, PUT 덮어쓰기·complete 는 멱등), 2차 실패는 로그만 남기고 포기한다. 리포트는 영상 없이도 유효하고(스펙 §⑥) 사용자가 손쓸 게 없어서 알리지 않는다. `hasStarted` 가 재진입 중복 실행을 막는다.
-- 성공·포기 공통 종착은 `discardRecording()` — 어느 갈래로 끝나든 tmp 파일을 남기지 않는다. ref 가 nil(녹화 실패·합성 실패)이면 아무 effect 도 열지 않는다.
-- «홈으로»는 업로드를 기다리지 않는다 — 미완이면 취소하고 폐기한 뒤 이탈한다. 붙잡아 두면 «리포트를 만들고 있어요» 안내가 이탈 차단으로 읽힌다.
-- 금지 문구 3종(§3.8): «나가도 돼요» · «앱을 닫아도 돼요» · «완료되면 알려드려요». 푸시가 없어서 못 지킬 약속이 되기 때문 — 완료 통지 수단이 생기기 전엔 쓰지 않는다.
-- 화면 시안 미출 — 기존 레이아웃·DS 토큰 재사용 임시본이다.
+- `enqueue(sessionId·fileURL·wrapUp)` 는 파일을 `Application Support/InterviewUploads/<sessionId>.mp4` 로 **이동**(+백업 제외)하고 저널(JSON)에 적은 뒤 반환한다 — 네트워크가 없어 밀리초라 코디네이터가 홈 전환 전에 await 해도 사용자는 못 느낀다. tmp 를 쓰지 않는 이유는 OS 가 임의로 지우기 때문 — 재실행 재개가 전제다.
+- 같은 sessionId 재접수는 무시한다(dedup) — 늦은 두 번째 `finished` 가 업로드를 재시작시키지 못하게([[interview#코디네이터]] first-wins 와 이중 방어). 접수 실패(파일 이동 불가)는 로그만 남기고 포기한다.
+- 1회 시도 = 발급(`videoUploadURL`) → background PUT([[domain.map#네트워킹 인프라]] `BackgroundTransferClient`) → 완료 이벤트 → `completeVideoUpload` → 저널·파일 삭제. 발급·complete 는 앱 프로세스가 살아 있을 때(백그라운드 wake 포함)만 돌고, **PUT 만** 앱이 사라져도 시스템 데몬이 이어간다.
+- 저널 단계는 2단(`completing`/`pending`) — PUT 완료 이벤트를 받으면 complete **전에** completing 으로 올려 기록한다. 그 틈에 죽어도 재개가 PUT 을 되풀이하지 않고 멱등한 complete 만 다시 친다. pending 재개는 발급부터라 만료 URL 이 자연 해소되고, PUT 덮어쓰기도 안전하다.
+- 재시도는 «시도 실패 시 즉시 1회»(2026-08-05 의 1+1 정책 계승)뿐이고 소진되면 파킹한다. `resumePending()` 이 그 재시도권을 리셋하므로 실질 정책은 «실행 시점마다 1회» 다. 생성 후 **72시간**을 넘긴 항목은 resume 이 파일·저널째 폐기한다 — 영상 없는 리포트가 1급 폴백이라 무한 보관하지 않는다.
+- 재개는 만료 폐기 직후 **저널에 대응 항목이 없는 mp4** 도 지운다 — 완주가 저널 제거와 파일 삭제 사이에서 끊기면 파일만 남아 영구 누수가 되기 때문. 저널을 읽은 **뒤**라야 안전하다(먼저 돌면 진행 중 산출물을 고아로 오인한다).
+- `resumePending()` 호출부는 둘 — `AppFeature.onAppear`(앱 시작)와 `AppDelegate.handleEventsForBackgroundURLSession`(wake — completionHandler 는 전송 계층에 넘겨 이벤트 소진 시점에 불리게 한다). 강제 종료(스와이프)는 iOS 가 전송을 취소하는 플랫폼 제약이라, 저널 재개가 유일한 회복 수단이다.
+- wake 는 이벤트 소진 직후 iOS 가 앱을 정지시켜 complete 를 자를 수 있다(저널만 `.completing` 으로 남고, 그 사이 서버가 영상 없이 리포트를 확정한다). 그래서 AppDelegate 가 재개를 `beginBackgroundTask` assertion 으로 감싸고, **`resumePending()` 은 시도가 잦아들 때까지 반환하지 않는 계약**을 진다 — 뿌리고 곧장 반환하면 감쌀 구간이 없어 assertion 이 헛돈다. 잦아듦의 정의는 «진행 중 시도 0» 하나뿐이라 재개발·스트림발을 함께 덮는다. 완료 이벤트가 그 판정 직후에 도착하면 여전히 잘릴 수 있고, 그건 다음 실행의 멱등 재시도 몫이다.
+- 본체 actor 는 `static shared` 하나 — 저널·완료 이벤트 구독이 프로세스 전역 단일이어야 코디네이터(enqueue)·AppFeature·AppDelegate 가 같은 큐를 본다. 의존은 `@Dependency` 가 아니라 init 주입이라 `InterviewVideoUploadQueueTests` 가 스텁 한 벌(+스크래치 디렉토리 저널)로 계약을 고정한다. background URLSession 실물은 유닛 제외 — 실기기 E2E 몫이다.
+- 설계 근거(결정표·에러 폴백표): [2026-08-06 스펙](../docs/superpowers/specs/2026-08-06-interview-exit-background-upload-design.md).

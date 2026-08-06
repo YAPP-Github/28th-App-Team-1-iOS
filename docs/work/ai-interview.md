@@ -13,7 +13,7 @@
 | 기획 | Feature 모듈 | 도메인 내 navigation |
 |---|---|---|
 | Part 1 면접 전 입력 & 포폴 등록(위저드) | `OnboardingFeature` (FeatureOnboarding — **구현 중**) | 자체 `StackState` 6스텝 (S0~S3.5) → §5 · [[onboarding]] |
-| Part 2 10분 음성 면접 | `InterviewSessionFeature` ★ (FeatureInterview — **화면 상태머신 + 턴 루프·음성(TTS/녹화) 배선 구현**, 발화 감지·STT 는 슬라이스a 잔여) | 단일 화면 + 턴 **상태머신** · 준비/실패/리포트 대기 화면 전환은 모듈 내 `InterviewFeature` 코디네이터 |
+| Part 2 10분 음성 면접 | `InterviewSessionFeature` ★ (FeatureInterview — **화면 상태머신 + 턴 루프·음성(TTS/녹화) 배선 구현**, 발화 감지·STT 는 슬라이스a 잔여) | 단일 화면 + 턴 **상태머신** · 준비/세션/실패 화면 전환은 모듈 내 `InterviewFeature` 코디네이터 |
 | 포트폴리오 관리(설정) | `PortfolioFeature` | — |
 | Part 3 보고서/영상 복기 | `InterviewReportFeature` (R0·R1 + V0·V1·V2) | 자체 `Path` (R0→V0→V1→V2→R1) → [ai-interview-report](ai-interview-report.md) |
 | Part 4 사람 평가(유료) | (후속, 별도) | — |
@@ -49,7 +49,7 @@ App  (composition root — 레이어 umbrella link → liveValue 활성화)
 ```
 Onboarding --delegate(.finished(sessionId))--▶ AppFeature --fullScreenCover--▶ Interview ✅ (2026-08-03)
 Onboarding --delegate(.dismiss)--------------▶ AppFeature --중도 이탈 (draft 보존, §5)
-Session --delegate(.finished)----------------▶ 코디네이터 --리포트 대기 화면--▶ delegate(.finished) --▶ AppFeature --dismiss ✅
+Session --delegate(.finished)----------------▶ 코디네이터 --업로드 큐 접수--▶ delegate(.finished) --▶ AppFeature --dismiss ✅ (2026-08-06: 리포트 대기 화면 없이 홈 직행)
 Session --delegate(.aborted)-----------------▶ 코디네이터 --delegate(.closed)--▶ AppFeature --dismiss ✅ (턴은 서버가 보존 — 차감 D1, PRD §3.7)
 설정 Portfolio --delegate(.emptied)----------▶ AppFeature --다음 연습 진입 시 S2 강제 라우팅
 ```
@@ -209,9 +209,10 @@ enum Phase {
 - ✅ **타이밍**(§3.6) hard cap 12:00 · 11:50 초읽기 · 8:00 해금 · «12분» 미노출(§3.10)
 - ✅ **상태 칩 3종**(§3.5) asking/answering/processingAnswer — «답변이 기록 됐어요» 토스트 제거
 - ✅ **질문 준비 게이트**(§3.2) 준비 화면 `sessionStatus` 3초 폴링, 시작 게이트 = guide2 + 권한 + READY 삼중, 클라 타임아웃 없음
-- ✅ **실패 화면 3종**(§3.2·§3.7·§3.9) questionPrep(처음으로만·재시도 없음) / network(홈으로만) / speechRecognition(다시 시작하기)
-- ✅ **종료 경로**(§3.7·§3.8) 8분 전 중도 이탈 경고 → `aborted` / 8분 후·상한·마치기 → 리포트 대기 화면 경유 → `finished`. 확정 문구는 부록 C
-- ✅ **실녹화·업로드(작업B 슬라이스1)** — 2026-08-05: 비디오 전용 캡처 + 세션 오디오 사후 합성(A안-2) · `answerAudio` 실구현(m4a) · `uploadInterviewVideo` 조용한 업로드(ReportPending). 스펙 [2026-08-04-interview-recording-upload-design](../superpowers/specs/2026-08-04-interview-recording-upload-design.md)
+- ✅ **실패 화면 3종**(§3.2·§3.7·§3.9 → 2026-08-06 시안 갱신) questionPrep(처음으로만·재시도 없음) / network(«이어서 진행하기»|«중단하기» — 세션 위 오버레이) / speechRecognition(«중단하기» 단일 — 재시작 소멸)
+- ✅ **종료 경로**(§3.7·§3.8) 8분 전 중도 이탈 경고 → `aborted` / 8분 후·상한·마치기 → 업로드 큐 접수 후 `finished`(2026-08-06: 리포트 대기 화면 소멸, 홈 직행). 확정 문구는 부록 C
+- ✅ **실녹화·업로드(작업B 슬라이스1)** — 2026-08-05: 비디오 전용 캡처 + 세션 오디오 사후 합성(A안-2) · `answerAudio` 실구현(m4a) · 조용한 업로드. 스펙 [2026-08-04-interview-recording-upload-design](../superpowers/specs/2026-08-04-interview-recording-upload-design.md) (§④·§⑤ 는 아래 개편이 대체)
+- ✅ **이탈·백그라운드 업로드 개편** — 2026-08-06: 종료 즉시 홈 직행 · `InterviewVideoUploadQueue`(저널 + background URLSession, 앱 재실행 재개·72h 폐기) · 네트워크 실패는 세션 오버레이(재개 가능). 스펙 [2026-08-06-interview-exit-background-upload-design](../superpowers/specs/2026-08-06-interview-exit-background-upload-design.md), 상세 [[interview#업로드 큐]]·[[interview#세션]](lat.md/interview.md)
 - 🔴 **Speech/Recording 배선(작업B 슬라이스a)** — 발화 감지 기반 «답변 완료하기» 게이팅 · 침묵 10초 확정 · 사고 5초 카운트다운 · 필러 멘트(PRD 수치 확정 후 별도 스펙). 질문 TTS·마무리 멘트 재생은 ✅(2026-08-02)
 - ✅ **서버 턴 루프(작업 C)** — 2026-08-02: `submitAnswer` 실배선(2초 mock 소멸) · 응답 endType 5종 분기 · 랩업 8:45 `isWrapUp` · 503 백오프(1s·3s×2) · 종료 경로 제출 경유(MANUAL_END/HARD_CAP/BACK_EXIT — 구 EARLY_EXIT, 2026-08-03 서버 개명) · Example 실서버 하네스(`HILIT_ACCESS_TOKEN`). 스펙 [2026-08-02-interview-api-design](../superpowers/specs/2026-08-02-interview-api-design.md)
 - ✅ **AppFeature 배선(작업 D)** — 2026-08-03: 온보딩 `finished(sessionId)` → 면접 fullScreenCover, 종료 두 신호(`finished`/`closed`)가 cover 를 닫고 홈 재조회 · 면접 중 전역 LoadingModal 억제. 스펙 [2026-08-03-interview-exit-to-home-design](../superpowers/specs/2026-08-03-interview-exit-to-home-design.md). 잔여: 홈 «면접 시작» 직접 진입(이용권 게이트 — home-account §4 미결 6-1)
@@ -245,12 +246,13 @@ v3 로 **닫힌** 논의(초안 미결 → 해소): 재시도/멱등성(전면 �
 3. **OnboardingFeature (Part 1)** — 6스텝 골격·직군·연차·JD·포폴·집중프로젝트 ✅ / **분석 스텝 세션 API 연결 🔴** (§5 개발 포인트) + 입력 draft
 4. **InterviewSessionFeature** ★ — mock SpeechClient(스크립트 AsyncStream) + `TestClock`로 상태머신 결정론 검증. 디바이스 의존 전에 Example 앱 + 단위테스트로 격리.
    **화면 골격 ✅ (2026-07-25, FeatureInterview 모듈)** — 준비(카메라 확인·가이드)→세션(시계·8분 해금·최종 카운트다운·종료 확인)→실패 화면 상태머신 + 코디네이터, 세션 시계는 TestClock 테스트 고정.
-   권한(Permission) 준비 화면 게이트 ✅(2026-07-27) · **PRD v3 화면 정합 ✅(2026-07-27)** — 타이밍 12:00·상태 칩 3종·질문 준비 폴링 게이트·실패 3종·중도 이탈 경고·리포트 대기(§6 «PRD v3 정합 현황»).
+   권한(Permission) 준비 화면 게이트 ✅(2026-07-27) · **PRD v3 화면 정합 ✅(2026-07-27)** — 타이밍 12:00·상태 칩 3종·질문 준비 폴링 게이트·실패 3종·중도 이탈 경고(§6 «PRD v3 정합 현황»).
    카메라 프리뷰 ✅ (2026-07-28, DomainRecording) — 준비·세션 화면 실동작, aligning→ready 는 «최소 유지+프리뷰 해소» 이중 게이트, 이탈 시 코디네이터가 정지. backdrop 은 InterviewView 상주(2026-07-29 — 화면 교체 시 프리뷰 레이어 재생성으로 끊겨 보이던 문제 해소). 상세 [[interview#프리뷰]](lat.md/interview.md).
    마이크 캡처 ✅ (2026-07-29, DomainSpeech) — 세션 전구간 레벨(1초)·발화 감지 로그로 마이크 동작 검증, STT 는 Implementation 교체 seam 만 마련. 상세 [[interview#음성 캡처]](lat.md/interview.md).
    서버 턴 루프 ✅ (2026-08-02, 작업 C) — `submitAnswer` 실배선·endType 5종 분기·503 백오프·종료 경로 제출 경유 + 질문 TTS/마무리 멘트 재생(SpeechClient play/playStream) + Example 실서버 하네스(`HILIT_ACCESS_TOKEN`).
    AppFeature 배선 ✅ (2026-08-03, 작업 D) — 온보딩 완주 → 면접 fullScreenCover → 종료 시 홈 복귀(재조회) 왕복 성립, 면접 커버 중 전역 LoadingModal 억제.
-   실녹화·업로드 ✅ (2026-08-05, 작업B 슬라이스1) — `RecordingClient.startRecording`/`stopRecording`(합성)·`answerAudio` 실구현·`uploadInterviewVideo` 조용한 업로드. 상세 [[interview#프리뷰]]·[[interview#음성 캡처]](lat.md/interview.md)
+   실녹화·업로드 ✅ (2026-08-05, 작업B 슬라이스1) — `RecordingClient.startRecording`/`stopRecording`(합성)·`answerAudio` 실구현·조용한 업로드. 상세 [[interview#프리뷰]]·[[interview#음성 캡처]](lat.md/interview.md)
+   이탈·백그라운드 업로드 개편 ✅ (2026-08-06) — 정상 종료는 리포트 대기 화면 없이 홈 직행, 산출물은 `InterviewVideoUploadQueue`(저널+background URLSession)가 앱 수명과 무관하게 완주시킨다. 네트워크 실패는 세션 오버레이로 재개 가능. 상세 [[interview#업로드 큐]]·[[interview#실패]](lat.md/interview.md)
    잔여 🔴: 발화 감지·침묵 10초·사고 5초·필러 멘트(작업B 슬라이스a). 상세 [[interview#면접 흐름]](lat.md/interview.md)
 5. **PortfolioFeature**(설정 관리) — `list`/`delete` 재사용
 6. **AppFeature 배선** ✅ Onboarding delegate(.finished(sessionId)/.dismiss) 수신 + 면접 fullScreenCover. 홈 «면접 시작» 직접 진입은 이용권 게이트 미결(home-account §4)
@@ -267,7 +269,7 @@ v3 로 **닫힌** 논의(초안 미결 → 해소): 재시도/멱등성(전면 �
 ### PM·디자인 회신 대기 (Part 2, 2026-07-27 기준)
 
 - **사고 5초 · 침묵 10초 수치 기술 검토 회신**(PRD §3.6 «클라 회신 대기») — 작업 B(SpeechClient) 착수 전에 잠가야 하는 값. 확정 전까진 상수 미배선.
-- **신규 화면 3종 시안 미출** — 질문 준비 실패(`Interview_QuestionPrepFailure`) · 중도 이탈 경고(`Interview_EarlyExitWarning`) · 리포트 대기(`Interview_ReportPending`). 기존 레이아웃·DS 토큰 재사용으로 임시 구현했고(배지는 network error 임시 전용), 시안 확정 시 교체.
+- **신규 화면 2종 시안 미출** — 질문 준비 실패(`Interview_QuestionPrepFailure`) · 중도 이탈 경고(`Interview_EarlyExitWarning`). 기존 레이아웃·DS 토큰 재사용으로 임시 구현했고(배지는 network error 임시 전용), 시안 확정 시 교체. 리포트 대기(`Interview_ReportPending`)는 2026-08-06 개편으로 화면 자체가 사라져 대기 목록에서 뺐다.
 - **상태 칩 «답변을 정리하고 있어요» 시안 미출** — 현재 answering 칩 스타일 1:1 재사용(문구만 PRD 확정본).
 - **8분 이후 잔여 시간 인디케이터**(§3.6) — 시각 표현 미확정이라 미구현. 디자인 나오면 세션 상단 칩과 함께 재설계.
 - **«답변이 기록 됐어요» 토스트 제거 확인** — PRD 칩 3종이 확정 표기라 제거했으나 Figma 구 시안에는 남아 있다. 디자인 확인 필요.
