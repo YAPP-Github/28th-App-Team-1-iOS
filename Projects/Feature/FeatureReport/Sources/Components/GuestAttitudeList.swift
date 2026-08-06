@@ -142,7 +142,8 @@ struct GuestAttitudeList: View {
 /// 태도 평가의 화면 문구·아이콘. 보고서 응답은 축 코드와 1~4 단계만 주고 표시 문구를 안 준다.
 ///
 /// 🔴 시선·목소리 문구는 게스트 제출 화면의 확정 문구(Figma «객관식 - 선택 후»)를 서술형으로 옮긴 것이고,
-/// 표정·자세·손동작은 그쪽도 확정 대기라 같은 잠정 문구를 쓴다. 확정되면 이 표만 갈아끼운다.
+/// 표정은 1단계만 리포트 시안(443:7102)에 있어 그 칸만 확정이다. 나머지(표정 2~4단계·자세·손동작)는
+/// 그쪽도 확정 대기라 잠정 문구를 쓴다. 확정되면 이 표만 갈아끼운다.
 enum GuestAttitudeCopy {
     static func name(for axis: AttitudeAxisKind) -> String {
         switch axis {
@@ -186,7 +187,10 @@ enum GuestAttitudeCopy {
     private static func verdicts(for axis: AttitudeAxisKind) -> [String] {
         switch axis {
         case .gaze: ["잘 맞춰요.", "꽤 맞춰요.", "가끔 피해요.", "자주 피해요."]
+        // 1단계 «밝아요.» 만 시안(443:7102) 확정값이라 그 칸만 시안대로 두고 2~4단계는 잠정 문구를 잇는다.
+        case .expression: ["밝아요.", "괜찮아요.", "조금 아쉬워요.", "많이 아쉬워요."]
         case .voice: ["적당해요.", "너무 커요.", "조금 작아요.", "너무 작아요."]
+        // 자세·손동작 — 축별 문구가 확정되지 않아 공통 잠정 문구를 쓴다.
         default: ["좋아요.", "괜찮아요.", "조금 아쉬워요.", "많이 아쉬워요."]
         }
     }

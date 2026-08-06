@@ -5,7 +5,8 @@
 //  Created by EunSeo on 26/07/25.
 //
 
-// Figma: «Report_Main_Default» https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=443-7264
+// Figma: «Report_Main_Default» https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=443-7204
+//        같은 화면 다른 판(대본 길이만 다름) https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=443-7264
 //        지인 피드백 도착 상태 https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=443-7102
 
 import ComposableArchitecture
@@ -13,7 +14,7 @@ import DomainInterviewReportInterface
 import SharedDesignSystemInterface
 import SwiftUI
 
-/// 1차 리포트 — Figma «Report_Main_Default» 443:7264(기본) · 443:7102(지인 피드백 도착). 다크 화면(b900) 기준.
+/// 1차 리포트 — Figma «Report_Main_Default» 443:7204(기본) · 443:7102(지인 피드백 도착). 다크 화면(b900) 기준.
 ///
 /// 세로 구성: 한 줄 요약 → 영상 카드 → 상세 리포트(질문 탭 + 선택 카드) → 지인 피드백.
 /// 카드를 세로로 늘어놓지 않고 **질문 탭으로 한 장씩** 보여준다 — 대본이 길어 전부 펼치면 스크롤이 무너진다.
@@ -33,7 +34,8 @@ public struct ReportMainView: View {
             // 다크 판 선언 — 하위 `.mini`(재시도 버튼·지인 이름 탭)의 팔레트가 다크용으로 바뀐다.
             .hilitSurface(.dark)
             // X = 리포트 닫기(플로우 종료) — 기본 pop 이 아니라 리듀서가 소유한다.
-            .hilitNavigationBar(surface: .dark, onClose: { send(.userTappedClose) })
+            // `background: .filled` — 스크롤 화면이라 투명 바로 두면 요약 문구가 X 뒤로 지나간다.
+            .hilitNavigationBar(surface: .dark, background: .filled, onClose: { send(.userTappedClose) })
             .onAppear { send(.onAppear) }
         .sheet(item: $store.scope(state: \.highlightDetail, action: \.highlightDetail)) { store in
             ReportHighlightDetailView(store: store)
@@ -41,7 +43,7 @@ public struct ReportMainView: View {
     }
 
     /// 상태 분기 (정의서 §4-4) — 폴링 지연·재시도 가능 에러는 수동 재시도 버튼을 붙이고,
-    /// 복구 불가 에러(세션 없음·타인 소유, 로그인 만료)는 닫기만 남긴다.
+    /// 복구 불가 에러(세션 없음·타인 소유, 로그인 만료)와 채점 실패는 닫기만 남긴다.
     @ViewBuilder
     private var content: some View {
         switch store.loadState {
@@ -49,6 +51,8 @@ public struct ReportMainView: View {
             statusMessage("리포트를 만들고 있어요.", showsProgress: true)
         case .loaded:
             reportBody
+        case .generationFailed:
+            statusMessage(ReportMainView.generationFailureMessage)
         case .pollTimedOut:
             statusMessage(
                 "채점이 예상보다 오래 걸리고 있어요.\n잠시 후 다시 확인해 주세요.",
@@ -81,6 +85,9 @@ public struct ReportMainView: View {
             .padding(.top, .ds(.p10))
             .padding(.bottom, .ds(.p24))
         }
+        // 늦게 도착한 지인 피드백을 받아오는 단발 재조회 — 폴링 재개가 아니고, `onAppear` 도 아니라
+        // 접어 둔 툴팁을 다시 펼치지 않는다.
+        .refreshable { await send(.userPulledToRefresh).finish() }
     }
 
     /// 한 줄 요약 — 서버 소유 문구. nil 이면 분석 부족 폴백만 쓴다 (정의서 §6).
@@ -127,39 +134,14 @@ public struct ReportMainView: View {
         }
     }
 
-    /// 제목 + 레드플래그 느낌표. 툴팁은 오버레이라 열고 닫아도 아래 내용이 밀리지 않는다.
-    /// 느낌표·툴팁은 **레드플래그가 있을 때만** 함께 나타난다 — 없으면 둘 다 그리지 않는다 (정의서 §2-4).
+    /// 제목 + 레드플래그 느낌표·툴팁. 배치는 `DetailReportHeader` 가 갖고, 여기선 상태만 넘긴다.
     private var detailReportHeader: some View {
-        HStack(spacing: .ds(.p8)) {
-            Text("상세 리포트")
-                .dsTypography(.sub7)
-                .foregroundStyle(Color.BlackWhite.white)
-
-            if store.hasRedFlagNotices {
-                Button {
-                    send(.userTappedRedFlagInfo)
-                } label: {
-                    Image.Issue.error16
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: Metric.issueIconSide, height: Metric.issueIconSide)
-                }
-                .buttonStyle(.plain)
-            }
-            Spacer(minLength: 0)
-        }
-        // 시안은 말풍선을 섹션 오른쪽 끝에 맞춰 놓는다(왼쪽 80 = 오른쪽 여백 20 기준 274 폭의 시작점).
-        .overlay(alignment: .topTrailing) {
-            if store.hasRedFlagNotices, store.isRedFlagTooltipVisible {
-                BubbleField(store.redFlagTooltipMessage, .mini(mood: .dark))
-                    // 폭 274 는 시안 주석 값. DS `.wide` 와 같은 수치지만 이 자리는 세로 패딩 8·
-                    // 좌하단 꼬리인 `.mini` 티어라 폭만 따로 주고, 세로는 내용대로 늘려 줄바꿈시킨다.
-                    .frame(width: Metric.tooltipWidth)
-                    .fixedSize(horizontal: false, vertical: true)
-                    // 말풍선 아래끝이 제목 위 8 에 오도록 자기 높이만큼 끌어올린다 (시안 주석 «gap 8px»).
-                    .alignmentGuide(.top) { $0[.bottom] + .ds(.p8) }
-            }
-        }
+        DetailReportHeader(
+            notice: store.hasRedFlagNotices ? store.redFlagTooltipMessage : nil,
+            isTooltipVisible: store.isRedFlagTooltipVisible,
+            onTapIcon: { send(.userTappedRedFlagInfo) },
+            onTapTooltip: { send(.userTappedRedFlagTooltip) }
+        )
     }
 
     private func selectedCardBody(_ card: InterviewReportCard) -> some View {
@@ -167,9 +149,9 @@ public struct ReportMainView: View {
             VStack(alignment: .leading, spacing: .ds(.p16)) {
                 questionRow(card)
 
-                // 질문 의도 분석 — 서버 소유 문구.
+                // 질문 의도 분석 — 볼드 제목·본문 모두 서버 소유 문구.
                 if let questionIntent = card.questionIntent {
-                    AnalysisCard(kind: .question, contents: questionIntent)
+                    AnalysisCard(kind: .question, title: card.questionIntentTitle, contents: questionIntent)
                 }
                 // 해상도 낮음 안내 — 이 카드는 하이라이트가 없어 시트로 가지 않는다.
                 if let resolutionNotice = card.resolutionNotice {
@@ -295,16 +277,15 @@ public struct ReportMainView: View {
     private enum Metric {
         // @ds(spacing): 34 — 질문 탭 줄과 선택 카드 사이
         static let detailSpacing: CGFloat = 34
-        /// 레드플래그 느낌표 한 변 16 — Figma `issue/16px/error`.
-        static let issueIconSide: CGFloat = 16
         /// 질문 배지 한 변 20 — Figma `Q` 배지.
         static let questionBadgeSide: CGFloat = 20
         // @ds(spacing): 36 — 본문 섹션 사이
         static let sectionSpacing: CGFloat = 36
-        // @ds(layout): 274 — 레드플래그 툴팁 폭 (시안 주석)
-        static let tooltipWidth: CGFloat = 274
     }
 
+    /// 채점 실패(FAILED) 안내 — 홈 위젯 실패 행과 같은 계열 문구. 재조회해도 같은 답이라 버튼이 없다.
+    // TODO(prd-외): FAILED UX 는 PRD 미확정 — 홈 위젯 실패 행과 같은 계열로 임시 재량 구현. 문구·후속 행동이 정해지면 여기만 바꾼다.
+    static let generationFailureMessage = "레포트 생성에 실패했어요.\n이용권 횟수는 차감되지 않아요."
     /// 서버 `headline` 이 비었을 때의 폴백 (정의서 §6).
     static let headlineFallback = "이번 면접의 답변이 충분하지 않아요. 다음 면접 연습 때는 조금 더 충분한 답변을 말씀해주세요."
     /// 영상 카드 아래 안내 — 클라 소유 문구.
@@ -323,7 +304,7 @@ public struct ReportMainView: View {
     )
 }
 
-#Preview("레드플래그 · 영상 만료 — 443:7264") {
+#Preview("레드플래그 · 영상 만료 — 443:7204") {
     reportMainPreview(
         cardRedFlagNotices: [
             RedFlagNotice(type: "LOW_RESOLUTION", message: "영상 해상도가 낮아 분석율이 떨어질 수 있어요.")

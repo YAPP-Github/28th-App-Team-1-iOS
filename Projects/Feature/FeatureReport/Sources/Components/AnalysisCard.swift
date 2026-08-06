@@ -13,8 +13,8 @@ import SwiftUI
 ///
 /// 라벨(«Hilit의 질문 분석» 등)이 종류에서 결정되는 도메인 문구라서 DS 로 승격하지 않는다 —
 /// DS 는 문구를 모르는 채 `subtitle`/`title`/`contents` 세 줄만 받는다.
-/// Figma 의 볼드 한 줄(«구체적인 사례 제시» 등)에 대응하는 서버 필드가 아직 없어
-/// `title` 이 nil 이면 그 줄만 빠진다 — 필드가 생기면 값만 넘기면 된다.
+/// Figma 의 볼드 한 줄은 서버 필드가 있는 자리만 채워진다 — 질문 분석은 카드 `questionIntentTitle`,
+/// 답변 분석(«구체적인 사례 제시» 등)은 아직 대응 필드가 없어 nil 이고 그 줄만 빠진다.
 struct AnalysisCard: View {
     enum Kind {
         /// 질문 의도 분석 — 그린 반짝임.
