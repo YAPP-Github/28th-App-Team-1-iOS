@@ -85,6 +85,26 @@ struct ReportMainFeatureTests {
         }
     }
 
+    /// 채점 실패 응답 — 픽스처에 없어 여기서 만든다(전 필드 nil 이라 재료가 필요 없다).
+    private static var failedReport: InterviewReport {
+        InterviewReport(status: .failed, headline: nil, video: nil, cards: nil, guestFeedback: nil)
+    }
+
+    @Test("채점 실패(FAILED)는 정상 카드 경로가 아니라 전용 안내로 끝난다")
+    func failedReportUsesOwnState() async {
+        let clock = TestClock()
+        let store = store(report: { _ in Self.failedReport }, clock: clock)
+
+        await store.send(.view(.onAppear))
+        // `.loaded` 로 보내면 headline 이 없어 «분석 부족» 폴백 문구가 떠 오표기된다.
+        await store.receive(\.inner.reportLoaded) {
+            $0.report = Self.failedReport
+            $0.loadState = .generationFailed
+        }
+        // 폴링도 여기서 멈춘다 — 재조회해도 같은 답이라 되살릴 것이 없다.
+        await clock.advance(by: ReportMainFeature.pollInterval)
+    }
+
     @Test("복구 불가 에러는 실패 상태로 끝낸다")
     func sessionNotFoundFails() async {
         let clock = TestClock()
@@ -256,6 +276,22 @@ struct ReportMainFeatureTests {
         await store.send(.view(.userTappedRedFlagInfo)) { $0.isRedFlagTooltipVisible = true }
     }
 
+    @Test("툴팁을 누르면 접히고, 화면에 다시 들어오면 도로 펼쳐진다")
+    func tooltipReopensOnReentry() async {
+        let clock = TestClock()
+        let store = store(report: { _ in InterviewReportFixtures.withRedFlags }, clock: clock)
+
+        await store.send(.view(.onAppear))
+        await store.receive(\.inner.reportLoaded) {
+            $0.report = InterviewReportFixtures.withRedFlags
+            $0.loadState = .loaded
+        }
+
+        await store.send(.view(.userTappedRedFlagTooltip)) { $0.isRedFlagTooltipVisible = false }
+        // 재진입 — 보고서는 이미 있어 재조회하지 않지만 툴팁은 다시 띄운다.
+        await store.send(.view(.onAppear)) { $0.isRedFlagTooltipVisible = true }
+    }
+
     @Test("지인을 바꾸면 펼쳐 둔 코멘트를 접는다")
     func guestTabResetsExpandedComments() async {
         let clock = TestClock()
@@ -334,6 +370,35 @@ struct ReportMainFeatureTests {
             $0.report = InterviewReportFixtures.ready
             $0.loadState = .loaded
         }
+    }
+
+    @Test("당겨서 새로고침은 한 번만 재조회하고 보던 상태를 지키며 폴링을 되살리지 않는다")
+    func pullToRefreshFetchesOnce() async {
+        let clock = TestClock()
+        let responses = LockIsolated([InterviewReportFixtures.ready, InterviewReportFixtures.withGuestFeedback])
+        let store = store(report: { _ in responses.withValue { $0.removeFirst() } }, clock: clock)
+
+        await store.send(.view(.onAppear))
+        await store.receive(\.inner.reportLoaded) {
+            $0.report = InterviewReportFixtures.ready
+            $0.loadState = .loaded
+        }
+        await store.send(.view(.userTappedQuestionTab(1))) { $0.selectedCardIndex = 1 }
+        await store.send(.view(.userTappedRedFlagTooltip)) { $0.isRedFlagTooltipVisible = false }
+
+        // 늦게 도착한 지인 피드백이 들어온다 — `onAppear` 는 이미 받아 둔 보고서를 다시 묻지 않는다.
+        await store.send(.view(.userPulledToRefresh))
+        await store.receive(\.inner.reportRefreshed) {
+            $0.report = InterviewReportFixtures.withGuestFeedback
+        }
+        // 보던 카드와 접어 둔 툴팁은 그대로다 — 새로고침은 `onAppear` 가 아니다.
+        #expect(store.state.selectedCardIndex == 1)
+        #expect(!store.state.isRedFlagTooltipVisible)
+        // 받아 둔 보고서를 GENERATING 으로 덮으면 화면이 빈다 — 그 응답만 버린다.
+        await store.send(.inner(.reportRefreshed(InterviewReportFixtures.generating)))
+        #expect(store.state.report == InterviewReportFixtures.withGuestFeedback)
+        // 폴링은 되살아나지 않는다 — 시간이 흘러도 재조회 액션이 없다.
+        await clock.advance(by: ReportMainFeature.pollInterval)
     }
 
     @Test("지인 피드백이 없으면 요청 카드를 보여준다")
