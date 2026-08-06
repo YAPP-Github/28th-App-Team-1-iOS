@@ -142,8 +142,8 @@ public struct InterviewReportCard: Decodable, Equatable, Sendable {
     /// 질문 의도 설명
     public let questionIntent: String?
     /// 이 질문 턴의 발화들 — 면접관 질문과 면접자 답변이 `role` 로 섞여 온다.
-    /// 플레이어 진행바 칸(= 턴)의 시간 범위가 발화 전체에서, 오버레이 문장은
-    /// 이 중 면접자 발화(`orderedSegments`)에서 나온다.
+    /// 플레이어 진행바 칸(= 턴)의 시간 범위와 대본 오버레이 문장이 발화 전체(`timelineSegments`)에서,
+    /// 하이라이트 시각 폴백은 문자 오프셋을 가진 면접자 발화(`orderedSegments`)에서 나온다.
     public let scriptSegments: [ScriptSegment]?
 
     public init(

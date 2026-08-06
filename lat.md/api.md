@@ -99,7 +99,7 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 - `highlightSpans` 는 톤(GOOD/IMPROVE)에 더해 `reason`(PROBE_WORTHY/OFF_INTENT/SHALLOW/SUFFICIENT)·`title`·`startSec` 을 갖는다. `followUpQuestions` 는 PROBE_WORTHY 만, `answerTopicTitle`·`questionIntentTitle`·`questionIntent`(카드 값 복사) 는 OFF_INTENT 만 채워진다 — 그 외 reason 에선 셋 다 null/빈 배열.
 - `resolutionNotice` 가 있으면 해상도 낮음 — 능력 판단 보류. 사유가 짧음·얕음이면 `highlightSpans` 빈 배열, 딴 답이면 OFF_INTENT 하이라이트 1개.
 - 영상 만료 시 `video.url` 만 nil — 대본·하이라이트는 유지. `guestFeedback` 은 지인 0명이어도 `participantCount=0, guests=[]` 로 온다(GENERATING 때만 nil).
-- 대본 발화는 두 자리에 온다 — 카드 `scriptSegments`(그 턴의 문장들, 면접관/면접자 `role` 혼재, 카드 `transcript` 기준 문자 오프셋 동봉)와 최상위 `script`(첫 멘트부터 마무리까지 세션 전체를 `startSec` 오름차순 한 배열, 오프셋 없음). `startSec`/`endSec` 은 합성 영상(=녹화) 타임라인 기준이라 진행바·재생 강조가 그대로 쓴다. 플레이어 진행바 칸(= 질문 턴)·오버레이 문장·하이라이트 시각 폴백은 전부 카드 `scriptSegments` — 최상위 `script` 는 화면 사용처가 없다(진행바 칸이 턴 단위가 되면서 폐기, 2026-08-07).
+- 대본 발화는 두 자리에 온다 — 카드 `scriptSegments`(그 턴의 문장들, 면접관/면접자 `role` 혼재, 문자 오프셋 동봉 — **면접자 행만 카드 `transcript` 기준**이고 면접관 행은 질문 문자열 기준이라 답변 대본에 대고 자르면 안 된다)와 최상위 `script`(첫 멘트부터 마무리까지 세션 전체를 `startSec` 오름차순 한 배열, 오프셋 없음). `startSec`/`endSec` 은 합성 영상(=녹화) 타임라인 기준이라 진행바·재생 강조가 그대로 쓴다. 플레이어 진행바 칸(= 질문 턴)·오버레이 문장(질문 포함)·하이라이트 시각 폴백은 전부 카드 `scriptSegments` — 최상위 `script` 는 화면 사용처가 없다(진행바 칸이 턴 단위가 되면서 폐기, 2026-08-07).
 
 에러는 `InterviewReportError` 로 매핑된다 — INTERVIEW_SESSION_NOT_FOUND → sessionNotFound, INTERVIEW_REPORT_NOT_FOUND → reportNotFound (둘 다 404 — 보고서 미생성 상태는 에러 코드로 구분).
 

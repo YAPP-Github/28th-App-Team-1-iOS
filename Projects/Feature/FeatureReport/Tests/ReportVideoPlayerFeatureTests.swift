@@ -165,6 +165,25 @@ struct ReportVideoPlayerFeatureTests {
         }
     }
 
+    @Test("대본은 면접관 질문까지 시각 순으로 담는다 — 질문 오프셋으로 답변을 자르지 않는다")
+    func transcriptIncludesInterviewerTurns() {
+        let state = ReportVideoPlayerFeature.State(videoURL: Self.videoURL, cards: Self.cards)
+        let line = state.transcript.line(with: 0)
+
+        // 턴 = 질문 → 답변. 질문이 첫 문장이라 순번 0 이다.
+        #expect(line?.sentences.map(\.role) == [.interviewer, .interviewee, .interviewee])
+        // 면접관 오프셋(0..<26)은 질문 문자열 기준 — 답변 대본에 대고 자르면 다른 문장이 나온다.
+        #expect(line?.sentences.first?.text == Self.cards[0].questionText)
+        #expect(line?.sentences.first?.spans.isEmpty == true)
+        // 하이라이트는 답변에만 붙는다.
+        #expect(line?.sentences[1].spans.isEmpty == false)
+
+        // 질문이 재생되는 동안 오버레이는 그 턴 질문 문장에 선다.
+        #expect(state.transcript.position(at: 0.5) == VideoTranscript.Position(lineID: 0, sentenceIndex: 0))
+        #expect(state.transcript.position(at: 2) == VideoTranscript.Position(lineID: 0, sentenceIndex: 1))
+        #expect(state.transcript.position(at: 6.5) == VideoTranscript.Position(lineID: 1, sentenceIndex: 0))
+    }
+
     @Test("끝까지 본 뒤 재생을 누르면 처음부터 다시 돈다")
     func playAfterEndRestarts() async {
         let clock = TestClock()
@@ -267,7 +286,8 @@ struct ReportVideoPlayerFeatureTests {
                 showsVideoJump: false
             )
         }
-        #expect(store.state.highlightDetail?.context.evidenceAt == 6.4)
+        // 6.4 는 그 턴 면접관 질문 시작 — 하이라이트는 답변 구간이라 7.2 다.
+        #expect(store.state.highlightDetail?.context.evidenceAt == 7.2)
         // 시트를 보는 동안 플레이어 컨트롤은 전부 비운다 — 시트 밖에 남는 X 도 포함.
         #expect(!store.state.isCloseButtonVisible)
         #expect(!store.state.isBottomBarVisible)

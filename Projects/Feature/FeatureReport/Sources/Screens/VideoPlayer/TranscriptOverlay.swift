@@ -5,6 +5,7 @@
 //  Created by EunSeo on 26/07/29.
 //
 
+import DomainInterviewReportInterface
 import SharedDesignSystemInterface
 import SwiftUI
 
@@ -15,6 +16,7 @@ import SwiftUI
 /// 처음부터 재생하면 문장이 밑에서 차곡차곡 올라오고, 하이라이트 점프로 중간부터 들으면
 /// 그 시점까지의 문장이 이미 쌓인 채 목표 문장이 바닥에 선다 — 별도 분기가 없다.
 /// 위로 밀려난 문장은 상단 페이드로 사라지고, 넘치면 스크롤로 되짚을 수 있다.
+/// 문장에는 **면접관 질문도 섞여** 시각 순으로 선다 — 질문은 Q 배지로 내 답변과 구분한다.
 /// 하이라이트 구간의 색·밴드·부분 탭은 공용 `TranscriptText` 가 담당한다(리포트 카드와 같은 규약).
 struct TranscriptOverlay: View {
     /// 현재 턴 대본. nil 이면(첫 발화 전) 스크림만 깐다.
@@ -64,23 +66,7 @@ struct TranscriptOverlay: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: .ds(.p20)) {
                     ForEach(visibleSentences) { sentence in
-                        TranscriptText(
-                            transcript: sentence.text,
-                            spans: sentence.spans,
-                            // 지금 재생 중인 문장만 흰색 — 지난 문장은 물러난다.
-                            baseColor: sentence.id == currentSentenceIndex
-                                ? Color.BlackWhite.white
-                                : Color.GrayScale.g400,
-                            // 오버레이는 영상 위 어두운 판이라 밴드가 카드보다 한 단 어둡고(시안 443:7906),
-                            // 잘함 톤도 한 단 짙다(443:7919 #008A9F — 카드·시트의 p500 과 다른 판).
-                            bandColor: Color.GrayScale.g900,
-                            goodToneColor: Color.Positive.p800,
-                            onTapSpan: { spanIndex in
-                                guard let line, sentence.spanIndices.indices.contains(spanIndex) else { return }
-                                onHighlightTap(line.id, sentence.spanIndices[spanIndex])
-                            }
-                        )
-                        .id(sentence.id)
+                        row(sentence).id(sentence.id)
                     }
                 }
                 .padding(.horizontal, .ds(.p20))
@@ -105,6 +91,43 @@ struct TranscriptOverlay: View {
         }
     }
 
+    /// 문장 한 줄. 면접관 질문은 Q 배지를 앞에 세워 내 답변과 구분한다 —
+    /// 리포트 메인의 질문 행(`ReportMainView.questionRow`)과 같은 언어를 쓴다.
+    /// 배지는 색이 에셋에 구워져 있어 지난 문장에서도 흐려지지 않는다(틴트 금지 규칙).
+    @ViewBuilder
+    private func row(_ sentence: VideoTranscript.Sentence) -> some View {
+        if sentence.role == .interviewer {
+            HStack(alignment: .top, spacing: .ds(.p8)) {
+                Image.Q.default
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: Self.questionBadgeSide, height: Self.questionBadgeSide)
+                text(sentence)
+            }
+        } else {
+            text(sentence)
+        }
+    }
+
+    private func text(_ sentence: VideoTranscript.Sentence) -> some View {
+        TranscriptText(
+            transcript: sentence.text,
+            spans: sentence.spans,
+            // 지금 재생 중인 문장만 흰색 — 지난 문장은 물러난다(면접관 질문도 같은 규칙).
+            baseColor: sentence.id == currentSentenceIndex
+                ? Color.BlackWhite.white
+                : Color.GrayScale.g400,
+            // 오버레이는 영상 위 어두운 판이라 밴드가 카드보다 한 단 어둡고(시안 443:7906),
+            // 잘함 톤도 한 단 짙다(443:7919 #008A9F — 카드·시트의 p500 과 다른 판).
+            bandColor: Color.GrayScale.g900,
+            goodToneColor: Color.Positive.p800,
+            onTapSpan: { spanIndex in
+                guard let line, sentence.spanIndices.indices.contains(spanIndex) else { return }
+                onHighlightTap(line.id, sentence.spanIndices[spanIndex])
+            }
+        )
+    }
+
     /// 위쪽 대본이 흐려지며 사라지는 마스크 — 시안은 맨 위 줄에만 텍스트 그라데이션(443:7916)을
     /// 걸었지만, 줄 수가 유동이라 오버레이 상단 16% 에 마스크로 걸어 같은 효과를 만든다.
     private static let fadeMask = LinearGradient(
@@ -116,6 +139,8 @@ struct TranscriptOverlay: View {
         endPoint: .bottom
     )
 
+    // @ds(icon): 20 — Q 배지. 리포트 메인 질문 행과 같은 크기(에셋 원본)
+    private static let questionBadgeSide: CGFloat = 20
     // @ds(layout): 182 — 대본 최고점의 네비 바 아래 간격 (Figma 443:7902 대본 상단 281 = 네비 끝 99 + 182)
     private static let topInset: CGFloat = 182
     // @ds(layout): 78 + 44 — 하단 바가 덮는 높이(진행바 6 + 간격 16 + 버튼 44 + 아래 여백 12)에
