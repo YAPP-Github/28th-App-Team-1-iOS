@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import DomainFeedbackShareInterface
 import DomainInterviewReportInterface
 import SharedDesignSystemInterface
 import SwiftUI
@@ -29,14 +30,7 @@ public struct ReportPeerFeedbackView: View {
                 // @ds(layout): 51 — 머리글↔항목 목록 사이 (시안 절대 배치 217→268, spacing 스케일 밖)
                 .padding(.top, 51)
             Spacer(minLength: 0)
-            // 비활성(항목 0개)은 라이트용 g50 바로 그려진다 — 다크 화면용 disabled 변형이 시안에 없다.
-            // @ds(component): 다크 판 CTA 비활성 — 시안 #27282F 판 + 흰 라벨(443:8046) → ButtonLarge
-            // disabled(g50 판 + g300 라벨). 시트에 dark-disabled 칸이 없어 그대로 뒀다
-            ButtonLarge("피드백 링크 생성", .bottom) {
-                send(.userTappedCreateLink)
-            }
-            .hilitButtonLoading(store.isCreating)
-            .disabled(store.selectedAxes.isEmpty)
+            cta
         }
         .background(Color.HilitBlack.b900.ignoresSafeArea())
         .hilitSurface(.dark)
@@ -61,8 +55,30 @@ public struct ReportPeerFeedbackView: View {
             }
         }
         // X = 이 화면 나가기 — 리듀서가 소유(뒤로 신호를 delegate 로 올린다).
-        .hilitNavigationBar(surface: .dark, onClose: { send(.userTappedBack) })
+        // `background: .filled` — 스크롤 화면이라 투명 바로 두면 항목 목록이 X 뒤로 지나간다.
+        .hilitNavigationBar(surface: .dark, background: .filled, onClose: { send(.userTappedBack) })
         .onAppear { send(.onAppear) }
+    }
+
+    /// 하단 CTA. 링크가 이미 있으면(생성 성공·진입 회수) 항목이 잠겨 «생성» 이 남을 자리가 없다 —
+    /// 그 자리를 재복사가 받는다(공유 시트를 취소해도 링크를 다시 손에 넣을 수 있게).
+    ///
+    /// 비활성(항목 0개)은 라이트용 g50 바로 그려진다 — 다크 화면용 disabled 변형이 시안에 없다.
+    // @ds(component): 다크 판 CTA 비활성 — 시안 #27282F 판 + 흰 라벨(443:8046) → ButtonLarge
+    // disabled(g50 판 + g300 라벨). 시트에 dark-disabled 칸이 없어 그대로 뒀다
+    @ViewBuilder
+    private var cta: some View {
+        if store.isAxisLocked {
+            ButtonLarge("링크 복사하기", .bottom) {
+                send(.userTappedCopyLink)
+            }
+        } else {
+            ButtonLarge("피드백 링크 생성", .bottom) {
+                send(.userTappedCreateLink)
+            }
+            .hilitButtonLoading(store.isCreating)
+            .disabled(store.selectedAxes.isEmpty)
+        }
     }
 
     /// 공유 시트에는 URL 로 넘긴다 — 문자열보다 앱별 미리보기(카톡 링크 카드 등)가 살아난다.
@@ -83,6 +99,7 @@ public struct ReportPeerFeedbackView: View {
 
     /// 태도 항목 5줄 — 순서는 `AttitudeAxisKind.allCases`(시선·표정·자세·손동작·목소리) 고정.
     /// 줄 사이 `HilitDivider` 는 VStack 의 자식이라 위아래로 spacing 24 를 나눠 갖는다 (Figma 실측 pitch 76).
+    /// 링크가 이미 있으면 토글을 잠근다 — 항목은 생성 시점에 링크로 굳어 바꿀 수 없다.
     private var axisList: some View {
         VStack(spacing: .ds(.p24)) {
             ForEach(Array(AttitudeAxisKind.allCases.enumerated()), id: \.offset) { index, axis in
@@ -118,23 +135,46 @@ public struct ReportPeerFeedbackView: View {
                 EmptyView()
             }
             .toggleStyle(.hilit)
+            .disabled(store.isAxisLocked)
             .accessibilityLabel(GuestAttitudeCopy.name(for: axis))
         }
     }
 
     /// 링크 생성 완료 팝업의 **카드** — 링크 일러스트 74 + 두 줄 타이틀 + «링크 복사하기»(Figma 443:8121).
     /// 딤·폭·표출 전환은 `.hilitModal` 몫이라 여기서 그리지 않는다.
+    /// 회수한 기존 링크에도 같은 모달을 쓰지만 «생성 완료» 는 거짓이 되므로 제목만 가른다.
     private var completionModal: some View {
-        Modal("링크 생성 완료!\n지인에게 보내보세요.", icon: Image.Img.link) {
+        Modal(
+            store.isLinkRecovered ? Self.recoveredTitle : Self.createdTitle,
+            icon: Image.Img.link
+        ) {
             ButtonLarge("링크 복사하기", .modal) {
                 send(.userTappedCopyLink)
             }
         }
     }
+
+    /// 방금 만든 링크 — 시안 문구(443:8121).
+    static let createdTitle = "링크 생성 완료!\n지인에게 보내보세요."
+    /// 서버에서 회수한 기존 링크 — 시안에 없는 판이다.
+    // TODO: 카피 확정 대기 — 재복사 모달 문구.
+    static let recoveredTitle = "이미 만들어 둔 링크예요.\n지인에게 보내보세요."
 }
 
 // Preview 컨텍스트는 `previewValue` 를 자동으로 쓴다 — 링크 생성·복사 모두 주입 없이 돈다.
 #Preview("항목 선택") {
+    ReportPeerFeedbackView(
+        store: Store(initialState: ReportPeerFeedbackFeature.State(sessionId: 1)) {
+            ReportPeerFeedbackFeature()
+        } withDependencies: {
+            // `previewValue.status` 는 ACTIVE 링크를 주므로 진입 회수가 걸려 항목이 잠긴다 —
+            // 고르는 화면을 보려면 «링크 없음» 으로 둔다(회수 판은 아래 프리뷰).
+            $0.feedbackShareClient.status = { _ in throw FeedbackShareError.shareNotFound }
+        }
+    )
+}
+
+#Preview("이미 만들어 둔 링크 회수 — 항목 잠김") {
     ReportPeerFeedbackView(
         store: Store(initialState: ReportPeerFeedbackFeature.State(sessionId: 1)) {
             ReportPeerFeedbackFeature()

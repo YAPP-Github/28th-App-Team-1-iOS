@@ -29,6 +29,9 @@ struct FeatureReportExampleApp: App {
                     // Example 은 Domain Implementation 을 link 하지 않아 liveValue 가 없다 —
                     // 지인 피드백 링크 생성은 고정 토큰으로 대체한다.
                     $0.feedbackShareClient = .previewValue
+                    // previewValue 의 `status` 는 ACTIVE 링크를 줘서 진입 회수가 걸린다(항목 잠김 판) —
+                    // 항목을 고르는 화면부터 보려면 «링크 없음» 으로 둔다. 회수 판을 보려면 이 줄을 지운다.
+                    $0.feedbackShareClient.status = { _ in throw FeedbackShareError.shareNotFound }
                 }
             )
         }

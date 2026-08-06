@@ -19,6 +19,10 @@ import DomainInterviewReportInterface
 ///
 /// 항목은 생성 시점에 링크로 잠긴다 — 만든 뒤 바꿀 수 없고 면접당 활성 링크는 1개다(409 `alreadyExists`).
 /// 그래서 생성은 되돌릴 수 없는 사건이고, 화면은 성공 즉시 완료 모달로 링크 복사만 남긴다.
+///
+/// **재생성은 없지만 재복사는 있다** — 공유 시트를 취소하면 링크가 손에 남지 않는다. 그래서 진입 때
+/// `status` 로 활성 링크를 회수하고(있으면 항목을 잠근 채 CTA 를 «링크 복사하기» 로 바꾼다),
+/// 생성이 409 로 걸려도 같은 회수로 완료 모달을 다시 띄운다.
 @Reducer
 public struct ReportPeerFeedbackFeature {
     @ObservableState
@@ -27,8 +31,11 @@ public struct ReportPeerFeedbackFeature {
         /// 지인에게 평가받을 태도 항목. 서버 계약은 1~5개 — 0개면 400 이라 CTA 를 `.disabled` 로 막는다.
         public var selectedAxes: Set<AttitudeAxisKind> = []
         public var isCreating = false
-        /// 생성된 공유 링크 — 생성 성공 후엔 항상 남는다 (항목이 잠겨 재생성이 없으므로).
+        /// 공유 링크 — 생성 성공 또는 **진입·409 회수**로 채워지고, 채워진 뒤엔 항상 남는다
+        /// (항목이 잠겨 재생성이 없으므로).
         public var createdLink: String?
+        /// 이 링크가 방금 만든 것이 아니라 서버에서 회수한 기존 링크인지 — 완료 모달 문구가 갈린다.
+        public var isLinkRecovered = false
         /// 완료 모달 표시 여부 (Figma 443:8082 의 모달 443:8121). 복사를 누르면 닫힌다.
         public var isCompletionModalVisible = false
         /// 시스템 공유 시트 — 복사 직후 이어서 뜬다 (복사 + 바로 보내기 겸용).
@@ -56,6 +63,9 @@ public struct ReportPeerFeedbackFeature {
         }
 
         public enum Inner: Equatable, Sendable {
+            /// 서버에 이미 있던 활성 링크 회수 — 진입 조회(`presentsModal: false`)와 생성 409
+            /// (`presentsModal: true`)가 같은 재료를 쓰고 뒷처리만 다르다.
+            case existingShareLoaded(token: String, axes: [String], presentsModal: Bool)
             case shareLinkCreated(token: String)
             case shareLinkFailed(message: String)
             case shareSheetRequested
@@ -69,7 +79,7 @@ public struct ReportPeerFeedbackFeature {
         }
     }
 
-    private enum CancelID { case toast }
+    private enum CancelID { case share, toast }
 
     /// 완료 모달이 닫히고 공유 시트가 올라오기까지 벌려 두는 간격.
     /// 모달은 `fullScreenCover`(`.hilitModal`)라 닫히는 도중에 시트를 올리면 시스템이 둘째 표출을 삼킨다.
@@ -107,7 +117,10 @@ public struct ReportPeerFeedbackFeature {
             return .none
 
         case .onAppear:
-            return .none
+            // 이미 만들어 둔 활성 링크가 있으면 회수한다 — 공유 시트를 취소해 링크를 잃어버린 사용자가
+            // 다시 들어오는 경로다. 항목은 그때 잠긴 값이라 화면은 재복사만 남는다.
+            guard state.createdLink == nil else { return .none }
+            return recoverExistingShare(sessionId: state.sessionId, presentsModal: false)
 
         case .userTappedBack:
             return .send(.delegate(.backRequested))
@@ -124,19 +137,7 @@ public struct ReportPeerFeedbackFeature {
             // 항목 0개는 View 가 `.disabled` 로 막는다 — 여기 도달하면 방어만.
             guard !state.isCreating, !state.selectedAxes.isEmpty else { return .none }
             state.isCreating = true
-            let sessionId = state.sessionId
-            // 서버로 나가는 순서는 화면 순서(시선·표정·자세·손동작·목소리)로 고정한다 —
-            // Set 의 순회 순서는 실행마다 달라서 게스트 화면의 항목 순서가 흔들린다.
-            let selected = state.selectedAxes
-            let axes = AttitudeAxisKind.allCases
-                .filter(selected.contains)
-                .map(\.rawValue)
-            return .run { send in
-                let created = try await feedbackShareClient.create(sessionId, axes)
-                await send(.inner(.shareLinkCreated(token: created.token)))
-            } catch: { error, send in
-                await send(.inner(.shareLinkFailed(message: Self.failureMessage(for: error))))
-            }
+            return createShareLink(sessionId: state.sessionId, axes: state.selectedAxes)
 
         case .userTappedCopyLink:
             guard let link = state.createdLink else { return .none }
@@ -156,6 +157,15 @@ public struct ReportPeerFeedbackFeature {
 
     private func reduceInner(_ state: inout State, _ action: Action.Inner) -> Effect<Action> {
         switch action {
+        case let .existingShareLoaded(token, axes, presentsModal):
+            state.isCreating = false
+            state.createdLink = Self.shareLink(token: token)
+            state.isLinkRecovered = true
+            // 항목은 생성 시점에 잠긴 값이라 서버가 답이다 — 모르는 코드는 버린다.
+            state.selectedAxes = Set(axes.compactMap { AttitudeAxisKind(rawCode: $0) })
+            state.isCompletionModalVisible = presentsModal
+            return .none
+
         case let .shareLinkCreated(token):
             state.isCreating = false
             state.createdLink = Self.shareLink(token: token)
@@ -176,6 +186,52 @@ public struct ReportPeerFeedbackFeature {
         }
     }
 
+    /// 링크 생성. 서버로 나가는 항목 순서는 화면 순서(시선·표정·자세·손동작·목소리)로 고정한다 —
+    /// `Set` 의 순회 순서는 실행마다 달라서 게스트 화면의 항목 순서가 흔들린다.
+    /// 409(활성 링크 존재)는 실패로 끝내지 않는다 — 재생성은 없지만 **재복사** 는 있어야 한다.
+    private func createShareLink(sessionId: Int, axes selected: Set<AttitudeAxisKind>) -> Effect<Action> {
+        let axes = AttitudeAxisKind.allCases.filter(selected.contains).map(\.rawValue)
+        return .run { send in
+            let created = try await feedbackShareClient.create(sessionId, axes)
+            await send(.inner(.shareLinkCreated(token: created.token)))
+        } catch: { error, send in
+            guard (error as? FeedbackShareError) == .alreadyExists,
+                  let status = try? await feedbackShareClient.status(sessionId),
+                  status.status == .active
+            else {
+                await send(.inner(.shareLinkFailed(message: Self.failureMessage(for: error))))
+                return
+            }
+            await send(.inner(.existingShareLoaded(
+                token: status.token,
+                axes: status.axes ?? [],
+                presentsModal: true
+            )))
+        }
+        // 진입 회수와 같은 ID — 회수가 나는 동안 생성을 탭하면 회수를 끊고 생성이 이어받는다
+        // (링크가 실존하면 409 → 위 catch 가 다시 회수하므로 결과는 같고, 요청만 단일 비행이 된다).
+        .cancellable(id: CancelID.share, cancelInFlight: true)
+    }
+
+    /// 서버에 이미 있는 활성 링크를 회수한다 — 링크 미생성(404)이 정상 경로라 조회 실패로 화면을 막지 않고,
+    /// ACTIVE 가 아닌 링크(무효화·비공개)는 복사해도 지인이 못 열어 회수 대상이 아니다.
+    // TODO(prd-외): 재복사 동선 전체(진입 회수·409 회수·CTA 잠금)가 PRD 에 없는 재량 구현 —
+    //               «공유 시트 취소 = 링크 유실» 막다른 길을 관례로 메웠다. 스펙 확정 시 재검토.
+    private func recoverExistingShare(sessionId: Int, presentsModal: Bool) -> Effect<Action> {
+        .run { send in
+            let status = try await feedbackShareClient.status(sessionId)
+            guard status.status == .active else { return }
+            await send(.inner(.existingShareLoaded(
+                token: status.token,
+                axes: status.axes ?? [],
+                presentsModal: presentsModal
+            )))
+        } catch: { _, _ in
+            // 생성 시 409 로 다시 걸리므로 여기서 사용자에게 알릴 것이 없다.
+        }
+        .cancellable(id: CancelID.share, cancelInFlight: true)
+    }
+
     /// 토스트를 띄우고 정해진 시간 뒤 스스로 내린다. 연달아 뜨면 뒤엣것만 남는다(`cancelInFlight`).
     private func showToast(_ message: String, _ state: inout State) -> Effect<Action> {
         state.toast = message
@@ -193,6 +249,7 @@ public struct ReportPeerFeedbackFeature {
     }
 
     /// 실패 안내 문구. 서버가 준 `message` 가 있는 항목 검증 실패만 그대로 노출하고,
+    /// 409(활성 링크 존재)는 회수 경로가 먼저 가로채므로 회수까지 실패했을 때만 여기 온다.
     /// 나머지는 사용자가 할 수 있는 행동으로 번역한다.
     private static func failureMessage(for error: any Error) -> String {
         switch error as? FeedbackShareError {
@@ -210,4 +267,12 @@ public struct ReportPeerFeedbackFeature {
             "링크를 만들지 못했어요. 잠시 후 다시 시도해 주세요."
         }
     }
+}
+
+// MARK: - 표시 파생값
+
+public extension ReportPeerFeedbackFeature.State {
+    /// 항목 잠김 — 활성 링크가 있으면(방금 만들었든 회수했든) 항목을 바꿀 수 없다.
+    /// 그 상태의 화면은 «생성» 이 아니라 «재복사» 다.
+    var isAxisLocked: Bool { createdLink != nil }
 }
