@@ -78,10 +78,11 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 |---|---|---|
 | `createSession` | POST `/api/v1/interview/sessions` | 이용권 무료 3회, `jdUrl`/`jdText` 상호 배타, 직군·연차는 프로필 스냅샷 |
 | `sessionStatus` | GET `/api/v1/interview/sessions/{id}/status` | 3~5초 폴링 |
-| `submitAnswer` | POST `/api/v1/interview/sessions/{id}/answers` | 메타=query + 오디오=multipart. 503(`AI_TEMPORARILY_UNAVAILABLE`)은 같은 요청 재시도 계약 |
+| `submitAnswer` | POST `/api/v1/interview/sessions/{id}/answers` | 메타=query + 오디오=multipart(`answer.m4a`/`audio/mp4` — iOS mp3 인코딩 미지원, 2026-08-05 작업B 슬라이스1). 503(`AI_TEMPORARILY_UNAVAILABLE`)은 같은 요청 재시도 계약 |
 | `questionAudioStream` | GET `.../questions/{qid}/audio/stream` | 아래 스트리밍 규약 |
 | `videoUploadURL` | POST `.../video/upload-url` | S3 presigned PUT 발급 — PUT 의 Content-Type 은 응답 `contentType` 그대로(서명 포함). `expiresInSeconds` 안에만 유효, 세션당 저장 1곳(재업로드=덮어쓰기) |
 | `completeVideoUpload` | POST `.../video/complete` | S3 PUT 성공 후 호출(호출처 책임)·멱등. `wrapUp`(마무리 멘트 구간, 녹화 타임라인 초) nil 이면 바디 생략 |
+| `uploadInterviewVideo` | (엔드포인트 아님 — 클라 오케스트레이션) | `videoUploadURL`→PUT([[domain.map#네트워킹 인프라]] `FileTransferClient`)→`completeVideoUpload` 3단을 1시도로 응집([[interview#Client 계약]]) — 재시도는 호출처(ReportPending) 몫 |
 | `reportList` | GET `/api/v1/interview/sessions` | 내 레포트 목록(마이페이지) — envelope `{reports}` 는 liveValue 가 벗김 |
 
 질문 음성 스트리밍 규약: `audio/mpeg` + `Transfer-Encoding: chunked` (Content-Length 없음). 전부 받고 재생하지 말고 `AVURLAsset(url:options:[헤더])` → `AVPlayer` 점진 재생 — 그래서 계약이 Data 가 아니라 `InterviewAudioStream(url·headers)` 다. 중간 실패는 HTTP 로 안 잡힌다 — 재생 에러 콜백으로 감지하고 같은 questionId 로 재호출(TTS 처음부터 재생성).

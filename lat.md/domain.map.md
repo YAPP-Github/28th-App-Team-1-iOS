@@ -45,6 +45,8 @@ Domain `Implementation`(`liveValue`)은 App / Example 만 link. → [[home]]
 
 실패는 전부 `NetworkError` 로 정규화된다 — `transport(URLError.Code)`(오프라인·타임아웃), `statusCode(코드, body)`(body = 서버 에러 payload, Domain 이 도메인 에러로 매핑), `invalidResponse`, `invalidURL`/`invalidBaseURL`. 취소는 실패가 아니므로 `CancellationError` 로 나간다. 요청 편의는 `NetworkRequest.json(...)`(Content-Type + Encodable body)·`NetworkRequest.multipart(...)`(파일 업로드), Testing 타겟은 `mock(returning:/json:/throwing:)` 을 제공. Feature→Domain→Core 로 이어지는 화면 표준형은 FeatureCommon `NetworkExampleFeature` (Example 앱은 transport 만 스텁해 Domain liveValue 를 실 구동).
 
+예외로 presigned 절대 URL 업로드는 `FileTransferClient`(같은 모듈) 별도 seam 이다 — baseURL 상대경로도 envelope 도 Bearer 도 없고(서명에 인증이 이미 들어 있어 헤더를 얹으면 저장소가 거부), Content-Type 은 발급 응답 값 원문을 그대로 보낸다. 요청 본문은 파일 스트리밍(`upload(for:fromFile:)`)이라 큰 영상도 메모리에 올리지 않는다. 실패 정규화(2xx 가드·transport·취소)는 `NetworkClient` 와 동일.
+
 D14 공통 규약(성공/실패 envelope·토큰 수명주기)은 그 위에 얹힌다 — envelope 언랩·`ServerError` 승격은 `api(...)` 확장, Bearer 첨부·단일 비행 재발급은 `AuthorizedNetworkClient`, 토큰 보관은 `TokenStore`(Keychain). 인증 필요 엔드포인트의 Domain liveValue 는 `@Dependency(\.authorizedNetworkClient)` 를 쓴다. 상세 → [[api#공통 규약]] · [[api#토큰 수명주기]]
 
 전 API 공통 로딩: in-flight 는 `NetworkActivity`(@MainActor @Observable 카운터, Interface)가 센다 — liveValue 가 `trackingActivity()` 데코레이터 한 겹으로 계측하고(Authorized·재발급도 base 를 지나 전부 잡힘), `AppView` 가 `isLoading` 을 관찰해 `LoadingModal` 을 전역 표출한다. Feature 는 이 신호에 관여하지 않는다. **예외 — Splash 계열 루트(`.splash`·`.splashFailed`·`.updateRequired`)에서는 얹지 않는다**: Splash 자체가 대기 표시이고 `.updateRequired` 는 알럿과 딤이 겹친다 → [[app#Splash 세션 복구]]
