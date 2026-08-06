@@ -340,11 +340,19 @@ extension ReportVideoPlayerFeature.State {
 
     /// 가운데 재생 컨트롤 노출 조건 — 대본을 켜면 대본이 화면 주인이라 컨트롤은 비운다.
     var isPlaybackControlVisible: Bool {
-        areControlsVisible && !isTranscriptVisible && playbackFailureMessage == nil
+        areControlsVisible && !isTranscriptVisible && playbackFailureMessage == nil && !isHighlightDetailPresented
     }
 
     /// 하단 바(진행바 + 대본 버튼) 노출 조건.
     var isBottomBarVisible: Bool {
-        (areControlsVisible || isTranscriptVisible) && playbackFailureMessage == nil
+        (areControlsVisible || isTranscriptVisible) && playbackFailureMessage == nil && !isHighlightDetailPresented
     }
+
+    /// 상단 X 노출 조건 — 시트를 보는 동안은 비운다.
+    var isCloseButtonVisible: Bool { !isHighlightDetailPresented }
+
+    /// 상세 시트가 올라와 있는 동안은 플레이어 컨트롤을 전부 비운다 (사용자 결정 2026-08-06).
+    /// 시트는 화면을 다 덮지 않아 위쪽 띠에 X 가 남는데, 그 X 는 시트 밖이라 눌리고
+    /// 눌리면 보던 하이라이트째로 플레이어를 떠난다 — 시트를 내리는 게 먼저다.
+    private var isHighlightDetailPresented: Bool { highlightDetail != nil }
 }

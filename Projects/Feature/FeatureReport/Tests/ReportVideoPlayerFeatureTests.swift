@@ -240,6 +240,10 @@ struct ReportVideoPlayerFeatureTests {
             )
         }
         #expect(store.state.highlightDetail?.context.evidenceAt == 6.4)
+        // 시트를 보는 동안 플레이어 컨트롤은 전부 비운다 — 시트 밖에 남는 X 도 포함.
+        #expect(!store.state.isCloseButtonVisible)
+        #expect(!store.state.isBottomBarVisible)
+        #expect(!store.state.isPlaybackControlVisible)
     }
 
     @Test("시트의 «영상 보러가기» 는 시트를 닫고 그 장면부터 다시 재생한다")
