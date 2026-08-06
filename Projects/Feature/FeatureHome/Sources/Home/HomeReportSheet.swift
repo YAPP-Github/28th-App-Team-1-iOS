@@ -77,15 +77,11 @@ struct HomeReportSheet: View {
             .ignoresSafeArea(edges: .bottom)
     }
 
-    /// 손잡이 — 시안은 라운드 없는 막대다. 위아래로 끌어 시트 자리를 바꾼다.
+    /// 손잡이 — DS `SheetGrabber`(라운드 없는 막대). 위아래로 끌어 시트 자리를 바꾼다.
+    /// 오버레이 시트라 드래그가 OS 몫이 아니어서 제스처를 직접 붙인다.
     /// 판 안에서 손잡이가 되는 자리는 그래버·헤더 + (스크롤이 없는) 빈 상태 판·기본 자리 목록이다.
-    // @ds(component): 그래버 60×5 (컨테이너 h20) — 바텀시트 손잡이, 공용 컴포넌트 없음
     private var grabber: some View {
-        Color.GrayScale.g400
-            .frame(width: 60, height: 5)
-            .frame(maxWidth: .infinity)
-            .frame(height: 20)
-            .contentShape(Rectangle())
+        SheetGrabber()
             .gesture(dragHandle.gesture)
     }
 
