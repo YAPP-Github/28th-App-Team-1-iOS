@@ -21,6 +21,10 @@ import SwiftUI
 /// `@Environment(\.isEnabled)` 가 자동 처리한다(버튼 티어 공통 규칙).
 /// 판(light/dark)은 `.hilitSurface(_:)` Environment 로 받는다 — 다만 본체 행은 시트대로 판과 무관하게
 /// 고정 배색이고, 판을 타는 건 시트가 light/dark 두 칸을 따로 그린 `with icon` 행뿐이다.
+///
+/// 글자 크기는 `typography` 로 덮는다 — 시트 기본은 body5(14)지만 같은 배색·같은 여백에
+/// **16pt 로 그려진 인스턴스**가 있다(리포트 상세 질문 탭 443:7284 — 선택 body2 / 미선택 body3).
+/// 배색·여백·모서리가 같으니 티어를 새로 만들지 않고 이 축만 연다.
 public struct MiniButtonStyle: ButtonStyle {
     /// Figma `color` 축(시트 행). 판(surface)별 실제 팔레트는 `resolve` 에서.
     public enum Tone: Sendable, CaseIterable {
@@ -74,8 +78,14 @@ public struct MiniButtonStyle: ButtonStyle {
     private let tone: Tone
     private let style: Style
     private let layout: Layout
+    private let typography: DSTypography
 
-    public init(tone: Tone = .black, style: Style = .default, layout: Layout = .textOnly) {
+    public init(
+        tone: Tone = .black,
+        style: Style = .default,
+        layout: Layout = .textOnly,
+        typography: DSTypography = .body5
+    ) {
         assert(
             style == .default || tone == .black,
             "outlined 는 시안에 black 행만 있다 — 다른 색이 필요하면 디자인 확인이 먼저다."
@@ -83,12 +93,13 @@ public struct MiniButtonStyle: ButtonStyle {
         self.tone = tone
         self.style = style
         self.layout = layout
+        self.typography = typography
     }
 
     public func makeBody(configuration: Configuration) -> some View {
         let colors = resolve(pressed: configuration.isPressed)
         configuration.label
-            .dsTypography(.body5)
+            .dsTypography(typography)
             .padding(.horizontal, layout.horizontalPadding)
             .padding(.vertical, .ds(.p8))
             .foregroundStyle(colors.foreground)
@@ -209,13 +220,15 @@ public struct MiniSubButtonStyle: ButtonStyle {
 
 public extension ButtonStyle where Self == MiniButtonStyle {
     /// 소형 버튼 — 색(`tone`) × 상태(`style`) 두 축. pressed·disabled 는 넘기지 않는다(자동).
-    /// 판(light/dark)은 `.hilitSurface(_:)` 로, 아이콘 동반 시 `layout: .withIcon`.
+    /// 판(light/dark)은 `.hilitSurface(_:)` 로, 아이콘 동반 시 `layout: .withIcon`,
+    /// 16pt 로 그려진 인스턴스는 `typography:` 로 덮는다(기본 body5).
     static func mini(
         _ tone: MiniButtonStyle.Tone = .black,
         style: MiniButtonStyle.Style = .default,
-        layout: MiniButtonStyle.Layout = .textOnly
+        layout: MiniButtonStyle.Layout = .textOnly,
+        typography: DSTypography = .body5
     ) -> Self {
-        MiniButtonStyle(tone: tone, style: style, layout: layout)
+        MiniButtonStyle(tone: tone, style: style, layout: layout, typography: typography)
     }
 }
 

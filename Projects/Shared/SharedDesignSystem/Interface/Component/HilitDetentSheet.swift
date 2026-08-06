@@ -31,7 +31,7 @@ public extension View {
     /// 시스템이 닫은 것(스와이프·딤 탭)만 `onDismiss` 로 리듀서에 되돌린다.
     ///
     /// 판 배경은 호출부가 `.presentationBackground(…)` 로 준다 — 시트마다 색이 달라서. 그래버는
-    /// 시안 규격(60×5 g400)이 시스템 인디케이터와 달라 숨기고, 필요하면 호출부가 직접 그린다.
+    /// 시안 규격이 시스템 인디케이터와 달라 숨기고, 필요하면 호출부가 `SheetGrabber` 를 얹는다.
     ///
     /// **모서리는 기본이 시스템 값** — DS 전반은 «모서리 0» 이지만 시트는 예외다. iOS 26 은 부분
     /// detent 시트를 화면 가장자리에서 띄워 그리는데(양옆·아래 여백), 거기에 코너 0 을 박으면 떠 있는
@@ -83,11 +83,7 @@ private struct PreviewDocument: Identifiable, Equatable {
             onDismiss: { document = nil }
         ) { value in
             VStack(spacing: 0) {
-                Rectangle()
-                    .fill(Color.GrayScale.g400)
-                    .frame(width: 60, height: 5)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 20)
+                SheetGrabber()
                 Text(value.title)
                     .dsTypography(.sub7)
                     .frame(maxWidth: .infinity, alignment: .leading)

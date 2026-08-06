@@ -57,6 +57,7 @@
 | `QuoteField` | 작성된 코멘트 인용 줄 | 표시 |
 | `ReportCard` | 리포트 목록 줄 — 펼침·접힘 | 표시 |
 | `SaveIndicator` | 자동 저장 상태 | 표시 |
+| `SheetGrabber` | 바텀시트 손잡이 막대 | 표시 |
 | `TabSelector` | 밑줄 텍스트 탭 줄 | 네비게이션 |
 | `TagLabel` | 소형 사각 태그 | 표시 |
 | `TitleBox` | 화면 머리글 (뱃지·타이틀·서브) | 표시 |

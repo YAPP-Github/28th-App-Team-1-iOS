@@ -33,7 +33,8 @@ public struct ReportHighlightDetailView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            grabber
+            // 시스템 시트라 드래그는 OS 몫 — 손잡이는 그림만이다.
+            SheetGrabber()
             ScrollView {
                 // @ds(spacing): 48 — 분석 내용 ↔ 다음 대비 사이 (spacing 스케일에 48 이 없다)
                 VStack(alignment: .leading, spacing: 48) {
@@ -54,19 +55,10 @@ public struct ReportHighlightDetailView: View {
         // 다크 판 선언 — 하위 DS 버튼 스타일이 다크 팔레트로 풀린다(버튼마다 넘기지 않는다).
         .hilitSurface(.dark)
         .presentationDetents([.fraction(Self.detentFraction), .large])
-        // 시스템 인디케이터는 규격이 시안과 달라 숨기고 그래버를 직접 그린다(`hilitDetentSheet` 와 같은 판단).
+        // 시스템 인디케이터는 규격이 시안과 달라 숨기고 DS `SheetGrabber` 를 얹는다(`hilitDetentSheet` 와 같은 판단).
         .presentationDragIndicator(.hidden)
         .presentationBackground(Color.HilitBlack.b900)
         .onAppear { send(.onAppear) }
-    }
-
-    // @ds(component): 시트 그래버 — 60×5 g400 바(모서리 0) + 행 높이 20. 공용 컴포넌트 없음
-    private var grabber: some View {
-        Rectangle()
-            .fill(Color.GrayScale.g400)
-            .frame(width: 60, height: 5)
-            .frame(maxWidth: .infinity)
-            .frame(height: 20)
     }
 
     // MARK: - 분석 내용

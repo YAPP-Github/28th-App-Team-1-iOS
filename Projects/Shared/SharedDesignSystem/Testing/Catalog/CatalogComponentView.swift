@@ -51,6 +51,7 @@ struct CatalogComponentView: View {
             quoteField
             reportCard
             saveIndicator
+            sheetGrabber
             tabSelector
             tagLabel
             titleBox
@@ -214,6 +215,13 @@ struct CatalogComponentView: View {
                 SaveIndicator(.saving)
                 SaveIndicator(.saved)
             }
+        }
+    }
+
+    private var sheetGrabber: some View {
+        CatalogGroup("SheetGrabber — 60×5 g400 막대(줄 높이 20). 제스처는 호출부 몫") {
+            SheetGrabber()
+                .background(Color.HilitBlack.b900)   // 다크 시트 판 위 전제
         }
     }
 
