@@ -20,8 +20,8 @@ private typealias Asset = SharedDesignSystemInterfaceAsset
 public extension Color {
 
     enum HilitBlack {
-        public static var b800: Color { Asset.Colors.color1A1B1F.swiftUIColor }   // 메인 블랙·텍스트
-        public static var b900: Color { Asset.Colors.color121316.swiftUIColor }   // 다크모드 배경
+        public static var b800: Color { Asset.Colors.color1A1B1F.swiftUIColor }   // 메인 블랙 — 텍스트·다크 화면 위 카드 판
+        public static var b900: Color { Asset.Colors.color121316.swiftUIColor }   // 다크 화면 배경(+네비바 filled)
     }
 
     enum HilitGreen {

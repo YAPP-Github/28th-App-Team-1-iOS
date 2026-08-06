@@ -133,10 +133,13 @@ extension HilitNavigationBar.Surface {
     }
 
     /// `.filled` 일 때 바 배경 — 화면 배경 토큰과 같은 값이라 이음새가 없다.
+    /// 다크는 `b900` — 시안의 다크 화면 루트 채움이 #121316 이다(«Report_Main_Default» 443:7264 ·
+    /// «Report_VideoPlayer_TranscriptOverlay» 443:7902). `b800` 은 그 위에 얹히는 **카드 판**이라
+    /// 바에 쓰면 상단에 띠가 생긴다.
     var fillColor: Color {
         switch self {
         case .light: Color.BlackWhite.white
-        case .dark: Color.HilitBlack.b800
+        case .dark: Color.HilitBlack.b900
         }
     }
 
