@@ -45,6 +45,7 @@ public extension InterviewClient {
                 )
             },
             completeVideoUpload: { _, _ in },
+            uploadInterviewVideo: { _, _, _ in },
             reportList: { [] }
         )
     }

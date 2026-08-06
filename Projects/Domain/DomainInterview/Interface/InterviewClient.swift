@@ -26,6 +26,9 @@ public struct InterviewClient: Sendable {
     /// POST /interview/sessions/{id}/video/complete — 업로드 완료 확정. **S3 PUT 성공 후에만 호출**(호출처 책임). 멱등.
     /// `wrapUp == nil` 이면 바디 생략(조기 종료 등 마무리 멘트 없음).
     public var completeVideoUpload: @Sendable (_ sessionId: Int, _ wrapUp: InterviewVideoWrapUpSpan?) async throws -> Void
+    /// 발급(videoUploadURL) → presigned PUT → complete 를 한 방으로 응집 — 호출처는 이 메서드 하나만 안다.
+    /// 1시도 계약: 재시도(발급부터 재시작) 정책은 호출처 몫.
+    public var uploadInterviewVideo: @Sendable (_ sessionId: Int, _ fileURL: URL, _ wrapUp: InterviewVideoWrapUpSpan?) async throws -> Void
     /// GET /interview/sessions — 내 면접 레포트 목록(마이페이지용). envelope `{ reports }` 는 Live 가 벗긴다.
     public var reportList: @Sendable () async throws -> [InterviewReportSummary]
 
@@ -36,6 +39,11 @@ public struct InterviewClient: Sendable {
         questionAudioStream: @escaping @Sendable (_ sessionId: Int, _ questionId: Int) async throws -> InterviewAudioStream,
         videoUploadURL: @escaping @Sendable (_ sessionId: Int) async throws -> InterviewVideoUploadTarget,
         completeVideoUpload: @escaping @Sendable (_ sessionId: Int, _ wrapUp: InterviewVideoWrapUpSpan?) async throws -> Void,
+        uploadInterviewVideo: @escaping @Sendable (
+            _ sessionId: Int,
+            _ fileURL: URL,
+            _ wrapUp: InterviewVideoWrapUpSpan?
+        ) async throws -> Void,
         reportList: @escaping @Sendable () async throws -> [InterviewReportSummary]
     ) {
         self.createSession = createSession
@@ -44,6 +52,7 @@ public struct InterviewClient: Sendable {
         self.questionAudioStream = questionAudioStream
         self.videoUploadURL = videoUploadURL
         self.completeVideoUpload = completeVideoUpload
+        self.uploadInterviewVideo = uploadInterviewVideo
         self.reportList = reportList
     }
 }
@@ -58,6 +67,7 @@ extension InterviewClient: TestDependencyKey {
             questionAudioStream: unimplemented("InterviewClient.questionAudioStream"),
             videoUploadURL: unimplemented("InterviewClient.videoUploadURL"),
             completeVideoUpload: unimplemented("InterviewClient.completeVideoUpload"),
+            uploadInterviewVideo: unimplemented("InterviewClient.uploadInterviewVideo"),
             reportList: unimplemented("InterviewClient.reportList")
         )
     }
@@ -98,6 +108,7 @@ extension InterviewClient: TestDependencyKey {
                 )
             },
             completeVideoUpload: { _, _ in },
+            uploadInterviewVideo: { _, _, _ in },
             reportList: {
                 [InterviewReportSummary(
                     sessionId: 1,

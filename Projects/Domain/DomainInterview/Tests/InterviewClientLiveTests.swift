@@ -187,6 +187,28 @@ final class InterviewClientLiveTests: XCTestCase {
         _ = try await client.submitAnswer(7, AnswerSubmission(questionId: 1, isWrapUp: true))
     }
 
+    func test_submitAnswer_답변오디오를_m4a_메타로_싣는다() async throws {
+        let form = LockIsolated<Data?>(nil)
+        let client = makeClient { request in
+            form.setValue(request.body)
+            return Data("""
+            {"success": true, "data": {
+                "answerId": 1, "nextQuestion": null, "sessionEnded": true,
+                "wrapUpMessage": null, "endType": "NORMAL_END"
+            }}
+            """.utf8)
+        }
+        var submission = AnswerSubmission(questionId: 1, isWrapUp: false)
+        submission.audio = Data("aac".utf8)
+
+        _ = try await client.submitAnswer(7, submission)
+
+        let body = try XCTUnwrap(form.value.flatMap { String(data: $0, encoding: .utf8) })
+        XCTAssertTrue(body.contains(#"filename="answer.m4a""#))
+        XCTAssertTrue(body.contains("Content-Type: audio/mp4"))
+        XCTAssertFalse(body.contains("answer.mp3"))
+    }
+
     // MARK: - 답변 제출 (응답 분기 디코딩 — 스웨거 예시 기반 6분기)
 
     func test_submitAnswer_다음질문_응답을_디코딩한다() async throws {
@@ -407,5 +429,109 @@ final class InterviewClientLiveTests: XCTestCase {
         let reports = try await client.reportList()
 
         XCTAssertEqual(reports.map(\.reportStatus), [.generating, .insufficientAnalysis, .failed])
+    }
+}
+
+// MARK: - 영상 업로드 응집 (발급 → presigned PUT → complete)
+
+/// 본체 클래스가 SwiftLint type_body_length 상한에 닿아 별도 extension 으로 둔다 — 스텁이 두 개(네트워크·파일전송)라
+/// makeClient 오버로드도 여기 함께 산다.
+extension InterviewClientLiveTests {
+    /// uploadInterviewVideo 검증용 — authorizedNetworkClient + fileTransferClient 를 함께 스텁한다.
+    private func makeClient(
+        handler: @escaping @Sendable (NetworkRequest) async throws -> Data,
+        fileTransfer: @escaping @Sendable (URL, String, URL) async throws -> Void
+    ) -> InterviewClient {
+        withDependencies {
+            $0.authorizedNetworkClient = AuthorizedNetworkClient(
+                request: handler,
+                authorizedResource: { path in
+                    AuthorizedResource(url: URL(string: "http://stub.test\(path)")!, headers: [:])
+                }
+            )
+            $0.fileTransferClient = FileTransferClient(upload: fileTransfer)
+        } operation: {
+            InterviewClient.liveValue
+        }
+    }
+
+    /// 발급 응답 — presigned 대상 한 벌.
+    private var uploadTargetJSON: Data {
+        Data("""
+        {"success": true, "data": {
+            "uploadUrl": "https://s3.test/video?sig=1", "contentType": "video/mp4", "expiresInSeconds": 600
+        }}
+        """.utf8)
+    }
+
+    func test_uploadInterviewVideo_발급_PUT_complete를_순서대로_응집한다() async throws {
+        let steps = LockIsolated<[String]>([])
+        let fileURL = URL(fileURLWithPath: "/tmp/interview-recording-7.mp4")
+        let target = uploadTargetJSON
+        let client = makeClient(
+            handler: { request in
+                steps.withValue { $0.append(request.path) }
+                if request.path.hasSuffix("upload-url") {
+                    return target
+                }
+                XCTAssertNil(request.body)   // wrapUp nil → complete 바디 생략 계약
+                return Data(#"{"success": true}"#.utf8)
+            },
+            fileTransfer: { url, contentType, file in
+                steps.withValue { $0.append("PUT \(url.host ?? "?") \(contentType) \(file.lastPathComponent)") }
+            }
+        )
+
+        try await client.uploadInterviewVideo(7, fileURL, nil)
+
+        XCTAssertEqual(steps.value, [
+            "/api/v1/interview/sessions/7/video/upload-url",
+            "PUT s3.test video/mp4 interview-recording-7.mp4",
+            "/api/v1/interview/sessions/7/video/complete"
+        ])
+    }
+
+    func test_uploadInterviewVideo_wrapUp이_있으면_complete_바디에_구간을_싣는다() async throws {
+        let completeBody = LockIsolated<Data?>(nil)
+        let target = uploadTargetJSON
+        let client = makeClient(
+            handler: { request in
+                if request.path.hasSuffix("upload-url") {
+                    return target
+                }
+                completeBody.setValue(request.body)
+                return Data(#"{"success": true}"#.utf8)
+            },
+            fileTransfer: { _, _, _ in }
+        )
+
+        try await client.uploadInterviewVideo(
+            7,
+            URL(fileURLWithPath: "/tmp/v.mp4"),
+            InterviewVideoWrapUpSpan(wrapUpStartSec: 500, wrapUpEndSec: 512.0)
+        )
+
+        let json = try JSONSerialization.jsonObject(with: XCTUnwrap(completeBody.value)) as? [String: Any]
+        XCTAssertEqual(json?["wrapUpStartSec"] as? Double, 500)
+        XCTAssertEqual(json?["wrapUpEndSec"] as? Double, 512)
+    }
+
+    func test_uploadInterviewVideo_PUT_실패면_complete를_호출하지_않는다() async {
+        let paths = LockIsolated<[String]>([])
+        let target = uploadTargetJSON
+        let client = makeClient(
+            handler: { request in
+                paths.withValue { $0.append(request.path) }
+                return target
+            },
+            fileTransfer: { _, _, _ in throw NetworkError.statusCode(403, Data()) }
+        )
+
+        do {
+            try await client.uploadInterviewVideo(7, URL(fileURLWithPath: "/tmp/v.mp4"), nil)
+            XCTFail("에러가 던져져야 한다")
+        } catch {
+            XCTAssertFalse(paths.value.contains { $0.hasSuffix("complete") })
+        }
     }
 }
