@@ -27,6 +27,19 @@ struct TranscriptOverlay: View {
                 .background(VideoOverlay(.darkOpen, height: Self.overlayHeight))
                 .mask(Self.fadeMask)
         }
+        // 하단 세이프에어리어까지 램프 «끝 색»을 깐다 — 오버레이는 세이프에어리어 안에서 끝나
+        // 그 아래로 영상이 다시 드러난다(홈 인디케이터 자리에 색바가 보였다). 램프는 90.9% 에서
+        // 이미 b900 에 도달하므로 끝 색 한 판으로 이어 붙이면 이음선이 보이지 않는다.
+        .background(alignment: .bottom) { safeAreaFill }
+    }
+
+    /// 세이프에어리어 메움 — 높이가 기기마다 다르니 넉넉히 깔고 아래로 밀어낸다
+    /// (뷰의 «그리기» 는 세이프에어리어 밖에도 나가고, 레이아웃만 안쪽에 머문다).
+    private var safeAreaFill: some View {
+        Color.HilitBlack.b900
+            .frame(height: Self.safeAreaFillHeight)
+            .offset(y: Self.safeAreaFillHeight)
+            .allowsHitTesting(false)
     }
 
     private var transcript: some View {
@@ -49,9 +62,12 @@ struct TranscriptOverlay: View {
                     }
                 }
                 .padding(.horizontal, .ds(.p20))
-                .padding(.vertical, .ds(.p24))
-                // 대본이 하단 바(진행바 + 대본 버튼) 밑으로 흘러 글자가 겹치지 않게 비운다.
-                .padding(.bottom, Self.bottomBarClearance)
+                .padding(.top, .ds(.p24))
+                // 하단 바(진행바 + 대본 버튼)를 비우고 그 위로 44 를 더 띄운다.
+                .padding(.bottom, Self.bottomInset)
+                // **대본은 아래에 붙는다** — 줄이 적어도 화면 가운데 떠 있지 않고 마지막 줄이
+                // 진행바 44 위에 선다(시안 443:7906 아래끝 665 vs 진행바 709). 줄이 넘치면 스크롤.
+                .frame(minHeight: Self.overlayHeight, alignment: .bottom)
             }
             // 재생이 다음 답변으로 넘어가면 그 줄로 따라간다.
             .onChange(of: currentLineID) { _, id in
@@ -74,7 +90,10 @@ struct TranscriptOverlay: View {
 
     // @ds(layout): 524 — 대본이 차지하는 높이 (Figma 443:7904, 524/812)
     private static let overlayHeight: CGFloat = 524
-    // @ds(layout): 78 — 하단 바가 덮는 높이(진행바 6 + 간격 16 + 버튼 44 + 아래 여백 12).
-    // 플레이어 하단 바 수치의 합이라 토큰 하나로 대응되지 않는다
-    private static let bottomBarClearance: CGFloat = 78
+    // @ds(layout): 78 + 44 — 하단 바가 덮는 높이(진행바 6 + 간격 16 + 버튼 44 + 아래 여백 12)에
+    // 시안의 진행바~대본 간격 44 를 더한 값. 플레이어 하단 바 수치의 합이라 토큰 하나로 대응되지 않는다
+    private static let bottomInset: CGFloat = 78 + 44
+    /// 세이프에어리어 메움 높이 — 실제 인셋(홈 인디케이터 34 안팎)보다 넉넉하게. 디자인 값이 아니라
+    /// «아래로 넘치게 그린다» 는 여유분이라 토큰 대상이 아니다.
+    private static let safeAreaFillHeight: CGFloat = 80
 }
