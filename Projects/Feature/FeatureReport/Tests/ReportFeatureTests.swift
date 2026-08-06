@@ -102,16 +102,12 @@ struct ReportFeatureTests {
         }
     }
 
-    @Test("이탈(X)·다시 연습하기는 부모로 전파된다")
-    func closeAndRetryPropagate() async {
+    @Test("이탈(X)은 부모로 전파된다")
+    func closePropagates() async {
         let store = TestStore(initialState: loadedState()) { ReportFeature() }
 
         await store.send(.main(.view(.userTappedClose)))
         await store.receive(\.main.delegate.closeRequested)
         await store.receive(\.delegate.closeRequested)
-
-        await store.send(.main(.view(.userTappedRetry)))
-        await store.receive(\.main.delegate.retryRequested)
-        await store.receive(\.delegate.retryRequested)
     }
 }

@@ -28,7 +28,7 @@
 1. `HomeFeature` 가 [레포트 보기] 를 `delegate(.reportDetailRequested(sessionId:))` 로 올린다 — 목록 행의 id 가 곧 세션 id 다(→ [[home#진입 로드]])
 2. AppFeature 가 `state.report = ReportFeature.State(sessionId:)` 로 fullScreenCover 제시 (`@Presents` + `.ifLet` + `AppView`). 리포트는 자체 NavigationStack 을 갖는 전면 흐름이라 sheet 가 아니다
 3. **채점 상태로 진입을 막지 않는다** — 미생성(404)·GENERATING 은 리포트 화면이 스스로 폴링해 채운다(→ [[report#1차 리포트]]). 홈이 걸러 내면 같은 판정이 두 곳에 생긴다
-4. 되돌아오는 두 신호: `closeRequested` 는 커버만 닫고(리포트를 읽는 동안 잔여·목록이 바뀌지 않아 홈 재조회가 없다), 분석 부족의 `retryRequested` 는 커버를 닫고 «면접 시작» 과 같은 위저드를 태운다
+4. 되돌아오는 신호는 `closeRequested` 하나 — 커버만 닫는다(리포트를 읽는 동안 잔여·목록이 바뀌지 않아 홈 재조회가 없다). 분석 부족의 «다시 연습하기» CTA 는 2026-08-06 에 제거됐다(재도전은 홈에서 «면접 시작» 으로 간다)
 5. **리포트 커버 중에도 전역 LoadingModal 을 끈다** — 채점 대기 중 4초 폴링마다 전역 딤이 깜빡이고, 그 대기는 리포트 화면이 `loadState` 로 이미 말한다
 
 ## 첫 실행 정리

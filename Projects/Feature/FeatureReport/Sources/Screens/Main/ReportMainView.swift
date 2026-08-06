@@ -74,9 +74,6 @@ public struct ReportMainView: View {
                     HilitDivider()
                     detailReportSection
                     peerFeedbackSection
-                    if store.isInsufficient {
-                        retryButton
-                    }
                 }
                 .padding(.top, .ds(.p24))
             }
@@ -223,12 +220,6 @@ public struct ReportMainView: View {
                 onTap: { send(.userTappedPeerFeedback) }
             )
         }
-    }
-
-    /// 분석 부족 안내 CTA. 스크롤 내용의 일부라 하단 도킹형(`.bottom` — 안전영역까지 번짐)이 아니라
-    /// 배경이 번지지 않는 `.modal` 을 쓴다.
-    private var retryButton: some View {
-        ButtonLarge("다시 연습하기", .modal) { send(.userTappedRetry) }
     }
 
     // MARK: - 보조
