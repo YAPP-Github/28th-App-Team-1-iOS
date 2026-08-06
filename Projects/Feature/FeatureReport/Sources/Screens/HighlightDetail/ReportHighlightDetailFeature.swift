@@ -12,7 +12,8 @@ import Foundation
 // @lat: [[report#하이라이트 상세 시트]]
 /// 하이라이트 상세 시트 — 화면이 아니라 대본 하이라이트를 탭하면 올라오는 바텀시트.
 /// 리포트 카드와 영상 플레이어 STT 오버레이 **양쪽이 이 리듀서를 재사용**한다. 내용은 같고,
-/// 차이는 «영상 보러가기» 노출 여부 하나 — 영상이 만료된 리포트에서는 갈 곳이 없어 숨긴다.
+/// 차이는 «영상 보러가기» 노출 여부 하나 — 플레이어에서 올라온 시트는 이미 영상 안이라 늘 숨기고,
+/// 메인에서는 영상이 만료됐을 때 숨긴다(둘 다 갈 곳이 없다는 같은 이유).
 ///
 /// 구성: 분석 내용(강조 문장 + 진단 카드) → 다음 대비 → 마무리 코칭 한 줄.
 /// 정답을 주지 않는 제품 원칙에 따라 다음 대비는 답이 아니라 질문으로 끝난다.
@@ -47,7 +48,7 @@ public struct ReportHighlightDetailFeature {
     @ObservableState
     public struct State: Equatable {
         public let context: HighlightContext
-        /// 재생 가능한 영상이 있을 때만 true — 없으면 «영상 보러가기» 를 숨긴다.
+        /// 메인에서 올렸고 재생 가능한 영상이 있을 때만 true — 플레이어에서 올린 시트는 언제나 false.
         public let showsVideoJump: Bool
 
         public init(context: HighlightContext, showsVideoJump: Bool) {

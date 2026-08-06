@@ -263,7 +263,8 @@ struct ReportVideoPlayerFeatureTests {
             $0.isPlaying = false
             $0.highlightDetail = ReportHighlightDetailFeature.State(
                 context: HighlightContext(card: card, span: card.highlightSpans![0])!,
-                showsVideoJump: true
+                // 이미 영상 안이라 «영상 보러가기» 는 없다.
+                showsVideoJump: false
             )
         }
         #expect(store.state.highlightDetail?.context.evidenceAt == 6.4)
@@ -271,37 +272,6 @@ struct ReportVideoPlayerFeatureTests {
         #expect(!store.state.isCloseButtonVisible)
         #expect(!store.state.isBottomBarVisible)
         #expect(!store.state.isPlaybackControlVisible)
-    }
-
-    @Test("시트의 «영상 보러가기» 는 시트를 닫고 그 장면부터 다시 재생한다")
-    func videoJumpSeeksAndResumes() async {
-        let clock = TestClock()
-        var state = ReportVideoPlayerFeature.State(videoURL: Self.videoURL, cards: Self.cards)
-        state.duration = 12
-        state.isPlaying = false
-        state.highlightDetail = ReportHighlightDetailFeature.State(
-            context: HighlightContext(
-                card: Self.cards[1],
-                span: Self.cards[1].highlightSpans![0]
-            )!,
-            showsVideoJump: true
-        )
-        let store = makeStore(clock: clock, state: state)
-
-        await store.send(.highlightDetail(.presented(.view(.userTappedVideoJump))))
-        await store.receive(\.highlightDetail.presented.delegate.videoJumpRequested) {
-            $0.highlightDetail = nil
-            $0.isPlaying = true
-            $0.currentTime = 6.4
-            $0.seekTarget = 6.4
-            $0.seekToken = 1
-            $0.isSeeking = true
-            $0.transcriptPosition = VideoTranscript.Position(lineID: 1, sentenceIndex: 0)
-        }
-        await clock.advance(by: .seconds(3))
-        await store.receive(\.inner.controlsHideElapsed) {
-            $0.areControlsVisible = false
-        }
     }
 
     @Test("재생 실패는 컨트롤 대신 안내 문구로 바뀐다")

@@ -160,12 +160,7 @@ public struct ReportVideoPlayerFeature {
             case let .inner(action):
                 return reduceInner(&state, action)
 
-            // 시트의 «영상 보러가기» — 시트를 닫고 그 장면부터 다시 재생한다.
-            // 근거 시각을 모르면(서버 timestamp 확장 전) 처음부터 재생한다.
-            case let .highlightDetail(.presented(.delegate(.videoJumpRequested(at)))):
-                state.highlightDetail = nil
-                return seek(&state, to: at ?? 0, resuming: true)
-
+            // «영상 보러가기» 는 이 판에서 안 뜬다(위 `userTappedHighlight` 참조) — 받을 delegate 가 없다.
             // 시트를 손으로 내렸을 때 — 하이라이트를 보려고 멈췄던 재생을 되돌린다.
             // 재생 실패거나 이미 끝까지 본 영상은 되돌릴 재생이 없다.
             case .highlightDetail(.dismiss):
@@ -249,9 +244,10 @@ public struct ReportVideoPlayerFeature {
             guard let context = HighlightContext(card: card, span: spans[spanIndex]) else { return .none }
             // 시트를 보는 동안 영상은 멈춘다 (Figma 주석 «바텀시트 올라왔을 때 영상 정지»).
             state.isPlaying = false
+            // 여기가 이미 영상이라 «영상 보러가기» 는 갈 곳이 없다 — 플레이어에서 올린 시트는 늘 숨긴다.
             state.highlightDetail = ReportHighlightDetailFeature.State(
                 context: context,
-                showsVideoJump: true
+                showsVideoJump: false
             )
             return .cancel(id: CancelID.controlsHide)
         }
