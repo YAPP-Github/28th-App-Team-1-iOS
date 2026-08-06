@@ -34,6 +34,25 @@ public struct RedFlagNotice: Decodable, Equatable, Sendable {
         self.type = type
         self.message = message
     }
+
+    private enum CodingKeys: String, CodingKey {
+        case type
+        case message
+    }
+
+    /// 서버가 안내를 **문구 문자열만** 내려주기도 하고 `{type, message}` 객체로 내려주기도 한다.
+    /// 문자열이면 분류 코드 없이 `message` 로만 받는다.
+    public init(from decoder: any Decoder) throws {
+        if let message = try? decoder.singleValueContainer().decode(String.self) {
+            self.type = nil
+            self.message = message
+            return
+        }
+
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.type = try container.decodeIfPresent(String.self, forKey: .type)
+        self.message = try container.decode(String.self, forKey: .message)
+    }
 }
 
 /// 면접 영상 메타. 만료되면 `url` 이 nil — 카드의 대본·하이라이트는 그대로 유지된다.

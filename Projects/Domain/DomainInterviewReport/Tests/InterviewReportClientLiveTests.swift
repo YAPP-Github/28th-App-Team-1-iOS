@@ -88,6 +88,33 @@ final class InterviewReportClientLiveTests: XCTestCase {
         XCTAssertEqual(report.guestFeedback?.participantCount, 1)
     }
 
+    func test_report_카드레드플래그가_문자열배열로_와도_디코딩한다() async throws {
+        let json = """
+        {"success": true, "data": {
+            "status": "READY", "headline": "요약", "video": null,
+            "cards": [{
+                "axisOrder": 1, "depthLevel": 3,
+                "questionText": "Q. 실제 역할은 무엇이었나요?",
+                "transcript": "리뷰 위주였어요.",
+                "highlightSpans": [],
+                "resolutionNotice": null,
+                "cardRedFlagNotices": ["면접 앞부분과 뒷부분의 답변이 서로 어긋나는 지점이 있었어요."],
+                "questionIntentTitle": "실제 기여 범위",
+                "questionIntent": "역할의 경계를 묻는 질문입니다.",
+                "scriptSegments": []
+            }],
+            "script": null, "guestFeedback": null
+        }}
+        """
+        let client = makeClient { _ in Data(json.utf8) }
+
+        let report = try await client.report(54)
+
+        let notice = report.cards?.first?.cardRedFlagNotices?.first
+        XCTAssertNil(notice?.type)
+        XCTAssertEqual(notice?.message, "면접 앞부분과 뒷부분의 답변이 서로 어긋나는 지점이 있었어요.")
+    }
+
     func test_report_GENERATING이면_나머지필드가_nil이다() async throws {
         let json = """
         {"success": true, "data": {

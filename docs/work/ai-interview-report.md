@@ -85,7 +85,7 @@ ReportMain ─[영상 다시보기]─────────────→ Re
 | `script` · `card.scriptSegments` | 플레이어 진행바 칸(전자) · 오버레이 «현재 줄»·시각 폴백(후자의 면접자 발화) | 칸 하나 = 발화 하나. 서버 정렬을 믿지 않고 `startSec` 으로 다시 세운다(`orderedSegments`) |
 | `card.words: [TranscriptWord]?` | (없음 — 계약만 보존) | 단어 강조가 필요해질 때 쓴다. **말속도·군말·침묵 산출에 쓰지 않는다** (§0-2 MVP 제외) |
 | `card.resolutionNotice: String?` | 카드 상단 안내 문구 | **서버 소유 문구.** 있으면 해상도 낮음 카드 → 하이라이트가 없어 시트로 진입하지 않는다 |
-| `card.cardRedFlagNotices: [RedFlagNotice]?` | 카드 안 레드플래그 표기 | 해상도와 **독립** — 해상도 낮음 카드에도 표기한다 |
+| `card.cardRedFlagNotices: [RedFlagNotice]?` | 카드 안 레드플래그 표기 | 해상도와 **독립** — 해상도 낮음 카드에도 표기한다. 원소는 문구 문자열 또는 `{type, message}` 둘 다 — `RedFlagNotice` 가 양쪽 디코딩 |
 | `guestFeedback: GuestFeedbackSection?` | 지인 피드백 섹션 | 4.6 소관 — 이 문서 범위에서는 렌더하지 않는다(§13) |
 
 `span.tone` / `span.analysis` 는 §9-1 확장과 함께 확정한다.

@@ -94,7 +94,7 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 
 - GET `/api/v1/interview/sessions/{id}/report`
 - `status` 는 채점 진행 상태만 — GENERATING(전 필드 nil, 폴링 지속) / READY / INSUFFICIENT_ANALYSIS(채점된 카드만) / FAILED.
-- 레드플래그는 보고서 단위 배열이 없다 — 걸린 카드의 `cardRedFlagNotices` 로만 온다. 저장 5종 중 노출 3종(지어냄·모순·무결점 서사)만 중립 문구. READY + 심각 레드플래그면 headline 이 중립 사실 요약으로 대체.
+- 레드플래그는 보고서 단위 배열이 없다 — 걸린 카드의 `cardRedFlagNotices` 로만 온다. 저장 5종 중 노출 3종(지어냄·모순·무결점 서사)만 중립 문구. READY + 심각 레드플래그면 headline 이 중립 사실 요약으로 대체. 원소는 **문구 문자열** 또는 `{type, message}` 둘 다로 오므로 `RedFlagNotice` 가 양쪽을 받는다(문자열이면 `type` 은 nil).
 - 카드는 질문/답변 턴당 1장 — 같은 축이면 `axisOrder` 동일, `depthLevel` 로 구분 (표시: "질문 {axisOrder}-{depthLevel}").
 - `highlightSpans` 는 톤(GOOD/IMPROVE)에 더해 `reason`(PROBE_WORTHY/OFF_INTENT/SHALLOW/SUFFICIENT)·`title`·`startSec` 을 갖는다. `followUpQuestions` 는 PROBE_WORTHY 만, `answerTopicTitle`·`questionIntentTitle`·`questionIntent`(카드 값 복사) 는 OFF_INTENT 만 채워진다 — 그 외 reason 에선 셋 다 null/빈 배열.
 - `resolutionNotice` 가 있으면 해상도 낮음 — 능력 판단 보류. 사유가 짧음·얕음이면 `highlightSpans` 빈 배열, 딴 답이면 OFF_INTENT 하이라이트 1개.
