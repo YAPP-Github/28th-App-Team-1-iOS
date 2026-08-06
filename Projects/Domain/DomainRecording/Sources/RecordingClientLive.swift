@@ -8,6 +8,7 @@
 import AVFoundation
 import ComposableArchitecture
 import DomainRecordingInterface
+import OSLog
 
 extension RecordingClient: @retroactive DependencyKey {
     /// 단일 CameraSessionManager 를 공유하는 liveValue — 준비·세션 화면이 같은 캡처 세션을 이어 쓴다.
@@ -27,6 +28,8 @@ extension RecordingClient: @retroactive DependencyKey {
 /// 단일 AVCaptureSession 소유자 — start/stop 멱등. actor 라 세션 구성·startRunning(블로킹)이
 /// 메인 스레드 밖에서 수행된다. 실장치 의존이라 유닛 테스트 제외 — 실기기 육안 검증.
 actor CameraSessionManager {
+    private static let logger = Logger(subsystem: "com.hilit.recording", category: "camera-session")
+
     private var handle: CameraPreviewHandle?
     private var recording: ActiveRecording?
     /// 진행 중·직전 산출 파일들(비디오·오디오·합성본) — stop 이후에도 discard 가 지울 수 있게 유지한다.
@@ -192,6 +195,9 @@ actor CameraSessionManager {
         let mergedURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("interview-recording-\(recording.sessionId).mp4")
         track(recording.url, mergedURL)
+        // 합성(8~10초) 앞에서 카메라를 놓아준다 — 자리가 «파일 마감 뒤·합성 앞» 인 건 moov 가 캡처세션이 도는
+        // 동안 써지기 때문이다. 핸들은 남긴다(해제는 코디네이터 `stopPreview()`). 근거 → [[interview#프리뷰]]
+        handle?.session.stopRunning()
         let duration = try await compose(
             videoURL: recording.url,
             videoStartedAt: recording.delegate.startedAtHostSeconds,
@@ -297,6 +303,8 @@ actor CameraSessionManager {
         guard let export = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetPassthrough) else {
             throw RecordingError.stopFailed("export 세션 생성 실패")
         }
+        // 8~10초 걸린다 — 대부분이 `.waiting`(자원 획득)이고 영상 길이와 무관한 고정 비용이다 → [[interview#세션]]
+        Self.logger.notice("합성 시작 — \(composition.duration.seconds, privacy: .public)s")
         if #available(iOS 18, *) {
             try await export.export(to: mergedURL, as: .mp4)
         } else {
@@ -313,7 +321,7 @@ actor CameraSessionManager {
         return videoDuration.seconds.isFinite ? videoDuration.seconds : 0
     }
 
-    /// 녹화 종료 후 무비 출력을 세션에서 제거 — 프리뷰는 계속 돈다(리포트 대기 배경 등 무영향).
+    /// 녹화 종료 후 무비 출력을 세션에서 제거 — 프리뷰는 계속 돈다(정지는 코디네이터 몫이라 여기선 안 건든다).
     private func detachOutput(_ output: AVCaptureMovieFileOutput) {
         guard let session = handle?.session else { return }
         session.beginConfiguration()
