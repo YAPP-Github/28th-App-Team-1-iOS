@@ -102,10 +102,11 @@ actor AudioPlaybackManager {
         streamStatusObservation = nil
     }
 
-    /// 캡처(AudioCaptureManager)와 같은 `.playAndRecord` — 재생과 마이크가 한 세션을 공유한다.
+    /// 캡처(AudioCaptureManager)와 **같은 설정** — 재생과 마이크가 한 세션을 공유하므로 옵션이 갈리면
+    /// 어느 쪽이 나중에 활성화되느냐에 따라 라우팅이 달라진다. 옵션별 근거는 `SpeechClientLive.startCapture()` 주석.
     private func activatePlaybackSession() throws {
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
+        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothA2DP])
         try session.setActive(true)
     }
 
