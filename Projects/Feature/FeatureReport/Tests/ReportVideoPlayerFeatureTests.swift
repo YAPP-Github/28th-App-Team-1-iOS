@@ -47,6 +47,37 @@ struct ReportVideoPlayerFeatureTests {
         }
     }
 
+    @Test("자동 숨김은 딤·재생 컨트롤만 걷는다 — 진행바·대본 버튼은 붙박이")
+    func bottomBarSurvivesAutoHide() async {
+        let clock = TestClock()
+        let store = makeStore(clock: clock)
+
+        await store.send(.view(.onAppear))
+        await clock.advance(by: .seconds(3))
+        await store.receive(\.inner.controlsHideElapsed) {
+            $0.areControlsVisible = false
+        }
+        #expect(!store.state.isPlaybackControlVisible)
+        #expect(store.state.isBottomBarVisible)
+        #expect(store.state.isBottomScrimVisible)
+    }
+
+    @Test("«이전 화면으로 가기» 는 시트로 들어온 판에만 있고, X 와 같은 «뒤로» 다")
+    func returnToPreviousOnlyForSheetEntry() async {
+        let clock = TestClock()
+        #expect(!makeStore(clock: clock).state.isReturnToPreviousVisible)
+
+        let store = makeStore(clock: clock, state: ReportVideoPlayerFeature.State(
+            videoURL: Self.videoURL,
+            cards: Self.cards,
+            entry: .highlightSheet
+        ))
+        #expect(store.state.isReturnToPreviousVisible)
+
+        await store.send(.view(.userTappedReturnToPrevious))
+        await store.receive(\.delegate.backRequested)
+    }
+
     @Test("영상을 탭하면 컨트롤이 사라지고, 다시 탭하면 돌아온다")
     func surfaceTapTogglesControls() async {
         let clock = TestClock()
@@ -77,8 +108,8 @@ struct ReportVideoPlayerFeatureTests {
         await clock.advance(by: .seconds(10))
     }
 
-    @Test("대본을 켜면 하단 바가 대본의 일부라 화면 탭으로 숨지 않는다")
-    func transcriptKeepsBottomBar() async {
+    @Test("대본을 켜 두면 화면 탭이 딤·재생 컨트롤을 만지지 않는다 (하단 바는 그대로)")
+    func transcriptSwallowsSurfaceTap() async {
         let clock = TestClock()
         let store = makeStore(clock: clock)
 
@@ -88,6 +119,8 @@ struct ReportVideoPlayerFeatureTests {
         await store.send(.view(.userTappedSurface))
         #expect(store.state.isBottomBarVisible)
         #expect(!store.state.isPlaybackControlVisible)
+        // 대본 오버레이가 제 스크림을 갖고 있어 하단 스크림은 겹쳐 깔지 않는다.
+        #expect(!store.state.isBottomScrimVisible)
 
         await store.send(.view(.userTappedTranscriptToggle)) {
             $0.isTranscriptVisible = false

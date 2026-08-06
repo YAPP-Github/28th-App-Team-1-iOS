@@ -39,6 +39,35 @@ struct ReportFeatureTests {
         }
     }
 
+    @Test("시트 «영상 보러가기» 로 들어온 플레이어는 하단 «이전 화면으로 가기» 판이다")
+    func sheetEntryPushesReturnablePlayer() async {
+        var state = loadedState()
+        state.main.highlightDetail = ReportHighlightDetailFeature.State(
+            context: HighlightContext(
+                transcript: "문장",
+                span: HighlightSpan(startIndex: 0, endIndex: 2, tone: "GOOD", analysis: nil),
+                evidenceAt: 12
+            ),
+            showsVideoJump: true
+        )
+        let store = TestStore(initialState: state) { ReportFeature() }
+
+        await store.send(.main(.highlightDetail(.presented(.view(.userTappedVideoJump)))))
+        await store.receive(\.main.highlightDetail.presented.delegate.videoJumpRequested) {
+            $0.main.highlightDetail = nil
+        }
+        await store.receive(\.main.delegate.videoRequested) {
+            $0.path[id: 0] = .videoPlayer(ReportVideoPlayerFeature.State(
+                videoURL: URL(string: "https://example.com/interview/1.mp4")!,
+                startAt: 12,
+                cards: InterviewReportFixtures.ready.cards ?? [],
+                script: InterviewReportFixtures.ready.script ?? [],
+                entry: .highlightSheet
+            ))
+        }
+        #expect(store.state.path[id: 0]?.videoPlayer?.isReturnToPreviousVisible == true)
+    }
+
     @Test("영상이 만료면 push 하지 않는다")
     func expiredVideoDoesNotPush() async {
         var state = ReportFeature.State(sessionId: 1)

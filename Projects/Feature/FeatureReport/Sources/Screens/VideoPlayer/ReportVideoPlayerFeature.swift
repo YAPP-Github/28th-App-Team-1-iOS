@@ -28,6 +28,15 @@ public struct ReportVideoPlayerFeature {
     /// 재생 실패 문구 — 만료가 아니라 전송·디코딩 실패다.
     static let playbackFailureMessage = "영상을 재생할 수 없어요.\n잠시 후 다시 시도해 주세요."
 
+    /// 어디서 들어왔는가 — 화면은 한 벌이고 하단 «이전 화면으로 가기» 노출만 가른다
+    /// (Figma 443:7828 은 시트 진입 판, 443:7804 는 메인 진입 판).
+    public enum Entry: Equatable, Sendable {
+        /// 하이라이트 상세 시트의 «영상 보러가기» — 하단에 «이전 화면으로 가기» 를 둔다.
+        case highlightSheet
+        /// 메인 CTA «영상 다시보기» — 하단 버튼 없이 상단 X 만.
+        case reportMain
+    }
+
     @ObservableState
     public struct State: Equatable {
         public let videoURL: URL
@@ -37,6 +46,8 @@ public struct ReportVideoPlayerFeature {
         public let cards: [InterviewReportCard]
         /// 세션 전체 발화 타임라인 — 진행바 칸의 재료(면접관 멘트 포함).
         public let script: [ScriptSegment]
+        /// 진입 경로 — 하단 «이전 화면으로 가기» 노출만 가른다.
+        public let entry: Entry
         /// 카드·타임라인에서 펼친 대본 (파생값 — 입력이 바뀌지 않으니 한 번만 만든다).
         let transcript: VideoTranscript
         public var isPlaying = true
@@ -44,7 +55,8 @@ public struct ReportVideoPlayerFeature {
         public var currentTime: TimeInterval = 0
         /// AVPlayer 가 알려주는 전체 길이(초). 모르면 0.
         public var duration: TimeInterval = 0
-        /// 컨트롤(딤·재생 버튼·하단 바) 표시 여부 — 무입력 3초 후 숨는다.
+        /// 컨트롤(딤·재생 버튼) 표시 여부 — 무입력 3초 후 숨는다.
+        /// **하단 바(진행바·대본 버튼)는 여기 걸리지 않는다** — 항상 떠 있다(`isBottomBarVisible`).
         public var areControlsVisible = true
         /// 대본 오버레이 표시 여부.
         public var isTranscriptVisible = false
@@ -69,12 +81,14 @@ public struct ReportVideoPlayerFeature {
             videoURL: URL,
             startAt: TimeInterval? = nil,
             cards: [InterviewReportCard] = [],
-            script: [ScriptSegment] = []
+            script: [ScriptSegment] = [],
+            entry: Entry = .reportMain
         ) {
             self.videoURL = videoURL
             self.startAt = startAt
             self.cards = cards
             self.script = script
+            self.entry = entry
             self.transcript = VideoTranscript(cards: cards, script: script)
             self.currentTime = startAt ?? 0
             self.currentLineID = transcript.currentLineID(at: currentTime)
@@ -91,6 +105,8 @@ public struct ReportVideoPlayerFeature {
             case onAppear
             /// 좌상단 X — 플레이어를 닫고 리포트로 돌아간다 (Figma 는 버튼 하나뿐).
             case userTappedBack
+            /// 하단 «이전 화면으로 가기» — 시트 진입 판에만 있는 버튼이고, 하는 일은 X 와 같다.
+            case userTappedReturnToPrevious
             /// 영상 아무 곳 — 컨트롤 표시 토글.
             case userTappedSurface
             case userTappedPlayPause
@@ -175,11 +191,11 @@ public struct ReportVideoPlayerFeature {
         case .onAppear:
             return startControlsHideTimer()
 
-        case .userTappedBack:
+        case .userTappedBack, .userTappedReturnToPrevious:
             return .send(.delegate(.backRequested))
 
         case .userTappedSurface:
-            // 대본을 켜 둔 동안은 하단 바가 대본의 일부라 숨기지 않는다.
+            // 대본을 켜 둔 동안은 화면 탭이 딤·재생 버튼을 만지지 않는다 (대본이 화면 주인).
             guard !state.isTranscriptVisible else { return .none }
             state.areControlsVisible.toggle()
             return state.areControlsVisible ? startControlsHideTimer() : .cancel(id: CancelID.controlsHide)
@@ -343,10 +359,19 @@ extension ReportVideoPlayerFeature.State {
         areControlsVisible && !isTranscriptVisible && playbackFailureMessage == nil && !isHighlightDetailPresented
     }
 
-    /// 하단 바(진행바 + 대본 버튼) 노출 조건.
+    /// 하단 바(진행바 + 대본 버튼 + 시트 진입 판의 «이전 화면으로 가기») 노출 조건 —
+    /// **자동 숨김을 타지 않는다**: 진행바·대본 버튼은 화면의 붙박이고 딤·재생 버튼만 3초 뒤 사라진다.
+    /// 재생 실패(안내가 화면을 차지)와 상세 시트(아래 사유)에서만 비운다.
     var isBottomBarVisible: Bool {
-        (areControlsVisible || isTranscriptVisible) && playbackFailureMessage == nil && !isHighlightDetailPresented
+        playbackFailureMessage == nil && !isHighlightDetailPresented
     }
+
+    /// 하단 스크림 노출 조건 — 붙박이 하단 바가 밝은 영상 위에서도 읽히게 한다(Figma 443:7830).
+    /// 대본을 켜면 오버레이가 제 스크림(`.darkOpen`)을 갖고 있어 겹쳐 깔지 않는다.
+    var isBottomScrimVisible: Bool { isBottomBarVisible && !isTranscriptVisible }
+
+    /// 하단 «이전 화면으로 가기» 노출 조건 — 시트로 들어온 판에만 있다.
+    var isReturnToPreviousVisible: Bool { entry == .highlightSheet }
 
     /// 상단 X 노출 조건 — 시트를 보는 동안은 비운다.
     var isCloseButtonVisible: Bool { !isHighlightDetailPresented }

@@ -12,7 +12,10 @@ import SharedDesignSystemInterface
 import SwiftUI
 
 // Figma «Report_VideoPlayer» https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS
-//   443:7804 기본(딤 없음) · 443:7852 컨트롤 노출(딤 65% + video-control) · 443:7902 대본 올림
+//   443:7804 기본(딤 없음) · 443:7828 시트 진입 판(하단 «이전 화면으로 가기»)
+//   443:7852 컨트롤 노출(딤 65% + video-control) · 443:7902 대본 올림
+// 하단 바(진행바·대본 버튼·«이전 화면으로 가기»)는 **붙박이**다 — 자동 숨김을 타는 건 딤과 재생 컨트롤뿐.
+// 딤은 영상 위에만 얹힌다: 재생 컨트롤·하단 바를 딤보다 위에 쌓아 색이 변하지 않게 한다.
 // 시스템 컨트롤을 쓰지 않고 AVPlayerLayer 를 직접 얹는다(Figma 컨트롤이 커스텀이라).
 // AVPlayer 자체는 뷰 로컬이고, 재생 여부·시각은 리듀서가 소유한다 — 자세한 배경은 리듀서 주석.
 @ViewAction(for: ReportVideoPlayerFeature.self)
@@ -30,7 +33,12 @@ public struct ReportVideoPlayerView: View {
             // 영상·딤은 화면 끝까지 번지고, 상단 X·하단 바는 세이프에어리어를 지킨다.
             Color.HilitBlack.b900.ignoresSafeArea()
             videoSurface.ignoresSafeArea()
+            // 붙박이 하단 바를 딤 없이도 읽히게 하는 스크림 — 딤보다 아래에 깔린다.
+            if store.isBottomScrimVisible {
+                bottomScrim
+            }
             // 컨트롤을 띄우는 동안만 영상을 눌러 어둡게 한다.
+            // **딤 위에 서는 것들** — 재생 컨트롤·하단 바는 이 아래가 아니라 위에 쌓는다(색이 변하지 않게).
             if store.isPlaybackControlVisible {
                 // @ds(color): «hilit opacity/dark/65%» #000000 65% — 컨트롤 딤. 팔레트에 검정 토큰이 없다(BlackWhite 는 white 뿐)
                 Color.black.opacity(Self.dimOpacity).ignoresSafeArea()
@@ -160,18 +168,38 @@ public struct ReportVideoPlayerView: View {
         }
     }
 
-    /// Figma 443:7855 — 좌우 20, 진행바와 버튼 줄 사이 16, 버튼 줄은 오른쪽 정렬.
-    /// 시안 버튼 줄 왼쪽에 빈 44×44 슬롯(443:7867)이 하나 더 있지만 내용이 없어 그리지 않는다.
+    /// DS `VideoOverlay(.darkClose)`(Figma «video overlay» 443:7830) — 시안 높이 그대로 쓴다.
+    /// 탭을 먹지 않아(컴포넌트 내장) 스크림 뒤 영상 탭이 살아 있다.
+    private var bottomScrim: some View {
+        VStack(spacing: 0) {
+            Spacer(minLength: 0)
+            VideoOverlay(.darkClose)
+        }
+        .ignoresSafeArea()
+    }
+
+    /// Figma 443:7831 — 좌우 20, 진행바와 버튼 줄 사이 16, 대본 토글은 오른쪽 정렬.
+    /// 버튼 줄 왼쪽 슬롯은 시트로 들어온 판에서만 «이전 화면으로 가기» 가 채운다(443:7843).
     private var bottomBar: some View {
         VStack(spacing: .ds(.p16)) {
             PlaybackProgressBar(store: store)
             HStack(spacing: 0) {
+                if store.isReturnToPreviousVisible {
+                    returnToPrevious
+                }
                 Spacer(minLength: 0)
                 transcriptToggle
             }
         }
         .padding(.horizontal, .ds(.p20))
         .padding(.bottom, .ds(.p12))
+    }
+
+    /// 시안 443:7843 «button-medium» filled black — DS `.medium(.black)` 그대로.
+    /// 하는 일은 상단 X 와 같은 «뒤로» 다(리듀서가 같은 delegate 로 접는다).
+    private var returnToPrevious: some View {
+        Button("이전 화면으로 가기") { send(.userTappedReturnToPrevious) }
+            .buttonStyle(.medium(.black))
     }
 
     /// 아이콘만 있는 정사각 버튼은 DS 버튼 카탈로그(large/medium/mini/sub/tag)에 없는 티어라
@@ -289,6 +317,20 @@ private extension InterviewReportCard {
             initialState: ReportVideoPlayerFeature.State(
                 videoURL: URL(string: "https://example.com/interview/1.mp4")!,
                 cards: [.previewCard]
+            )
+        ) {
+            ReportVideoPlayerFeature()
+        }
+    )
+}
+
+#Preview("영상 플레이어 — 시트 진입(이전 화면으로 가기)") {
+    ReportVideoPlayerView(
+        store: Store(
+            initialState: ReportVideoPlayerFeature.State(
+                videoURL: URL(string: "https://example.com/interview/1.mp4")!,
+                cards: [.previewCard],
+                entry: .highlightSheet
             )
         ) {
             ReportVideoPlayerFeature()

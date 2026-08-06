@@ -104,7 +104,8 @@ public struct ReportMainFeature {
         @CasePathable
         public enum Delegate: Equatable, Sendable {
             /// 영상 보기 — nil 이면 처음부터.
-            case videoRequested(startAt: TimeInterval?)
+            /// 영상 플레이어 요청 — `entry` 는 «어디서 눌렀는가»(플레이어 하단 버튼 유무를 가른다).
+            case videoRequested(startAt: TimeInterval?, entry: ReportVideoPlayerFeature.Entry)
             case peerFeedbackRequested
             /// 분석 부족 — 다시 연습하기.
             case retryRequested
@@ -131,7 +132,7 @@ public struct ReportMainFeature {
             // 시트가 «이 장면 영상으로 보기» 를 올리면 닫고 영상 요청으로 번역한다.
             case let .highlightDetail(.presented(.delegate(.videoJumpRequested(at)))):
                 state.highlightDetail = nil
-                return .send(.delegate(.videoRequested(startAt: at)))
+                return .send(.delegate(.videoRequested(startAt: at, entry: .highlightSheet)))
 
             case .highlightDetail:
                 return .none
@@ -174,7 +175,7 @@ public struct ReportMainFeature {
             return .send(.delegate(.closeRequested))
 
         case .userTappedWatchVideo:
-            return .send(.delegate(.videoRequested(startAt: nil)))
+            return .send(.delegate(.videoRequested(startAt: nil, entry: .reportMain)))
 
         case let .userTappedQuestionTab(index):
             guard state.cards.indices.contains(index) else { return .none }
