@@ -10,7 +10,7 @@ import DomainPortfolioInterface
 import Foundation
 
 // @lat: [[home]]
-/// 면접 시작 — 홈 씬에서 리포트 시트 뒤에 깔리는 한 겹. 시안 3장을 `Variant` 로 분기한다.
+/// 면접 시작 — 홈 씬에서 리포트 시트 뒤에 깔리는 한 겹. 시안 4장을 `Variant` 로 분기한다.
 ///
 /// 홈의 phase 가 아니라 별도 Reducer 인 이유: 홈 상태의 표시가 아니라 «면접을 시작할까» 를 묻는
 /// 별도 화면이고, 응답(시작·수정)은 홈이 처리할 수 없는 cross-feature 전환이라 delegate 로 올라간다.
@@ -19,13 +19,18 @@ import Foundation
 /// 하단 «홈으로» 만 delegate 로 올린다(CTA 는 이 화면 소유라서).
 @Reducer
 public struct StartInterviewFeature {
-    /// 시안 3종 — 처음 / 등록 포폴 있음 / 무료 횟수 모두 사용.
+    /// 시안 4종 — 처음 / 등록 포폴 있음 / 진행 중 면접 있음 / 무료 횟수 모두 사용.
     ///
     /// `first` = 1회차, `hasPortfolio` = **2회차 이상**이다 — 판정 키는 READY 포폴 보유 하나뿐이고
     /// 서버 면접 이력은 보지 않는다(`HomeFeature.startVariant` · docs/work/home-account.md §3).
+    ///
+    /// `inProgress` 만 **서버 재료가 아직 없다** — held 세션 조회 API 가 미결(6-3)이라 `startVariant`
+    /// 가 이 값을 내지 못한다. 화면 확인은 프리뷰 전담이다.
     public enum Variant: Equatable, Sendable {
         case first
         case hasPortfolio
+        /// 진행 중(held) 면접이 있다 — 남은 질문 수는 그 세션의 값이다.
+        case inProgress(remainingQuestionCount: Int)
         case exhausted
     }
 
@@ -49,6 +54,11 @@ public struct StartInterviewFeature {
     public struct State: Equatable {
         /// 표시할 시안 변형 — 홈 진입 로드 결과로 홈이 정한다(잔여 0 이면 소진, 포폴 있으면 재사용).
         public var variant: Variant
+        /// «처음부터 시작하시겠어요?» 확인 단계에 들어와 있는가 — `.inProgress` 밖에선 의미가 없다.
+        ///
+        /// **별도 화면이 아니라 이 겹의 한 단계**다(시안 443:5873): 배경·내비바는 그대로고 인사말·카드·CTA
+        /// 세 자리만 갈린다. 화면을 새로 띄우면 배경 커튼이 두 겹으로 그려지고 나가기(X)도 둘이 된다.
+        public var isConfirmingRestart: Bool
         /// 인사말에 넣는 사용자 이름 — 홈이 프로필 로드 결과를 그대로 내려 준다.
         /// 응답 전엔 비어 있고, 그때는 뷰가 이름 줄을 뺀다(사람 이름을 기본값으로 두지 않는다).
         public var userName: String
@@ -65,11 +75,13 @@ public struct StartInterviewFeature {
         /// 잔여의 중립은 **0 이 아니라 nil** 이다 — 0 은 «소진» 이라는 서버 판정이라서.
         public init(
             variant: Variant,
+            isConfirmingRestart: Bool = false,
             userName: String = "",
             remainingChances: Int? = nil,
             portfolio: Portfolio? = nil
         ) {
             self.variant = variant
+            self.isConfirmingRestart = isConfirmingRestart
             self.userName = userName
             self.remainingChances = remainingChances
             self.portfolio = portfolio
@@ -87,6 +99,14 @@ public struct StartInterviewFeature {
             case userTappedStart
             /// [수정하기] 탭 — 이전 면접 정보를 고치고 시작한다.
             case userTappedEditInfo
+            /// 진행 중 시안의 [처음부터 시작] 탭 — 곧장 버리지 않고 확인 단계로 들어간다.
+            case userTappedRestart
+            /// 확인 단계의 [뒤로가기] 탭 — 확인만 접고 진행 중 시안으로 돌아간다.
+            case userTappedRestartCancel
+            /// 확인 단계의 [처음부터 시작] 탭 — 여기서야 확정이다.
+            case userTappedRestartConfirm
+            /// [이어서 진행] 탭 — 진행 중인 세션으로 돌아간다.
+            case userTappedResume
             /// [홈으로] 탭 — 무료 횟수 소진 시안의 나가기 경로.
             case userTappedBackToHome
         }
@@ -100,6 +120,10 @@ public struct StartInterviewFeature {
             case startRequested
             /// 면접 정보 수정 요청 — 전환은 AppFeature.
             case editInfoRequested
+            /// 처음부터 시작 확정 — **확인 단계를 통과한 뒤에만** 나간다. 전환은 AppFeature.
+            case restartRequested
+            /// 이어서 진행 요청 — 진행 중 세션 복귀. 전환은 AppFeature.
+            case resumeRequested
             /// 홈으로 요청 — 소진 시안의 나가기(하단 CTA). 홈은 시트를 도로 올린다.
             case backToHomeRequested
         }
@@ -108,12 +132,25 @@ public struct StartInterviewFeature {
     public init() {}
 
     public var body: some ReducerOf<Self> {
-        Reduce { _, action in
+        Reduce { state, action in
             switch action {
             case .view(.userTappedStart):
                 return .send(.delegate(.startRequested))
             case .view(.userTappedEditInfo):
                 return .send(.delegate(.editInfoRequested))
+            case .view(.userTappedRestart):
+                // 이 탭은 아직 요청이 아니다 — 진행분을 버리는 일이라 한 번 되묻는다(시안 443:5873).
+                state.isConfirmingRestart = true
+                return .none
+            case .view(.userTappedRestartCancel):
+                state.isConfirmingRestart = false
+                return .none
+            case .view(.userTappedRestartConfirm):
+                // 확인은 여기서 접지 않는다 — 되돌아오는 자리(시트 복귀)가 홈에 있고,
+                // 여기서 끄면 화면이 넘어가는 동안 진행 중 시안이 한 프레임 스친다.
+                return .send(.delegate(.restartRequested))
+            case .view(.userTappedResume):
+                return .send(.delegate(.resumeRequested))
             case .view(.userTappedBackToHome):
                 return .send(.delegate(.backToHomeRequested))
             case .inner, .delegate:
