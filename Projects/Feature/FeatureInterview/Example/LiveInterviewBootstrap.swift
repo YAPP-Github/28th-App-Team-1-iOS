@@ -9,7 +9,6 @@ import ComposableArchitecture
 import CoreNetworkInterface
 import DomainInterviewInterface
 import DomainPortfolioInterface
-import DomainSpeechInterface
 import DomainUserInterface
 import FeatureInterviewImplementation
 import Foundation
@@ -149,12 +148,7 @@ struct LiveInterviewBootstrap: View {
 
             stage = .ready(Store(
                 initialState: ExampleInterviewCoordinator.State(sessionId: created.sessionId),
-                reducer: { ExampleInterviewCoordinator() },
-                withDependencies: {
-                    // 실녹음(작업 B) 전 — 번들 샘플로 답변 오디오 seam 만 채운다.
-                    // 직접 키 오버라이드는 스코프에 즉시 적용된다(엔진 같은 캐시 싱글턴 내부 전파와는 다른 경로).
-                    $0.speechClient.answerAudio = { await Self.sampleAnswerAudio }
-                }
+                reducer: { ExampleInterviewCoordinator() }
             ))
         } catch {
             print("⛳️ [HARNESS] \(step) 실패: \(String(describing: error))")
@@ -182,9 +176,4 @@ struct LiveInterviewBootstrap: View {
         }
         return token.trimmingCharacters(in: .whitespacesAndNewlines)
     }
-
-    /// 번들 샘플 답변(m4a — `say`+`afconvert` 산출물). 서버가 mp3 를 강제하면 리소스만 교체한다(스펙 §9-1).
-    static let sampleAnswerAudio: Data? = Bundle.main
-        .url(forResource: "SampleAnswer", withExtension: "m4a")
-        .flatMap { try? Data(contentsOf: $0) }
 }

@@ -41,15 +41,13 @@ let project = Project.makeModule(
                 // 진단 탐침(HILIT_STT_PROBE) 전용 — 문구 없으면 인식 권한 요청 즉시 크래시.
                 "NSSpeechRecognitionUsageDescription": "마이크에 들어온 소리를 글로 옮겨 점검하기 위해 음성 인식을 사용합니다."
             ]),
-            // 번들 샘플 답변 오디오(SampleAnswer.m4a) — live 하네스가 answerAudio seam 으로 주입.
-            resources: ["Example/Resources/**"],
             dependencies: [
                 .composableArchitecture,
                 .core(interface: .network),       // live 하네스 — TokenStore(inMemory)·AuthTokens
                 .domain(interface: .interview),
                 .domain(interface: .interviewReport),   // 영상 스모크 — expiry·리포트 새 스키마 디코딩
                 .domain(interface: .portfolio),   // live 부트스트랩 — 첫 포트폴리오 조회
-                .domain(interface: .speech),      // live 하네스 — answerAudio 오버라이드
+                .domain(interface: .speech),      // Example 앱 — 프리뷰 모드 speechClient previewValue 주입
                 .domain(interface: .user),        // live 부트스트랩 — 프로필·잔여 이용권 진단
                 // live 하네스 실 IO — NetworkClient·AuthorizedNetworkClient liveValue 활성화.
                 .project(target: "CoreNetworkImplementation", path: .core(.network)),
