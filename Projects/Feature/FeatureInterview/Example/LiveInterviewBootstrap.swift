@@ -37,6 +37,9 @@ struct LiveInterviewBootstrap: View {
     }
 
     @State private var stage: Stage = .idle
+    /// bootstrap 재진입 가드 — `.task` 재발화(뷰 아이덴티티 변경 시 이전 Task 는 취소 신호만 받고 계속 돈다)나
+    /// 겹친 탭이 `createSession` 을 중복 호출해 이용권(희소한 테스트 자원)을 이중 소모하는 것을 막는다.
+    @State private var isBootstrapping = false
 
     var body: some View {
         Group {
@@ -87,6 +90,10 @@ struct LiveInterviewBootstrap: View {
 
     @MainActor
     private func bootstrap() async {
+        guard !isBootstrapping else { return }   // 진행 중이면 무시 — 기존 흐름이 상태를 마저 끌고 간다
+        isBootstrapping = true
+        defer { isBootstrapping = false }
+
         // 스킴 env 복사 실수 흡수 — 줄바꿈·공백·따옴표·Bearer 접두를 벗기고 JWT 형태(점 2개)를 검증한다.
         let token = Self.normalize(accessToken)
         guard token.split(separator: ".").count == 3 else {
