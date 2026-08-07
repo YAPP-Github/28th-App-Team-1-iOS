@@ -108,6 +108,7 @@ public struct GuestFeedbackFeature {
         public enum View: BindableAction, Sendable {
             case binding(BindingAction<State>)
             case onAppear
+            case closeTapped            // 상단 X — 어느 phase 에서든 부모에게 dismissed 통보
             case startTapped            // 온보딩 → 닉네임 시트 표출
             case nicknameNextTapped     // 닉네임 확정 → starting
             case nicknameSheetDismissed // 닉네임 시트 스와이프 취소 → 온보딩 유지
