@@ -30,6 +30,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         // 그 뒤에도 남는다 — 그대로 두면 iOS 가 곧장 앱을 정지시켜 complete 가 잘리고 저널만 `.completing`
         // 으로 남는다(데이터는 안전하지만 그 사이 서버가 영상 없이 리포트를 확정할 수 있다).
         // assertion 으로 재개가 잦아들 때까지(= `resumePending()` 반환) 정지를 미룬다.
+        // `assertion` 은 락 없이 안전하다 — 이 델리게이트 메서드는 @MainActor(UIApplicationDelegate 주석)라
+        // Task 도 메인 격리를 상속하고, 만료 핸들러 역시 항상 메인 스레드에서 불린다(UIKit 문서).
+        // 접근 3곳(할당·본문 end·만료 end)이 전부 메인 직렬이라 guard+invalid 리셋만으로 1회 반납이 성립한다.
         Task {
             var assertion: UIBackgroundTaskIdentifier = .invalid
             let end = {
