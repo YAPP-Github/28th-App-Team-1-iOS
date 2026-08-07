@@ -179,6 +179,9 @@ struct AppFeature {
                     //       그때까지는 위저드를 태운다 — draft 가 값을 복원해 대부분 넘기기만 하면 되고,
                     //       아무 일도 안 일어나는 [시작하기] 보다는 낫다.
                     state.onboarding = OnboardingFeature.State(userName: state.home.userName)
+                case .inProgress:
+                    // 진행 중 시안엔 [시작하기] 가 없다(CTA 는 «처음부터 시작»·«이어서 진행») — 도달하지 않는다.
+                    break
                 case .exhausted:
                     // 소진 시안엔 [시작하기] 가 없다(CTA 는 «홈으로») — 도달하지 않는다.
                     break
@@ -188,6 +191,14 @@ struct AppFeature {
                 // [수정하기] — 고칠 대상이 온보딩이 모으는 그 정보다. 같은 위저드를 처음부터 다시 태운다.
                 // 저장된 draft 가 살아 있으면 위저드가 알아서 값을 복원한다(TTL 14일 — [[onboarding#코디네이터]]).
                 state.onboarding = OnboardingFeature.State(userName: state.home.userName)
+                return .none
+            // 진행 중(held) 면접 두 갈래 — 지금은 신호만 뚫어 뒀다. 홈이 sessionId 를 모르고(조회 API
+            // 미결 6-3), 버린 세션의 레포트 생성·이용권 차감도 서버 계약이 먼저다.
+            // TODO(#69): held 세션 API 확정 후 배선 — 이어서 진행은 `state.interview =
+            //            InterviewFeature.State(sessionId:)` 한 줄, 처음부터는 새 세션 생성 경로.
+            case .home(.delegate(.interviewRestartRequested)):
+                return .none
+            case .home(.delegate(.interviewResumeRequested)):
                 return .none
             case .home(.delegate(.profileRequested)):
                 // TODO: 마이페이지 진입 — Part 5 Feature 가 생기면 조립한다(docs/work/home-account.md §4).
