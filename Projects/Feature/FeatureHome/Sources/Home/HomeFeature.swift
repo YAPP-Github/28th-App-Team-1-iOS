@@ -7,7 +7,6 @@
 
 import ComposableArchitecture
 import DomainInterviewInterface
-import DomainPortfolioInterface
 import DomainUserInterface
 import Foundation
 
@@ -79,7 +78,7 @@ public struct HomeFeature {
 
     @ObservableState
     public struct State: Equatable {
-        /// 화면 상태 — 홈 진입 시 로드 결과(잔여·기록·포폴)가 결정한다.
+        /// 화면 상태 — 홈 진입 시 로드 결과(잔여·기록)가 결정한다.
         public var phase: Phase = .default
         /// 인사말에 넣는 사용자 이름 — 홈 진입 로드(`UserClient.profile`)가 덮어쓴다.
         /// 기본값은 빈 문자열이다: 사람 이름을 박아 두면 프로필 응답이 늦을 때 **모든 사용자가
@@ -105,7 +104,7 @@ public struct HomeFeature {
             if detent != .startInterview { startInterview.isConfirmingRestart = false }
         }
         /// 면접 시작 화면 — 시트 **뒤에 늘 깔려 있다**. present 가 아닌 이유는 `SheetDetent` 주석 참조.
-        /// 잔여·포폴·변형은 홈 진입 로드가 채운다 — 진실은 탭 시점 게이트(`checkStartEligibility`) 재검증이다.
+        /// 잔여·변형은 홈 진입 로드가 채운다 — 진실은 탭 시점 게이트(`checkStartEligibility`) 재검증이다.
         public var startInterview: StartInterviewFeature.State
         /// dev 데이터 초기화 버튼 노출 여부 — AppFeature 가 dev 빌드에서만 켠다.
         public var showsDevReset: Bool
@@ -134,7 +133,7 @@ public struct HomeFeature {
 
         /// 사용자 입력·생명주기. View 의 send(...) 로만 방출된다.
         public enum View: Sendable {
-            // 홈 진입 로드 — 프로필·포폴은 `inner(.entryLoaded)`, 기록 목록은 `inner(.reportsLoaded)`.
+            // 홈 진입 로드 — 프로필은 `inner(.entryLoaded)`, 기록 목록은 `inner(.reportsLoaded)`.
             // TODO: 남은 1종(진행 중 held 세션)은 계약 확정 후(미결 6-3).
             case onAppear
             /// 시트 드래그가 끝나 자리가 정해졌다 — 판정은 뷰(`HomeSheetDrag`), 확정은 여기.
@@ -151,9 +150,9 @@ public struct HomeFeature {
 
         /// effect 결과·리듀서 내부 신호. 리듀서만 방출한다.
         public enum Inner: Sendable {
-            /// 홈 진입 로드 결과 — 실패한 쪽만 nil 이다(부분 실패 허용, 성공한 값은 그대로 반영).
+            /// 홈 진입 로드 결과 — 실패면 nil 이다(직전 값을 지우지 않고 그대로 둔다).
             /// 묶음 API(미결 6-1)로 바뀌어도 갈아끼울 자리는 이 한 케이스다.
-            case entryLoaded(profile: UserProfile?, portfolios: [DomainPortfolioInterface.Portfolio]?)
+            case entryLoaded(profile: UserProfile?)
             /// 기록 리스트 로드 결과 — 목록과 phase 를 함께 갱신한다.
             /// nil 은 «모른다»(호출 실패) — 직전 목록을 지우지 않는다. 빈 배열은 «기록이 없다» 로 다르다.
             case reportsLoaded([Report]?)
@@ -167,8 +166,6 @@ public struct HomeFeature {
             case reportDetailRequested(id: Report.ID)
             /// 면접 시작 요청 — 면접 시작 화면의 [시작하기] 가 발원지. 전환은 AppFeature.
             case interviewStartRequested
-            /// 면접 정보 수정 요청 — 면접 시작 화면의 [수정하기] 가 발원지. 전환은 AppFeature.
-            case interviewInfoEditRequested
             /// 진행 중 면접을 버리고 처음부터 요청 — 확인 단계를 통과한 [처음부터 시작] 이 발원지.
             /// **세션 id 를 싣지 않는다** — held 세션 조회 API 가 없어 홈이 그 값을 모른다(미결 6-3).
             case interviewRestartRequested
@@ -183,7 +180,6 @@ public struct HomeFeature {
     private enum CancelID { case entryLoad }
 
     @Dependency(\.interviewClient) var interviewClient
-    @Dependency(\.portfolioClient) var portfolioClient
     @Dependency(\.userClient) var userClient
 
     public init() {}
@@ -195,19 +191,13 @@ public struct HomeFeature {
                 // 홈 밖에 다녀오면 시트는 기본 자리로 — 남의 화면에서 돌아왔는데 면접 시작이
                 // 떠 있거나 목록이 펼쳐진 채면 «홈에 왔다» 는 신호가 사라진다.
                 state.settle(.report)
-                // 첫 진입만이 아니라 **매 진입 재조회** — 포폴은 온보딩 S2·마이페이지가, 잔여·기록은
-                // 면접이 바꾼다. 캐시하면 무효화 신호를 AppFeature 로 돌려야 하는데(Feature→Feature 금지)
-                // 1건짜리 GET 세 번보다 비싸다. 진실은 서버(docs/work/home-account.md §3·§6).
+                // 첫 진입만이 아니라 **매 진입 재조회** — 잔여·기록은 면접이 바꾼다. 캐시하면 무효화
+                // 신호를 AppFeature 로 돌려야 하는데(Feature→Feature 금지) 1건짜리 GET 두 번보다 비싸다.
+                // 진실은 서버(docs/work/home-account.md §3·§6).
                 // 값은 지우지 않고 덮어쓰기만 한다 — 재진입마다 화면이 비면 깜빡인다.
                 return .merge(
                     .run { send in
-                        // 한쪽이 죽어도 다른 쪽은 그린다 — 포폴 실패로 인사말·잔여까지 날리지 않는다.
-                        async let profile = try? await userClient.profile()
-                        async let portfolioList = try? await portfolioClient.list()
-                        await send(.inner(.entryLoaded(
-                            profile: await profile,
-                            portfolios: await portfolioList?.portfolios
-                        )))
+                        await send(.inner(.entryLoaded(profile: try? await userClient.profile())))
                     },
                     // 기록 목록은 별도 effect — 목록이 느려도 인사말·면접 시작 카드는 먼저 그린다.
                     .run { send in
@@ -236,7 +226,7 @@ public struct HomeFeature {
             case .view(.userTappedResetAppData):
                 return .send(.delegate(.appDataResetRequested))
 
-            case let .inner(.entryLoaded(profile, portfolios)):
+            case let .inner(.entryLoaded(profile)):
                 if let profile {
                     // 이름은 온보딩 전이면 비어 올 수 있다 — 그때는 앞서 그리던 값을 유지한다.
                     if let name = profile.name, !name.isEmpty {
@@ -245,12 +235,8 @@ public struct HomeFeature {
                     }
                     state.startInterview.remainingChances = profile.remainingTicketCount
                 }
-                if let portfolios {
-                    state.startInterview.portfolio = Self.reusablePortfolio(from: portfolios)
-                }
                 state.startInterview.variant = Self.startVariant(
-                    remainingChances: state.startInterview.remainingChances,
-                    portfolio: state.startInterview.portfolio
+                    remainingChances: state.startInterview.remainingChances
                 )
                 return .none
 
@@ -278,8 +264,6 @@ public struct HomeFeature {
             case .startInterview(.delegate(.startRequested)):
                 // 면접 플로우는 다른 Feature 라 AppFeature 가 조립한다(Feature→Feature 금지).
                 return .send(.delegate(.interviewStartRequested))
-            case .startInterview(.delegate(.editInfoRequested)):
-                return .send(.delegate(.interviewInfoEditRequested))
             // 진행 중 면접의 두 갈래도 홈이 처리할 수 없는 전환이라 그대로 위로 올린다.
             case .startInterview(.delegate(.restartRequested)):
                 return .send(.delegate(.interviewRestartRequested))
@@ -301,34 +285,18 @@ public struct HomeFeature {
 // MARK: - 진입 로드 → 표시값
 
 private extension HomeFeature {
-    /// «이전 정보 재사용» 카드에 걸 포폴 — MVP 는 계정당 1개지만 응답이 배열이라 첫 건을 쓴다.
-    /// READY 만 고른다: PROCESSING 을 걸어 두면 시작 시점에 게이트가 `PORTFOLIO_NOT_READY` 로 뒤집는다.
-    // TODO: PROCESSING 이면 3~5초 폴링해 READY 로 승격 (PortfolioClient.status — 온보딩 S2 와 같은 규칙).
-    static func reusablePortfolio(
-        from portfolios: [DomainPortfolioInterface.Portfolio]
-    ) -> StartInterviewFeature.Portfolio? {
-        portfolios
-            .first { $0.status == .ready }
-            .flatMap(StartInterviewFeature.Portfolio.init(portfolio:))
-    }
-
-    /// 면접 시작 카드 변형 — 잔여 0 이 최우선(소진 안내), 다음이 재사용할 포폴 유무.
+    /// 면접 시작 카드 변형 — 잔여 0 이면 소진 안내, 아니면 `first` 다.
     /// 서버 판정의 표시일 뿐이다 — 시작 가능 여부의 진실은 탭 시점 게이트다.
     ///
-    /// **포폴 유무가 곧 «회차» 판정 키다**(docs/work/home-account.md §3 «회차 분기 판정 키»).
-    /// 서버에 면접 이력 필드를 두지 않는다 — 이 분기가 묻는 건 «불러올 포폴이 있나» 이고,
-    /// 포폴은 계정당 1개라 READY 한 건이 곧 재사용 대상이다. 지운 사용자가 `first` 로
-    /// 떨어지는 것도 의도다 — 올릴 게 없으면 S2 부터다.
+    /// **회차를 묻지 않는다** — 포폴 보유로 «2회차» 를 가르던 분기는 걷어냈다(제품 결정 2026-08-08).
+    /// 홈은 포폴을 조회하지 않고, 필요한 정보 수집은 시작 경로(온보딩 위저드)가 알아서 한다.
     ///
     /// **잔여를 모르면(nil) 소진이 아니다** — 프로필이 죽었을 뿐인데 «무료 횟수를 모두 사용했어요»
-    /// 를 띄우면 시작 경로가 [홈으로] 하나로 막힌다. 모를 땐 포폴 유무로만 가른다.
+    /// 를 띄우면 시작 경로가 [홈으로] 하나로 막힌다. 모를 땐 `first` 로 둔다.
     // TODO(#69): held 세션 조회 API(미결 6-3) 도착 시 `.inProgress` 판정 추가 — 진행 중 세션이 있으면
-    //            잔여·포폴보다 **먼저**다(그때는 [이어서 진행] 이 유일한 정상 경로라서).
-    static func startVariant(
-        remainingChances: Int?,
-        portfolio: StartInterviewFeature.Portfolio?
-    ) -> StartInterviewFeature.Variant {
+    //            잔여보다 **먼저**다(그때는 [이어서 진행] 이 유일한 정상 경로라서).
+    static func startVariant(remainingChances: Int?) -> StartInterviewFeature.Variant {
         if let remainingChances, remainingChances <= 0 { return .exhausted }
-        return portfolio == nil ? .first : .hasPortfolio
+        return .first
     }
 }

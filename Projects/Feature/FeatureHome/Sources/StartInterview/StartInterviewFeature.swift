@@ -6,53 +6,33 @@
 //
 
 import ComposableArchitecture
-import DomainPortfolioInterface
-import Foundation
 
 // @lat: [[home]]
-/// 면접 시작 — 홈 씬에서 리포트 시트 뒤에 깔리는 한 겹. 시안 4장을 `Variant` 로 분기한다.
+/// 면접 시작 — 홈 씬에서 리포트 시트 뒤에 깔리는 한 겹. 시안 3장을 `Variant` 로 분기한다.
 ///
 /// 홈의 phase 가 아니라 별도 Reducer 인 이유: 홈 상태의 표시가 아니라 «면접을 시작할까» 를 묻는
-/// 별도 화면이고, 응답(시작·수정)은 홈이 처리할 수 없는 cross-feature 전환이라 delegate 로 올라간다.
+/// 별도 화면이고, 응답(시작·이어서 진행)은 홈이 처리할 수 없는 cross-feature 전환이라 delegate 로 올라간다.
 ///
 /// 나가기는 여기 없다 — 이 겹을 덮는 건 «시트를 도로 올린다» 라서 홈의 자리(`SheetDetent`) 몫이다.
 /// 하단 «홈으로» 만 delegate 로 올린다(CTA 는 이 화면 소유라서).
 @Reducer
 public struct StartInterviewFeature {
-    /// 시안 4종 — 처음 / 등록 포폴 있음 / 진행 중 면접 있음 / 무료 횟수 모두 사용.
+    /// 시안 3종 — 처음 / 진행 중 면접 있음 / 무료 횟수 모두 사용.
     ///
-    /// `first` = 1회차, `hasPortfolio` = **2회차 이상**이다 — 판정 키는 READY 포폴 보유 하나뿐이고
-    /// 서버 면접 이력은 보지 않는다(`HomeFeature.startVariant` · docs/work/home-account.md §3).
+    /// 회차를 묻지 않는다 — 포폴 보유 여부로 «2회차» 를 가르던 분기는 걷어냈다(제품 결정 2026-08-08).
     ///
     /// `inProgress` 만 **서버 재료가 아직 없다** — held 세션 조회 API 가 미결(6-3)이라 `startVariant`
     /// 가 이 값을 내지 못한다. 화면 확인은 프리뷰 전담이다.
     public enum Variant: Equatable, Sendable {
         case first
-        case hasPortfolio
         /// 진행 중(held) 면접이 있다 — 남은 질문 수는 그 세션의 값이다.
         case inProgress(remainingQuestionCount: Int)
         case exhausted
     }
 
-    /// 등록된 포트폴리오 표시값 — 카드 한 줄에 들어가는 원값만 담는다.
-    /// **포맷팅은 뷰 몫**이다(«2026.07.31»·«3.2mb» 같은 표기는 시안 소유).
-    /// 날짜·용량이 옵셔널인 건 서버 응답이 그렇기 때문이다 — 없으면 뷰가 그 조각만 뺀다
-    /// («0.0mb»·«1970.01.01» 같은 가짜 값을 만들지 않는다).
-    public struct Portfolio: Equatable, Sendable {
-        public var fileName: String
-        public var uploadedAt: Date?
-        public var byteCount: Int?
-
-        public init(fileName: String, uploadedAt: Date?, byteCount: Int?) {
-            self.fileName = fileName
-            self.uploadedAt = uploadedAt
-            self.byteCount = byteCount
-        }
-    }
-
     @ObservableState
     public struct State: Equatable {
-        /// 표시할 시안 변형 — 홈 진입 로드 결과로 홈이 정한다(잔여 0 이면 소진, 포폴 있으면 재사용).
+        /// 표시할 시안 변형 — 홈 진입 로드 결과로 홈이 정한다(잔여 0 이면 소진).
         public var variant: Variant
         /// «처음부터 시작하시겠어요?» 확인 단계에 들어와 있는가 — `.inProgress` 밖에선 의미가 없다.
         ///
@@ -64,27 +44,23 @@ public struct StartInterviewFeature {
         public var userName: String
         /// 남은 무료 면접 횟수 — 서버 값 표시만(«진실은 서버에만», docs/work/home-account.md §3).
         /// **nil 은 «아직 모른다»** 다(프로필 응답 전·실패). 0 과 갈라 둬야 로드 실패를 소진으로
-        /// 오해하지 않는다 — 포폴 날짜·용량과 같은 규칙이다(없는 조각은 가짜 값 대신 뺀다).
+        /// 오해하지 않는다 — 없는 조각은 가짜 값을 만들지 않고 뷰가 그 조각만 뺀다.
         public var remainingChances: Int?
-        /// 등록된 포트폴리오 — 없으면 nil(«이전 정보 재사용» 시안에서만 카드에 쓴다).
-        public var portfolio: Portfolio?
 
         /// 기본값은 전부 중립이다 — `variant` 로 시안 값을 파생하지 않는다.
-        /// 파생하면 프리뷰 픽스처(`Portfolio.placeholder` 의 «{파일명}.pdf», 조작된 잔여 3회)가
-        /// 앱에서 그대로 그려진다. 시안대로 보고 싶은 프리뷰가 픽스처를 명시로 넘긴다.
+        /// 파생하면 프리뷰 픽스처(이름 «재원», 조작된 잔여 3회)가 앱에서 그대로 그려진다.
+        /// 시안대로 보고 싶은 프리뷰가 픽스처를 명시로 넘긴다.
         /// 잔여의 중립은 **0 이 아니라 nil** 이다 — 0 은 «소진» 이라는 서버 판정이라서.
         public init(
             variant: Variant,
             isConfirmingRestart: Bool = false,
             userName: String = "",
-            remainingChances: Int? = nil,
-            portfolio: Portfolio? = nil
+            remainingChances: Int? = nil
         ) {
             self.variant = variant
             self.isConfirmingRestart = isConfirmingRestart
             self.userName = userName
             self.remainingChances = remainingChances
-            self.portfolio = portfolio
         }
     }
 
@@ -97,8 +73,6 @@ public struct StartInterviewFeature {
         public enum View: Sendable {
             /// [시작하기] 탭.
             case userTappedStart
-            /// [수정하기] 탭 — 이전 면접 정보를 고치고 시작한다.
-            case userTappedEditInfo
             /// 진행 중 시안의 [처음부터 시작] 탭 — 곧장 버리지 않고 확인 단계로 들어간다.
             case userTappedRestart
             /// 확인 단계의 [뒤로가기] 탭 — 확인만 접고 진행 중 시안으로 돌아간다.
@@ -118,8 +92,6 @@ public struct StartInterviewFeature {
         public enum Delegate: Sendable {
             /// 면접 시작 요청 — 실제 전환은 홈 위로 AppFeature 가 조립한다.
             case startRequested
-            /// 면접 정보 수정 요청 — 전환은 AppFeature.
-            case editInfoRequested
             /// 처음부터 시작 확정 — **확인 단계를 통과한 뒤에만** 나간다. 전환은 AppFeature.
             case restartRequested
             /// 이어서 진행 요청 — 진행 중 세션 복귀. 전환은 AppFeature.
@@ -136,8 +108,6 @@ public struct StartInterviewFeature {
             switch action {
             case .view(.userTappedStart):
                 return .send(.delegate(.startRequested))
-            case .view(.userTappedEditInfo):
-                return .send(.delegate(.editInfoRequested))
             case .view(.userTappedRestart):
                 // 이 탭은 아직 요청이 아니다 — 진행분을 버리는 일이라 한 번 되묻는다(시안 443:5873).
                 state.isConfirmingRestart = true
@@ -159,35 +129,3 @@ public struct StartInterviewFeature {
         }
     }
 }
-
-// MARK: - 서버 값 → 표시값
-
-extension StartInterviewFeature.Portfolio {
-    /// 서버 포폴(`DomainPortfolio.Portfolio`) → 카드 표시값.
-    /// 파일명이 없으면 그릴 줄 자체가 성립하지 않아 nil 이다(서버는 항상 주지만 응답 모델이 옵셔널).
-    init?(portfolio: DomainPortfolioInterface.Portfolio) {
-        guard let fileName = portfolio.fileName else { return nil }
-        self.init(
-            fileName: fileName,
-            uploadedAt: portfolio.uploadedAt,
-            byteCount: portfolio.fileSize
-        )
-    }
-}
-
-// MARK: - 시안 값
-
-// `#if DEBUG` — 「프리뷰 전용」을 주석이 아니라 컴파일러가 지키게 한다.
-// 릴리스 코드가 이걸 참조하면 그 빌드가 깨지므로 시안 픽스처가 앱에 새지 않는다.
-#if DEBUG
-extension StartInterviewFeature.Portfolio {
-    /// 시안(3632:13730)의 파일 한 줄 — **프리뷰·시안 확인 전용** 픽스처다.
-    /// 파일명은 시안 표기 그대로, 날짜·용량은 형이 붙어 표본값이다(포맷은 뷰가 만든다).
-    public static let placeholder = Self(
-        fileName: "{파일명}.pdf",
-        // 2026-07-31 00:00 UTC — 프리뷰가 흔들리지 않게 고정값을 쓴다.
-        uploadedAt: Date(timeIntervalSince1970: 1_785_456_000),
-        byteCount: 3_355_443
-    )
-}
-#endif
