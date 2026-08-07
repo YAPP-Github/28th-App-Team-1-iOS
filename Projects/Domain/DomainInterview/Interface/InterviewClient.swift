@@ -20,6 +20,16 @@ public struct InterviewClient: Sendable {
     public var submitAnswer: @Sendable (_ sessionId: Int, AnswerSubmission) async throws -> AnswerResult
     /// GET /interview/sessions/{id}/questions/{qid}/audio/stream 재생 정보 — AVPlayer 점진 재생용.
     public var questionAudioStream: @Sendable (_ sessionId: Int, _ questionId: Int) async throws -> InterviewAudioStream
+    /// GET /interview/sessions/{id}/resume — 재개 가능 여부 조회. 상태를 바꾸지 않는다(hold 만료 정리는 서버 몫).
+    /// 없거나 남의 세션이면 `sessionNotFound`.
+    public var checkResume: @Sendable (_ sessionId: Int) async throws -> InterviewResumeCheck
+    /// POST /interview/sessions/{id}/resume — 재개 확정(body 없음). 반환은 `submitAnswer` 와 같은 `AnswerResult` —
+    /// 서버가 답변 제출과 같은 스키마를 쓰고 `answerId` 만 비우므로(이미 옵셔널) 턴 루프 처리기를 그대로 재사용한다.
+    /// `checkResume` 을 건너뛰고 IN_PROGRESS 아닌 세션에 쏘면 409(`sessionAlreadyEnded`·`sessionNotStarted`·`sessionPreloadFailed`).
+    public var confirmResume: @Sendable (_ sessionId: Int) async throws -> AnswerResult
+    /// POST /interview/sessions/{id}/abandon — 면접 중단. `userExit` 은 진행분 리포트 생성 트리거,
+    /// `networkDisconnect` 는 이용권 환급·리포트 없음. 중복 호출은 `sessionAlreadyEnded`(= 이미 중단 완료).
+    public var abandonSession: @Sendable (_ sessionId: Int, _ cause: AbandonCause) async throws -> AbandonResult
     /// GET /interview/sessions — 내 면접 레포트 목록(홈 위젯②·마이페이지). envelope `{ reports }` 는 Live 가 벗긴다.
     public var reportList: @Sendable () async throws -> [InterviewReportSummary]
 
@@ -28,12 +38,18 @@ public struct InterviewClient: Sendable {
         sessionStatus: @escaping @Sendable (_ sessionId: Int) async throws -> InterviewSessionStatus,
         submitAnswer: @escaping @Sendable (_ sessionId: Int, AnswerSubmission) async throws -> AnswerResult,
         questionAudioStream: @escaping @Sendable (_ sessionId: Int, _ questionId: Int) async throws -> InterviewAudioStream,
+        checkResume: @escaping @Sendable (_ sessionId: Int) async throws -> InterviewResumeCheck,
+        confirmResume: @escaping @Sendable (_ sessionId: Int) async throws -> AnswerResult,
+        abandonSession: @escaping @Sendable (_ sessionId: Int, _ cause: AbandonCause) async throws -> AbandonResult,
         reportList: @escaping @Sendable () async throws -> [InterviewReportSummary]
     ) {
         self.createSession = createSession
         self.sessionStatus = sessionStatus
         self.submitAnswer = submitAnswer
         self.questionAudioStream = questionAudioStream
+        self.checkResume = checkResume
+        self.confirmResume = confirmResume
+        self.abandonSession = abandonSession
         self.reportList = reportList
     }
 }
@@ -46,6 +62,9 @@ extension InterviewClient: TestDependencyKey {
             sessionStatus: unimplemented("InterviewClient.sessionStatus"),
             submitAnswer: unimplemented("InterviewClient.submitAnswer"),
             questionAudioStream: unimplemented("InterviewClient.questionAudioStream"),
+            checkResume: unimplemented("InterviewClient.checkResume"),
+            confirmResume: unimplemented("InterviewClient.confirmResume"),
+            abandonSession: unimplemented("InterviewClient.abandonSession"),
             reportList: unimplemented("InterviewClient.reportList")
         )
     }
@@ -76,6 +95,33 @@ extension InterviewClient: TestDependencyKey {
                 InterviewAudioStream(
                     url: URL(string: "preview://interview/\(sessionId)/questions/\(questionId)")!,
                     headers: [:]
+                )
+            },
+            // 재개는 «가능» 을 그린다 — 2:12 경과(= 남은 시간이 있는 상태)라 홈의 [이어서 진행] 시안이 보인다.
+            checkResume: { _ in
+                InterviewResumeCheck(
+                    resumeState: .resumable,
+                    startedAt: Date(timeIntervalSince1970: 1_782_000_000),
+                    elapsedSeconds: 132,
+                    status: nil
+                )
+            },
+            confirmResume: { _ in
+                AnswerResult(
+                    answerId: nil,
+                    nextQuestion: NextQuestion(questionId: 21, isLast: false, turn: TurnInfo(turnLevel: 2, depthLevel: 0)),
+                    sessionEnded: false,
+                    wrapUpMessage: nil,
+                    endType: nil
+                )
+            },
+            abandonSession: { _, cause in
+                AbandonResult(
+                    status: .abandoned,
+                    abandonCause: SessionAbandonCause(cause),
+                    ticketOutcome: cause == .userExit ? .held : .released,
+                    reportGenerating: cause == .userExit,
+                    endedAt: Date(timeIntervalSince1970: 1_782_000_300)
                 )
             },
             // 목록은 **여러 건**을 준다 — 홈 위젯② 는 펼친 행 1 + 접힌 행 N 이 시안이라 1건만 주면

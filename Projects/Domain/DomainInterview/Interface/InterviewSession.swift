@@ -72,3 +72,18 @@ public struct InterviewSessionStatus: Decodable, Equatable, Sendable {
         self.summaryQuestion = summaryQuestion
     }
 }
+
+// MARK: - 세션 종료 상태
+
+/// 이미 끝난 세션의 상태 — 재개 조회(`InterviewResumeCheck.status`)와 중단 응답(`AbandonResult.status`)이
+/// 같은 값 집합을 쓴다. 준비 상태(`InterviewReadiness`)와는 겹치는 값이 없어 분리 유지한다.
+public enum InterviewEndedStatus: String, Decodable, Equatable, Sendable {
+    /// 정상 완주 — 리포트 대상.
+    case completed = "COMPLETED"
+    /// 중단 종료 — 사유는 `abandonCause`(사용자 이탈·네트워크 단절·hold 만료).
+    case abandoned = "ABANDONED"
+    /// 무효 세션(STT 30% 실패 등) — 이용권 환불·리포트 없음.
+    case invalid = "INVALID"
+    /// 질문 프리로드 실패 — 시작조차 못 한 세션. 이용권 환불.
+    case preloadFailed = "PRELOAD_FAILED"
+}
