@@ -720,6 +720,11 @@ extension InterviewSessionFeature {
         .run { send in
             var submission = submission
             if fillsAudio { submission.audio = await speechClient.answerAudio() }
+            // 답변별 산출물 크기 — 세션 «도중» 기록이 죽는 지점을 콘솔에서 판별한다(STT_RESET 추적).
+            // 정상 은 대략 12KB/s + 4KB 헤더 — 수 KB 면 빈 껍데기, 0 이면 기록이 안 열린 것.
+            Self.recordingLogger.notice(
+                "답변 오디오 \(submission.audio?.count ?? 0) bytes — 질문 \(submission.questionId)"
+            )
             do {
                 await send(.inner(.answerSubmitted(try await submitWithRetry(sessionId, submission))))
             } catch is CancellationError {
