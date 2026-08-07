@@ -17,9 +17,13 @@ let project = Project.makeModule(
             .composableArchitecture
         ])),
         // Example 도 composition root — umbrella 로 Domain/Core liveValue 를 활성화한다 (D4).
-        .feature(example: "Common", factory: .init(dependencies: [
-            .domain,
-            .core
-        ]))
+        .feature(example: "Common", factory: .init(
+            // 앱 아이콘 — feature(example:) 는 기본 리소스가 없어 명시 안 하면 아이콘 누락(업로드 90713·90022).
+            resources: ["Example/Resources/**"],
+            dependencies: [
+                .domain,
+                .core
+            ]
+        ))
     ]
 )

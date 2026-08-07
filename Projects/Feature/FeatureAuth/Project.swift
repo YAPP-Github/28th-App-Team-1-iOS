@@ -9,6 +9,7 @@ let project = Project.makeModule(
         .feature(implements: "Auth", factory: .init(dependencies: [
             .composableArchitecture,
             .domain(interface: .auth),
+            .domain(interface: .common),       // 미승격 서버 에러 공통 Alert(serverAlertState)
             .domain(interface: .consent),      // A1 약관 — pending 항목 렌더·submit (게이트 ①)
             .domain(interface: .job),          // 가입 온보딩 직군 선택(AuthOnboardingJob)
             .domain(interface: .user),         // 가입 온보딩 프로필 일괄 PATCH(AuthFeature)
@@ -22,12 +23,16 @@ let project = Project.makeModule(
             .domain(interface: .auth),
             .domain(interface: .consent)
         ])),
-        .feature(example: "Auth", factory: .init(dependencies: [
-            .composableArchitecture,
-            .domain(interface: .auth),
-            .domain(interface: .consent),
-            .domain(interface: .job),
-            .domain(interface: .user)
-        ]))
+        .feature(example: "Auth", factory: .init(
+            // 앱 아이콘 — feature(example:) 는 기본 리소스가 없어 명시 안 하면 아이콘 누락(업로드 90713·90022).
+            resources: ["Example/Resources/**"],
+            dependencies: [
+                .composableArchitecture,
+                .domain(interface: .auth),
+                .domain(interface: .consent),
+                .domain(interface: .job),
+                .domain(interface: .user)
+            ]
+        ))
     ]
 )

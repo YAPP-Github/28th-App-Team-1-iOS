@@ -16,9 +16,13 @@ let project = Project.makeModule(
         .feature(tests: "MyPage", factory: .init(dependencies: [
             .composableArchitecture
         ])),
-        .feature(example: "MyPage", factory: .init(dependencies: [
-            .composableArchitecture,
-            .shared(interface: .designSystem)
-        ]))
+        .feature(example: "MyPage", factory: .init(
+            // 앱 아이콘 — feature(example:) 는 기본 리소스가 없어 명시 안 하면 아이콘 누락(업로드 90713·90022).
+            resources: ["Example/Resources/**"],
+            dependencies: [
+                .composableArchitecture,
+                .shared(interface: .designSystem)
+            ]
+        ))
     ]
 )

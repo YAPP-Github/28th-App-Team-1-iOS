@@ -39,8 +39,8 @@ let project = Project.makeModule(
                 // 온보딩 데모는 네트워크·암호화 미사용 → TestFlight 업로드 시 수출규정 질문 스킵.
                 "ITSAppUsesNonExemptEncryption": false
             ]),
-            // 앱 아이콘 — 임시 단색(Resources/Assets.xcassets/AppIcon). feature(example:) 는 기본 리소스가 없어
-            // 명시하지 않으면 아이콘 누락(업로드 90713·90022)이 난다.
+            // 앱 아이콘 — feature(example:) 는 기본 리소스가 없어 명시 안 하면 아이콘 누락(업로드 90713·90022).
+            // 다른 모듈은 Example/Resources 에 두지만 이 모듈만 모듈 루트 Resources 를 쓴다.
             resources: ["Resources/**"],
             dependencies: [
                 .composableArchitecture,
