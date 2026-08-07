@@ -75,7 +75,7 @@ public struct HomeView: View {
             HomeReportSheet(
                 store: store,
                 // 펼칠 목록이 없으면 확장 자리를 막는다.
-                dragHandle: dragHandle(allowsExpanded: store.phase != .default)
+                dragHandle: dragHandle(available: available, allowsExpanded: store.phase != .default)
             )
                 .frame(height: displayHeight)
                 .offset(y: sheetOffset)
@@ -169,8 +169,10 @@ public struct HomeView: View {
         return min(max(resting - dragTranslation, 0), available)
     }
 
-    private func dragHandle(allowsExpanded: Bool) -> HomeSheetDragHandle {
+    private func dragHandle(available: CGFloat, allowsExpanded: Bool) -> HomeSheetDragHandle {
         HomeSheetDragHandle(
+            // 목록 브리지가 «어디까지 시트가 먹는지» 를 가르는 값 — 높이 규칙은 여기서도 HomeSheetDrag 다.
+            travelRange: HomeSheetDrag.travelRange(for: store.sheetDetent, available: available),
             onChanged: { translation in
                 isDragging = true
                 dragTranslation = translation
@@ -185,6 +187,7 @@ public struct HomeView: View {
                 isDragging = false
                 dragTranslation = 0
                 send(.userSettledSheet(settled))
+                return settled
             }
         )
     }
