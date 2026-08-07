@@ -1,10 +1,10 @@
 # App 도메인 — 코디네이터 (AppFeature)
 
-앱 최상위 Reducer 겸 **탭 코디네이터**. 각 탭 Feature 의 State 를 보유하고, **Feature 간(cross-feature) 전환은 여기서만** 조립한다. 각 Feature 는 서로를 모르고 `delegate` 로만 신호를 올린다. (현재 #6 은 스켈레톤 — AppFeature 는 골격이고 탭은 이관되며 채워진다.)
+앱 최상위 Reducer 겸 **화면 코디네이터**. 각 Feature 의 State 를 보유하고, **Feature 간(cross-feature) 전환은 여기서만** 조립한다. 각 Feature 는 서로를 모르고 `delegate` 로만 신호를 올린다. (현재 #6 은 스켈레톤 — AppFeature 는 골격이고 화면은 이관되며 채워진다.)
 
-## 탭 구성
-`Scope` 로 각 Feature 를 상시 임베드한다. App 은 `.feature` umbrella 를 link 하므로 자식 reducer 를 구체 타입으로 안다. 탭끼리는 서로를 모른다.
-- 예정 탭 여럿 중 현재 실 Feature 는 Home 뿐. → [[home]]
+## 화면 구성
+`Scope` 로 각 Feature 를 상시 임베드한다. App 은 `.feature` umbrella 를 link 하므로 자식 reducer 를 구체 타입으로 안다. Feature 끼리는 서로를 모른다.
+- 현재 실 Feature 는 Home 뿐이고 **탭바가 없다** — 탭이 하나뿐인 `TabView` 는 바 자리만 차지하며 홈 배경 그라디언트가 반투명 바로 새어 나와 하단 초록 띠로 보였다(2026-08-05 제거). 홈은 `AppView` 가 `NavigationStack` 으로만 감싼다. 둘째 탭이 생기면 `TabView` + `Tab` enum + `selectedTab` 을 되살린다. → [[home]]
 - 각 Feature 의 **도메인 내부** navigation 은 그 Feature 가 자체 처리(`Path`/`StackState`). AppFeature 는 관여하지 않는다.
 
 ## Cross-feature Routing
@@ -24,9 +24,23 @@
 2. 면접 종료 두 신호 모두 `state.interview = nil` + 홈 재조회(`.home(.view(.onAppear))`) — 어느 쪽이든 잔여가 줄었고 BACK_EXIT 이탈도 리포트를 만든다(2026-08-03 서버 계약). 케이스를 합치지 않는 건 정상 종료에 리포트 상세(r1) 라우팅이 붙을 자리라서다 → [[interview#코디네이터]]
 3. **면접 커버 중에는 전역 LoadingModal 을 끈다**(`AppView.showsGlobalLoading`) — 답변 제출·질문 스트림마다 전역 딤이 덮이면 면접이 끊겨 보이고, 타이머가 도는 화면을 잠그는 것 자체가 오동작이다. 면접은 자체 진행 표시(상태 칩·초읽기)로 대기를 말한다.
 
+## 첫 실행 정리
+
+앱을 삭제해도 iOS 는 Keychain 을 지우지 않는다 — 재설치하면 토큰만 살아남아 Splash 가 «기존 세션» 으로 판정하고, 방금 새로 설치한 사용자가 로그인 상태로 들어온다. UserDefaults 쪽(온보딩 draft)은 앱과 함께 사라지므로 로컬끼리도 어긋난다. 그래서 판정을 시작하기 전에 «이 설치의 첫 실행인가» 를 묻고, 첫 실행이면 잔존 로컬 데이터를 지운다.
+
+- **판정 근거는 «앱과 함께 사라지는 저장소에 찍은 마커»** — `FirstLaunchStore`(CoreCommon)가 UserDefaults 에 마커를 두고 `isFirstLaunch()`/`markLaunched()` 만 노출한다. 마커가 없다 = 이 설치에서 아직 실행 안 됨. 마커를 Keychain 에 두면 재설치 후에도 남아 첫 실행을 영원히 놓친다.
+- **무엇을 지울지는 마커가 모른다** — 정리 대상 선택은 코디네이터(`AppFeature.clearLocalData()`)의 판단이고, 스토어 계약은 판정만 맡는다. 대상은 **Keychain 전체**(`KeychainWipe.wipeAll()` — 아이템 클래스 5종)와 온보딩 draft.
+- **Keychain 은 `tokenStore.clear()` 가 아니라 전체를 지운다** — 그건 `account: "auth-tokens"` 한 항목만 지우는데, 여기 목적은 «앱이 남긴 것 전부» 라 항목이 늘면 조용히 새는 쪽이 된다. 전체 폐기를 `TokenStore` 계약에 넣지 않은 건 토큰 스토어의 책임이 자기 항목이기 때문이고, 앱 전체를 비우는 판단은 composition root(App 타겟 `KeychainWipe`) 몫이다.
+- **UserDefaults 는 도메인째 지우지 않는다** — 첫 실행 마커가 거기 있어 통째로 날리면 다음 실행이 다시 첫 실행으로 판정된다. 지우는 건 draft 처럼 대상을 아는 항목뿐. dev 데이터 초기화 버튼만 예외로 도메인째 지운다 — 그쪽은 재설치 흉내가 목적이라 마커가 날아가는 게 맞다.
+- **마커는 정리를 마친 뒤 찍는다** — 사이에서 앱이 죽으면 다음 실행이 다시 첫 실행으로 판정돼 정리를 끝내는데, 먼저 찍으면 지우다 만 상태로 굳는다.
+- **정리가 세션 판정보다 먼저** — `onAppear` 가 정리 effect 만 돌리고 `firstLaunchResolved` 로 갈라 그때 판정을 시작한다. 같은 effect 안에서 이으면 순서가 코드 배치에 묻힌다.
+- 정리 함수는 **dev 데이터 초기화 버튼과 공유**한다 — 지울 로컬 목록이 두 곳에서 갈라지면 한쪽만 늘어난다.
+
 ## Splash 세션 복구
 
-앱 진입 판정은 `onAppear` 의 effect 하나다 — 버전 게이트 → 토큰 유무 → `pending` **한 콜**로 `State.root` 를 정한다. refresh 를 먼저 부르지 않는다 — Access 는 3시간이라 대부분 살아 있고, 만료면 이 콜의 403 을 AuthorizedNetworkClient 가 재발급·재시도로 흡수한다([[api#토큰 수명주기]]). 목적지 표·시퀀스는 [launch-routing](../docs/work/launch-routing.md), 게이트 규칙은 [[auth#게이트 2단 체인]].
+앱 진입 판정은 `firstLaunchResolved` 의 effect 하나다 (그 앞에 [[app#첫 실행 정리]]가 선다) — 버전 게이트 → 토큰 유무 → `pending` **한 콜**로 `State.root` 를 정한다. refresh 를 먼저 부르지 않는다 — Access 는 3시간이라 대부분 살아 있고, 만료면 이 콜의 403 을 AuthorizedNetworkClient 가 재발급·재시도로 흡수한다([[api#토큰 수명주기]]). 목적지 표·시퀀스는 [launch-routing](../docs/work/launch-routing.md), 게이트 규칙은 [[auth#게이트 2단 체인]].
+
+런치스크린은 **storyboard 로 SplashView 를 흉내낸다** — `App/Resources/LaunchScreen.storyboard` 가 같은 로고(171×72, 화면 중심 -50)를 흰 판 위에 그려, 시스템 런치 화면 → 앱 첫 프레임 사이에 빈 흰 판이 스치지 않는다. `UILaunchScreen` dict 는 이미지 크기·위치를 못 잡아(늘어난다) 쓰지 않고 `UILaunchStoryboardName` 으로 간다 — 두 키가 함께 있으면 dict 가 이기므로 dict 는 두지 않는다. 로고 SVG 는 App 에셋 카탈로그에 **복사본**을 둔다: 런치스크린은 앱 코드가 돌기 전 메인 번들에서 읽어 DesignSystem 번들 에셋에 닿지 못한다. 값 3개(로고 크기·오프셋·배경)는 SplashView 상수와 짝이고 자동 동기화가 없다 — 한쪽을 바꾸면 다른 쪽 제약도 고친다.
 
 `root` 가 Bool 2개가 아니라 **enum**(`splash`·`splashFailed`·`updateRequired`·`auth`·`home`)인 이유: 「판정 실패라 재시도해야 하는 상태」를 Bool 조합으로는 못 만든다.
 
@@ -39,17 +53,20 @@
 - 판정은 `consentClient`·`appVersionClient` 도 쓴다 — cross-feature 조립 자리라 Domain 의존이 여기 모인다(authClient 와 같은 이유).
 - **Splash 계열 루트에서는 전역 로딩(`LoadingModal`)을 얹지 않는다** — 판정 API 가 도는 동안이 곧 Splash 가 떠 있는 이유라 로딩 판을 덮으면 브랜드 화면만 가리고, `.updateRequired` 는 알럿과 딤이 겹친다. `AppView.showsGlobalLoading` 이 `default` 없는 switch 라 루트가 늘면 컴파일이 깨져 판단을 강제한다 → [[domain.map#네트워킹 인프라]].
 
-대표 흐름 — **dev 디버그 로그아웃** (Home 임시 버튼):
-1. dev 계에서만 `AppFeature.onAppear` 가 `home.showsDebugLogout` 을 켜고, Home 로그아웃 버튼이 `delegate(.logoutRequested)` 방출
-2. AppFeature 수신 → effect 에서 `authClient.logout()`(서버 로그아웃+토큰 Keychain 삭제)·`onboardingDraftStore.clear()`(온보딩 draft/UserDefaults 삭제). 서버 실패해도 로컬 정리는 진행(`try?`)
-3. `sessionCleared` 로 `state = State()` 리셋 → `root = .auth` → 첫 소셜 로그인 화면 복귀. Splash 로 되돌리지 않는다(로그아웃 복귀는 판정이 아니라 확정 상태). cross-feature 조립이라 authClient 의존은 코디네이터인 여기서만 가진다 → [[home]]
+대표 흐름 — **dev 데이터 초기화** (Home 임시 버튼, 2026-08-03 로 통합 — 이전의 온보딩 진입·디버그 로그아웃 두 버튼을 대체):
+1. dev 계에서만 `AppFeature.onAppear` 가 `home.showsDevReset` 을 켜고, Home 버튼이 `delegate(.appDataResetRequested)` 방출
+2. AppFeature 수신 → effect 에서 `authClient.logout()`(서버 로그아웃) → `clearLocalData()`(Keychain 전체·온보딩 draft — [[app#첫 실행 정리]]와 공유) → `UserDefaults.removePersistentDomain`(앱 도메인 전체). 순서가 중요하다 — 로그아웃은 토큰이 있어야 서버에 닿으므로 Keychain 삭제보다 먼저다. 서버 실패해도 로컬 정리는 진행(`try?`). 도메인째 지워 **첫 실행 마커까지 날리는 건 의도** — 이 버튼만은 재설치 흉내가 목적이라 다음 콜드 스타트가 첫 실행 정리를 한 번 더 돌아도 지울 게 없어 손해가 없다(정리 쪽이 마커를 보존하는 이유와 반대 방향이다)
+3. `appDataCleared` 로 `state = State()` 리셋 후 **`resolveLaunchRouting()` 재실행** — 로그아웃과 달리 `root = .auth` 로 확정하지 않고 Splash 판정부터 다시 태운다. 지운 게 세션만이 아니라 로컬 저장소 전부라 재설치 직후와 같은 자리여야 버전·동의·프로필 게이트가 모두 다시 돈다. cross-feature 조립이라 authClient 의존은 코디네이터인 여기서만 가진다 → [[home]]
 
 대표 흐름 — **온보딩 위저드 진입**:
-1. 발원지 3곳 — 「면접 시작」의 [시작하기](`interviewStartRequested`)·[수정하기](`interviewInfoEditRequested`)·dev 버튼(`onboardingRequested`). [시작하기]는 재사용 포폴 유무와 **무관하게** 위저드다: 면접 화면이 `sessionId` 로만 열리는데 그 id 를 만드는 건 위저드의 세션 생성뿐이라서다. «이전 정보 그대로» 세션 생성 API 가 생기면 `variant == .hasPortfolio` 는 수집을 건너뛴다(TODO — 미결 6-1)
+1. 발원지 2곳 — 「면접 시작」의 [시작하기](`interviewStartRequested`)·[수정하기](`interviewInfoEditRequested`). [시작하기]는 재사용 포폴 유무와 **무관하게** 위저드다: 면접 화면이 `sessionId` 로만 열리는데 그 id 를 만드는 건 위저드의 세션 생성뿐이라서다. «이전 정보 그대로» 세션 생성 API 가 생기면 `variant == .hasPortfolio` 는 수집을 건너뛴다(TODO — 미결 6-1)
 2. AppFeature 수신 → `state.onboarding = OnboardingFeature.State(userName:)` (`@Presents` + `.ifLet`) → `AppView` 가 `fullScreenCover` 로 위저드 제시. 분기 재료(`variant`)는 홈이 진입 로드로 이미 정해 둔 값을 읽는다
 3. 온보딩 `delegate(.finished(sessionId:))` = **세션 준비 완료** → 위저드 cover 를 닫고 그 자리에서 `state.interview = InterviewFeature.State(sessionId:)` 로 면접 cover 를 연다(홈은 안 태운다 — 어차피 가려지고, 갱신 시점은 면접이 끝나 돌아올 때다) → [[interview]]
 4. 중도 이탈 `.dismiss` → cover 만 닫고 **`.home(.view(.onAppear))` 를 명시로 보내 홈을 다시 태운다** — STEP4 업로드는 끝났을 수 있는데 cover 를 닫는 것만으론 홈 `onAppear` 가 다시 오지 않아 «이전 정보 재사용» 카드가 옛 값으로 남는다. 홈 탭 위에서만 열리므로 **로그인 이후**라 토큰을 보유한다(온보딩 API 는 인증 필요) → [[onboarding]]
-5. 면접 `delegate(.finished)`(업로드 큐 접수 후 홈 직행)·`.closed`(중단·실패 닫기) → 둘 다 cover 닫고 홈 재조회 — 어느 쪽이든 잔여가 줄었다. 정상 종료의 리포트 상세(r1) 연결은 `InterviewReportFeature` 통합 후(TODO)
+5. 면접 `delegate(.finished)`(리포트 대기 → 홈)·`.closed`(중단·실패 닫기) → 둘 다 cover 닫고 홈 재조회 — 어느 쪽이든 잔여가 줄었다. 정상 종료의 리포트 상세(r1) 연결은 `InterviewReportFeature` 통합 후(TODO)
+6. 정상 종료(`.finished`)에서만 `onboardingDraftStore.clear()` — 온보딩 입력 draft 가 제 역할을 다한 지점이 여기다([[onboarding#입력 draft]]). 이탈(`.closed`)은 보존 — 같은 입력으로 다시 시작할 수 있어야 하고, 면접 도중 앱이 죽어도 값이 남는다
+
+`State(userName:)` 만 넘긴다 — 직군·연차는 위저드가 다루지 않는다(세션 생성이 서버 프로필 스냅샷을 쓴다, 2026-08-04). 예전엔 두 값을 주입받아야 프리로드가 세션을 만들 수 있었고 배선이 없어 항상 실패했다 → [[onboarding#프리로드]]
 
 → 큰 그림은 [[domain.map]].
 
@@ -57,4 +74,4 @@
 코디네이터 패턴을 유지하기 위한 규칙.
 - **Feature → Feature 의존 0.** 새 cross-feature 전환이 생기면 leaf Feature 엔 `delegate` case 만 추가하고, 조립(State 생성·제시·결과 통보)은 전부 여기서 한다. 직접 import/push 금지.
 - 다른 Feature 의 reducer/State 를 구체 타입으로 참조해도 되는 **유일한 자리**(owner/코디네이터). leaf 끼리는 금지.
-- 새 탭은 `State` / `Tab` / body `Scope` + `AppView` 의 `TabView` 에 추가. → DocC `AddingFeature`
+- 새 화면은 `State` + body `Scope` 를 추가하고 `AppView` 에서 제시한다. 탭바를 되살리는 경우(둘째 탭)만 `Tab` enum·`selectedTab`·`TabView` 를 함께 복원. → DocC `AddingFeature`

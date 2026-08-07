@@ -68,6 +68,34 @@ public final class NetworkActivity {
     }
 }
 
+// @lat: [[domain.map#네트워킹 인프라]]
+/// 전역 로딩 억제 스코프 — 이 안에서 나가는 요청은 in-flight 카운터를 건드리지 않는다.
+///
+/// ```swift
+/// try await GlobalLoadingSuppression.run {
+///     try await network.api(request)
+/// }
+/// ```
+///
+/// **쓰는 자리는 Domain Implementation 뿐이다.** Feature 는 Core 를 모르고(`NetworkClient` 주석),
+/// 억제 여부는 «그 엔드포인트를 부르는 화면이 자기 대기 UI 를 이미 그리는가» 로 갈리므로
+/// 엔드포인트 정의 옆에 두는 게 판단 근거와 가장 가깝다.
+///
+/// 억제 대상은 두 종류다 — ① **폴링**(3초 간격 재조회. 매 hop 마다 딤이 깜빡이고, 응답이
+/// `showDelay` 보다 빠르면 아예 안 떠서 긴 대기 동안 아무 표시도 남지 않는다) ② **화면이
+/// designed 대기 UI 를 그리는 구간**(모달로 덮으면 그 화면과 그 안의 취소 동선이 가려진다).
+///
+/// 태스크 로컬이라 스코프 안에서 만든 자식 태스크까지 따라간다 — 단, `Task { }` 로 떼어낸
+/// 비구조적 태스크는 시작 시점 값을 복사하므로 스코프 밖에서 만들면 억제가 안 걸린다.
+public enum GlobalLoadingSuppression {
+    @TaskLocal public static var isActive = false
+
+    /// `body` 가 도는 동안 전역 로딩 표출을 끈다.
+    public static func run<T>(_ body: () async throws -> T) async rethrows -> T {
+        try await $isActive.withValue(true, operation: body)
+    }
+}
+
 public extension NetworkClient {
     /// 요청 시작/종료를 `NetworkActivity.shared` 에 반영하는 데코레이터.
     /// liveValue 한 곳에만 씌운다 — Authorized·토큰 재발급 포함 모든 실 HTTP 가
@@ -75,6 +103,9 @@ public extension NetworkClient {
     /// `live(session:baseURL:)` 를 직접 쓰므로 계측에 안 걸린다.)
     func trackingActivity() -> NetworkClient {
         NetworkClient { request in
+            // 억제 스코프(폴링·자체 대기 UI) 는 계측을 통째로 건너뛴다 — begin 을 부르지 않으므로
+            // end 도 없고, 바깥에서 돌고 있는 다른 요청의 카운트에도 영향이 없다.
+            guard !GlobalLoadingSuppression.isActive else { return try await self.request(request) }
             await NetworkActivity.shared.begin()
             do {
                 let data = try await self.request(request)

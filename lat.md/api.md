@@ -83,7 +83,7 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 | `videoUploadURL` | POST `.../video/upload-url` | S3 presigned PUT 발급 — PUT 의 Content-Type 은 응답 `contentType` 그대로(서명 포함). `expiresInSeconds` 안에만 유효, 세션당 저장 1곳(재업로드=덮어쓰기) |
 | `completeVideoUpload` | POST `.../video/complete` | S3 PUT 성공 후 호출(호출처 책임)·멱등. `wrapUp`(마무리 멘트 구간, 녹화 타임라인 초) nil 이면 바디 생략 |
 | `uploadInterviewVideo` | (엔드포인트 아님 — 클라 오케스트레이션) | `videoUploadURL`→PUT([[domain.map#네트워킹 인프라]] `FileTransferClient`)→`completeVideoUpload` 3단을 1시도로 응집 — 재시도는 호출처 몫. **실 면접 경로는 이걸 쓰지 않는다**(이유·현행 사용처 → [[interview#Client 계약]]) |
-| `reportList` | GET `/api/v1/interview/sessions` | 내 레포트 목록(마이페이지) — envelope `{reports}` 는 liveValue 가 벗김 |
+| `reportList` | GET `/api/v1/interview/sessions` | 내 레포트 목록(홈 위젯②·마이페이지) — envelope `{reports}` 는 liveValue 가 벗김 |
 
 질문 음성 스트리밍 규약: `audio/mpeg` + `Transfer-Encoding: chunked` (Content-Length 없음). 전부 받고 재생하지 말고 `AVURLAsset(url:options:[헤더])` → `AVPlayer` 점진 재생 — 그래서 계약이 Data 가 아니라 `InterviewAudioStream(url·headers)` 다. 중간 실패는 HTTP 로 안 잡힌다 — 재생 에러 콜백으로 감지하고 같은 questionId 로 재호출(TTS 처음부터 재생성).
 
@@ -120,7 +120,7 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 
 ## Job
 
-`DomainJob` — `JobClient.jobs`. Setup 위저드 직군 선택지. `jobRole`(서버 Enum 값, 예: BACKEND)을 그대로 `InterviewConfig.jobRole` 로 전달한다 — 클라이언트에 직군 Enum 을 중복 정의하지 않는다. 네트워킹 화면 표준형(NetworkExampleFeature)의 시연 대상이기도 하다.
+`DomainJob` — `JobClient.jobs`. 가입 온보딩(`AuthOnboardingJob`)의 직군 선택지. 고른 `jobRole`(서버 Enum 값, 예: BACKEND)의 소비자는 **`UserClient.updateProfile`** 하나다 — 프로필에 올려 두고, 이후 세션 생성은 그 **서버 프로필 스냅샷**을 읽는다(`InterviewConfig` 에 직군·연차 필드가 없다 → `## Interview`). 서버 Enum 값을 그대로 실어 보내므로 클라이언트에 직군 Enum 을 중복 정의하지 않는다. 네트워킹 화면 표준형(NetworkExampleFeature)의 시연 대상이기도 하다.
 
 - GET `/api/v1/jobs`
 
@@ -130,10 +130,12 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 
 | 메서드 | 엔드포인트 | 비고 |
 |---|---|---|
-| `list` | GET `/api/v1/portfolios` | MVP 1건, 응답은 배열 |
+| `list` | GET `/api/v1/portfolios` | `PortfolioList` — MVP 1건이지만 `portfolios` 는 배열 + 가용성 4종 |
 | `register` | POST `/api/v1/portfolios` | 메타=query + PDF=multipart `file` |
 | `status` | GET `/api/v1/portfolios/{id}/status` | 3~5초 폴링 |
 | `delete` | DELETE `/api/v1/portfolios/{id}` | 재등록 전 필수 (1개 제한) |
+
+`list` 응답의 `replaceAvailable`·`nextAvailableAt`·`deleteAvailable`·`nextDeleteAvailableAt` 는 **계정 단위 쿨다운**이라 `portfolios` 항목 안이 아니라 `data` 레벨에 온다 — `PortfolioList` 가 그대로 담는다. 전부 옵셔널이라 서버가 빼도 목록만으로 디코딩된다. 아직 화면은 안 읽는다(온보딩 S2 삭제 문구는 1 고정 — `OnboardingPortfolioUploadView` TODO).
 
 에러는 `PortfolioError` 로 매핑된다 — 업로드 검증군 INVALID_FILE_TYPE / FILE_TOO_LARGE / PAGE_COUNT_EXCEEDED / INVALID_PDF_FILE (400), PORTFOLIO_ALREADY_EXISTS → alreadyExists(409), PORTFOLIO_NOT_FOUND → notFound(404). 이 4xx 케이스들은 서버 한국어 `message` 를 associated value 로 보존한다(`userMessage`) — 클라 카피가 확정되지 않아 화면이 원문을 그대로 노출하기 때문(인프라 실패는 nil → 클라 폴백 문구).
 

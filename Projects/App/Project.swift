@@ -8,7 +8,8 @@ let project = Project.makeModule(
     targets: [
         .app(factory: .init(dependencies: [
             .core, .domain, .feature, .shared,
-            .core(interface: .network),          // AppView 전역 로딩 — NetworkActivity 관찰
+            .core(interface: .common),           // 첫 실행 판정 — FirstLaunchStore
+            .core(interface: .network),          // AppView 전역 로딩 — NetworkActivity 관찰 · 첫 실행 정리 — TokenStore
             .domain(interface: .appVersion),     // Splash 버전 게이트 — 강제·권장 업데이트 판정
             .domain(interface: .auth),
             .domain(interface: .consent),        // Splash 세션 복구 판정 — 게이트 2단(pending)

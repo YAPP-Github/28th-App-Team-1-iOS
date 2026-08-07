@@ -47,6 +47,34 @@ public struct Portfolio: Decodable, Equatable, Sendable, Identifiable {
     }
 }
 
+/// 목록 응답 — 등록 건 + 계정 단위 가용성 플래그.
+/// 가용성은 **개별 포폴이 아니라 계정** 속성이라 `portfolios` 밖(= `data` 레벨)에 온다.
+public struct PortfolioList: Decodable, Equatable, Sendable {
+    public let portfolios: [Portfolio]
+    /// 교체(재등록) 가능 여부
+    public let replaceAvailable: Bool?
+    /// 교체 불가일 때 다시 가능해지는 시각 (가능하면 nil)
+    public let nextAvailableAt: Date?
+    /// 삭제 가능 여부
+    public let deleteAvailable: Bool?
+    /// 삭제 불가일 때 다시 가능해지는 시각 (가능하면 nil)
+    public let nextDeleteAvailableAt: Date?
+
+    public init(
+        portfolios: [Portfolio],
+        replaceAvailable: Bool? = nil,
+        nextAvailableAt: Date? = nil,
+        deleteAvailable: Bool? = nil,
+        nextDeleteAvailableAt: Date? = nil
+    ) {
+        self.portfolios = portfolios
+        self.replaceAvailable = replaceAvailable
+        self.nextAvailableAt = nextAvailableAt
+        self.deleteAvailable = deleteAvailable
+        self.nextDeleteAvailableAt = nextDeleteAvailableAt
+    }
+}
+
 /// 업로드 입력 — PDF 20MB 이하 · 30페이지 이하 (서버 검증: `INVALID_FILE_TYPE`·`FILE_TOO_LARGE`·`PAGE_COUNT_EXCEEDED`).
 public struct PortfolioUpload: Equatable, Sendable {
     public var fileName: String
@@ -102,8 +130,8 @@ public struct PortfolioDeletion: Decodable, Equatable, Sendable {
 /// 계정당 1개 제한 — 재등록은 `PORTFOLIO_ALREADY_EXISTS` → 삭제 후 등록 UX.
 // @lat: [[api#Portfolio]]
 public struct PortfolioClient: Sendable {
-    /// GET /portfolios — 내 포트폴리오 목록.
-    public var list: @Sendable () async throws -> [Portfolio]
+    /// GET /portfolios — 내 포트폴리오 목록 + 계정 단위 교체·삭제 가용성.
+    public var list: @Sendable () async throws -> PortfolioList
     /// POST /portfolios — 202 PROCESSING 접수. 이후 `status` 폴링(3~5초)으로 READY 확인.
     public var register: @Sendable (PortfolioUpload) async throws -> PortfolioProcessing
     /// GET /portfolios/{id}/status — 처리 상태 폴링.
@@ -112,7 +140,7 @@ public struct PortfolioClient: Sendable {
     public var delete: @Sendable (_ portfolioId: UUID) async throws -> PortfolioDeletion
 
     public init(
-        list: @escaping @Sendable () async throws -> [Portfolio],
+        list: @escaping @Sendable () async throws -> PortfolioList,
         register: @escaping @Sendable (PortfolioUpload) async throws -> PortfolioProcessing,
         status: @escaping @Sendable (_ portfolioId: UUID) async throws -> PortfolioProcessing,
         delete: @escaping @Sendable (_ portfolioId: UUID) async throws -> PortfolioDeletion
@@ -127,7 +155,7 @@ public struct PortfolioClient: Sendable {
 extension PortfolioClient: TestDependencyKey {
     public static var testValue: PortfolioClient {
         PortfolioClient(
-            list: unimplemented("PortfolioClient.list", placeholder: []),
+            list: unimplemented("PortfolioClient.list", placeholder: PortfolioList(portfolios: [])),
             register: unimplemented("PortfolioClient.register"),
             status: unimplemented("PortfolioClient.status"),
             delete: unimplemented("PortfolioClient.delete")
@@ -138,16 +166,20 @@ extension PortfolioClient: TestDependencyKey {
         let sampleId = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
         return PortfolioClient(
             list: {
-                [
-                    Portfolio(
-                        portfolioId: sampleId,
-                        fileName: "portfolio.pdf",
-                        fileSize: 1_048_576,
-                        pageCount: 12,
-                        status: .ready,
-                        uploadedAt: Date(timeIntervalSince1970: 1_782_000_000)
-                    )
-                ]
+                PortfolioList(
+                    portfolios: [
+                        Portfolio(
+                            portfolioId: sampleId,
+                            fileName: "portfolio.pdf",
+                            fileSize: 1_048_576,
+                            pageCount: 12,
+                            status: .ready,
+                            uploadedAt: Date(timeIntervalSince1970: 1_782_000_000)
+                        )
+                    ],
+                    replaceAvailable: true,
+                    deleteAvailable: true
+                )
             },
             register: { upload in
                 PortfolioProcessing(portfolioId: sampleId, status: .processing, message: "\(upload.fileName) 분석을 시작했어요")

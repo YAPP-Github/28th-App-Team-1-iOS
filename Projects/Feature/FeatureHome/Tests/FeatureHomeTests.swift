@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import DomainInterviewInterface
 import DomainPortfolioInterface
 import DomainUserInterface
 import Foundation
@@ -45,9 +46,12 @@ struct HomeEntryLoadTests {
             HomeFeature()
         } withDependencies: {
             $0.userClient.profile = { Self.profile(remaining: 2) }
-            $0.portfolioClient.list = { [Self.portfolio()] }
+            $0.portfolioClient.list = { PortfolioList(portfolios: [Self.portfolio()]) }
+            $0.interviewClient.reportList = { [] }
         }
 
+        // 두 로드(프로필·포폴 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
+        store.exhaustivity = .off
         await store.send(.view(.onAppear))
         await store.receive(\.inner.entryLoaded) {
             $0.userName = "재원"
@@ -70,8 +74,11 @@ struct HomeEntryLoadTests {
         } withDependencies: {
             $0.userClient.profile = { Self.profile(remaining: 1) }
             $0.portfolioClient.list = { throw LoadFailure() }
+            $0.interviewClient.reportList = { [] }
         }
 
+        // 두 로드(프로필·포폴 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
+        store.exhaustivity = .off
         await store.send(.view(.onAppear))
         await store.receive(\.inner.entryLoaded) {
             $0.userName = "재원"
@@ -89,9 +96,12 @@ struct HomeEntryLoadTests {
             HomeFeature()
         } withDependencies: {
             $0.userClient.profile = { throw LoadFailure() }
-            $0.portfolioClient.list = { [] }
+            $0.portfolioClient.list = { PortfolioList(portfolios: []) }
+            $0.interviewClient.reportList = { [] }
         }
 
+        // 두 로드(프로필·포폴 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
+        store.exhaustivity = .off
         await store.send(.view(.onAppear))
         // 잔여는 nil 그대로 — 0 으로 떨어뜨리면 «무료 횟수를 모두 사용했어요» 가 떠서
         // 시작 경로가 [홈으로] 하나로 막힌다. 변형도 초기값 `.first` 에서 안 움직인다.
@@ -104,9 +114,12 @@ struct HomeEntryLoadTests {
             HomeFeature()
         } withDependencies: {
             $0.userClient.profile = { Self.profile(remaining: 0) }
-            $0.portfolioClient.list = { [Self.portfolio()] }
+            $0.portfolioClient.list = { PortfolioList(portfolios: [Self.portfolio()]) }
+            $0.interviewClient.reportList = { [] }
         }
 
+        // 두 로드(프로필·포폴 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
+        store.exhaustivity = .off
         await store.send(.view(.onAppear))
         await store.receive(\.inner.entryLoaded) {
             $0.userName = "재원"
@@ -126,9 +139,12 @@ struct HomeEntryLoadTests {
             HomeFeature()
         } withDependencies: {
             $0.userClient.profile = { Self.profile(remaining: 3) }
-            $0.portfolioClient.list = { [Self.portfolio(status: .processing)] }
+            $0.portfolioClient.list = { PortfolioList(portfolios: [Self.portfolio(status: .processing)]) }
+            $0.interviewClient.reportList = { [] }
         }
 
+        // 두 로드(프로필·포폴 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
+        store.exhaustivity = .off
         await store.send(.view(.onAppear))
         await store.receive(\.inner.entryLoaded) {
             $0.userName = "재원"
@@ -144,12 +160,215 @@ struct HomeEntryLoadTests {
             HomeFeature()
         } withDependencies: {
             $0.userClient.profile = { Self.profile(name: nil, remaining: 3) }
-            $0.portfolioClient.list = { [] }
+            $0.portfolioClient.list = { PortfolioList(portfolios: []) }
+            $0.interviewClient.reportList = { [] }
         }
 
+        // 두 로드(프로필·포폴 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
+        store.exhaustivity = .off
         await store.send(.view(.onAppear))
         await store.receive(\.inner.entryLoaded) {
             $0.startInterview.remainingChances = 3
         }
+    }
+}
+
+/// 기록 목록만 보는 테스트에서 프로필·포폴 로드를 죽여 두는 용도.
+private struct ProfileUnavailable: Error {}
+
+@MainActor
+struct HomeReportListTests {
+    /// 2026-07-11(토) 09:00 KST — 표시 포맷 «7월 11일 토» 검증용 고정 시각.
+    private static let interviewedAt = Date(timeIntervalSince1970: 1_783_728_000)
+
+    private static func summary(
+        sessionId: Int = 7,
+        careerYears: Int? = 3,
+        jobTypeLabel: String? = "백엔드 개발자",
+        status: ReportStatus = .ready
+    ) -> InterviewReportSummary {
+        InterviewReportSummary(
+            sessionId: sessionId,
+            jobType: "BACKEND",
+            jobTypeLabel: jobTypeLabel,
+            careerYears: careerYears,
+            interviewedAt: interviewedAt,
+            portfolioFileName: "포트폴리오.pdf",
+            portfolioDeleted: false,
+            jdUrl: nil,
+            reportStatus: status,
+            feedbackAvailable: false
+        )
+    }
+
+    private static func store(
+        initialState: HomeFeature.State = HomeFeature.State(),
+        reportList: @escaping @Sendable () async throws -> [InterviewReportSummary]
+    ) -> TestStore<HomeFeature.State, HomeFeature.Action> {
+        let store = TestStore(initialState: initialState) {
+            HomeFeature()
+        } withDependencies: {
+            $0.userClient.profile = { throw ProfileUnavailable() }
+            $0.portfolioClient.list = { throw ProfileUnavailable() }
+            $0.interviewClient.reportList = reportList
+        }
+        // 프로필·포폴 로드와 순서가 섞인다 — 목록 쪽 값만 고정한다.
+        store.exhaustivity = .off
+        return store
+    }
+
+    @Test("목록 응답은 세션 id·날짜·직군 스냅샷 행으로 들어오고 phase 가 report 로 바뀐다")
+    func reportListFillsRows() async {
+        let store = Self.store(reportList: { [Self.summary()] })
+
+        await store.send(.view(.onAppear))
+        await store.receive(\.inner.reportsLoaded) {
+            $0.reports = [
+                HomeFeature.Report(id: 7, dateText: "7월 11일 토", title: "백엔드 개발자 · 3년차")
+            ]
+            $0.expandedReportIDs = [7]
+            $0.phase = .report(.returning)
+        }
+    }
+
+    @Test("생성 중 세션은 행에서 빠지고, 분석 부족은 READY·실패는 상태 문구 행으로 들어온다")
+    func generatingReportsAreDropped() async {
+        let store = Self.store(reportList: {
+            [
+                Self.summary(sessionId: 1, status: .generating),
+                Self.summary(sessionId: 2, status: .insufficientAnalysis),
+                Self.summary(sessionId: 3, status: .failed)
+            ]
+        })
+
+        await store.send(.view(.onAppear))
+        await store.receive(\.inner.reportsLoaded) {
+            $0.reports = [
+                HomeFeature.Report(id: 2, dateText: "7월 11일 토", title: "백엔드 개발자 · 3년차"),
+                HomeFeature.Report(
+                    id: 3,
+                    dateText: "7월 11일 토",
+                    title: "레포트 생성에 실패했어요",
+                    subtitle: "이용권 횟수는 차감되지 않아요",
+                    canOpenReport: false
+                )
+            ]
+            $0.expandedReportIDs = [2]
+            $0.phase = .report(.returning)
+        }
+    }
+
+    @Test("전부 생성 중이면 목록이 비어 기본 상태로 떨어진다")
+    func allGeneratingFallsBackToDefaultPhase() async {
+        let store = Self.store(
+            initialState: HomeFeature.State(phase: .report(.returning), reports: [
+                HomeFeature.Report(id: 1, dateText: "7월 10일 금", title: "옛 행")
+            ]),
+            reportList: { [Self.summary(sessionId: 1, status: .generating)] }
+        )
+
+        await store.send(.view(.onAppear))
+        await store.receive(\.inner.reportsLoaded) {
+            $0.reports = []
+            $0.expandedReportIDs = []
+            $0.phase = .default
+        }
+    }
+
+    @Test("직군·연차가 비어 오면 조각을 빼고 준비 완료 문구만 남긴다")
+    func missingSnapshotFallsBackToReadyText() async {
+        let store = Self.store(reportList: { [Self.summary(careerYears: nil, jobTypeLabel: nil)] })
+
+        await store.send(.view(.onAppear))
+        await store.receive(\.inner.reportsLoaded) {
+            $0.reports = [
+                HomeFeature.Report(id: 7, dateText: "7월 11일 토", title: "면접 레포트가 준비됐어요")
+            ]
+            $0.expandedReportIDs = [7]
+            $0.phase = .report(.returning)
+        }
+    }
+
+    @Test("빈 목록은 기본 상태로 되돌리고 확장 자리를 접는다")
+    func emptyListFallsBackToDefaultPhase() async {
+        let store = Self.store(
+            initialState: HomeFeature.State(phase: .report(.returning), reports: [
+                HomeFeature.Report(id: 1, dateText: "7월 10일 금", title: "옛 행")
+            ]),
+            reportList: { [] }
+        )
+
+        await store.send(.view(.onAppear))
+        await store.receive(\.inner.reportsLoaded) {
+            $0.reports = []
+            $0.expandedReportIDs = []
+            $0.phase = .default
+        }
+    }
+
+    @Test("목록 호출이 실패하면 앞서 그리던 목록을 지우지 않는다")
+    func listFailureKeepsPreviousRows() async {
+        struct LoadFailure: Error {}
+        let previous = HomeFeature.Report(id: 1, dateText: "7월 10일 금", title: "옛 행")
+        let store = Self.store(
+            initialState: HomeFeature.State(phase: .report(.recent), reports: [previous]),
+            reportList: { throw LoadFailure() }
+        )
+
+        await store.send(.view(.onAppear))
+        // nil = «모른다» — 목록을 비우면 기록이 사라진 것처럼 보인다.
+        await store.receive(\.inner.reportsLoaded)
+        #expect(store.state.reports.elements == [previous])
+        #expect(store.state.phase == .report(.recent))
+    }
+}
+
+@MainActor
+struct HomeReportExpansionTests {
+    private static func report(_ id: Int) -> HomeFeature.Report {
+        HomeFeature.Report(id: id, dateText: "7월 1\(id)일 토", title: "백엔드 개발자 · 3년차")
+    }
+
+    private static func store() -> TestStore<HomeFeature.State, HomeFeature.Action> {
+        TestStore(
+            initialState: HomeFeature.State(
+                phase: .report(.returning),
+                reports: [report(1), report(2), report(3)]
+            )
+        ) {
+            HomeFeature()
+        }
+    }
+
+    @Test("행 탭은 다른 행을 닫지 않는다 — 여러 행을 동시에 펼쳐 둔다")
+    func rowsExpandIndependently() async {
+        let store = Self.store()
+        // 진입 시엔 최신 1개만 펼쳐져 있다.
+        #expect(store.state.expandedReportIDs == [1])
+
+        await store.send(.view(.userTappedReportRow(id: 2))) {
+            $0.expandedReportIDs = [1, 2]
+        }
+        await store.send(.view(.userTappedReportRow(id: 3))) {
+            $0.expandedReportIDs = [1, 2, 3]
+        }
+    }
+
+    @Test("펼친 행을 다시 탭하면 그 행만 접힌다")
+    func tappingExpandedRowCollapsesOnlyThatRow() async {
+        let store = Self.store()
+        await store.send(.view(.userTappedReportRow(id: 2))) {
+            $0.expandedReportIDs = [1, 2]
+        }
+        await store.send(.view(.userTappedReportRow(id: 1))) {
+            $0.expandedReportIDs = [2]
+        }
+    }
+
+    @Test("[>] 탭은 세션 id 를 그대로 상세 진입 delegate 로 넘긴다")
+    func detailButtonForwardsSessionID() async {
+        let store = Self.store()
+        await store.send(.view(.userTappedReport(id: 3)))
+        await store.receive(\.delegate.reportDetailRequested)
     }
 }

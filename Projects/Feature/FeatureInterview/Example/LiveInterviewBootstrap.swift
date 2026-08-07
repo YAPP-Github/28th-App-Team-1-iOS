@@ -128,7 +128,7 @@ struct LiveInterviewBootstrap: View {
             stage = .running(step)
             print("⛳️ [HARNESS] \(step)")
             @Dependency(\.portfolioClient) var portfolioClient
-            guard let portfolio = try await portfolioClient.list().first else {
+            guard let portfolio = try await portfolioClient.list().portfolios.first else {
                 stage = .failed("테스트 계정에 포트폴리오가 없어요 — 앱이나 curl 로 1건 등록(READY) 후 재시도")
                 return
             }

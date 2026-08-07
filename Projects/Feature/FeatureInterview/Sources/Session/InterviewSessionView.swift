@@ -44,7 +44,9 @@ public struct InterviewSessionView: View {
         .hilitSurface(.dark)
         // Figma ExitConfirm 딤: black 60%(.hilitModal 몫) + backdrop blur — 배경 콘텐츠를 블러해 근사한다.
         .blur(radius: presentedModal != nil ? 20 : 0)
-        // 표출 페이드(0.2s easeInOut)는 .hilitModal 내장 애니메이션이 블러까지 함께 몬다.
+        // 블러 전환은 여기서 직접 몬다 — 모달 페이드(0.2)는 `.hilitModal` 이 cover 안쪽에서 처리하므로
+        // 배경 블러까지 끌고 오지 않는다. 값·시간을 모달 쪽과 같게 맞춰 한 동작으로 보이게 한다.
+        .animation(.easeInOut(duration: 0.2), value: presentedModal)
         .hilitModal(item: presentedModal) { modal in
             switch modal {
             case .finishing: LoadingModal()
