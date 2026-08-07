@@ -12,7 +12,9 @@ import FeatureInterviewImplementation
 import Foundation
 import SwiftUI
 
-// Feature 단독 실행 앱 — FeatureInterview 스킴의 실행 타겟. 모드 4종:
+// Feature 단독 실행 앱 — FeatureInterview 스킴의 실행 타겟. 모드 5종:
+// • answer smoke — HILIT_ANSWER_SMOKE 존재 시 답변 녹음 로컬 스모크(AnswerRecordingSmoke).
+//   실녹음 경로 산출물(크기·길이·레벨) 검사 + 재생 + 로컬 STT — 서버·토큰·이용권 불필요, 실기기 권장.
 // • preview(기본) — 외부 IO 는 가짜(preview) 의존성으로 주입해 네트워크 없이 화면 흐름만 돌린다.
 //   카메라·마이크 권한만 예외로 liveValue(DomainPermissionImplementation link) — 준비 화면의
 //   사용 시점 요청 → 거부 alert → 설정 이동 흐름을 실기기/시뮬레이터에서 그대로 검증하기 위해서다.
@@ -34,7 +36,9 @@ import SwiftUI
 struct FeatureInterviewExampleApp: App {
     var body: some Scene {
         WindowGroup {
-            if ProcessInfo.processInfo.environment["HILIT_AV_SPIKE"] != nil {
+            if ProcessInfo.processInfo.environment["HILIT_ANSWER_SMOKE"] != nil {
+                AnswerRecordingSmoke()
+            } else if ProcessInfo.processInfo.environment["HILIT_AV_SPIKE"] != nil {
                 AVConcurrencySpike()
             } else if let token = ProcessInfo.processInfo.environment["HILIT_ACCESS_TOKEN"], !token.isEmpty {
                 if ProcessInfo.processInfo.environment["HILIT_VIDEO_SMOKE"] != nil {
