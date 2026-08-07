@@ -26,6 +26,10 @@ struct FeatureHomeExampleApp: App {
                         // 네트워크 없이 홈을 돈다(안 채우면 liveValue 부재로 unimplemented 트랩).
                         $0.userClient.profile = { Self.profile }
                         $0.interviewClient.reportList = { Self.reports }
+                        // 진행 중 세션 없음 — 기본은 «처음» 변형이다.
+                        // 진행 중 시연은 이 줄을 아래로 바꾼다(2:12 녹화 → 5:48 남음 → 질문 3개):
+                        // $0.heldSessionStore = .inMemory(initial: HeldSession(sessionId: 1, recordedSeconds: 132))
+                        $0.heldSessionStore = .inMemory()
                     }
                 )
             }

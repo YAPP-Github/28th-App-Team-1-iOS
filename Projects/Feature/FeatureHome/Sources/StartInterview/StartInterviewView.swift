@@ -217,7 +217,8 @@ private func previewLayer(
     previewLayer(.exhausted, remainingChances: 0)
 }
 
-// held 세션 조회 API 가 없어(미결 6-3) 앱에서는 아직 이 두 장에 도달할 수 없다 — 확인은 여기가 전부다.
+// 앱에서도 도달한다 — 로컬 보관값(`HeldSessionStore`)이 있으면 홈이 이 변형으로 판정한다.
+// 프리뷰는 남은 질문 수를 고정값으로 넘겨 두 장(진행 중·확인 단계)을 나란히 본다.
 #Preview("진행 중 면접") {
     previewLayer(.inProgress(remainingQuestionCount: 2), remainingChances: 3)
 }

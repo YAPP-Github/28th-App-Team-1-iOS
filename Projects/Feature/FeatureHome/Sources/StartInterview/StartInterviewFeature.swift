@@ -21,8 +21,9 @@ public struct StartInterviewFeature {
     ///
     /// 회차를 묻지 않는다 — 포폴 보유 여부로 «2회차» 를 가르던 분기는 걷어냈다(제품 결정 2026-08-08).
     ///
-    /// `inProgress` 만 **서버 재료가 아직 없다** — held 세션 조회 API 가 미결(6-3)이라 `startVariant`
-    /// 가 이 값을 내지 못한다. 화면 확인은 프리뷰 전담이다.
+    /// `inProgress` 의 재료는 **서버가 아니라 로컬 보관값**이다 — 진행 중 세션 목록 API 가 없어
+    /// 클라가 세션 생성 시 보관한 sessionId 의 존재로 판정하고(`HeldSessionStore`), 남은 질문 수도
+    /// 녹화 길이에서 rule-base 로 환산한다(둘 다 `HomeFeature.startVariant`).
     public enum Variant: Equatable, Sendable {
         case first
         /// 진행 중(held) 면접이 있다 — 남은 질문 수는 그 세션의 값이다.

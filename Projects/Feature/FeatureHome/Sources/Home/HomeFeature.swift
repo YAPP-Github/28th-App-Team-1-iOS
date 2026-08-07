@@ -134,7 +134,7 @@ public struct HomeFeature {
         /// 사용자 입력·생명주기. View 의 send(...) 로만 방출된다.
         public enum View: Sendable {
             // 홈 진입 로드 — 프로필은 `inner(.entryLoaded)`, 기록 목록은 `inner(.reportsLoaded)`.
-            // TODO: 남은 1종(진행 중 held 세션)은 계약 확정 후(미결 6-3).
+            // 진행 중(held) 세션은 로컬 보관값이라 effect 없이 리듀서가 바로 읽는다.
             case onAppear
             /// 시트 드래그가 끝나 자리가 정해졌다 — 판정은 뷰(`HomeSheetDrag`), 확정은 여기.
             case userSettledSheet(SheetDetent)
@@ -167,10 +167,11 @@ public struct HomeFeature {
             /// 면접 시작 요청 — 면접 시작 화면의 [시작하기] 가 발원지. 전환은 AppFeature.
             case interviewStartRequested
             /// 진행 중 면접을 버리고 처음부터 요청 — 확인 단계를 통과한 [처음부터 시작] 이 발원지.
-            /// **세션 id 를 싣지 않는다** — held 세션 조회 API 가 없어 홈이 그 값을 모른다(미결 6-3).
-            case interviewRestartRequested
-            /// 진행 중 면접 이어서 진행 요청 — [이어서 진행] 이 발원지. 인자가 없는 이유는 위와 같다.
-            case interviewResumeRequested
+            /// **버릴 세션 id 를 싣는다** — 진행 중 세션 목록 API 가 없어 출처는 로컬 보관값
+            /// (`HeldSessionStore`)이고, 홈이 그걸 읽어 실어 준다.
+            case interviewRestartRequested(sessionId: Int)
+            /// 진행 중 면접 이어서 진행 요청 — [이어서 진행] 이 발원지. 세션 id 출처는 위와 같다.
+            case interviewResumeRequested(sessionId: Int)
             /// dev 데이터 초기화 요청 — orchestration(logout API·저장소 삭제·State 리셋·재판정)은 AppFeature.
             case appDataResetRequested
         }
@@ -179,6 +180,7 @@ public struct HomeFeature {
     /// 진입 로드 취소 식별자 — 탭을 빠르게 오갈 때 앞선 응답이 뒤늦게 덮어쓰는 걸 막는다.
     private enum CancelID { case entryLoad }
 
+    @Dependency(\.heldSessionStore) var heldSessionStore
     @Dependency(\.interviewClient) var interviewClient
     @Dependency(\.userClient) var userClient
 
@@ -191,6 +193,12 @@ public struct HomeFeature {
                 // 홈 밖에 다녀오면 시트는 기본 자리로 — 남의 화면에서 돌아왔는데 면접 시작이
                 // 떠 있거나 목록이 펼쳐진 채면 «홈에 왔다» 는 신호가 사라진다.
                 state.settle(.report)
+                // 진행 중(held) 판정은 **로컬 보관값 읽기**라 effect 를 두지 않는다 — 화면이 그려지기 전에
+                // 정해져야 하고, 비동기로 돌리면 [시작하기] 시안이 한 프레임 스친다.
+                state.startInterview.variant = Self.startVariant(
+                    heldSession: heldSessionStore.load(),
+                    remainingChances: state.startInterview.remainingChances
+                )
                 // 첫 진입만이 아니라 **매 진입 재조회** — 잔여·기록은 면접이 바꾼다. 캐시하면 무효화
                 // 신호를 AppFeature 로 돌려야 하는데(Feature→Feature 금지) 1건짜리 GET 두 번보다 비싸다.
                 // 진실은 서버(docs/work/home-account.md §3·§6).
@@ -236,6 +244,9 @@ public struct HomeFeature {
                     state.startInterview.remainingChances = profile.remainingTicketCount
                 }
                 state.startInterview.variant = Self.startVariant(
+                    // 보관값을 **다시** 읽는다 — 프로필 응답이 진행 중 판정을 «처음»·«소진» 으로 덮어쓰면
+                    // 진행 중 세션을 두고 [시작하기] 가 떠 버린다.
+                    heldSession: heldSessionStore.load(),
                     remainingChances: state.startInterview.remainingChances
                 )
                 return .none
@@ -264,11 +275,16 @@ public struct HomeFeature {
             case .startInterview(.delegate(.startRequested)):
                 // 면접 플로우는 다른 Feature 라 AppFeature 가 조립한다(Feature→Feature 금지).
                 return .send(.delegate(.interviewStartRequested))
-            // 진행 중 면접의 두 갈래도 홈이 처리할 수 없는 전환이라 그대로 위로 올린다.
+            // 진행 중 면접의 두 갈래도 홈이 처리할 수 없는 전환이라 그대로 위로 올린다 — 대상 세션은
+            // 판정에 쓴 것과 같은 로컬 보관값에서 읽어 싣는다.
             case .startInterview(.delegate(.restartRequested)):
-                return .send(.delegate(.interviewRestartRequested))
+                // 진행 중 변형인데 보관값이 없으면(비정상) 버릴 세션을 특정할 수 없어 신호를 삼킨다.
+                guard let held = heldSessionStore.load() else { return .none }
+                return .send(.delegate(.interviewRestartRequested(sessionId: held.sessionId)))
             case .startInterview(.delegate(.resumeRequested)):
-                return .send(.delegate(.interviewResumeRequested))
+                // 이어갈 세션을 특정할 수 없으면 보낼 게 없다 — 위와 같은 비정상 경로다.
+                guard let held = heldSessionStore.load() else { return .none }
+                return .send(.delegate(.interviewResumeRequested(sessionId: held.sessionId)))
             case .startInterview:
                 return .none
 
@@ -285,18 +301,45 @@ public struct HomeFeature {
 // MARK: - 진입 로드 → 표시값
 
 private extension HomeFeature {
-    /// 면접 시작 카드 변형 — 잔여 0 이면 소진 안내, 아니면 `first` 다.
+    /// 면접 시작 카드 변형 — 진행 중 세션이 있으면 진행 중, 없고 잔여 0 이면 소진, 아니면 `first` 다.
     /// 서버 판정의 표시일 뿐이다 — 시작 가능 여부의 진실은 탭 시점 게이트다.
+    ///
+    /// **진행 중(held) 세션이 잔여보다 먼저다** — 진행 중이면 [이어서 진행] 이 유일한 정상 경로라서,
+    /// 잔여가 0 으로 잡혀도(진행 중 세션이 이용권 하나를 예약해 둔 상태) 소진 안내를 띄우지 않는다.
     ///
     /// **회차를 묻지 않는다** — 포폴 보유로 «2회차» 를 가르던 분기는 걷어냈다(제품 결정 2026-08-08).
     /// 홈은 포폴을 조회하지 않고, 필요한 정보 수집은 시작 경로(온보딩 위저드)가 알아서 한다.
     ///
     /// **잔여를 모르면(nil) 소진이 아니다** — 프로필이 죽었을 뿐인데 «무료 횟수를 모두 사용했어요»
     /// 를 띄우면 시작 경로가 [홈으로] 하나로 막힌다. 모를 땐 `first` 로 둔다.
-    // TODO(#69): held 세션 조회 API(미결 6-3) 도착 시 `.inProgress` 판정 추가 — 진행 중 세션이 있으면
-    //            잔여보다 **먼저**다(그때는 [이어서 진행] 이 유일한 정상 경로라서).
-    static func startVariant(remainingChances: Int?) -> StartInterviewFeature.Variant {
+    static func startVariant(
+        heldSession: HeldSession?,
+        remainingChances: Int?
+    ) -> StartInterviewFeature.Variant {
+        if let heldSession {
+            return .inProgress(
+                remainingQuestionCount: remainingQuestionCount(recordedSeconds: heldSession.recordedSeconds)
+            )
+        }
         if let remainingChances, remainingChances <= 0 { return .exhausted }
         return .first
+    }
+
+    /// 최대 면접 길이 — 남은 시간 환산의 기준값(8분).
+    static let maxInterviewSeconds = 480
+
+    /// 진행 중 시안의 «남은 질문 N개» — 서버가 주지 않아 녹화 길이로 환산한다(사용자 정의 2026-08-08).
+    ///
+    /// 남은 시간(= 8분 − 녹화분)을 구간에 얹는다: 3분 미만 1개 / 3~5분 2개 / 5~7분 3개 / 7분 초과 4개.
+    /// 경계 420초(정확히 7:00)는 구간 표기(5:00~7:00)를 우선해 **3개**로 처리하고,
+    /// 갓 시작한 세션(0초 녹화)은 480초가 남아 4개다.
+    static func remainingQuestionCount(recordedSeconds: Int) -> Int {
+        // 녹화가 최대 길이를 넘겨 들어와도 음수 시간으로 새지 않게 0 에서 막는다.
+        switch max(0, maxInterviewSeconds - recordedSeconds) {
+        case ..<180: return 1
+        case ..<300: return 2
+        case ...420: return 3
+        default: return 4
+        }
     }
 }
