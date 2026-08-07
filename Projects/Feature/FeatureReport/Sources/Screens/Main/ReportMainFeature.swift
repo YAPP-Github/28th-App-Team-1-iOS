@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import DomainCommonInterface
 import DomainInterviewReportInterface
 import Foundation
 
@@ -43,6 +44,8 @@ public struct ReportMainFeature {
         /// 코멘트를 펼쳐 둔 태도 항목 코드 — 지인을 바꾸면 비운다.
         public var expandedCommentAxes: Set<String> = []
         @Presents public var highlightDetail: ReportHighlightDetailFeature.State?
+        /// 미승격 서버 에러 Alert — 도메인이 케이스로 승격하지 않은 코드의 원문 표시(임시 노출 규칙).
+        @Presents public var alert: AlertState<Action.Alert>?
         /// 영상으로 넘어가며 접어 둔 상세 시트 — 플레이어 하단 «이전 화면으로 가기» 가 이걸 되살린다.
         /// 시트와 push 를 동시에 띄울 수 없어 잠깐 옆에 둔다. 플레이어 상단 X 로 나오면 코디네이터가 비운다
         /// (X 는 리포트 메인까지, 하단 버튼은 시트까지 — 사용자 결정 2026-08-06).
@@ -70,6 +73,10 @@ public struct ReportMainFeature {
         case inner(Inner)
         case delegate(Delegate)
         case highlightDetail(PresentationAction<ReportHighlightDetailFeature.Action>)
+        case alert(PresentationAction<Alert>)
+
+        /// 확인 버튼만 있는 Alert — 누를 액션이 없다.
+        public enum Alert: Equatable {}
 
         public enum View: Equatable, Sendable {
             case onAppear
@@ -98,6 +105,8 @@ public struct ReportMainFeature {
             case reportFailed(InterviewReportError)
             /// 당겨서 새로고침 응답 — 재료만 갈아 끼운다(`loadState`·폴링은 건드리지 않는다).
             case reportRefreshed(InterviewReport)
+            /// 당겨서 새로고침 실패 — 화면은 그대로 두고 미승격 서버 에러만 Alert 로 알린다.
+            case reportRefreshFailed(InterviewReportError)
             /// 폴링 주기 경과 — 재조회 시점.
             case pollTicked
         }
@@ -139,6 +148,9 @@ public struct ReportMainFeature {
             case .highlightDetail:
                 return .none
 
+            case .alert:
+                return .none
+
             case .delegate:
                 return .none
             }
@@ -146,6 +158,7 @@ public struct ReportMainFeature {
         .ifLet(\.$highlightDetail, action: \.highlightDetail) {
             ReportHighlightDetailFeature()
         }
+        .ifLet(\.$alert, action: \.alert)
     }
 
     private func reduceView(_ state: inout State, _ action: Action.View) -> Effect<Action> {
@@ -162,8 +175,11 @@ public struct ReportMainFeature {
             // 카드 선택·시트·툴팁 상태는 그대로 둔다 — 새로고침은 재료만 갱신하는 동작이다.
             return .run { [sessionId = state.sessionId] send in
                 await send(.inner(.reportRefreshed(try await interviewReportClient.report(sessionId))))
-            } catch: { _, _ in
+            } catch: { error, send in
                 // 새로고침 실패는 보고 있는 화면을 무너뜨리지 않는다 — 이미 받아 둔 보고서를 지우지 않는다.
+                // 다만 미승격 서버 에러는 조용히 삼키면 원인이 사라져 Alert 로만 알린다.
+                guard !(error is CancellationError) else { return }
+                await send(.inner(.reportRefreshFailed(error as? InterviewReportError ?? .unexpected)))
             }
 
         case .userTappedReload:
@@ -238,7 +254,15 @@ public struct ReportMainFeature {
             apply(report, to: &state)
             return .none
 
+        case let .reportRefreshFailed(error):
+            // 화면은 그대로 둔다 — 알릴 것은 번역 못 하는 미승격 서버 에러뿐이다.
+            state.alert = error.serverAlertState()
+            return .none
+
         case let .reportFailed(error):
+            // 도메인이 케이스로 승격하지 않은 에러코드는 화면 문구로 번역할 수 없다 —
+            // 서버 원문을 공통 Alert 로 띄운다(승격된 에러면 nil, [[api#공통 규약]]).
+            state.alert = error.serverAlertState()
             // 보고서 미생성(404)은 실패가 아니라 «아직» — 폴링을 이어간다.
             guard error == .reportNotFound else {
                 state.loadState = .failed(error)

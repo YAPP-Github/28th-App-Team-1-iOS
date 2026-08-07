@@ -56,6 +56,8 @@ public struct ReportPeerFeedbackView: View {
         // X = 팝업이 떠 있으면 그 판 닫기, 없으면 화면 나가기 — 판단은 리듀서가 한다.
         // `background: .filled` — 스크롤 화면이라 투명 바로 두면 항목 목록이 X 뒤로 지나간다.
         .hilitNavigationBar(surface: .dark, background: .filled, onClose: { send(.userTappedBack) })
+        // 미승격 서버 에러코드 — 토스트로 번역할 문구가 없어 서버 원문을 OS 기본 Alert 로 (임시 노출 규칙).
+        .alert($store.scope(state: \.alert, action: \.alert))
         .onAppear { send(.onAppear) }
     }
 

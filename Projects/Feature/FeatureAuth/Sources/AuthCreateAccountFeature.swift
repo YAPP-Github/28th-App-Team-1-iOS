@@ -7,6 +7,7 @@
 
 import ComposableArchitecture
 import DomainAuthInterface
+import DomainCommonInterface
 
 // @lat: [[auth]]
 /// AuthCreateAccount(A0) — 가입·로그인 단일 진입점. 소셜 인증(signIn) + 서버 세션 교환(login)까지 마치고
@@ -88,13 +89,9 @@ public struct AuthCreateAccountFeature {
             case let .inner(.signInFinished(.failure(error))):
                 state.isAuthenticating = false
                 // TODO: PRD Part7 A0 — alert 가 아니라 토스트("로그인에 실패했어요. 다시 시도해주세요")로 교체.
-                // 미승격 서버 에러는 임시 노출 규칙(2026-08-02) — title «CODE(status)», message 원문.
-                if let serverAlert = error.serverAlert {
-                    state.alert = AlertState(
-                        title: { TextState(serverAlert.title) },
-                        actions: { ButtonState(role: .cancel) { TextState("확인") } },
-                        message: { TextState(serverAlert.message) }
-                    )
+                // 미승격 서버 에러는 공통 Alert 로 — title «CODE(status)», message 원문.
+                if let serverAlert: AlertState<Action.Alert> = error.serverAlertState() {
+                    state.alert = serverAlert
                 } else {
                     state.alert = AlertState(
                         title: { TextState(error.alertMessage) },

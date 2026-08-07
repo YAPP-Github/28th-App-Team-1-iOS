@@ -5,6 +5,7 @@
 //  Created by EunseoKim on 26/07/25.
 //
 
+import ComposableArchitecture
 import CoreNetworkInterface
 
 // @lat: [[api#공통 규약]]
@@ -29,11 +30,30 @@ public protocol DomainAPIError: Error {
     /// 미승격 에러를 화면까지 흘려야 하는 도메인(`server(...)` 케이스 패턴)만 재정의한다.
     /// ServerError 를 통째로 받는다 — 임시 노출 규칙(«CODE(status)» Alert)에 statusCode 까지 필요해서.
     static func fallback(unrecognized error: ServerError) -> Self
+
+    /// 미승격 서버 에러 원문 — `server(...)` 케이스에 담긴 값. 승격된 에러는 nil.
+    /// 기본 nil 이라 `fallback` 을 재정의하지 않은 도메인은 구현할 것이 없다.
+    var unrecognizedServerError: ServerError? { get }
 }
 
 public extension DomainAPIError {
     static func fallback(unrecognized error: ServerError) -> Self {
         .unexpected
+    }
+
+    var unrecognizedServerError: ServerError? { nil }
+
+    /// 미승격 서버 에러코드의 기본 Alert — 임시 노출 규칙(2026-08-02, [[api#공통 규약]]):
+    /// title «CODE(status)»(Spring 포맷은 상태코드), message 는 서버 원문.
+    /// 도메인이 케이스로 승격한 에러는 nil 이다 — 그건 화면이 자기 문구로 처리한다.
+    /// Feature 마다 같은 Alert 를 조립하지 않도록 여기 한 곳에 둔다 (CoreNetwork 타입도 새지 않는다).
+    func serverAlertState<Action>() -> AlertState<Action>? {
+        guard let error = unrecognizedServerError else { return nil }
+        return AlertState(
+            title: { TextState(error.alertTitle) },
+            actions: { ButtonState(role: .cancel) { TextState("확인") } },
+            message: { TextState(error.alertMessage) }
+        )
     }
 
     /// 인프라 에러를 도메인 에러로 좁혀 다시 던진다.
