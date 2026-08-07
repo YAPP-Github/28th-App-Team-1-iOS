@@ -17,7 +17,8 @@ import SwiftUI
 //
 // 흐름: 세션 확보 → expiry(업로드 전 — 첫 실행이면 videoNotFound 매핑 확인) → upload-url 발급
 //      → presigned PUT(더미 64KB, Content-Type 서명 일치) → complete(바디 생략) → expiry(남은 초)
-//      → report(새 스키마 디코딩 요약). 실패해도 다음 스텝을 계속 진행해 한 번에 전 계약을 훑는다.
+//      → report(새 스키마 디코딩 요약). 실패해도 다음 스텝을 계속 진행해 한 번에 전 계약을 훑는다 —
+//      단 complete 만은 PUT 성공에 건다: 실패한 업로드를 «완료» 로 확정하면 옛 객체가 유효 판정된다.
 //
 // 세션 선택: `HILIT_SMOKE_SESSION_ID` 환경변수가 있으면 그 세션, 없으면 reportList 의 첫 세션.
 // 새 면접을 만들지 않는다(이용권 보호) — 세션이 하나도 없으면 실패 사유로 안내.
@@ -69,8 +70,11 @@ struct VideoAPISmoke: View {
 
         await checkExpiry(sessionId, label: "만료 조회(업로드 전)", videoNotFoundIsExpected: true)
         guard let target = await issueUploadTarget(sessionId) else { return }
-        await putDummyVideo(to: target)
-        await completeUpload(sessionId)
+        if await putDummyVideo(to: target) {
+            await completeUpload(sessionId)
+        } else {
+            log("업로드 완료 확정", "PUT 실패로 건너뜀 — 실패한 업로드를 확정하지 않는다", ok: false)
+        }
         await checkExpiry(sessionId, label: "만료 조회(업로드 후)", videoNotFoundIsExpected: false)
         await decodeReport(sessionId)
     }
@@ -151,11 +155,12 @@ struct VideoAPISmoke: View {
     }
 
     /// presigned PUT — 도메인 계약 밖(S3 직행)이라 URLSession 을 직접 쓴다. 실녹화 배선(작업 B)과 무관한 계약 스모크.
+    /// 반환은 성공 여부 — complete 게이트(성공한 업로드만 확정)의 판정값이다.
     @MainActor
-    private func putDummyVideo(to target: InterviewVideoUploadTarget) async {
+    private func putDummyVideo(to target: InterviewVideoUploadTarget) async -> Bool {
         guard let url = URL(string: target.uploadUrl) else {
             log("S3 PUT", "uploadUrl 이 URL 로 파싱되지 않아요", ok: false)
-            return
+            return false
         }
         var request = URLRequest(url: url)
         request.httpMethod = "PUT"
@@ -167,11 +172,14 @@ struct VideoAPISmoke: View {
             let status = (response as? HTTPURLResponse)?.statusCode ?? -1
             if (200..<300).contains(status) {
                 log("S3 PUT", "HTTP \(status) — 더미 64KB 업로드(세션 저장소 덮어씀)", ok: true)
+                return true
             } else {
                 log("S3 PUT", "HTTP \(status) — Content-Type 서명 불일치 또는 URL 만료 의심", ok: false)
+                return false
             }
         } catch {
             log("S3 PUT", String(describing: error), ok: false)
+            return false
         }
     }
 
