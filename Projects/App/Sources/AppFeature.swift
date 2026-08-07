@@ -17,7 +17,8 @@ import Foundation
 // @lat: [[app]]
 // depends-on: [[auth]] — 로그인 전/후 루트 게이트. cross-feature 조립은 AppFeature 에서만.
 // depends-on: [[home]] — Home 을 로그인 후 루트로 임베드(owner). cross-feature delegate 라우팅은 Feature 추가 시 이 자리에서 조립.
-// depends-on: [[interview]] — 온보딩 완주 delegate(.finished(sessionId)) 를 받아 면접 흐름을 present. 종료 두 신호(.finished/.closed)는 cover 를 닫고 홈을 다시 태운다. 홈의 진행 중 두 갈래(중단·재개)도 여기서 InterviewClient·HeldSessionStore 로 배선한다.
+// depends-on: [[interview]] — 온보딩 완주 delegate(.finished(sessionId)) 를 받아 면접 흐름을 present. 종료 두 신호(.finished/.closed)는 cover 를 닫고 홈을 다시 태운다.
+//                             홈의 진행 중 두 갈래(중단·재개)도 여기서 InterviewClient·HeldSessionStore 로 배선한다.
 // depends-on: [[onboarding]] — dev 전용 진입(Home 버튼)으로 온보딩 위저드를 present. 조립은 여기서만 (온보딩 본체 통합 전 임시).
 @Reducer
 struct AppFeature {
