@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import CoreNetworkInterface
 import DomainInterviewReportInterface
 import DomainInterviewReportTesting
 import Foundation
@@ -114,6 +115,64 @@ struct ReportMainFeatureTests {
         await store.receive(\.inner.reportFailed) {
             $0.loadState = .failed(.sessionNotFound)
         }
+    }
+
+    @Test("정의되지 않은 서버 에러코드는 서버 원문을 기본 Alert 로 띄운다")
+    func unrecognizedServerCodeShowsAlert() async {
+        let clock = TestClock()
+        let error = InterviewReportError.server(
+            ServerError(code: "REPORT_LOCKED", message: "리포트가 잠겨 있어요.", statusCode: 409)
+        )
+        let store = store(report: { _ in throw error }, clock: clock)
+
+        await store.send(.view(.onAppear))
+        await store.receive(\.inner.reportFailed) {
+            $0.alert = AlertState(
+                title: { TextState("REPORT_LOCKED(409)") },
+                actions: { ButtonState(role: .cancel) { TextState("확인") } },
+                message: { TextState("리포트가 잠겨 있어요.") }
+            )
+            $0.loadState = .failed(error)
+        }
+    }
+
+    @Test("새로고침 실패는 화면을 지우지 않지만 미승격 서버 에러는 Alert 로 알린다")
+    func refreshServerErrorOnlyAlerts() async {
+        let clock = TestClock()
+        let callCount = LockIsolated(0)
+        let store = store(
+            report: { _ in
+                let isFirst = callCount.withValue { count -> Bool in
+                    count += 1
+                    return count == 1
+                }
+                guard isFirst else {
+                    throw InterviewReportError.server(
+                        ServerError(code: "REPORT_LOCKED", message: "리포트가 잠겨 있어요.", statusCode: 409)
+                    )
+                }
+                return InterviewReportFixtures.ready
+            },
+            clock: clock
+        )
+
+        await store.send(.view(.onAppear))
+        await store.receive(\.inner.reportLoaded) {
+            $0.report = InterviewReportFixtures.ready
+            $0.loadState = .loaded
+        }
+
+        await store.send(.view(.userPulledToRefresh))
+        await store.receive(\.inner.reportRefreshFailed) {
+            $0.alert = AlertState(
+                title: { TextState("REPORT_LOCKED(409)") },
+                actions: { ButtonState(role: .cancel) { TextState("확인") } },
+                message: { TextState("리포트가 잠겨 있어요.") }
+            )
+        }
+        // 받아 둔 보고서는 그대로다 — 새로고침 실패가 화면을 무너뜨리지 않는다.
+        #expect(store.state.loadState == .loaded)
+        #expect(store.state.report == InterviewReportFixtures.ready)
     }
 
     @Test("툴팁은 보고 있는 질문 카드의 안내만 세운다 — 탭을 바꾸면 내용도 바뀐다")

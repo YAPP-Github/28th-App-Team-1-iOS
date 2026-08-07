@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import CoreNetworkInterface
 import DomainFeedbackShareInterface
 import DomainInterviewReportInterface
 import Foundation
@@ -92,6 +93,36 @@ struct ReportPeerFeedbackFeatureTests {
             $0.toast = nil
         }
         #expect(!store.state.isAxisLocked)
+    }
+
+    @Test("정의되지 않은 서버 에러코드는 토스트 대신 서버 원문 Alert 로 띄운다")
+    func unrecognizedServerCodeShowsAlert() async {
+        let store = TestStore(initialState: ReportPeerFeedbackFeature.State(sessionId: 7)) {
+            ReportPeerFeedbackFeature()
+        } withDependencies: {
+            $0.feedbackShareClient.create = { _, _ in
+                throw FeedbackShareError.server(
+                    ServerError(code: "SHARE_LOCKED", message: "공유가 잠겨 있어요.", statusCode: 423)
+                )
+            }
+        }
+
+        await store.send(.view(.userToggledAxis(.gaze, isOn: true))) {
+            $0.selectedAxes = [.gaze]
+        }
+        await store.send(.view(.userTappedCreateLink)) {
+            $0.isCreating = true
+        }
+        await store.receive(\.inner.shareLinkFailed) {
+            $0.isCreating = false
+            $0.alert = AlertState(
+                title: { TextState("SHARE_LOCKED(423)") },
+                actions: { ButtonState(role: .cancel) { TextState("확인") } },
+                message: { TextState("공유가 잠겨 있어요.") }
+            )
+        }
+        // 토스트는 뜨지 않는다 — 한 사건을 두 자리에 쓰지 않는다.
+        #expect(store.state.toast == nil)
     }
 
     @Test("409 는 실패로 끝나지 않는다 — 기존 링크를 회수해 완료 팝업을 다시 띄운다")

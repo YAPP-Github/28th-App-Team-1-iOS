@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import DomainCommonInterface
 import DomainFeedbackShareInterface
 import DomainInterviewReportInterface
 
@@ -53,6 +54,8 @@ public struct ReportPeerFeedbackFeature {
         public var popup: Popup?
         /// 하단 토스트 문구 — 생성·회수 실패 안내 자리다(복사 완료는 팝업이 받는다).
         public var toast: String?
+        /// 미승격 서버 에러 Alert — 도메인이 케이스로 승격하지 않은 코드의 원문 표시(임시 노출 규칙).
+        @Presents public var alert: AlertState<Action.Alert>?
 
         public init(sessionId: Int) {
             self.sessionId = sessionId
@@ -63,6 +66,10 @@ public struct ReportPeerFeedbackFeature {
         case view(View)
         case inner(Inner)
         case delegate(Delegate)
+        case alert(PresentationAction<Alert>)
+
+        /// 확인 버튼만 있는 Alert — 누를 액션이 없다.
+        public enum Alert: Equatable {}
 
         public enum View: BindableAction, Equatable, Sendable {
             case binding(BindingAction<State>)
@@ -80,7 +87,8 @@ public struct ReportPeerFeedbackFeature {
             /// 복사 완료 판이 제 수명을 다 썼다 — 판을 내리고 리포트 메인으로 나간다.
             case linkCopiedPopupElapsed
             case shareLinkCreated(token: String)
-            case shareLinkFailed(message: String)
+            /// 링크 생성 실패 — 승격된 에러는 토스트 문구로, 미승격 서버 에러는 원문 Alert 로 갈린다.
+            case shareLinkFailed(FeedbackShareError)
             case toastDismissed
         }
 
@@ -116,10 +124,14 @@ public struct ReportPeerFeedbackFeature {
             case let .inner(action):
                 return reduceInner(&state, action)
 
+            case .alert:
+                return .none
+
             case .delegate:
                 return .none
             }
         }
+        .ifLet(\.$alert, action: \.alert)
     }
 
     private func reduceView(_ state: inout State, _ action: Action.View) -> Effect<Action> {
@@ -197,9 +209,15 @@ public struct ReportPeerFeedbackFeature {
             state.popup = .shareLinkReady
             return .none
 
-        case let .shareLinkFailed(message):
+        case let .shareLinkFailed(error):
             state.isCreating = false
-            return showToast(message, &state)
+            // 도메인이 케이스로 승격하지 않은 에러코드는 토스트 문구로 번역할 수 없다 —
+            // 서버 원문을 공통 Alert 로 띄운다([[api#공통 규약]]).
+            guard let alert: AlertState<Action.Alert> = error.serverAlertState() else {
+                return showToast(Self.failureMessage(for: error), &state)
+            }
+            state.alert = alert
+            return .none
 
         case .toastDismissed:
             state.toast = nil
@@ -220,7 +238,7 @@ public struct ReportPeerFeedbackFeature {
                   let status = try? await feedbackShareClient.status(sessionId),
                   status.status == .active
             else {
-                await send(.inner(.shareLinkFailed(message: Self.failureMessage(for: error))))
+                await send(.inner(.shareLinkFailed(error as? FeedbackShareError ?? .unexpected)))
                 return
             }
             await send(.inner(.existingShareLoaded(
@@ -271,9 +289,9 @@ public struct ReportPeerFeedbackFeature {
 
     /// 실패 안내 문구. 서버가 준 `message` 가 있는 항목 검증 실패만 그대로 노출하고,
     /// 409(활성 링크 존재)는 회수 경로가 먼저 가로채므로 회수까지 실패했을 때만 여기 온다.
-    /// 나머지는 사용자가 할 수 있는 행동으로 번역한다.
-    private static func failureMessage(for error: any Error) -> String {
-        switch error as? FeedbackShareError {
+    /// 나머지는 사용자가 할 수 있는 행동으로 번역한다 — 미승격 서버 에러(`server`)는 여기 오지 않는다(Alert 몫).
+    private static func failureMessage(for error: FeedbackShareError) -> String {
+        switch error {
         case .alreadyExists:
             "이미 만들어 둔 링크가 있어요."
         case let .invalidAxes(message):

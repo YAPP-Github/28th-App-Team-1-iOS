@@ -40,6 +40,8 @@ public struct ReportMainView: View {
         .sheet(item: $store.scope(state: \.highlightDetail, action: \.highlightDetail)) { store in
             ReportHighlightDetailView(store: store)
         }
+        // 미승격 서버 에러코드 — 서버 원문을 OS 기본 Alert 로 (임시 노출 규칙).
+        .alert($store.scope(state: \.alert, action: \.alert))
     }
 
     /// 상태 분기 (정의서 §4-4) — 폴링 지연·재시도 가능 에러는 수동 재시도 버튼을 붙이고,

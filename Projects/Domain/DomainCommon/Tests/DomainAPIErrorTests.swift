@@ -5,6 +5,7 @@
 //  Created by EunseoKim on 26/07/25.
 //
 
+import ComposableArchitecture
 import CoreNetworkInterface
 import DomainCommonInterface
 import Foundation
@@ -44,6 +45,26 @@ private enum FallbackStubError: DomainAPIError, Equatable {
     }
 }
 
+/// 미승격 에러 원문을 통째로 안고 가는 패턴 (Auth·Consent·InterviewReport·FeedbackShare) — 공통 Alert 검증용.
+private enum ServerStubError: DomainAPIError, Equatable {
+    case server(ServerError)
+    case sessionExpired
+    case networkFailure
+    case serverUnavailable
+    case unexpected
+
+    init?(serverCode code: String, message: String) { nil }
+
+    static func fallback(unrecognized error: ServerError) -> ServerStubError {
+        .server(error)
+    }
+
+    var unrecognizedServerError: ServerError? {
+        guard case let .server(error) = self else { return nil }
+        return error
+    }
+}
+
 struct DomainAPIErrorTests {
     @Test("도메인이 아는 서버 코드는 고유 케이스로 매핑한다")
     func knownServerCode() {
@@ -76,6 +97,28 @@ struct DomainAPIErrorTests {
         #expect(error == .server(code: "NEW_CODE", message: "원문"))
         // 5xx 는 재정의와 무관하게 공통 규칙 우선
         #expect(FallbackStubError(mapping: ServerError(code: "NEW_CODE", message: "m", statusCode: 503)) == .serverUnavailable)
+    }
+
+    @Test("미승격 서버 에러는 공통 Alert(«CODE(status)» + 원문)로 풀린다")
+    func serverAlertState() {
+        let defined = ServerStubError(mapping: ServerError(code: "NEW_CODE", message: "원문", statusCode: 409))
+        let alert: AlertState<Never>? = defined.serverAlertState()
+        #expect(alert?.title == TextState("NEW_CODE(409)"))
+        #expect(alert?.message == TextState("원문"))
+
+        // Spring 기본 포맷(코드 없음) — 제목은 상태코드만.
+        let spring = ServerStubError(mapping: ServerError(code: "", message: "Forbidden", statusCode: 403))
+        let springAlert: AlertState<Never>? = spring.serverAlertState()
+        #expect(springAlert?.title == TextState("403"))
+    }
+
+    @Test("승격된 에러는 공통 Alert 를 만들지 않는다 — 화면이 자기 문구로 처리한다")
+    func recognizedErrorHasNoServerAlert() {
+        let alert: AlertState<Never>? = ServerStubError.networkFailure.serverAlertState()
+        #expect(alert == nil)
+        // fallback 을 재정의하지 않은 도메인은 기본 nil 이라 구현할 것이 없다.
+        let stub: AlertState<Never>? = StubError.known.serverAlertState()
+        #expect(stub == nil)
     }
 
     @Test("NetworkError — transport 는 networkFailure, 5xx 는 serverUnavailable, envelope 아닌 4xx 는 unexpected")
