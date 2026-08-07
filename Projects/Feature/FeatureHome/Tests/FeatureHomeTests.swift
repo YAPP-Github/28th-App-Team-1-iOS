@@ -214,10 +214,12 @@ struct HomeReportListTests {
     /// 2026-07-11(토) 09:00 KST — 표시 포맷 «7월 11일 토» 검증용 고정 시각.
     private static let interviewedAt = Date(timeIntervalSince1970: 1_783_728_000)
 
+    /// `title` 기본값은 nil — 요약 문장 필드 이전에 만들어진 세션(스냅샷 제목 갈래)이 기본 표본이다.
     private static func summary(
         sessionId: Int = 7,
         careerYears: Int? = 3,
         jobTypeLabel: String? = "백엔드 개발자",
+        title: String? = nil,
         status: ReportStatus = .ready
     ) -> InterviewReportSummary {
         InterviewReportSummary(
@@ -225,6 +227,7 @@ struct HomeReportListTests {
             jobType: "BACKEND",
             jobTypeLabel: jobTypeLabel,
             careerYears: careerYears,
+            title: title,
             interviewedAt: interviewedAt,
             portfolioFileName: "포트폴리오.pdf",
             portfolioDeleted: false,
@@ -305,6 +308,52 @@ struct HomeReportListTests {
             $0.reports = []
             $0.expandedReportIDs = []
             $0.phase = .default
+        }
+    }
+
+    @Test("요약 문장이 오면 행 제목은 스냅샷 대신 그 문장이다")
+    func summaryTitleWinsOverSnapshot() async {
+        let store = Self.store(reportList: {
+            [Self.summary(title: "캐시 도입 결정의 이유와 한계까지 설명했어요")]
+        })
+
+        await store.send(.view(.onAppear))
+        await store.receive(\.inner.reportsLoaded) {
+            $0.reports = [
+                HomeFeature.Report(
+                    id: 7,
+                    dateText: "7월 11일 토",
+                    title: "캐시 도입 결정의 이유와 한계까지 설명했어요"
+                )
+            ]
+            $0.expandedReportIDs = [7]
+            $0.phase = .report(.returning)
+        }
+    }
+
+    @Test("공백뿐인 요약 문장은 스냅샷으로 떨어지고, 실패 세션은 요약이 있어도 상태 문구다")
+    func blankTitleFallsBackAndFailedKeepsStatusText() async {
+        let store = Self.store(reportList: {
+            [
+                Self.summary(sessionId: 1, title: "   "),
+                Self.summary(sessionId: 2, title: "말끝을 흐리지 않고 마무리했어요", status: .failed)
+            ]
+        })
+
+        await store.send(.view(.onAppear))
+        await store.receive(\.inner.reportsLoaded) {
+            $0.reports = [
+                HomeFeature.Report(id: 1, dateText: "7월 11일 토", title: "백엔드 개발자 · 3년차"),
+                HomeFeature.Report(
+                    id: 2,
+                    dateText: "7월 11일 토",
+                    title: "레포트 생성에 실패했어요",
+                    subtitle: "이용권 횟수는 차감되지 않아요",
+                    canOpenReport: false
+                )
+            ]
+            $0.expandedReportIDs = [1]
+            $0.phase = .report(.returning)
         }
     }
 

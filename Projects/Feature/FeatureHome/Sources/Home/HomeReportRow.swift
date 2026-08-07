@@ -53,11 +53,13 @@ extension HomeFeature.Report {
     /// 생성 실패 행 보조 문구 — 실패해도 이용권은 안 깎인다는 게 이 행이 전할 전부다(시안 2026-08-05).
     static let failureSubtitle = "이용권 횟수는 차감되지 않아요"
 
-    /// 행 제목 — 실패만 상태 문구고, READY·INSUFFICIENT_ANALYSIS 는 세션 스냅샷(직군·연차)이다
-    /// (시안처럼 «답변 한 줄 요약» 을 띄우고 싶지만 목록 응답에 그 문장이 없다).
-    // TODO: 목록 응답에 요약 문장 필드 추가 요청(미결 6-1) → 오면 스냅샷 갈래만 갈아끼운다.
+    /// 행 제목 — 실패만 상태 문구고, 그 밖에는 시안대로 서버 «답변 한 줄 요약»(`summary.title`)이다.
+    /// 그 필드는 목록 응답에 뒤늦게 붙었으므로(2026-08-07) 비어 오면 세션 스냅샷(직군·연차)으로 떨어진다
+    /// — fallback 이 남는 건 필드 이전에 만들어진 과거 세션 때문이다.
     private static func title(for summary: InterviewReportSummary) -> String {
-        summary.reportStatus == .failed ? "레포트 생성에 실패했어요" : snapshotTitle(for: summary)
+        guard summary.reportStatus != .failed else { return "레포트 생성에 실패했어요" }
+        let summarized = summary.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return summarized.isEmpty ? snapshotTitle(for: summary) : summarized
     }
 
     /// 세션 스냅샷 제목 — 없는 조각은 뺀다(가짜 «0년차» 를 만들지 않는다).
@@ -80,8 +82,8 @@ extension HomeFeature.Report {
         .init(id: 5, dateText: "7월 10일 월", title: "성능 개선 결과를 지표로 설명했어요")
     ]
 
-    /// 세션 스냅샷 제목 목록 — 요약 문장 필드가 오기 전 실제 행이 어떻게 보이는지 확인하는 **프리뷰 전용** 픽스처.
-    /// 제목은 `Report.title(for:)` 이 만드는 값과 같게 맞췄다(직군 · 연차).
+    /// 세션 스냅샷 제목 목록 — 요약 문장이 없는 과거 세션 행이 어떻게 보이는지 확인하는 **프리뷰 전용** 픽스처.
+    /// 제목은 `Report.title(for:)` 의 fallback 갈래가 만드는 값과 같게 맞췄다(직군 · 연차).
     public static let snapshotPlaceholders: [Self] = [
         .init(id: 1, dateText: "7월 11일 토", title: "백엔드 개발자 · 3년차"),
         .init(id: 2, dateText: "7월 10일 금", title: "프론트엔드 개발자 · 1년차"),
