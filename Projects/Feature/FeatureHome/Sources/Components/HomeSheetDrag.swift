@@ -6,14 +6,15 @@
 //
 
 import SwiftUI
+import UIKit
 
 /// 「밑으로 스크롤해서 면접을 시작해 보세요!」 — 시안 문구가 약속한 전환의 제스처 쪽 절반.
 /// 리포트 시트를 끌어 자리(`HomeFeature.SheetDetent`)를 바꾸는 규칙(치수·임계값·착지 판정)을
 /// 한 곳에 둬 씬(`HomeView`)과 판(`HomeReportSheet`)이 같은 판정을 쓰게 한다.
 ///
-/// 드래그를 받는 자리는 자리별로 갈린다 — 기본 자리는 그래버·헤더 + **목록 판 전체**(스크롤을 끄고
-/// 위 스와이프를 «시트 올리기» 로 쓴다), 확장 자리는 그래버 없이 헤더만(목록이 스크롤을 가져간다).
-/// 스크롤과 시트 드래그는 같은 축이라 한 자리에서 둘을 동시에 살리면 서로 먹는다.
+/// 드래그를 받는 자리는 둘이다 — 그래버·헤더(+ 빈 상태 판)는 `HomeSheetDragHandle.gesture`,
+/// 목록 판은 `HomeSheetScrollView` 브리지다. 스크롤과 시트 드래그는 같은 축이라 «둘 중 하나만»
+/// 살리면 손짓이 두 번 필요해져, 목록 쪽은 이동량을 시트와 스크롤에 **나눠 주는** 방식으로 잇는다.
 // TODO: 모션 시안 수령 후 임계값·스프링 확정 (지금 값은 구현자 판단 — 시안·모션 근거 없음).
 enum HomeSheetDrag {
     /// 기본 자리의 시트 높이 — 시안 812 중 하단 481.
@@ -48,6 +49,21 @@ enum HomeSheetDrag {
         case .report: min(reportHeight, max(available - greenHeight(available: available), 0))
         case .expanded: available
         }
+    }
+
+    /// 목록 스크롤이 시트로 흘릴 수 있는 이동량 범위(아래가 +) — **확정된 자리 기준의 누적 이동량**이다.
+    /// 위로는 확장 자리 높이까지, 아래로는 시트가 다 내려갈 때까지.
+    ///
+    /// 브리지(`HomeSheetScrollView`)가 «여기까지는 시트가 먹고 그다음부터 목록» 을 이 범위로 가른다 —
+    /// 범위를 다 쓰면 같은 손짓이 그대로 목록 스크롤로 넘어간다.
+    static func travelRange(
+        for detent: HomeFeature.SheetDetent,
+        available: CGFloat
+    ) -> ClosedRange<CGFloat> {
+        let resting = height(for: detent, available: available)
+        let ceiling = height(for: .expanded, available: available)
+        // available 이 아직 0 인 첫 프레임에도 lower ≤ 0 ≤ upper 는 지킨다.
+        return min(resting - ceiling, 0)...max(resting, 0)
     }
 
     /// 그린 영역이 실제로 떼어 가는 높이 — 원칙은 시안 244 지만, 그러고 나면 시트가 한 줄도 못 남는
@@ -98,6 +114,19 @@ enum HomeSheetDrag {
         }
     }
 
+    /// 착지 판정에 넣을 이동량 — 손가락이 실제로 간 거리에 관성을 `velocityAssist` 만큼만 얹는다.
+    /// 그래버 드래그와 목록 스크롤이 **같은 규칙으로** 앉도록 두 경로가 이 함수를 쓴다.
+    static func settleTravel(actual: CGFloat, inertia: CGFloat) -> CGFloat {
+        actual + inertia * velocityAssist
+    }
+
+    /// 손을 뗀 속도(pt/s, 아래가 +)로 관성이 더 끌고 갈 거리 — UIKit 감속 곡선 투영.
+    /// `DragGesture` 는 `predictedEndTranslation` 으로 같은 값을 받으므로 스크롤 경로만 직접 잰다.
+    static func projectedInertia(velocity: CGFloat) -> CGFloat {
+        let rate = UIScrollView.DecelerationRate.normal.rawValue
+        return velocity / 1000 * rate / (1 - rate)
+    }
+
     /// 한 칸 아래 — 확장 → 기본 → 면접 시작.
     private static func stepDown(from detent: HomeFeature.SheetDetent) -> HomeFeature.SheetDetent {
         switch detent {
@@ -121,10 +150,14 @@ enum HomeSheetDrag {
 /// 시트 손잡이가 부모(`HomeView`)에게 드래그를 되돌려 주는 통로.
 /// 자리·높이는 부모가 소유하고, phase 뷰는 «어디를 잡을 수 있는지»만 정한다.
 struct HomeSheetDragHandle {
+    /// 목록 스크롤이 시트로 흘릴 수 있는 이동량 범위 — `HomeSheetDrag.travelRange`.
+    /// 브리지 전용 값이다: `gesture`(그래버·헤더)는 높이 clamp 를 씬에 맡기므로 쓰지 않는다.
+    var travelRange: ClosedRange<CGFloat> = 0...0
     /// 끄는 중 — 세로 이동량(아래가 +)을 그대로 흘린다.
     let onChanged: (CGFloat) -> Void
-    /// 손을 뗌 — 실제 이동량 + 관성 보정(`velocityAssist`)을 넘긴다.
-    let onEnded: (CGFloat) -> Void
+    /// 손을 뗌 — 실제 이동량 + 관성 보정(`velocityAssist`)을 넘기고 **앉은 자리**를 돌려받는다.
+    /// 브리지는 그 자리로 목록 관성을 이어 달릴지(확장) 맨 위로 붙일지를 가른다.
+    let onEnded: (CGFloat) -> HomeFeature.SheetDetent
 
     /// 좌표계는 **global** — 손잡이는 드래그를 따라 움직이는 뷰라, 기본(local)로 재면 판이 Δ 내려갈 때
     /// 좌표계도 같이 내려가 translation 이 되감기고, 그 값이 판을 도로 올리는 피드백 루프로 떨린다.
@@ -137,7 +170,7 @@ struct HomeSheetDragHandle {
                 // 속도는 보조로만 얹는다(사용자 결정 2026-08-05).
                 let actual = value.translation.height
                 let inertia = value.predictedEndTranslation.height - actual
-                onEnded(actual + inertia * HomeSheetDrag.velocityAssist)
+                _ = onEnded(HomeSheetDrag.settleTravel(actual: actual, inertia: inertia))
             }
     }
 }

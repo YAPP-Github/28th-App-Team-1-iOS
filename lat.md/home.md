@@ -7,7 +7,7 @@
 ## 흐름
 `HomeFeature`(Reducer) + `HomeView`. Action 은 3분류(view/inner/delegate, [[architecture#핵심 결정 (Trade-off 기록)#D5. Reducer Action 3분류]]). 조립은 모두 AppFeature → [[app#Cross-feature Routing]].
 
-**두 덩어리 — Reducer 2개 + 폴더 2개** (한 모듈 안). `Sources/Home/` 은 `HomeFeature` + `HomeView`(씬) + `HomeReportSheet`(하단 판), `Sources/StartInterview/` 은 `StartInterviewFeature` + `StartInterviewView`, 공용 배경·드래그 규칙은 `Sources/Components/`.
+**두 덩어리 — Reducer 2개 + 폴더 2개** (한 모듈 안). `Sources/Home/` 은 `HomeFeature` + `HomeView`(씬) + `HomeReportSheet`(하단 판), `Sources/StartInterview/` 은 `StartInterviewFeature` + `StartInterviewView`, 공용 배경·드래그 규칙·목록 브리지는 `Sources/Components/`.
 
 **phase 별 화면 뷰는 없다 (2026-08-04 통합)** — 시안 `HomeDefault`·`HomeReport` 는 겹 구성이 같고 다른 건 판 안 내용(빈 상태 ↔ 목록)뿐이라 `HomeDefaultView`·`HomeReportView` 를 합쳤다. 씬은 Z 아래부터 «배경 → 면접 시작 → 인사말·안내 문구 → 판» 네 겹이고, 인사말은 두 뷰에 중복돼 있던 걸 씬 한 곳으로 올렸다. 판이 올라오면 인사말 겹을 **덮는다** — 그린 영역을 «남은 높이» 로 계산하지 않는다.
 
@@ -18,7 +18,9 @@ phase 와 **직교하는 두 번째 축** — 리포트 시트가 앉는 자리 
 
 「면접 시작」 3화면(처음/동일 정보/이용권 소진)이 **cover present 가 아닌 이유**: 시트를 끌어 내리는 동안 뒤에서 드러나야 하고, 손을 놓기 전까진 되돌릴 수 있어야 한다(사용자 요구 2026-08-01 — Airbnb 지도/목록 스냅 참조). 그래서 `StartInterviewFeature.State` 는 `@Presents` 옵셔널이 아니라 **늘 붙어 있고**(`Scope`), 보이는 정도는 시트 높이가 정한다. `StartInterviewView` 도 화면이 아니라 배경·내비바 없는 **한 겹**이다.
 
-확장 자리 시안(649:6625)엔 **그래버가 없고**, 판이 내비바에 붙는 만큼 **내비바 그림자**(top-bar `drop-shadow(0 8 6, #DDDFE5 60%)`)가 판 위쪽 14pt 에 깔린다 — 시스템 툴바엔 그림자를 못 붙여 `HomeReportSheet` 가 그린다(그림자는 어차피 아래 판에 떨어진다). 그래버가 없는 대신 헤더가 손잡이를 이어받고(내려올 길 유지), 그래버가 빠진 만큼 헤더 위 여백이 10 → 20 으로 벌어져 시안 헤더 프레임 63(20+23+20)이 맞는다. 치수·임계값·착지 판정은 `Sources/Components/HomeSheetDrag.swift` 한 곳 — 60pt 를 못 넘기면 원래 자리가 아니라 **기본 자리**로 돌아간다(사용자 결정). 판정에 쓰는 이동량은 **실제 이동 + 관성 25%**(`velocityAssist`) 다 — `predictedEndTranslation` 을 그대로 쓰면 살짝 튕기기만 해도 자리가 넘어간다(2026-08-05). 드래그 이동량은 뷰 `@State`(프레임마다 스토어를 때리지 않으려고), 확정된 자리만 `view(.userSettledSheet(_:))` 로 리듀서에 올린다. 홈에 다시 들어오면 `onAppear` 가 기본 자리로 되돌린다. 손잡이는 자리별로 갈린다 — **기본 자리**는 그래버·헤더 + 목록 판 전체(`scrollDisabled`, 위 스와이프가 곧 «시트 올리기» — 시안 649:6625 의 «위로 스크롤하면 목록만 남는다»를 이 제스처로 잇는다), **확장 자리**는 헤더만(목록이 스크롤을 가져가고 `.gesture(_:including: .subviews)` 로 시트 드래그를 뺀다). 같은 축이라 한 자리에서 스크롤·드래그를 둘 다 살리면 서로 먹는다 — 확장 자리에서 내려오는 길은 헤더 드래그다. `default` phase 엔 펼칠 목록이 없어 `expanded` 를 막는다.
+확장 자리 시안(649:6625)엔 **그래버가 없고**, 판이 내비바에 붙는 만큼 **내비바 그림자**(top-bar `drop-shadow(0 8 6, #DDDFE5 60%)`)가 판 위쪽 14pt 에 깔린다 — 시스템 툴바엔 그림자를 못 붙여 `HomeReportSheet` 가 그린다(그림자는 어차피 아래 판에 떨어진다). 그래버가 없는 대신 헤더가 손잡이를 이어받고(내려올 길 유지), 그래버가 빠진 만큼 헤더 위 여백이 10 → 20 으로 벌어져 시안 헤더 프레임 63(20+23+20)이 맞는다. 치수·임계값·착지 판정은 `Sources/Components/HomeSheetDrag.swift` 한 곳 — 60pt 를 못 넘기면 원래 자리가 아니라 **기본 자리**로 돌아간다(사용자 결정). 판정에 쓰는 이동량은 **실제 이동 + 관성 10%**(`velocityAssist`) 다 — `predictedEndTranslation` 을 그대로 쓰면 살짝 튕기기만 해도 자리가 넘어간다(2026-08-05). 드래그 이동량은 뷰 `@State`(프레임마다 스토어를 때리지 않으려고), 확정된 자리만 `view(.userSettledSheet(_:))` 로 리듀서에 올린다. 홈에 다시 들어오면 `onAppear` 가 기본 자리로 되돌린다. `default` phase 엔 펼칠 목록이 없어 `expanded` 를 막는다.
+
+**이동량을 받는 자리는 둘** — 그래버·헤더(+ 빈 상태 판)는 `DragGesture`, 목록 판은 `HomeSheetScrollView`(UIScrollView 브리지)다. 스크롤과 시트 드래그는 같은 축이라 자리별로 한쪽만 살리면 «올리고 → 놓고 → 다시 스크롤» 로 손짓이 두 번 필요해, 브리지가 스크롤 이동량을 **시트 몫과 목록 몫으로 나눠** 한 손짓으로 잇는다(2026-08-07 개정). 확장 높이까지 남은 범위(`HomeSheetDrag.travelRange`)를 시트가 먼저 먹고, 다 쓰면 같은 손짓이 그대로 목록 스크롤이 된다(시안 649:6625 의 «위로 스크롤하면 목록만 남는다»). 반대로 확장 자리에서 목록 맨 위를 아래로 당기면 시트가 내려온다 — 헤더 드래그 말고도 내려올 길이 생겼다. 이동량은 `contentOffset` 이 아니라 **팬 인식기**에서 읽는다: 경계 밖 contentOffset 은 고무줄로 눌려 1:1 이 아니라 시트가 손가락보다 느리게 따라온다. 시트가 한 번도 안 움직인 제스처(순수 목록 스크롤)는 자리를 **건드리지 않는다** — 건드리면 «임계 미달 → 기본 자리» 규칙에 걸려 멀쩡히 스크롤하던 확장 자리가 도로 내려앉는다. iOS 17 타깃이라 `onScrollGeometryChange`(18+) 를 못 써 UIKit 으로 내렸고, 행 뷰는 `UIHostingController` 로 그대로 얹는다.
 
 **높이 우선순위는 그린 영역이 먼저** — 기본 자리 시트는 `min(481, available - greenMinHeight)` 라 시안(812)보다 짧은 기기에서 시트가 줄고 인사말은 안 잘린다. 겹을 `VStack` 이 아니라 **ZStack** 으로 쌓는 이유도 같다(세로로 나눠 담으면 고정 높이 시트가 먼저 먹어 그린 영역이 눌린다). 내려갈 땐 판 높이가 고정이라(offset 만 움직임) 시트 안 내용은 판과 1:1 로 같이 움직인다 — 빈 상태 중앙 정렬도 판 프레임 기준 그대로면 된다.
 
