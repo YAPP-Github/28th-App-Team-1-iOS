@@ -258,6 +258,28 @@ struct InterviewVideoUploadQueueTests {
         #expect(harness.issueCalls.value == issuesBefore)   // 발급 반복 없음
     }
 
+    @Test("resumePending 은 예약된 즉시 재시도까지 끝나야 반환한다 — wake 의 assertion 이 재시도 구간을 덮는다")
+    func resumeReturnsOnlyAfterImmediateRetryCompletes() async throws {
+        let harness = Harness()
+        harness.completeFailuresRemaining.setValue(2)   // 스트림발 complete 1+1 모두 실패 → completing 파킹
+        await harness.queue.enqueue(sessionId: 7, fileURL: try harness.makeRecordingFile(), wrapUp: nil)
+        try await harness.waitUntil("PUT 등록") { harness.putCalls.value == ["7"] }
+        harness.transferCompletions.yield(.completed(id: "7"))
+        try await harness.waitUntil("completing 파킹(complete 1+1 소진)") {
+            guard harness.completeFailuresRemaining.value == 0 else { return false }
+            return await harness.queue.entriesSnapshot().first?.stage == .completing
+        }
+        try await Task.sleep(nanoseconds: 50_000_000)   // 파킹 시도의 꼬리(finishAttempt)까지 정리
+        harness.completeFailuresRemaining.setValue(1)   // 재개 1차는 실패 → 즉시 재시도가 완주를 맡는다
+
+        await harness.queue.resumePending()
+
+        // 반환 «직후» 를 폴링 없이 단언한다 — 예약된 재시도가 잠잠함 판정 밖이면 여기 도달 시 미완(플레이크)이다.
+        #expect(harness.completeCalls.value == [7])
+        let entries = await harness.queue.entriesSnapshot()
+        #expect(entries.isEmpty)
+    }
+
     @Test("72시간을 넘긴 항목은 재개 시 파일·저널을 폐기하고 시도하지 않는다")
     func resumePurgesExpiredEntries() async throws {
         let clock = LockIsolated(Date(timeIntervalSince1970: 0))

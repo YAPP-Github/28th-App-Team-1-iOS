@@ -24,12 +24,14 @@ extension BackgroundTransferClient: @retroactive DependencyKey {
 /// background URLSession 은 식별자당 1개만 존재해야 한다 — 프로세스 전역 싱글턴.
 /// 유일성은 `static let shared`(전역 1회 초기화 보장)가 떠받친다 — 세션도 그 init 안에서 딱 한 번 만들어진다.
 /// 델리게이트 콜백은 `delegateQueue: nil`(시스템 serial 큐)에서 오고, init 이후 상태 변이는
-/// 스트림 continuation(스레드 안전)·완료 핸들러 슬롯(쓰기 지점이 attach/wake 각 1곳)뿐이라 잠금을 더하지 않는다.
+/// 스트림 continuation(스레드 안전)과 완료 핸들러 슬롯뿐 — 슬롯은 attach(메인)와 이벤트 소진(delegate 큐)이
+/// 스레드를 달리해 만나는 유일한 가변 상태라 락으로 좁게 보호한다.
 final class BackgroundTransferSession: NSObject, @unchecked Sendable {
     static let shared = BackgroundTransferSession()
 
     private let stream: AsyncStream<BackgroundTransferCompletion>
     private let continuation: AsyncStream<BackgroundTransferCompletion>.Continuation
+    private let backgroundEventsHandlerLock = NSLock()
     private var backgroundEventsCompletionHandler: (@Sendable () -> Void)?
     /// 같은 식별자로 세션을 만들면 nsurlsessiond 에 남아 있던 태스크가 이 delegate 에 다시 붙는다 —
     /// 싱글턴 첫 접근(= 세션 생성)이 곧 재접속이다. `lazy` 로 두면 안 된다: Swift lazy 는 스레드 안전이 아니라
@@ -72,6 +74,8 @@ final class BackgroundTransferSession: NSObject, @unchecked Sendable {
     }
 
     func attach(completionHandler: @escaping @Sendable () -> Void) {
+        backgroundEventsHandlerLock.lock()
+        defer { backgroundEventsHandlerLock.unlock() }
         backgroundEventsCompletionHandler = completionHandler
     }
 }
@@ -96,8 +100,10 @@ extension BackgroundTransferSession: URLSessionTaskDelegate {
     }
 
     func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
+        backgroundEventsHandlerLock.lock()
         let handler = backgroundEventsCompletionHandler
         backgroundEventsCompletionHandler = nil
+        backgroundEventsHandlerLock.unlock()
         DispatchQueue.main.async { handler?() }
     }
 }

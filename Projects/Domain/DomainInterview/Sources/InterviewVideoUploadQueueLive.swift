@@ -65,6 +65,9 @@ actor VideoUploadQueueActor {
     private var listenTask: Task<Void, Never>?
     /// `awaitQuiescence()` 대기자 — 마지막 시도가 끝날 때 한꺼번에 깨운다(폴링 대신).
     private var quiescenceWaiters: [CheckedContinuation<Void, Never>] = []
+    /// 예약만 되고 아직 actor 에 진입하지 않은 즉시 재시도 — 잠잠함 판정이 이 «틈» 을 같이 세지 않으면
+    /// finishAttempt 가 재시도 직전에 대기자를 깨워 `resumePending()` 이 조기 반환한다(assertion 헛돎).
+    private var retriesScheduled: Set<Int> = []
 
     init(
         directory: URL,
@@ -160,17 +163,22 @@ actor VideoUploadQueueActor {
         }
     }
 
-    /// 진행 중인 시도가 모두 끝날 때까지 기다린다 — 시도를 어디서 띄웠든(재개·스트림) 한 집합을 지나므로
-    /// 이 하나가 «큐가 잠잠해졌다» 의 정의다. 등록 시점에 이미 비어 있으면 곧장 반환한다.
+    /// 진행 중·예약된 시도가 모두 끝날 때까지 기다린다 — 시도를 어디서 띄웠든(재개·스트림·재시도) 두 집합
+    /// 중 하나를 지나므로 이 둘이 «큐가 잠잠해졌다» 의 정의다. 등록 시점에 이미 비어 있으면 곧장 반환한다.
     private func awaitQuiescence() async {
-        guard !attemptsInFlight.isEmpty else { return }
+        guard !attemptsInFlight.isEmpty || !retriesScheduled.isEmpty else { return }
         await withCheckedContinuation { quiescenceWaiters.append($0) }
     }
 
     /// 시도 종료 기록 — 마지막 하나가 빠질 때만 대기자를 깨운다.
     private func finishAttempt(_ sessionId: Int) {
         attemptsInFlight.remove(sessionId)
-        guard attemptsInFlight.isEmpty, !quiescenceWaiters.isEmpty else { return }
+        wakeWaitersIfQuiescent()
+    }
+
+    /// 잠잠함 판정·통보 — 진행 중 시도와 예약된 재시도가 «둘 다» 비어야 대기자를 깨운다.
+    private func wakeWaitersIfQuiescent() {
+        guard attemptsInFlight.isEmpty, retriesScheduled.isEmpty, !quiescenceWaiters.isEmpty else { return }
         let waiters = quiescenceWaiters
         quiescenceWaiters = []
         for waiter in waiters { waiter.resume() }
@@ -217,7 +225,19 @@ actor VideoUploadQueueActor {
     private func retryOnceOrPark(_ sessionId: Int) {
         guard !immediateRetryUsed.contains(sessionId) else { return }
         immediateRetryUsed.insert(sessionId)
-        Task { await self.attempt(sessionId) }
+        // Task 가 actor 에 진입하기 전에 예약부터 기록한다 — 호출부(attempt)의 defer(finishAttempt)가
+        // 이 직후에 돌아, 예약이 없으면 그 판정이 마지막 시도로 보고 대기자를 깨워 버린다.
+        retriesScheduled.insert(sessionId)
+        Task { await self.performScheduledRetry(sessionId) }
+    }
+
+    /// 예약된 재시도의 본체 — 예약 해제와 시도 등록(attempt 의 insert) 사이에 suspension 이 없어(동일 actor
+    /// 동기 구간) 잠잠함 판정은 이 재시도를 두 집합 중 하나에서 반드시 본다.
+    private func performScheduledRetry(_ sessionId: Int) async {
+        retriesScheduled.remove(sessionId)
+        await attempt(sessionId)
+        // attempt 가 가드(중복 시도·항목 소멸)로 비켜가면 finishAttempt 를 안 지난다 — 판정을 여기서 한 번 더.
+        wakeWaitersIfQuiescent()
     }
 
     // MARK: - 저널·파일
