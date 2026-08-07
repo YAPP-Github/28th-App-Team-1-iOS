@@ -4,13 +4,31 @@ Splash 는 **버전 게이트**를 먼저 통과한 뒤 refreshToken 유무로 �
 
 버전 게이트(`GET /app-versions/check`)가 맨 앞인 이유는 순서가 곧 정책이라서다 — FORCE 를 세션 판정 뒤에 두면 이미 홈에 들어간 사용자를 되돌려 막게 된다. 무인증 API 라 토큰과 무관하게 돌릴 수 있다. 실패는 **fail-open** — 버전 정책 서버 장애가 앱 실행 자체를 막으면 안 된다.
 
+판정 앞에 **첫 실행 정리**가 한 단 더 있다(§0) — 앱을 삭제해도 Keychain 은 남아, 재설치 직후를 «기존 세션» 으로 오판하는 걸 막는다.
+
 세션 복구는 **refresh 를 먼저 부르지 않는다**(2026-08-02 단일화) — Access 는 3시간이라 콜드 스타트 대부분 살아 있고, `pending` 한 콜이 판정과 세션 검증을 겸한다. 만료면 그 403 을 `AuthorizedNetworkClient` 가 잡아 재발급 후 재시도하므로 별도 경로가 없다. 매 실행 무조건 rotation 은 콜 낭비 + 페어 교체 중 앱 킬 = 세션 유실 리스크.
+
+## 0. 첫 실행 정리 (판정 이전)
+
+앱을 삭제해도 iOS 는 Keychain 을 지우지 않는다. 우리 토큰은 Keychain(`TokenStore`)이고 나머지 로컬(온보딩 draft)은 UserDefaults 라 앱과 함께 사라진다 — 그래서 재설치하면 **토큰만 살아남아** Splash 가 «기존 세션» 으로 판정하고, 방금 새로 설치한 사용자가 로그인 상태로 들어온다.
+
+판정 근거는 «앱과 함께 사라지는 저장소에 찍은 마커» 다. `FirstLaunchStore`(CoreCommon)가 UserDefaults 에 마커를 두고 `isFirstLaunch()` / `markLaunched()` 만 노출한다 — 마커 없음 = 이 설치의 첫 실행. 마커를 Keychain 에 두면 재설치 후에도 남아 첫 실행을 영원히 놓친다.
+
+| 규칙 | 이유 |
+|---|---|
+| 정리가 **세션 판정보다 먼저** | 판정이 옛 토큰을 보기 전에 지워야 한다. `onAppear` 는 정리 effect 만 돌리고 `firstLaunchResolved` 로 갈라 그때 판정을 시작한다 |
+| 마커는 **정리를 마친 뒤** 찍는다 | 사이에서 앱이 죽으면 다음 실행이 다시 첫 실행으로 판정돼 정리를 끝낸다. 먼저 찍으면 지우다 만 상태로 굳는다 |
+| 정리 대상 선택은 **코디네이터 몫** | 스토어 계약은 판정만 맡는다. 대상은 Keychain 전체·온보딩 draft (`AppFeature.clearLocalData()` — dev 데이터 초기화 버튼과 공유) |
+| Keychain 은 **클래스 단위로 전부** 지운다 | `tokenStore.clear()` 는 `account: "auth-tokens"` 한 항목뿐이라 항목이 늘면 잔존물이 생긴다. App 타겟 `KeychainWipe.wipeAll()` 이 아이템 클래스 5종을 비운다 |
+| UserDefaults 는 **도메인째 지우지 않는다** | 첫 실행 마커가 거기 있다 — 통째로 날리면 다음 실행이 다시 첫 실행으로 판정된다 |
 
 ## 1. 전체 흐름 (activity)
 
 ```mermaid
 flowchart TD
-    launch(["앱 시작"]) --> splash["Splash<br/>SplashView"]
+    launch(["앱 시작"]) --> firstLaunch{"이 설치의 첫 실행?<br/>(UserDefaults 마커)"}
+    firstLaunch -- "예 — 잔존 토큰·draft 폐기 후 마커 기록" --> splash
+    firstLaunch -- "아니오" --> splash["Splash<br/>SplashView"]
     splash --> version["GET /app-versions/check<br/>(무인증 · 실패는 fail-open)"]
     version -- "FORCE" --> blocked["진입 차단<br/>root = updateRequired"]
     version -- "OPTIONAL — 안내만" --> hasRT{"Keychain refreshToken"}
@@ -31,7 +49,7 @@ flowchart TD
     terms --> submit["POST /consents<br/>동의 제출"]
     submit --> gate2
 
-    gate2{"프로필 게이트<br/>profileRegistered"} -- "true" --> home["홈 TabView"]
+    gate2{"프로필 게이트<br/>profileRegistered"} -- "true" --> home["홈 NavigationStack"]
     gate2 -- "false" --> onboarding["온보딩 — 이름부터<br/>Naming → Job → Experience → Register"]
     onboarding --> home
 ```
@@ -160,6 +178,7 @@ stateDiagram-v2
 | `AuthFeature` | 게이트 2단(`enterGate` → `passProfileGate`). 세션 복구는 `State(resuming: Destination)` 으로 같은 체인에 합류 |
 | `AuthTermsFeature` | 하드코딩 5종 enum 제거 — `pending()` 항목 렌더 + `document()` 전문 + `submit()` 제출. `CONSENT_VERSION_MISMATCH` 면 체크를 비우고 재조회 |
 | `SplashView` | `onRetry` 를 받으면 실패 상태(재시도 노출), nil 이면 판정 중 |
+| 첫 실행 정리 (2026-08-03 배선) | `FirstLaunchStore`(CoreCommon — UserDefaults 마커)가 판정, `AppFeature` 가 `onAppear` → `firstLaunchResolved` 사이에서 Keychain 전체·draft 폐기(§0). 스토어 단위 테스트는 `CoreCommonTests` |
 
 목적지 표 6행과 복구 진입 2종은 `AuthFeatureGateTests` 가 검증한다. App 타겟엔 테스트 타겟이 없어 `AppFeature` 의 판정 effect(§4)는 미검증이다.
 

@@ -25,6 +25,10 @@ import SwiftUI
 /// 그래서 `matchedGeometryEffect` 도, `init` 에 namespace 파라미터도 필요 없다.
 /// `logoSize`/`logoCenterOffsetY` 는 `AuthCreateAccountView` 가 실제로 읽어 픽셀 일치를 보장한다 —
 /// **이름·값을 바꾸면 그쪽 로고가 함께 움직인다**(의도된 결합). 전환 코드는 CreateAccount 쪽 몫.
+///
+/// **런치스크린과도 짝이다** — `App/Resources/LaunchScreen.storyboard` 가 같은 로고를 같은 크기·오프셋으로
+/// 그려 두 화면 사이에 흰 판이 스치지 않게 한다. 그쪽은 코드가 아니라 제약값이라 자동으로 따라오지
+/// 않는다 — 이 두 상수를 바꾸면 storyboard 제약도 함께 고쳐야 한다.
 public struct SplashView: View {
     /// 시안 로고 크기 — 전환 시작 프레임.
     // @ds(icon): 171×72 → Image.Logo.hilit — 스플래시 워드마크. 토큰은 57×24 내비바 판이지만

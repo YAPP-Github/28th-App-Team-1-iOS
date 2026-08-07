@@ -9,8 +9,8 @@ import ComposableArchitecture
 import DomainJobInterface
 
 // @lat: [[auth#가입 플로우]]
-/// 가입 온보딩 2 — 직군 선택. FeatureOnboarding STEP1(OnboardingJobSelectionFeature)의 복사본 —
-/// 직군·연차가 가입 플로우로 이관되면서 왔다(원본은 면접 위저드 정리 시 제거 예정, [[onboarding#직군 선택]]).
+/// 가입 온보딩 2 — 직군 선택. 직군·연차가 가입 플로우로 이관되며 면접 위저드에서 옮겨 왔다 —
+/// 원본(FeatureOnboarding STEP1)은 위저드 재편 때 삭제됐고 여기가 단일 소스다. → [[onboarding#코디네이터]]
 /// 선택 결과는 delegate(.continueRequested(jobRole:))로 코디네이터(AuthFeature)에 올린다.
 @Reducer
 public struct AuthOnboardingJobFeature {
@@ -42,6 +42,7 @@ public struct AuthOnboardingJobFeature {
         /// 사용자 입력·생명주기. View 의 send(...) 로만 방출된다.
         public enum View: Equatable, Sendable {
             case onAppear
+            case userTappedBack
             case userTappedClose
             case userTappedJob(Job.ID)
             case userTappedContinue
@@ -59,6 +60,8 @@ public struct AuthOnboardingJobFeature {
         public enum Delegate: Equatable, Sendable {
             /// 직군 선택 완료 — 다음(연차)으로. jobRole 은 서버 enum 값(예: "BACKEND").
             case continueRequested(jobRole: String)
+            /// 뒤로(하단 «이전으로») — 코디네이터가 스택을 pop.
+            case backRequested
             /// 가입 온보딩 이탈(X) — 처리는 코디네이터 몫.
             case closeRequested
         }
@@ -95,6 +98,9 @@ public struct AuthOnboardingJobFeature {
                 await send(.inner(.jobsLoadFailed))
             }
             .cancellable(id: CancelID.jobs, cancelInFlight: true)
+
+        case .userTappedBack:
+            return .send(.delegate(.backRequested))
 
         case .userTappedClose:
             return .send(.delegate(.closeRequested))

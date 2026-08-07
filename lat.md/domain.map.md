@@ -1,9 +1,9 @@
 # Domain Map
 
-도메인(=모듈) 간 큰 그림. 코드 한 줄 단위 연결은 `@lat` 주석, 전체 협업 그림은 이 문서. `refactor/#6` 은 스켈레톤이라 실 화면은 Home 탭과 FeatureCommon 의 NetworkExample(네트워킹 템플릿)뿐이고, 아래 Users↔Profile 등은 이관될 표준 패턴이다.
+도메인(=모듈) 간 큰 그림. 코드 한 줄 단위 연결은 `@lat` 주석, 전체 협업 그림은 이 문서. `refactor/#6` 은 스켈레톤이라 실 화면은 Home 과 FeatureCommon 의 NetworkExample(네트워킹 템플릿)뿐이고, 아래 Users↔Profile 등은 이관될 표준 패턴이다.
 
-## 탭 구조
-AppFeature 가 각 탭 Feature 를 보유하며 탭끼리는 서로를 모른다. 예정 탭 여럿 중 현재 실체는 Home. → [[home]] · [[app]]
+## 화면 구조
+AppFeature 가 각 Feature 를 보유하며 Feature 끼리는 서로를 모른다. 현재 실체는 Home 뿐이고 **탭바는 없다**(탭 하나뿐인 `TabView` 제거 — [[app#화면 구성]]). → [[home]] · [[app]]
 
 ## Users ↔ Profile
 가장 중요한 cross-feature 흐름이자 import 그래프엔 안 보이는 의존. **둘은 서로 import 하지 않는다** — 전부 delegate + AppFeature 중재. (이관 후 표준 예시)
@@ -53,6 +53,7 @@ D14 공통 규약(성공/실패 envelope·토큰 수명주기)은 그 위에 얹
 
 전 API 공통 로딩: in-flight 는 `NetworkActivity`(@MainActor @Observable 카운터, Interface)가 센다 — liveValue 가 `trackingActivity()` 데코레이터 한 겹으로 계측하고(Authorized·재발급도 base 를 지나 전부 잡힘), `AppView` 가 `isLoading` 을 관찰해 `LoadingModal` 을 전역 표출한다. Feature 는 이 신호에 관여하지 않는다. **예외 — Splash 계열 루트(`.splash`·`.splashFailed`·`.updateRequired`)에서는 얹지 않는다**: Splash 자체가 대기 표시이고 `.updateRequired` 는 알럿과 딤이 겹친다 → [[app#Splash 세션 복구]]
 
+- **엔드포인트 단위 예외 — `GlobalLoadingSuppression.run { }`** (Interface, 태스크 로컬): 스코프 안 요청은 `begin` 자체를 건너뛴다. 거는 자리는 **Domain Implementation 뿐** — Feature 는 Core 를 모르고, 억제 여부는 «그 엔드포인트를 기다리는 화면이 자기 대기 UI 를 이미 그리는가» 로 갈려 엔드포인트 정의 옆이 판단 근거와 가장 가깝다. 두 부류가 대상이다: **폴링**(3초 재조회 — hop 마다 딤이 깜빡이고, 응답이 200ms 지연보다 빠르면 아예 안 떠서 긴 대기가 무표시가 된다)과 **화면이 designed 대기 UI 를 그리는 구간**(모달이 그 화면과 그 안의 취소 동선을 덮는다). 현재 적용: `PortfolioClient.register`·`.status`, `InterviewClient.createSession`·`.sessionStatus` → [[onboarding#포트폴리오 업로드]] · [[onboarding#프리로드]]
 - `isLoading` 은 카운터를 그대로 노출하지 않는다 — **켜기 200ms 지연 + 끄기 80ms 유예**. 지연 안에 끝난 요청은 로딩을 아예 안 띄우고(빠른 응답 «반짝» 방지), 순차 호출 사이 카운트가 0 을 스치는 틈은 유예가 덮는다(«깜빡» 방지). 두 지연은 체인 전체에서 한 번씩만 든다 — 켜기 예약은 hop 마다 리셋하지 않아 지연이 체인 시작 기준으로 재지고, 끄기 예약은 다음 `begin()` 이 취소한다.
 
 ## 계획 — AI 면접

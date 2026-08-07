@@ -27,25 +27,22 @@ struct AppView: View {
                 // 강제 업데이트 — 세션 판정을 시작하지 않았다. 재시도 버튼 없이 알럿만 얹힌 Splash.
                 SplashView()
             case .home:
-                TabView(selection: $store.selectedTab) {
-                    // 탭 루트마다 자기 NavigationStack — 홈의 네비바(로고 ↔ X 를 값으로 갈아끼움)는
-                    // 시스템 바 기반이라 스택 밖에선 조용히 안 그려진다 (navigation.md «부착 — push vs present»).
-                    // 홈 내부 push 가 생기면 HomeFeature 의 Path/StackState 로 승격한다.
-                    NavigationStack {
-                        HomeView(store: store.scope(state: \.home, action: \.home))
-                    }
-                    .tabItem { Label("홈", systemImage: "house") }
-                    .tag(AppFeature.Tab.home)
+                // 탭이 하나뿐이라 TabView 를 두지 않는다 — 탭바 자리만 차지하면서 홈 배경 그라디언트가
+                // 반투명 바로 새어 나와 하단에 초록 띠로 보였다. 탭이 둘 이상 생기면 그때 TabView 로 되돌린다.
+                // 네비바(로고 ↔ X 를 값으로 갈아끼움)는 시스템 바 기반이라 스택 밖에선 조용히 안 그려진다
+                // (navigation.md «부착 — push vs present»). 홈 내부 push 는 HomeFeature 의 Path/StackState 로 승격.
+                NavigationStack {
+                    HomeView(store: store.scope(state: \.home, action: \.home))
                 }
                 // 온보딩 위저드 — 「면접 시작」의 [시작하기](첫 면접)·[수정하기], dev 진입 버튼이 연다.
-                // 홈 탭 위에서만 열리므로 로그인 이후다(온보딩 API 는 토큰 필요).
+                // 홈 위에서만 열리므로 로그인 이후다(온보딩 API 는 토큰 필요).
                 .fullScreenCover(
                     item: $store.scope(state: \.onboarding, action: \.onboarding)
                 ) { onboardingStore in
                     OnboardingView(store: onboardingStore)
                 }
                 // 면접 흐름(Part2) — 온보딩 완주가 넘긴 세션으로 열린다. 카메라 프리뷰가 전면을 채우는
-                // 몰입 화면이라 탭바까지 덮는 fullScreenCover 다.
+                // 몰입 화면이라 네비바까지 덮는 fullScreenCover 다.
                 .fullScreenCover(
                     item: $store.scope(state: \.interview, action: \.interview)
                 ) { interviewStore in
@@ -59,8 +56,10 @@ struct AppView: View {
         // 강제·권장 업데이트 안내 — 루트가 무엇이든 위에 얹힌다(강제는 root 가 .updateRequired).
         .alert($store.scope(state: \.updateAlert, action: \.updateAlert))
         .onAppear { store.send(.onAppear) }
-        // 전역 시스템 로딩 — 모든 API in-flight(NetworkActivity) 동안 화면을 잠근다
-        .hilitModal(isPresented: showsGlobalLoading && NetworkActivity.shared.isLoading) {
+        // 전역 시스템 로딩 — 모든 API in-flight(NetworkActivity) 동안 화면을 잠근다.
+        // 루트라 `overlay` 변형을 쓴다 — 화면 모달(`hilitModal` = cover)과 presentation 자리를
+        // 다투지 않게 하려는 것이고, 루트는 NavigationStack 밖이라 overlay 로도 네비바 위에 깔린다.
+        .hilitModalOverlay(isPresented: showsGlobalLoading && NetworkActivity.shared.isLoading) {
             LoadingModal()
         }
     }
