@@ -106,7 +106,10 @@ actor AudioCaptureManager {
 
     func startSessionAudioRecording() {
         guard let tapFormat else { return }   // 캡처 미가동 — 조용히 무시(합성 스킵 → 영상 없는 리포트)
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("interview-session-audio.m4a")
+        // 파일명은 매번 유일하게 — 산출물이 recorder 손을 떠나 합성(8~10초, 홈 복귀 뒤 화면 수명 밖)에서
+        // 읽히는 동안 다음 면접의 begin 이 같은 경로를 지우면 안 된다. 삭제는 합성부·discard 몫(고정명과 동일).
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("interview-session-audio-\(UUID().uuidString).m4a")
         sessionRecorder.begin(url: url, format: tapFormat)
     }
 
@@ -303,7 +306,13 @@ final class TapFileRecorder: @unchecked Sendable {
         defer { lock.unlock() }
         file = nil   // AVAudioFile 은 해제 시점에 닫힌다
         defer { url = nil; firstBufferHostSeconds = nil }
-        guard let url, let firstBufferHostSeconds else { return nil }
+        guard let url else { return nil }
+        guard let firstBufferHostSeconds else {
+            // 버퍼를 한 번도 못 받은 기록 — 넘길 산출물이 없으니 파일도 여기서 지운다. 밖에선 URL 을 모르고,
+            // 유일 파일명이라 다음 begin 의 덮어쓰기도 없어 안 지우면 그대로 샌다.
+            try? FileManager.default.removeItem(at: url)
+            return nil
+        }
         return (url, firstBufferHostSeconds)
     }
 

@@ -29,6 +29,18 @@ struct TapFileRecorderTests {
         #expect(continuous >= written)
     }
 
+    @Test("버퍼 없이 끝난 기록은 nil 과 함께 파일도 지운다 — 유일 파일명은 다음 begin 이 덮어쓰지 않는다")
+    func finishWithoutBuffersRemovesFile() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("tap-recorder-\(UUID().uuidString).m4a")
+        let recorder = TapFileRecorder()
+        recorder.begin(url: url, format: Self.format)
+        try #require(FileManager.default.fileExists(atPath: url.path))   // begin 이 파일을 실제로 만들었는가
+
+        #expect(recorder.finishKeepingFile() == nil)
+        #expect(!FileManager.default.fileExists(atPath: url.path))
+    }
+
     /// 같은 개수의 tap 버퍼를 흘려보내고 결과 m4a 의 프레임 길이를 돌려준다.
     /// `mutingFrom` 번째 버퍼부터 무음 토글 — nil 이면 전 구간 유성음(대조군).
     ///
