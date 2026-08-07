@@ -7,7 +7,6 @@
 
 import ComposableArchitecture
 import DomainInterviewInterface
-import DomainPortfolioInterface
 import DomainUserInterface
 import Foundation
 import Testing
@@ -29,62 +28,23 @@ struct HomeEntryLoadTests {
         )
     }
 
-    private static func portfolio(status: PortfolioProcessingStatus = .ready) -> Portfolio {
-        Portfolio(
-            portfolioId: UUID(uuidString: "00000000-0000-0000-0000-0000000000a2")!,
-            fileName: "포트폴리오.pdf",
-            fileSize: 3_355_443,
-            pageCount: 12,
-            status: status,
-            uploadedAt: Date(timeIntervalSince1970: 1_785_456_000)
-        )
-    }
-
-    @Test("홈 진입은 프로필·포폴을 함께 싣고 면접 시작 변형을 «재사용» 으로 바꾼다")
-    func entryLoadFillsNameRemainingAndPortfolio() async {
+    @Test("홈 진입은 프로필을 실어 이름·잔여를 채운다")
+    func entryLoadFillsNameAndRemaining() async {
         let store = TestStore(initialState: HomeFeature.State()) {
             HomeFeature()
         } withDependencies: {
             $0.userClient.profile = { Self.profile(remaining: 2) }
-            $0.portfolioClient.list = { PortfolioList(portfolios: [Self.portfolio()]) }
             $0.interviewClient.reportList = { [] }
         }
 
-        // 두 로드(프로필·포폴 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
+        // 두 로드(프로필 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
         store.exhaustivity = .off
         await store.send(.view(.onAppear))
         await store.receive(\.inner.entryLoaded) {
             $0.userName = "재원"
             $0.startInterview.userName = "재원"
             $0.startInterview.remainingChances = 2
-            $0.startInterview.portfolio = StartInterviewFeature.Portfolio(
-                fileName: "포트폴리오.pdf",
-                uploadedAt: Date(timeIntervalSince1970: 1_785_456_000),
-                byteCount: 3_355_443
-            )
-            $0.startInterview.variant = .hasPortfolio
-        }
-    }
-
-    @Test("포폴 로드가 실패해도 프로필 값은 그대로 반영된다")
-    func portfolioFailureKeepsProfileValues() async {
-        struct LoadFailure: Error {}
-        let store = TestStore(initialState: HomeFeature.State()) {
-            HomeFeature()
-        } withDependencies: {
-            $0.userClient.profile = { Self.profile(remaining: 1) }
-            $0.portfolioClient.list = { throw LoadFailure() }
-            $0.interviewClient.reportList = { [] }
-        }
-
-        // 두 로드(프로필·포폴 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
-        store.exhaustivity = .off
-        await store.send(.view(.onAppear))
-        await store.receive(\.inner.entryLoaded) {
-            $0.userName = "재원"
-            $0.startInterview.userName = "재원"
-            $0.startInterview.remainingChances = 1
-            // 포폴은 «모른다» 라서 직전 값을 유지한다 — nil 로 지우면 없는 것처럼 보인다.
+            // 잔여가 남았으면 `first` — 회차(포폴 보유) 분기는 없다(제품 결정 2026-08-08).
             $0.startInterview.variant = .first
         }
     }
@@ -96,11 +56,10 @@ struct HomeEntryLoadTests {
             HomeFeature()
         } withDependencies: {
             $0.userClient.profile = { throw LoadFailure() }
-            $0.portfolioClient.list = { PortfolioList(portfolios: []) }
             $0.interviewClient.reportList = { [] }
         }
 
-        // 두 로드(프로필·포폴 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
+        // 두 로드(프로필 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
         store.exhaustivity = .off
         await store.send(.view(.onAppear))
         // 잔여는 nil 그대로 — 0 으로 떨어뜨리면 «무료 횟수를 모두 사용했어요» 가 떠서
@@ -108,49 +67,23 @@ struct HomeEntryLoadTests {
         await store.receive(\.inner.entryLoaded)
     }
 
-    @Test("잔여 0 이면 포폴이 있어도 소진 변형이 이긴다")
-    func exhaustedWinsOverPortfolio() async {
+    @Test("잔여 0 이면 소진 변형으로 바뀐다")
+    func zeroRemainingBecomesExhausted() async {
         let store = TestStore(initialState: HomeFeature.State()) {
             HomeFeature()
         } withDependencies: {
             $0.userClient.profile = { Self.profile(remaining: 0) }
-            $0.portfolioClient.list = { PortfolioList(portfolios: [Self.portfolio()]) }
             $0.interviewClient.reportList = { [] }
         }
 
-        // 두 로드(프로필·포폴 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
+        // 두 로드(프로필 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
         store.exhaustivity = .off
         await store.send(.view(.onAppear))
         await store.receive(\.inner.entryLoaded) {
             $0.userName = "재원"
             $0.startInterview.userName = "재원"
-            $0.startInterview.portfolio = StartInterviewFeature.Portfolio(
-                fileName: "포트폴리오.pdf",
-                uploadedAt: Date(timeIntervalSince1970: 1_785_456_000),
-                byteCount: 3_355_443
-            )
+            $0.startInterview.remainingChances = 0
             $0.startInterview.variant = .exhausted
-        }
-    }
-
-    @Test("처리 중(PROCESSING) 포폴은 재사용 카드에 걸지 않는다")
-    func processingPortfolioIsNotReusable() async {
-        let store = TestStore(initialState: HomeFeature.State()) {
-            HomeFeature()
-        } withDependencies: {
-            $0.userClient.profile = { Self.profile(remaining: 3) }
-            $0.portfolioClient.list = { PortfolioList(portfolios: [Self.portfolio(status: .processing)]) }
-            $0.interviewClient.reportList = { [] }
-        }
-
-        // 두 로드(프로필·포폴 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
-        store.exhaustivity = .off
-        await store.send(.view(.onAppear))
-        await store.receive(\.inner.entryLoaded) {
-            $0.userName = "재원"
-            $0.startInterview.userName = "재원"
-            $0.startInterview.remainingChances = 3
-            $0.startInterview.variant = .first
         }
     }
 
@@ -160,11 +93,10 @@ struct HomeEntryLoadTests {
             HomeFeature()
         } withDependencies: {
             $0.userClient.profile = { Self.profile(name: nil, remaining: 3) }
-            $0.portfolioClient.list = { PortfolioList(portfolios: []) }
             $0.interviewClient.reportList = { [] }
         }
 
-        // 두 로드(프로필·포폴 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
+        // 두 로드(프로필 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
         store.exhaustivity = .off
         await store.send(.view(.onAppear))
         await store.receive(\.inner.entryLoaded) {
@@ -173,7 +105,7 @@ struct HomeEntryLoadTests {
     }
 }
 
-/// 기록 목록만 보는 테스트에서 프로필·포폴 로드를 죽여 두는 용도.
+/// 기록 목록만 보는 테스트에서 프로필 로드를 죽여 두는 용도.
 private struct ProfileUnavailable: Error {}
 
 @MainActor
@@ -209,10 +141,9 @@ struct HomeReportListTests {
             HomeFeature()
         } withDependencies: {
             $0.userClient.profile = { throw ProfileUnavailable() }
-            $0.portfolioClient.list = { throw ProfileUnavailable() }
             $0.interviewClient.reportList = reportList
         }
-        // 프로필·포폴 로드와 순서가 섞인다 — 목록 쪽 값만 고정한다.
+        // 프로필 로드와 순서가 섞인다 — 목록 쪽 값만 고정한다.
         store.exhaustivity = .off
         return store
     }

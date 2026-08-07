@@ -165,19 +165,12 @@ struct AppFeature {
             case .auth:
                 return .none
             case .home(.delegate(.interviewStartRequested)):
-                // 면접에 필요한 정보(직군·연차·JD·포폴)를 모으는 게 온보딩 위저드다 — 첫 면접은 거기부터다.
+                // 면접에 필요한 정보(직군·연차·JD·포폴)를 모으는 게 온보딩 위저드다 — 면접은 거기부터다.
                 // 면접 화면은 **세션 id 로만** 열리는데(`InterviewFeature.State(sessionId:)`) 그 id 를 만드는
-                // 건 위저드의 세션 생성뿐이라, 재사용 경로도 지금은 같은 위저드를 태운다.
-                // 변형은 곧 회차다 — `first` = 1회차, `hasPortfolio` = 2회차 이상(판정 키는 READY 포폴
-                // 보유 하나 — docs/work/home-account.md §3 «회차 분기 판정 키»).
+                // 건 위저드의 세션 생성뿐이라, 2회차 이후도 같은 위저드를 태운다(저장된 draft 가 살아 있으면
+                // 위저드가 알아서 값을 복원한다 — TTL 14일, [[onboarding#코디네이터]]).
                 switch state.home.startInterview.variant {
                 case .first:
-                    state.onboarding = OnboardingFeature.State(userName: state.home.userName)
-                case .hasPortfolio:
-                    // TODO: «이전 정보 그대로» 세션 생성 API 가 생기면 수집을 건너뛰고 곧장 면접으로
-                    //       (게이트 checkStartEligibility 결과별 라우팅 — 미결 6-1 서버 협의).
-                    //       그때까지는 위저드를 태운다 — draft 가 값을 복원해 대부분 넘기기만 하면 되고,
-                    //       아무 일도 안 일어나는 [시작하기] 보다는 낫다.
                     state.onboarding = OnboardingFeature.State(userName: state.home.userName)
                 case .inProgress:
                     // 진행 중 시안엔 [시작하기] 가 없다(CTA 는 «처음부터 시작»·«이어서 진행») — 도달하지 않는다.
@@ -186,11 +179,6 @@ struct AppFeature {
                     // 소진 시안엔 [시작하기] 가 없다(CTA 는 «홈으로») — 도달하지 않는다.
                     break
                 }
-                return .none
-            case .home(.delegate(.interviewInfoEditRequested)):
-                // [수정하기] — 고칠 대상이 온보딩이 모으는 그 정보다. 같은 위저드를 처음부터 다시 태운다.
-                // 저장된 draft 가 살아 있으면 위저드가 알아서 값을 복원한다(TTL 14일 — [[onboarding#코디네이터]]).
-                state.onboarding = OnboardingFeature.State(userName: state.home.userName)
                 return .none
             // 진행 중(held) 면접 두 갈래 — 지금은 신호만 뚫어 뒀다. 홈이 sessionId 를 모르고(조회 API
             // 미결 6-3), 버린 세션의 레포트 생성·이용권 차감도 서버 계약이 먼저다.
