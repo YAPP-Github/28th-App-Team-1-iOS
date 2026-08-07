@@ -9,8 +9,8 @@
 //        «Create_Account_Terms of Service_Detail»(전문 바텀시트)
 //        https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=477-6308 — 공유용 파일의 개정본이
 //        전문 시트의 기준이다(구 ZG7F…?node-id=3768-17124 대비 시트 안 CTA 제거).
-//        두 노드는 별개 화면이 아니라 같은 화면의 기본/시트 상태다 — 시트는 시스템 `.sheet`
-//        (DS `.hilitDetentSheet`)에 판만 그린다(딤·높이 드래그·스와이프 닫기는 시스템 몫).
+//        두 노드는 별개 화면이 아니라 같은 화면의 기본/시트 상태다 — 시트는 DS `.hilitBottomSheet`
+//        오버레이에 본문만 얹는다(딤·자리·드래그·그래버·모서리 0 은 DS 몫).
 
 import ComposableArchitecture
 import DomainConsentInterface
@@ -27,11 +27,8 @@ public struct AuthTermsView: View {
         static let titleToConsent: CGFloat = 54
         /// 전체동의 ↔ 구분선 ↔ 항목 목록.
         static let consentSection: CGFloat = 34
-        /// 시트가 처음 열리는 detent 비율 (시안 662 / 812) — 위로 드래그하면 `.large`.
+        /// 시트가 처음 서는 자리 (시안 662 / 812) — 위로 끌면 화면을 꽉 채운다.
         static let sheetHeightRatio: CGFloat = 662.0 / 812.0
-        static let grabberWidth: CGFloat = 60
-        static let grabberHeight: CGFloat = 5
-        static let grabberRowHeight: CGFloat = 20
     }
 
     @Bindable public var store: StoreOf<AuthTermsFeature>
@@ -53,10 +50,10 @@ public struct AuthTermsView: View {
         }
         .background(Color.BlackWhite.white.ignoresSafeArea())
         .hilitNavigationBar(background: .filled, onClose: { send(.userTappedClose) })
-        // 시안 높이(662/812)로 열리고, 드래그로 전체 높이까지 늘렸다 줄일 수 있다 — detent 2개.
-        .hilitDetentSheet(
+        // 시안 높이(662/812)로 열리고, 그래버를 끌어 전체 높이까지 늘렸다 줄일 수 있다 — 자리 2개.
+        .hilitBottomSheet(
             item: store.presentedDocument,
-            detents: [.fraction(Metric.sheetHeightRatio), .large],
+            detents: [Metric.sheetHeightRatio, 1],
             onDismiss: { send(.userDismissedDocument) },
             content: { item in documentSheet(item) }
         )
@@ -146,18 +143,14 @@ public struct AuthTermsView: View {
 
     // MARK: - 전문 바텀시트 (node 477:6341)
 
-    /// 전문 시트 판 — 딤·높이·모서리·전환은 시스템 시트가 주고 판(배경·그래버·본문)만 여기서 그린다.
-    /// 시안 판은 상단 코너 0 + 흰 배경 + 높이 662였는데, **모서리는 시스템 값을 따른다** — iOS 26 이
-    /// 부분 detent 시트를 가장자리에서 띄워 그려서 코너 0 이면 떠 있는 판이 잘려 보인다.
-    /// 높이도 detent 가 정하니 판은 주어진 높이를 채운다(고정 frame 없음).
+    /// 전문 시트 본문 — 딤·자리·드래그·그래버·판 배경(흰색 기본)·모서리 0 은 DS 시트가 준다.
+    /// 여기는 제목 줄과 스크롤 본문만 그리고, 높이는 선 자리를 그대로 채운다(고정 frame 없음).
     /// 본문은 서버 마크다운(`ConsentClient.document`) — 조회 중엔 빈 화면이다.
     ///
     /// **시트 안에 CTA 가 없다** (개정 시안 477:6341 — 하단은 홈 인디케이터 띠뿐).
-    /// 나가는 경로는 아래로 스와이프·딤 탭이고, 동의 제출은 시트를 닫은 뒤 화면 CTA 로 한다.
+    /// 나가는 경로는 아래로 끌기·딤 탭이고, 동의 제출은 시트를 닫은 뒤 화면 CTA 로 한다.
     private func documentSheet(_ item: ConsentItem) -> some View {
         VStack(spacing: 0) {
-            grabber
-
             Text(item.documentTitle)
                 .dsTypography(.sub7)
                 .foregroundStyle(Color.HilitBlack.b800)
@@ -175,7 +168,6 @@ public struct AuthTermsView: View {
             .frame(maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .presentationBackground(Color.BlackWhite.white)
     }
 
     /// 전문 본문 — 서버 마크다운을 블록으로 갈라 그린다.
@@ -210,15 +202,6 @@ public struct AuthTermsView: View {
         case 2: .sub7
         default: .body2
         }
-    }
-
-    // @ds(component): 시트 그래버 — 60×5 g400 바(모서리 0) + 행 높이 20. 공용 컴포넌트 없음
-    private var grabber: some View {
-        Rectangle()
-            .fill(Color.GrayScale.g400)
-            .frame(width: Metric.grabberWidth, height: Metric.grabberHeight)
-            .frame(maxWidth: .infinity)
-            .frame(height: Metric.grabberRowHeight)
     }
 
     // MARK: - Toggle 바인딩 (상태는 리듀서 소유 — set 은 view 액션으로만)
