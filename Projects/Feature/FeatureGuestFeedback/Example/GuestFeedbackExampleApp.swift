@@ -24,8 +24,7 @@ struct GuestFeedbackExampleApp: App {
 }
 
 struct ExampleHomeView: View {
-    // 실서버(dev) 진입 우선 비활성 — 복구 시 이 프로퍼티와 아래 실서버 섹션·String 라우팅·makeRealServerStore 주석 해제.
-    // @State private var realServerToken = ""
+    @State private var realServerToken = ""
 
     var body: some View {
         NavigationStack {
@@ -35,31 +34,26 @@ struct ExampleHomeView: View {
                         NavigationLink(scenario.title, value: scenario)
                     }
                 }
-                /* 실서버(dev) 진입 우선 비활성 — 복구 시 주석 해제.
-                Section("실서버 (dev — http://43.202.34.84:8080)") {
+                Section("실서버 (dev — https://hilit.my)") {
                     TextField("공유 토큰 붙여넣기", text: $realServerToken)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
                     NavigationLink("실서버로 진입", value: realServerToken)
                         .disabled(realServerToken.isEmpty)
                 }
-                */
             }
             .navigationTitle("G4 지인 평가")
             // delegate(.dismissed) 라우팅은 실제 앱의 코디네이터 몫 — Example 은 화면 상태 확인이 목적이라
-            // GuestFeedbackView 를 그대로 얹는다.
+            // GuestFeedbackView 를 그대로 얹는다(상단 X 는 여기선 무반응이 정상).
             .navigationDestination(for: ExampleScenario.self) { scenario in
                 GuestFeedbackView(store: scenario.makeStore())
             }
-            /* 실서버(dev) 진입 우선 비활성 — 복구 시 주석 해제.
             .navigationDestination(for: String.self) { token in
                 GuestFeedbackView(store: Self.makeRealServerStore(token: token))
             }
-            */
         }
     }
 
-    /* 실서버(dev) 진입 우선 비활성 — 복구 시 주석 해제.
     /// 실서버 — Example 번들엔 API_BASE_URL Info.plist 키가 없어 dev URL 을 직접 주입한다.
     /// guestFeedbackClient·localStore 는 link 된 Implementation 의 liveValue 가 그대로 쓰인다.
     @MainActor
@@ -69,11 +63,10 @@ struct ExampleHomeView: View {
         } withDependencies: {
             $0.networkClient = .live(
                 session: .shared,
-                baseURL: { URL(string: "http://43.202.34.84:8080")! }
+                baseURL: { URL(string: "https://hilit.my")! }
             )
         }
     }
-    */
 }
 
 enum ExampleScenario: String, CaseIterable, Identifiable, Hashable {
