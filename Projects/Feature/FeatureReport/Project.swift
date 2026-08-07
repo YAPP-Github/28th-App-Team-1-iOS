@@ -8,6 +8,7 @@ let project = Project.makeModule(
         // D3: Feature 는 Interface 를 두지 않는다.
         .feature(implements: "Report", factory: .init(dependencies: [
             .composableArchitecture,
+            .domain(interface: .common),       // 미승격 서버 에러 공통 Alert(serverAlertState)
             .domain(interface: .interviewReport),
             // 지인 피드백 공유 링크 생성(항목 지정) — ReportPeerFeedbackFeature.
             .domain(interface: .feedbackShare),
@@ -20,16 +21,21 @@ let project = Project.makeModule(
         // 누락 시 따뜻한 DerivedData 에서만 우연히 빌드되는 거짓 성공이 난다.
         .feature(tests: "Report", factory: .init(dependencies: [
             .composableArchitecture,
+            .core(interface: .network),   // 미승격 서버 에러 Alert 검증이 ServerError 를 생성
             .domain(interface: .interviewReport),
             .domain(interface: .feedbackShare),
             .project(target: "DomainInterviewReportTesting", path: .domain(.interviewReport))
         ])),
         // Example = 리포트 단독 데모. 서버 없이 fixture 를 주입해 화면 분기를 돌린다.
-        .feature(example: "Report", factory: .init(dependencies: [
-            .composableArchitecture,
-            .domain(interface: .interviewReport),
-            .domain(interface: .feedbackShare),
-            .project(target: "DomainInterviewReportTesting", path: .domain(.interviewReport))
-        ]))
+        .feature(example: "Report", factory: .init(
+            // 앱 아이콘 — feature(example:) 는 기본 리소스가 없어 명시 안 하면 아이콘 누락(업로드 90713·90022).
+            resources: ["Example/Resources/**"],
+            dependencies: [
+                .composableArchitecture,
+                .domain(interface: .interviewReport),
+                .domain(interface: .feedbackShare),
+                .project(target: "DomainInterviewReportTesting", path: .domain(.interviewReport))
+            ]
+        ))
     ]
 )
