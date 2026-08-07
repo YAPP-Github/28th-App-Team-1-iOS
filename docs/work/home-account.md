@@ -178,7 +178,9 @@ AuthTerms 제출 후 이어지는 4화면. AuthFeature 도메인 내부 내비(�
 
 **추가 (2026-07-31 배선)** — 목록·펼침은 `HomeFeature.State` 가 든다: `reports: IdentifiedArrayOf<Report>`(개수는 `reports.count` 파생) · `expandedReportIDs`(집합 — 리듀서 토글). **2026-08-05 개정: 복수 펼침 허용** — 진입 시 최신 1개만 펼치고, 펼친 카드 본문을 탭하면 그 행만 접힌다([>] 버튼 영역은 상세 진입이라 접힘과 겹치지 않는다).
 
-**추가 (2026-08-04 배선) — 목록이 서버에서 온다.** `InterviewClient.reportList`(GET /interview/sessions)를 홈 진입 로드에 붙였고, 행 모델 `Report` 는 `id`(= 세션 id) · `dateText`(«7월 11일 토» — KST·ko_KR 고정 포맷) · `title` · `canOpenReport` 다. 행 노출은 `reportStatus` 로 갈린다(아래 «상태별 노출» 참조). 기록이 있으면 phase 는 **`report(.returning)`** — 인사말을 띄운다(«오랜만/최근» 판정 재료가 없어 `recent` 는 프리뷰 전용). 확장 자리(시트가 내비바 밑까지 올라온 상태)는 시안 [649:6625](https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=649-6625) 대로 그래버 없이 헤더+목록만 남고, 판 위쪽에 내비바 그림자(0 8 6 · #DDDFE5 60%)가 깔린다(2026-08-05). 아직 미구현: 지인 피드백 유무로 갈리는 1차/최종 구분(`feedbackAvailable` 만 받고 안 쓴다) · 메타데이터 4종(포폴 파일명·삭제 배지·JD·시각) · READY 행의 «답변 한 줄 요약» — 목록 응답에 그 문장이 없어 세션 스냅샷(직군·연차)으로 대신한다(미결 #1 에 필드 요청 추가).
+**추가 (2026-08-04 배선) — 목록이 서버에서 온다.** `InterviewClient.reportList`(GET /interview/sessions)를 홈 진입 로드에 붙였고, 행 모델 `Report` 는 `id`(= 세션 id) · `dateText`(«7월 11일 토» — KST·ko_KR 고정 포맷) · `title` · `canOpenReport` 다. 행 노출은 `reportStatus` 로 갈린다(아래 «상태별 노출» 참조). 기록이 있으면 phase 는 **`report(.returning)`** — 인사말을 띄운다(«오랜만/최근» 판정 재료가 없어 `recent` 는 프리뷰 전용). 확장 자리(시트가 내비바 밑까지 올라온 상태)는 시안 [649:6625](https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=649-6625) 대로 그래버 없이 헤더+목록만 남고, 판 위쪽에 내비바 그림자(0 8 6 · #DDDFE5 60%)가 깔린다(2026-08-05). 아직 미구현: 지인 피드백 유무로 갈리는 1차/최종 구분(`feedbackAvailable` 만 받고 안 쓴다) · 메타데이터 4종(포폴 파일명·삭제 배지·JD·시각).
+
+**추가 (2026-08-07) — 행 제목이 «답변 한 줄 요약» 이 됐다.** 목록 응답에 `title` 이 붙어 `Report.title(for:)` 이 그 문장을 쓴다. 비거나 없으면 세션 스냅샷(직군·연차)으로 떨어지는데, 그 갈래는 필드 이전에 만들어진 과거 세션 몫이다. 실패 행은 그대로 «레포트 생성에 실패했어요» 다.
 
 ### 잔여 무료 횟수 — 홈 단독 표시
 
@@ -224,7 +226,7 @@ Interview --delegate(.finished/.closed)------▶ AppFeature → cover 닫고 홈
 | 데이터 | Client (모듈) | 상태 |
 |---|---|---|
 | 잔여 횟수·이름 | `UserClient.profile` → `remainingTicketCount`·`name` — PRD 표기 `GET /me/entitlement` 와의 대응은 묶음 API 협의와 함께 확정 | ✅ 2026-08-02 배선 |
-| 면접 기록 리스트 | `InterviewClient.reportList` → GET /interview/sessions(`[InterviewReportSummary]`) — 세션 스냅샷 + `reportStatus` + `feedbackAvailable` + 포폴 삭제 여부 | ✅ 2026-08-04 배선 — 🟠 잔여: 요약 문장 필드·시각 4종·1차/최종 구분 |
+| 면접 기록 리스트 | `InterviewClient.reportList` → GET /interview/sessions(`[InterviewReportSummary]`) — 세션 스냅샷 + `title`(답변 한 줄 요약) + `reportStatus` + `feedbackAvailable` + 포폴 삭제 여부 | ✅ 2026-08-04 배선, `title` 2026-08-07 — 🟠 잔여: 시각 4종·1차/최종 구분 |
 | 진행 중(held) 세션 유무 | 신규 — `InterviewClient` 확장. held 세션 존재 시 신규 POST /sessions 처리도 미결 #3 | 🔴 서버 협의 |
 | 포폴 상태 (위젯③·빈 상태·재사용 카드) | `PortfolioClient.list` — READY 건만 «이전 정보 재사용» 으로 친다(PROCESSING 은 게이트가 뒤집는다, 폴링 승격은 TODO) | ✅ 2026-08-02 배선 |
 | 시작 게이트 | 신규 — `checkStartEligibility`(사전확인·선택)· 사유 코드 `ACCOUNT_SUSPENDED`·`NO_REMAINING`·`PORTFOLIO_NOT_READY`·`CONSENT_VERSION_STALE`·`RATE_LIMITED`. 기존 `createSession` 에러(`NO_REMAINING_TICKET` 등 — [[api#Interview]])와 코드 체계 정리 필요 | 🔴 서버 협의 |
@@ -267,7 +269,7 @@ enum ReportRow { case first; case final(lastUpdatedAt:); case generationFailed }
 
 | # | 항목 | 소유 | 클라 영향 |
 |---|---|---|---|
-| 6-1 | 홈 진입 API 묶음(1회) vs 기존 4회 + 기록 목록에 «답변 한 줄 요약» 문장 필드 | 서버 | 🟠 held 세션만 블로킹 — 프로필·포폴·기록은 기존 계약으로 선배선(§5). 요약 필드 전엔 행 제목이 직군·연차다 |
+| 6-1 | 홈 진입 API 묶음(1회) vs 기존 4회 + 기록 목록에 «답변 한 줄 요약» 문장 필드 | 서버 | 🟠 held 세션만 블로킹 — 프로필·포폴·기록은 기존 계약으로 선배선(§5). 요약 문장 필드는 `title` 로 도착·배선 완료(2026-08-07) ✅ — 없는 과거 세션만 직군·연차다 |
 | 6-2 | [이어서 진행]·위젯③ 미리보기·빈 상태 문구 | 디자인 | 🟡 문구 슬롯만 |
 | 6-3 | held 세션 존재 시 신규 POST /sessions 처리 | 서버 | 🟠 resume 경로 확정 |
 | 6-4 | [이어서 진행] 탭 시점 재검증(TTL 만료 → «세션 만료·미차감» 안내?) | 정책 | 🟠 탭 시 게이트 재호출로 흡수 제안 |

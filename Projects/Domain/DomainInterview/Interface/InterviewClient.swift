@@ -86,16 +86,25 @@ extension InterviewClient: TestDependencyKey {
 
     /// 프리뷰 목록 5건 — 최신순, 상태 4종(준비·생성 중·분석 부족·실패)을 한 화면에서 본다.
     /// 시각은 KST 09:00 고정값이다(2026-07-11 → 07-07) — 프리뷰가 날마다 달라지지 않게.
+    /// `title` 은 앞 2건만 채운다 — 나머지로 요약 문장 없는 과거 세션의 스냅샷 제목까지 같이 본다.
     private static var previewReports: [InterviewReportSummary] {
         let day: TimeInterval = 86_400
         let latest: TimeInterval = 1_783_728_000
         let statuses: [ReportStatus] = [.ready, .ready, .generating, .insufficientAnalysis, .failed]
+        let titles: [String?] = [
+            "캐시 도입 결정의 이유와 한계까지 설명했어요",
+            "질문 의도를 되묻고 답변 범위를 좁혀 나갔어요",
+            nil,
+            nil,
+            nil
+        ]
         return statuses.enumerated().map { index, status in
             InterviewReportSummary(
                 sessionId: index + 1,
                 jobType: "BACKEND",
                 jobTypeLabel: "백엔드 개발자",
                 careerYears: 3,
+                title: titles[index],
                 interviewedAt: Date(timeIntervalSince1970: latest - day * TimeInterval(index)),
                 portfolioFileName: "portfolio.pdf",
                 portfolioDeleted: false,
