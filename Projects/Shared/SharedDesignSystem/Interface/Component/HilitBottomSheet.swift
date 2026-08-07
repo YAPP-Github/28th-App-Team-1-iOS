@@ -184,7 +184,7 @@ private struct HilitBottomSheetLayer<Sheet: View>: View {
     }
 
     private var dim: some View {
-        HilitDim.color
+        HilitDim.sheet
             .ignoresSafeArea()
             .opacity(isOpen ? 1 : 0)
             .onTapGesture(perform: dismiss)
