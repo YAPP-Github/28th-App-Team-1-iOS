@@ -24,6 +24,11 @@
 2. 면접 종료 두 신호 모두 `state.interview = nil` + 홈 재조회(`.home(.view(.onAppear))`) — 어느 쪽이든 잔여가 줄었고 BACK_EXIT 이탈도 리포트를 만든다(2026-08-03 서버 계약). 케이스를 합치지 않는 건 정상 종료에 리포트 상세(r1) 라우팅이 붙을 자리라서다 → [[interview#코디네이터]]
 3. **면접 커버 중에는 전역 LoadingModal 을 끈다**(`AppView.showsGlobalLoading`) — 답변 제출·질문 스트림마다 전역 딤이 덮이면 면접이 끊겨 보이고, 타이머가 도는 화면을 잠그는 것 자체가 오동작이다. 면접은 자체 진행 표시(상태 칩·초읽기)로 대기를 말한다.
 
+대표 흐름 — **공유 딥링크 → 게스트 평가** (2026-08-07):
+1. `HilitApp.onOpenURL` 이 `hilit` 스킴만 `deeplinkReceived(url)` 로 보낸다(그 외는 카카오 SDK 콜백). `GuestFeedbackDeeplink.parse` 성공 시 `state.guestFeedback = GuestFeedbackFeature.State(token:)` — cover 는 **루트 Group 밖**이라 스플래시·로그인 전에도 뜬다(무인증 플로우, → [[feedback#진입로와 닫기]])
+2. 면접·온보딩 진행 중이거나 이미 게스트 cover 가 떠 있으면 무시 — 몰입을 끊지 않고, 진행 중 평가를 다른 토큰으로 갈아치우지 않는다
+3. `guestFeedback(.presented(.delegate(.dismissed)))` → cover 만 닫는다(홈 재조회 없음 — 게스트 평가는 사용자 데이터를 바꾸지 않는다). 게스트 cover 중에도 전역 LoadingModal 을 끈다 — G4 는 자체 loading phase 로 대기를 말한다
+
 ## 첫 실행 정리
 
 앱을 삭제해도 iOS 는 Keychain 을 지우지 않는다 — 재설치하면 토큰만 살아남아 Splash 가 «기존 세션» 으로 판정하고, 방금 새로 설치한 사용자가 로그인 상태로 들어온다. UserDefaults 쪽(온보딩 draft)은 앱과 함께 사라지므로 로컬끼리도 어긋난다. 그래서 판정을 시작하기 전에 «이 설치의 첫 실행인가» 를 묻고, 첫 실행이면 잔존 로컬 데이터를 지운다.
