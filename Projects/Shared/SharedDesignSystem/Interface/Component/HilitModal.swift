@@ -71,10 +71,13 @@ public extension View {
     }
 }
 
-/// Figma 딤 실측 블랙 60% — 대응 색 토큰 없음(디자인 변수 미정의), 리터럴은 여기 한 곳만.
-/// `.hilitModal`(중앙 카드)과 `.hilitBottomSheet`(바닥 시트)가 공유한다.
+/// 딤 검정 — 색 팔레트에 대응 토큰이 없어(`BlackWhite` 는 white 뿐) 리터럴은 여기 한 곳만.
+/// **모달과 시트가 값이 다르다** — 한 상수로 묶었다가 시트가 시안보다 옅게 나갔다(2026-08-07).
 enum HilitDim {
-    static let color = Color.black.opacity(0.6)
+    /// 모달 — Figma 실측 블랙 60%(modal 2302:6080). 디자인 변수로 정의돼 있지 않아 실측값이다.
+    static let modal = Color.black.opacity(0.6)
+    /// 바텀시트 — Figma 변수 «hilit opacity/dark/65%»(전문 시트 477:6308).
+    static let sheet = Color.black.opacity(0.65)
 }
 
 /// 표출 배관 — 두 변형이 공유한다. 카드가 `nil` 이면 안 뜬다.
@@ -116,7 +119,7 @@ private struct HilitModalLayer<Card: View>: View {
 
     var body: some View {
         ZStack {
-            HilitDim.color
+            HilitDim.modal
                 .ignoresSafeArea()
             card
                 .padding(.horizontal, .ds(.p24))

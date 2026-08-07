@@ -83,7 +83,7 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 | `checkResume` | GET `.../sessions/{id}/resume` | 재개 가능 조회(순수) — RESUMABLE(IN_PROGRESS+hold 20분 이내)/ENDED. hold 만료의 ABANDONED 전환·환불은 서버가 이 호출 안에서 처리 |
 | `confirmResume` | POST `.../sessions/{id}/resume` | 재개 확정 — 응답은 `submitAnswer` 와 같은 `AnswerResult`(최신 턴 질문). 레이스는 409 아닌 200+`sessionEnded` |
 | `abandonSession` | POST `.../sessions/{id}/abandon` | 중단 — USER_EXIT(진행분 리포트 트리거·차감은 리포트 성공 시)/NETWORK_DISCONNECT(환불). 중복 409 는 «이미 중단 완료» |
-| `reportList` | GET `/api/v1/interview/sessions` | 내 레포트 목록(홈 위젯②·마이페이지) — envelope `{reports}` 는 liveValue 가 벗김. **진행중·준비중 세션 제외** — held 판정은 로컬 보관([[home#진입 로드]]) |
+| `reportList` | GET `/api/v1/interview/sessions` | 내 레포트 목록(홈 위젯②·마이페이지) — envelope `{reports}` 는 liveValue 가 벗김. `title`(답변 한 줄 요약)은 2026-08-07 추가라 과거 세션엔 없다. **진행중·준비중 세션 제외** — held 판정은 로컬 보관([[home#진입 로드]]) |
 
 질문 음성 스트리밍 규약: `audio/mpeg` + `Transfer-Encoding: chunked` (Content-Length 없음). 전부 받고 재생하지 말고 `AVURLAsset(url:options:[헤더])` → `AVPlayer` 점진 재생 — 그래서 계약이 Data 가 아니라 `InterviewAudioStream(url·headers)` 다. 중간 실패는 HTTP 로 안 잡힌다 — 재생 에러 콜백으로 감지하고 같은 questionId 로 재호출(TTS 처음부터 재생성).
 
