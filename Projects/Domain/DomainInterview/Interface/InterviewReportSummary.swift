@@ -25,6 +25,8 @@ public struct InterviewReportSummary: Decodable, Equatable, Sendable, Identifiab
     /// 직군 표시명(예: "백엔드 개발자") — 셀은 이 값을 그대로 그린다.
     public let jobTypeLabel: String?
     public let careerYears: Int?
+    /// 답변 한 줄 요약 — 목록 행 제목. 필드가 붙기 전(2026-08-07) 만들어진 세션은 nil 이라 옵셔널이다.
+    public let title: String?
     public let interviewedAt: Date
     public let portfolioFileName: String?
     /// 포트폴리오가 삭제된 세션 — 파일명 대신 삭제 안내를 그린다.
@@ -39,6 +41,7 @@ public struct InterviewReportSummary: Decodable, Equatable, Sendable, Identifiab
         jobType: String?,
         jobTypeLabel: String?,
         careerYears: Int?,
+        title: String?,
         interviewedAt: Date,
         portfolioFileName: String?,
         portfolioDeleted: Bool,
@@ -50,6 +53,7 @@ public struct InterviewReportSummary: Decodable, Equatable, Sendable, Identifiab
         self.jobType = jobType
         self.jobTypeLabel = jobTypeLabel
         self.careerYears = careerYears
+        self.title = title
         self.interviewedAt = interviewedAt
         self.portfolioFileName = portfolioFileName
         self.portfolioDeleted = portfolioDeleted
