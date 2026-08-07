@@ -17,7 +17,7 @@
 |---|---|---|---|
 | `Splash` | SP — 자동 로그인 판정 | FeatureAuth `SplashView`(정적) + `AppFeature.onAppear` 판정 배선 | 골격 ✅ 판정 ✅ |
 | `AuthCreateAccount` | A0 로그인 | FeatureAuth — 기존 AuthFeature 를 `AuthCreateAccountFeature` 로 개명(D5 3분류 정리), 코디네이터 `AuthFeature` 신설 | 골격 ✅ / 🔴 신규·기존 분기(S-1)·실패 토스트 |
-| `AuthTerms` | A1 약관 동의(5종) | FeatureAuth — 5종 체크·전체 동의·전문 바텀시트(DS `.hilitDetentSheet` — 시스템 시트 detent) 동작 | 골격 ✅ / 🔴 제출 API(S-1)·전문(S-2) |
+| `AuthTerms` | A1 약관 동의(5종) | FeatureAuth — 5종 체크·전체 동의·전문 바텀시트(DS `.hilitBottomSheet` — 커스텀 오버레이) 동작 | 골격 ✅ / 🔴 제출 API(S-1)·전문(S-2) |
 | `AuthSuspension` | A4 정지(블랙리스트) 안내 | FeatureAuth — 진입은 홈 게이트 `ACCOUNT_SUSPENDED` → cross-feature 제시 (§4) | 골격 ✅ / 🔴 게이트 배선·CS 주소 |
 | `AuthOnboardingNaming` | (PRD Part7 밖 — 디자인 확정) 이름 입력 | FeatureAuth/Onboarding — DS `NameField`, 수집만(제출은 연차 CTA 일괄) | 골격 ✅ |
 | `AuthOnboardingJob` | Part1 S0a 직군 선택 | FeatureAuth/Onboarding — 면접 위저드 STEP1 **이관**(원본 삭제 완료 2026-08-02) | 골격 ✅ |
@@ -84,7 +84,7 @@ AuthSuspension — 정지 계정이 면접 시작 시도 시 (게이트 ACCOUNT_
 
 진입: 첫 소셜 인증 직후 1회. `FeatureAuth` 내부 화면 — 코디네이터 `AuthFeature` 의 `Path`(StackState)로 push (도메인 내부 내비). 골격 구현 완료([[auth#가입 플로우]]).
 
-- 구성: 제목 «서비스 이용을 위해 동의가 필요해요» / [전체 동의] / 필수 5종 체크 / [보기] = **전문 바텀시트 — DS `.hilitDetentSheet` ✅ 사용**(시스템 `.sheet` + detent — 시안 높이 662/812 로 열리고 드래그로 전체 높이까지, 아래로 스와이프·딤 탭 닫기. 판은 호출부) / [동의하고 시작하기] — **5종 모두 체크 시에만 활성**, 일부 체크 시 비활성(별도 경고 없음).
+- 구성: 제목 «서비스 이용을 위해 동의가 필요해요» / [전체 동의] / 필수 5종 체크 / [보기] = **전문 바텀시트 — DS `.hilitBottomSheet` ✅ 사용**(커스텀 오버레이 — 시안 높이 662/812 로 열리고 그래버를 끌어 전체 높이까지, 아래로 끌기·딤 탭 닫기. 판 색·본문만 호출부) / [동의하고 시작하기] — **5종 모두 체크 시에만 활성**, 일부 체크 시 비활성(별도 경고 없음).
 - 제출 = 서버가 **계정 생성 확정 + 무료 3회 부여 + 동의 이력(항목·버전·일시) 저장** — 이용권 D3(부여 시점) 이 이 정의로 자동 확정. API 는 `DomainAuth` 확장 🔴 (S-1: 인증~동의 사이 임시 토큰 상태 서버 협의).
 - 제출 성공(iOS) → **가입 온보딩(AuthOnboardingNaming~)으로 진행** (PRD 는 «홈 직행»이었으나 디자인이 온보딩 4화면 경유로 확정. A2 없음 — 권한은 면접 시작 시점). 제출 실패(네트워크) → 토스트 + 화면 유지 + **체크 상태 보존**.
 - 중도 이탈(뒤로가기·종료) → 계정 미생성. 재로그인 시 AuthTerms 재진입 — 클라 저장 없음, 서버 판정 수신만.
@@ -160,6 +160,8 @@ AuthTerms 제출 후 이어지는 4화면. AuthFeature 도메인 내부 내비(�
 
 **추가 (2026-07-31 배선, 2026-08-01 개정)** — 시안에 위젯① 버튼이 없고 문구(«밑으로 스크롤해서 면접을 시작해 보세요!»)만 있어, 면접 시작 화면 진입을 **리포트 시트 드래그**로 열었다(2026-08-04: 안내 문구 탭 폐기 — 문구는 문구일 뿐). 시트는 세 자리(면접 시작 / 기본 / 목록 확장)를 오가고 면접 시작은 그중 아래 자리다 — 별도 present 가 아니라 시트 뒤에 깔린 겹이라 손을 놓기 전까진 되돌릴 수 있다(임계값 60pt, 미달이면 기본 자리). 모션 시안이 없어 임계값·스프링은 구현자 판단이고 코드에 TODO 로 표시했다 — 시안 수령 시 확정. 게이트(`checkStartEligibility`)는 아직 없어 무조건 열린다.
 
+**추가 (2026-08-07 개정, 이슈 #73)** — 목록 스크롤과 시트 확장을 **한 제스처**로 합쳤다: 목록 판을 UIScrollView 브리지(`HomeSheetScrollView`)로 감싸 확장 높이까지는 스크롤 이동량을 시트로 흘리고, 그 높이에 닿는 순간 같은 손짓이 그대로 목록 스크롤로 이어진다(확장 자리에서 목록 맨 위를 아래로 당기면 반대로 시트가 내려온다). 위 08-04 의 «자리별로 한쪽만 산다» 는 이 브리지로 대체됐다 — 착지 판정(임계 60pt·관성 보정)은 그대로 `HomeSheetDrag` 다.
+
 ### 위젯 ② 면접 기록 (마이페이지 PRD 3.3·3.4 이관)
 
 세션당 1행·최신순, MVP 최대 3~4행 전체 노출(페이지네이션 없음). 행 탭 → 펼침(foldable, 재탭 접힘) = 메타데이터 + [레포트 보기].
@@ -178,7 +180,9 @@ AuthTerms 제출 후 이어지는 4화면. AuthFeature 도메인 내부 내비(�
 
 **추가 (2026-07-31 배선)** — 목록·펼침은 `HomeFeature.State` 가 든다: `reports: IdentifiedArrayOf<Report>`(개수는 `reports.count` 파생) · `expandedReportIDs`(집합 — 리듀서 토글). **2026-08-05 개정: 복수 펼침 허용** — 진입 시 최신 1개만 펼치고, 펼친 카드 본문을 탭하면 그 행만 접힌다([>] 버튼 영역은 상세 진입이라 접힘과 겹치지 않는다).
 
-**추가 (2026-08-04 배선) — 목록이 서버에서 온다.** `InterviewClient.reportList`(GET /interview/sessions)를 홈 진입 로드에 붙였고, 행 모델 `Report` 는 `id`(= 세션 id) · `dateText`(«7월 11일 토» — KST·ko_KR 고정 포맷) · `title` · `canOpenReport` 다. 행 노출은 `reportStatus` 로 갈린다(아래 «상태별 노출» 참조). 기록이 있으면 phase 는 **`report(.returning)`** — 인사말을 띄운다(«오랜만/최근» 판정 재료가 없어 `recent` 는 프리뷰 전용). 확장 자리(시트가 내비바 밑까지 올라온 상태)는 시안 [649:6625](https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=649-6625) 대로 그래버 없이 헤더+목록만 남고, 판 위쪽에 내비바 그림자(0 8 6 · #DDDFE5 60%)가 깔린다(2026-08-05). 아직 미구현: 지인 피드백 유무로 갈리는 1차/최종 구분(`feedbackAvailable` 만 받고 안 쓴다) · 메타데이터 4종(포폴 파일명·삭제 배지·JD·시각) · READY 행의 «답변 한 줄 요약» — 목록 응답에 그 문장이 없어 세션 스냅샷(직군·연차)으로 대신한다(미결 #1 에 필드 요청 추가).
+**추가 (2026-08-04 배선) — 목록이 서버에서 온다.** `InterviewClient.reportList`(GET /interview/sessions)를 홈 진입 로드에 붙였고, 행 모델 `Report` 는 `id`(= 세션 id) · `dateText`(«7월 11일 토» — KST·ko_KR 고정 포맷) · `title` · `canOpenReport` 다. 행 노출은 `reportStatus` 로 갈린다(아래 «상태별 노출» 참조). 기록이 있으면 phase 는 **`report(.returning)`** — 인사말을 띄운다(«오랜만/최근» 판정 재료가 없어 `recent` 는 프리뷰 전용). 확장 자리(시트가 내비바 밑까지 올라온 상태)는 시안 [649:6625](https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=649-6625) 대로 그래버 없이 헤더+목록만 남고, 판 위쪽에 내비바 그림자(0 8 6 · #DDDFE5 60%)가 깔린다(2026-08-05). 아직 미구현: 지인 피드백 유무로 갈리는 1차/최종 구분(`feedbackAvailable` 만 받고 안 쓴다) · 메타데이터 4종(포폴 파일명·삭제 배지·JD·시각).
+
+**추가 (2026-08-07) — 행 제목이 «답변 한 줄 요약» 이 됐다.** 목록 응답에 `title` 이 붙어 `Report.title(for:)` 이 그 문장을 쓴다. 비거나 없으면 세션 스냅샷(직군·연차)으로 떨어지는데, 그 갈래는 필드 이전에 만들어진 과거 세션 몫이다. 실패 행은 그대로 «레포트 생성에 실패했어요» 다.
 
 ### 잔여 무료 횟수 — 홈 단독 표시
 
@@ -226,7 +230,7 @@ Interview --delegate(.finished/.closed)------▶ AppFeature → cover 닫고 홈
 | 데이터 | Client (모듈) | 상태 |
 |---|---|---|
 | 잔여 횟수·이름 | `UserClient.profile` → `remainingTicketCount`·`name` — PRD 표기 `GET /me/entitlement` 와의 대응은 묶음 API 협의와 함께 확정 | ✅ 2026-08-02 배선 |
-| 면접 기록 리스트 | `InterviewClient.reportList` → GET /interview/sessions(`[InterviewReportSummary]`) — 세션 스냅샷 + `reportStatus` + `feedbackAvailable` + 포폴 삭제 여부 | ✅ 2026-08-04 배선 — 🟠 잔여: 요약 문장 필드·시각 4종·1차/최종 구분 |
+| 면접 기록 리스트 | `InterviewClient.reportList` → GET /interview/sessions(`[InterviewReportSummary]`) — 세션 스냅샷 + `title`(답변 한 줄 요약) + `reportStatus` + `feedbackAvailable` + 포폴 삭제 여부 | ✅ 2026-08-04 배선, `title` 2026-08-07 — 🟠 잔여: 시각 4종·1차/최종 구분 |
 | 진행 중(held) 세션 유무 | 신규 — `InterviewClient` 확장. held 세션 존재 시 신규 POST /sessions 처리도 미결 #3 | 🔴 서버 협의 |
 | 포폴 상태 (위젯③·빈 상태·재사용 카드) | `PortfolioClient.list` — READY 건만 «이전 정보 재사용» 으로 친다(PROCESSING 은 게이트가 뒤집는다, 폴링 승격은 TODO) | ✅ 2026-08-02 배선 |
 | 시작 게이트 | 신규 — `checkStartEligibility`(사전확인·선택)· 사유 코드 `ACCOUNT_SUSPENDED`·`NO_REMAINING`·`PORTFOLIO_NOT_READY`·`CONSENT_VERSION_STALE`·`RATE_LIMITED`. 기존 `createSession` 에러(`NO_REMAINING_TICKET` 등 — [[api#Interview]])와 코드 체계 정리 필요 | 🔴 서버 협의 |
@@ -269,7 +273,7 @@ enum ReportRow { case first; case final(lastUpdatedAt:); case generationFailed }
 
 | # | 항목 | 소유 | 클라 영향 |
 |---|---|---|---|
-| 6-1 | 홈 진입 API 묶음(1회) vs 기존 4회 + 기록 목록에 «답변 한 줄 요약» 문장 필드 | 서버 | 🟠 held 세션만 블로킹 — 프로필·포폴·기록은 기존 계약으로 선배선(§5). 요약 필드 전엔 행 제목이 직군·연차다 |
+| 6-1 | 홈 진입 API 묶음(1회) vs 기존 4회 + 기록 목록에 «답변 한 줄 요약» 문장 필드 | 서버 | 🟠 held 세션만 블로킹 — 프로필·포폴·기록은 기존 계약으로 선배선(§5). 요약 문장 필드는 `title` 로 도착·배선 완료(2026-08-07) ✅ — 없는 과거 세션만 직군·연차다 |
 | 6-2 | [이어서 진행]·위젯③ 미리보기·빈 상태 문구 | 디자인 | 🟡 문구 슬롯만 |
 | 6-3 | held 세션 존재 시 신규 POST /sessions 처리 | 서버 | 🟠 resume 경로 확정 |
 | 6-4 | [이어서 진행] 탭 시점 재검증(TTL 만료 → «세션 만료·미차감» 안내?) | 정책 | 🟠 탭 시 게이트 재호출로 흡수 제안 |
