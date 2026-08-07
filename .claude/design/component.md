@@ -32,10 +32,9 @@
 | `FileUpload` | 포트폴리오 첨부 판 — 업로드 전·빈·진행·완료 | 표시 |
 | `FoldableCard` · `FoldableCardDetail` | 접힌 요약 + 펼친 상세 | 표시 |
 | `HighlightedText` | 형광펜 마커 텍스트 | 표시 |
-| `.hilitBottomSheet` | 고정 높이 바텀시트 딤 오버레이 — 껍데기만, 시트 판은 호출부 (모디파이어) | 표시 |
+| `.hilitBottomSheet` | 바텀시트 — 딤·자리·드래그·그래버까지 DS 가 갖는 오버레이 (모디파이어) | 표시 |
 | `.hilitButtonLoading` | 버튼 로딩 오버레이 (시안에 없음) | 버튼 |
 | `HilitCheckboxStyle` | 체크박스 (`ToggleStyle`) | 입력 |
-| `.hilitDetentSheet` | 높이 바뀌는 바텀시트 — 시스템 `.sheet` + detent (모디파이어) | 표시 |
 | `HilitDivider` | 다크 판 구분선 | 표시 |
 | `.hilitLogoNavigationBar` | 네비바 — 루트 브랜드 판(로고·프로필) | 네비게이션 |
 | `.hilitModal` | 모달 딤 표출 — 네비바까지 덮는 cover (모디파이어) | 표시 |
@@ -57,7 +56,7 @@
 | `QuoteField` | 작성된 코멘트 인용 줄 | 표시 |
 | `ReportCard` | 리포트 목록 줄 — 펼침·접힘 | 표시 |
 | `SaveIndicator` | 자동 저장 상태 | 표시 |
-| `SheetGrabber` | 바텀시트 손잡이 막대 | 표시 |
+| `SheetGrabber` | 바텀시트 손잡이 막대 60×5 | 표시 |
 | `TabSelector` | 밑줄 텍스트 탭 줄 | 네비게이션 |
 | `TagLabel` | 소형 사각 태그 | 표시 |
 | `TitleBox` | 화면 머리글 (뱃지·타이틀·서브) | 표시 |

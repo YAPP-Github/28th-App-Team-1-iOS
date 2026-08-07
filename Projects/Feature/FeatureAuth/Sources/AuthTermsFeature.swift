@@ -24,7 +24,7 @@ public struct AuthTermsFeature {
         public var loadFailed = false
         /// 체크된 항목 코드들 — 필수 항목이 전부 모여야 제출 활성.
         public var checked: Set<String> = []
-        /// 전문 바텀시트에 띄운 항목 — nil 이면 시트 없음 (`.hilitDetentSheet(item:)` 값 기반).
+        /// 전문 바텀시트에 띄운 항목 — nil 이면 시트 없음 (`.hilitBottomSheet(item:)` 값 기반).
         public var presentedDocument: ConsentItem?
         /// 전문 본문 — 시트를 열 때마다 조회한다. nil 이면 로딩 중.
         public var documentContent: String?

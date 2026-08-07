@@ -55,7 +55,7 @@ public struct ReportHighlightDetailView: View {
         // 다크 판 선언 — 하위 DS 버튼 스타일이 다크 팔레트로 풀린다(버튼마다 넘기지 않는다).
         .hilitSurface(.dark)
         .presentationDetents([.fraction(Self.detentFraction), .large])
-        // 시스템 인디케이터는 규격이 시안과 달라 숨기고 DS `SheetGrabber` 를 얹는다(`hilitDetentSheet` 와 같은 판단).
+        // 시스템 인디케이터는 규격(캡슐·색)이 시안과 달라 숨기고 DS `SheetGrabber` 를 얹는다.
         .presentationDragIndicator(.hidden)
         .presentationBackground(Color.HilitBlack.b900)
         .onAppear { send(.onAppear) }
