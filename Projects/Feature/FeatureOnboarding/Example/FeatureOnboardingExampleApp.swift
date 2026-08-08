@@ -73,6 +73,10 @@ struct FeatureOnboardingExampleApp: App {
                         },
                         delete: { id in
                             PortfolioDeletion(portfolioId: id, deletedAt: nil)
+                        },
+                        // 온보딩은 열람 URL 을 쓰지 않는다 — 계약을 채우기만 한다(마이페이지 전용).
+                        fileURL: { id in
+                            PortfolioFileURL(portfolioId: id, fileUrl: URL(string: "https://example.com/preview.pdf")!)
                         }
                     )
                     // 프리로드 — 세션 생성 즉시 PROCESSING, 폴링 1회 후 READY.

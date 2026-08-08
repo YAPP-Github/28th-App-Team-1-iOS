@@ -33,6 +33,9 @@ public extension PortfolioClient {
             },
             delete: { id in
                 PortfolioDeletion(portfolioId: id, deletedAt: Date(timeIntervalSince1970: 1_782_000_000))
+            },
+            fileURL: { id in
+                PortfolioFileURL(portfolioId: id, fileUrl: URL(string: "https://example.com/preview.pdf")!)
             }
         )
     }
