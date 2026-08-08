@@ -390,6 +390,7 @@ final class InterviewClientLiveTests: XCTestCase {
                 "jobType": "BACKEND",
                 "jobTypeLabel": "백엔드 개발자",
                 "careerYears": 3,
+                "title": "캐시 도입 결정의 이유와 한계까지 설명했어요",
                 "interviewedAt": "2026-08-01T10:00:00",
                 "portfolioFileName": "portfolio.pdf",
                 "portfolioDeleted": false,
@@ -406,6 +407,7 @@ final class InterviewClientLiveTests: XCTestCase {
         let report = try XCTUnwrap(reports.first)
         XCTAssertEqual(report.sessionId, 7)
         XCTAssertEqual(report.jobTypeLabel, "백엔드 개발자")
+        XCTAssertEqual(report.title, "캐시 도입 결정의 이유와 한계까지 설명했어요")
         XCTAssertEqual(report.reportStatus, .ready)
         XCTAssertFalse(report.portfolioDeleted)
         XCTAssertTrue(report.feedbackAvailable)
@@ -429,6 +431,8 @@ final class InterviewClientLiveTests: XCTestCase {
         let reports = try await client.reportList()
 
         XCTAssertEqual(reports.map(\.reportStatus), [.generating, .insufficientAnalysis, .failed])
+        // title 이 빠진 행(필드 이전 세션)도 nil 로 디코딩된다 — 목록 전체가 실패하지 않는다.
+        XCTAssertEqual(reports.compactMap(\.title).count, 0)
     }
 }
 

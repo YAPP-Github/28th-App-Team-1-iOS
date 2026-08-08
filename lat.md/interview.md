@@ -3,7 +3,9 @@
 AI 면접 연습의 중심 도메인. `DomainInterview` 가 D14 면접 세션 API([[api#Interview]])의 모델과 Repository 계약(`InterviewClient`)을 보유하고, Part 2 화면군은 `FeatureInterview` 가 구현한다([[interview#면접 흐름]]). 소비 Feature 는 `.domain(interface: .interview)` 로 연결된다.
 
 ## Client 계약
-`InterviewClient` 는 Feature 가 Interview 데이터에 접근하는 유일한 통로 — `createSession`(생성)·`sessionStatus`(준비 폴링)·`submitAnswer`(턴 루프의 축)·`questionAudioStream`(질문 TTS 재생)·`videoUploadURL`·`completeVideoUpload`·`uploadInterviewVideo`(영상 업로드)·`reportList`(레포트 목록).
+`InterviewClient` 는 Feature 가 Interview 데이터에 접근하는 유일한 통로 — `createSession`(생성)·`sessionStatus`(준비 폴링)·`submitAnswer`(답변 제출 = 턴 루프의 축)·`questionAudioStream`(질문 TTS 재생 정보)·`checkResume`(재개 가능 조회)·`confirmResume`(재개 확정 — 응답은 `submitAnswer` 와 같은 `AnswerResult`)·`abandonSession`(중단 — `AbandonCause` 는 USER_EXIT/NETWORK_DISCONNECT 만, HOLD_EXPIRED 는 서버 내부 전용이라 타입에서 뺐다)·`reportList`(내 레포트 목록 — 홈 진입 로드가 쓴다, [[home#진입 로드]]).
+
+같은 모듈의 `HeldSessionStore` 는 진행 중(held) 세션의 **로컬 보관** seam(UserDefaults) — 서버에 진행중 세션 목록 API 가 없어 클라가 `sessionId`(+ 녹화 길이 `recordedSeconds`)를 들고 있어야 홈이 «진행 중» 을 판정한다([[home#진입 로드]]). 수명: 세션 생성 시 저장(0초) → 녹화하며 갱신(면접 Feature 몫 — 미배선 TODO #69) → 완료·중단·ENDED 판정 시 삭제(배선은 [[app#Cross-feature Routing]]).
 
 Interface 에 계약 + `testValue`(unimplemented) + `previewValue`(샘플), Implementation 에 `liveValue` — 구현은 App/Example 만 link 한다(D4).
 
@@ -18,6 +20,7 @@ Interface 에 계약 + `testValue`(unimplemented) + `previewValue`(샘플), Impl
 
 - 세션 생성은 회원 프로필 스냅샷(직군·연차 미전송 — 미등록이면 `USER_PROFILE_NOT_REGISTERED`). 준비는 서버 비동기: POST(202) → 3~5초 status 폴링 → READY 에 `startedAt` + 요약 질문(base64 TTS). FAILED 는 이용권 자동 환불.
 - `submitAnswer` 응답이 턴을 결정한다 — `nextQuestion`(계속) 또는 `sessionEnded` + `SessionEndType` 5종(NORMAL/MANUAL/HARD_CAP/BACK_EXIT(구 EARLY_EXIT)/**STT_RESET** — STT 30% 판정은 서버) + 마무리 멘트(`wrapUpMessage.ttsAudio`). 메타데이터는 query(`isWrapUp` required), 오디오만 multipart. 503(`AI_TEMPORARILY_UNAVAILABLE`)은 서버에 아무것도 저장되지 않아 같은 요청 재시도 계약.
+- 재개는 2단 — `checkResume`(GET, 순수 조회)가 RESUMABLE(IN_PROGRESS + hold 20분 이내)/ENDED 를 가르고, RESUMABLE 일 때만 `confirmResume`(POST — 최신 턴 질문 반환, 레이스면 409 아닌 200+`sessionEnded`)을 부른다. ENDED 의 hold 만료 처리(ABANDONED 전환·환불)는 그 GET 안에서 서버가 끝낸다. `abandonSession` 의 USER_EXIT 는 진행분 리포트 생성 트리거(차감은 리포트 성공 시 확정)고, 중복 호출 409 `sessionAlreadyEnded` 는 «이미 중단 완료» 로 성공 취급한다.
 - liveValue 는 URLSession·토큰을 모르므로 테스트도 Core 구현 없이 AuthorizedNetworkClient 스텁으로 검증한다 (`InterviewClientLiveTests`).
 
 ## 면접 흐름

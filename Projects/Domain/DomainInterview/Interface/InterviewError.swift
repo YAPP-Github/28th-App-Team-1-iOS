@@ -33,11 +33,16 @@ public enum InterviewError: Error, Equatable, Sendable {
     /// ANSWER_ALREADY_SUBMITTED (409) — 재시도 차단. 다음 질문으로 진행.
     case answerAlreadySubmitted
     /// SESSION_ALREADY_ENDED (409) — 이미 종료된 세션. 보고서 화면으로 이탈.
+    /// 중단(abandonSession) 중복 호출도 이 코드다 — 그 경로에서는 «이미 중단 완료» 로 간주한다(실패 아님).
     case sessionAlreadyEnded
+    /// SESSION_NOT_STARTED (409) — 아직 시작되지 않은 세션에 재개 확정을 쏜 경우. checkResume 을 거치면 도달하지 않는다.
+    case sessionNotStarted
+    /// SESSION_PRELOAD_FAILED (409) — 질문 프리로드가 실패한 세션. 재개 불가 — 새 세션을 만들어야 한다.
+    case sessionPreloadFailed
     /// AI_TEMPORARILY_UNAVAILABLE (503) — 서버에 아무것도 저장되지 않음. **같은 요청 그대로 재시도** 계약.
     /// 코드 매핑이 5xx 판정보다 먼저라 `serverUnavailable` 에 선점되지 않는다(envelope 없는 503 만 그쪽).
     case aiTemporarilyUnavailable
-    /// VALIDATION_ERROR·INVALID_JOB_ROLE·INVALID_CAREER_YEARS·INVALID_JD_LENGTH·
+    /// VALIDATION_ERROR·INVALID_ABANDON_CAUSE·INVALID_JOB_ROLE·INVALID_CAREER_YEARS·INVALID_JD_LENGTH·
     /// INVALID_FREETEXT_LENGTH·INVALID_PLAYBACK_RANGE·INVALID_ANSWER_RANGE·
     /// INVALID_END_TYPE·INVALID_AUDIO_PRESENCE (400) — `message` 는 그대로 사용자 노출 가능.
     case invalid(message: String)
@@ -67,8 +72,10 @@ extension InterviewError: DomainAPIError {
         case "QUESTION_NOT_FOUND": self = .questionNotFound
         case "ANSWER_ALREADY_SUBMITTED": self = .answerAlreadySubmitted
         case "SESSION_ALREADY_ENDED": self = .sessionAlreadyEnded
+        case "SESSION_NOT_STARTED": self = .sessionNotStarted
+        case "SESSION_PRELOAD_FAILED": self = .sessionPreloadFailed
         case "AI_TEMPORARILY_UNAVAILABLE": self = .aiTemporarilyUnavailable
-        case "VALIDATION_ERROR", "INVALID_JOB_ROLE", "INVALID_CAREER_YEARS",
+        case "VALIDATION_ERROR", "INVALID_ABANDON_CAUSE", "INVALID_JOB_ROLE", "INVALID_CAREER_YEARS",
              "INVALID_JD_LENGTH", "INVALID_FREETEXT_LENGTH", "INVALID_PLAYBACK_RANGE",
              "INVALID_ANSWER_RANGE", "INVALID_END_TYPE", "INVALID_AUDIO_PRESENCE":
             self = .invalid(message: message)

@@ -59,12 +59,16 @@
 3. `appDataCleared` 로 `state = State()` 리셋 후 **`resolveLaunchRouting()` 재실행** — 로그아웃과 달리 `root = .auth` 로 확정하지 않고 Splash 판정부터 다시 태운다. 지운 게 세션만이 아니라 로컬 저장소 전부라 재설치 직후와 같은 자리여야 버전·동의·프로필 게이트가 모두 다시 돈다. cross-feature 조립이라 authClient 의존은 코디네이터인 여기서만 가진다 → [[home]]
 
 대표 흐름 — **온보딩 위저드 진입**:
-1. 발원지 2곳 — 「면접 시작」의 [시작하기](`interviewStartRequested`)·[수정하기](`interviewInfoEditRequested`). [시작하기]는 재사용 포폴 유무와 **무관하게** 위저드다: 면접 화면이 `sessionId` 로만 열리는데 그 id 를 만드는 건 위저드의 세션 생성뿐이라서다. «이전 정보 그대로» 세션 생성 API 가 생기면 `variant == .hasPortfolio` 는 수집을 건너뛴다(TODO — 미결 6-1)
+1. 발원지 2곳 — 「면접 시작」의 [시작하기](`interviewStartRequested`)·확인 단계를 통과한 [처음부터 시작](abandon 성공 후 `interviewAbandonResolved`). 어느 쪽이든 **위저드부터**다: 면접 화면이 `sessionId` 로만 열리는데 그 id 를 만드는 건 위저드의 세션 생성뿐이라서다(포폴 재사용 분기는 2026-08-08 폐기 — [[home#진입 로드]])
 2. AppFeature 수신 → `state.onboarding = OnboardingFeature.State(userName:)` (`@Presents` + `.ifLet`) → `AppView` 가 `fullScreenCover` 로 위저드 제시. 분기 재료(`variant`)는 홈이 진입 로드로 이미 정해 둔 값을 읽는다
-3. 온보딩 `delegate(.finished(sessionId:))` = **세션 준비 완료** → 위저드 cover 를 닫고 그 자리에서 `state.interview = InterviewFeature.State(sessionId:)` 로 면접 cover 를 연다(홈은 안 태운다 — 어차피 가려지고, 갱신 시점은 면접이 끝나 돌아올 때다) → [[interview]]
-4. 중도 이탈 `.dismiss` → cover 만 닫고 **`.home(.view(.onAppear))` 를 명시로 보내 홈을 다시 태운다** — STEP4 업로드는 끝났을 수 있는데 cover 를 닫는 것만으론 홈 `onAppear` 가 다시 오지 않아 «이전 정보 재사용» 카드가 옛 값으로 남는다. 홈 탭 위에서만 열리므로 **로그인 이후**라 토큰을 보유한다(온보딩 API 는 인증 필요) → [[onboarding]]
+3. 온보딩 `delegate(.finished(sessionId:))` = **세션 준비 완료** → 위저드 cover 를 닫고 그 자리에서 `state.interview = InterviewFeature.State(sessionId:)` 로 면접 cover 를 열고, **`HeldSessionStore.save(sessionId, 0초)`** 로 진행 중 보관을 시작한다(이 값의 존재가 홈 «진행 중» 판정 재료 — [[interview#Client 계약]]. 녹화 길이 갱신은 면접 Feature 몫, TODO #69) → [[interview]]
+4. 중도 이탈 `.dismiss` → cover 만 닫고 **`.home(.view(.onAppear))` 를 명시로 보내 홈을 다시 태운다** — cover 를 닫는 것만으론 홈 `onAppear` 가 다시 오지 않는다. 홈 위에서만 열리므로 **로그인 이후**라 토큰을 보유한다(온보딩 API 는 인증 필요) → [[onboarding]]
 5. 면접 `delegate(.finished)`(리포트 대기 → 홈)·`.closed`(중단·실패 닫기) → 둘 다 cover 닫고 홈 재조회 — 어느 쪽이든 잔여가 줄었다. 정상 종료의 리포트 상세(r1) 연결은 `InterviewReportFeature` 통합 후(TODO)
-6. 정상 종료(`.finished`)에서만 `onboardingDraftStore.clear()` — 온보딩 입력 draft 가 제 역할을 다한 지점이 여기다([[onboarding#입력 draft]]). 이탈(`.closed`)은 보존 — 같은 입력으로 다시 시작할 수 있어야 하고, 면접 도중 앱이 죽어도 값이 남는다
+6. 정상 종료(`.finished`)에서만 `onboardingDraftStore.clear()` + **`HeldSessionStore.clear()`**(완주 = 더는 진행 중이 아니다) — 온보딩 입력 draft 가 제 역할을 다한 지점이 여기다([[onboarding#입력 draft]]). **삭제가 홈 재조회보다 먼저**여야 해서 effect 가 아니라 리듀서 본문 동기 호출이다 — `.merge(.run{clear}, .send(onAppear))` 로 두면 `.send` 가 먼저 도착해 홈 held 판정(onAppear 본문의 동기 load)이 옛 보관값을 읽고 끝난 면접을 [이어서 진행] 으로 그린다. 이탈(`.closed`)은 둘 다 보존 — draft 는 같은 입력으로 다시 시작할 재료, 보관값은 홈 [이어서 진행] 의 재개 재료다
+
+**진행 중(held) 면접 두 갈래** (2026-08-08 배선 — 발원은 [[home]] 의 `interviewRestartRequested(sessionId:)`·`interviewResumeRequested(sessionId:)`, id 는 홈이 로컬 보관값에서 읽어 싣는다):
+- [처음부터 시작] → `abandonSession(sessionId, .userExit)`(진행분 리포트 트리거 — 시안 «이용권이 하나 차감됩니다.» 의 근거) → 성공 또는 409 `sessionAlreadyEnded`(이미 중단 완료로 간주) → 보관값 clear → `interviewAbandonResolved` 가 [시작하기] 와 같은 위저드를 연다(사용자 결정 2026-08-08). 그 외 실패는 보관값 유지 + 화면 유지(안내 토스트 미도안 TODO).
+- [이어서 진행] → `checkResume` → RESUMABLE 이면 `confirmResume` → `interviewResumeResolved(sessionId:)` 가 면접 cover 를 연다(`nextQuestion` 소비 = 재개 진입은 면접 Feature 머지 후 — TODO #69). ENDED·`sessionEnded` 레이스면 보관값 clear + 홈 재조회로 변형을 되돌린다(INVALID → SttFailure 화면도 TODO #69).
 
 `State(userName:)` 만 넘긴다 — 직군·연차는 위저드가 다루지 않는다(세션 생성이 서버 프로필 스냅샷을 쓴다, 2026-08-04). 예전엔 두 값을 주입받아야 프리로드가 세션을 만들 수 있었고 배선이 없어 항상 실패했다 → [[onboarding#프리로드]]
 

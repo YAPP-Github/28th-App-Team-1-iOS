@@ -30,6 +30,17 @@ public struct InterviewClient: Sendable {
     /// 1시도 계약: 재시도(발급부터 재시작) 정책은 호출처 몫.
     public var uploadInterviewVideo: @Sendable (_ sessionId: Int, _ fileURL: URL, _ wrapUp: InterviewVideoWrapUpSpan?) async throws -> Void
     /// GET /interview/sessions — 내 면접 레포트 목록(마이페이지용). envelope `{ reports }` 는 Live 가 벗긴다.
+    /// GET /interview/sessions/{id}/resume — 재개 가능 여부 조회. 상태를 바꾸지 않는다(hold 만료 정리는 서버 몫).
+    /// 없거나 남의 세션이면 `sessionNotFound`.
+    public var checkResume: @Sendable (_ sessionId: Int) async throws -> InterviewResumeCheck
+    /// POST /interview/sessions/{id}/resume — 재개 확정(body 없음). 반환은 `submitAnswer` 와 같은 `AnswerResult` —
+    /// 서버가 답변 제출과 같은 스키마를 쓰고 `answerId` 만 비우므로(이미 옵셔널) 턴 루프 처리기를 그대로 재사용한다.
+    /// `checkResume` 을 건너뛰고 IN_PROGRESS 아닌 세션에 쏘면 409(`sessionAlreadyEnded`·`sessionNotStarted`·`sessionPreloadFailed`).
+    public var confirmResume: @Sendable (_ sessionId: Int) async throws -> AnswerResult
+    /// POST /interview/sessions/{id}/abandon — 면접 중단. `userExit` 은 진행분 리포트 생성 트리거,
+    /// `networkDisconnect` 는 이용권 환급·리포트 없음. 중복 호출은 `sessionAlreadyEnded`(= 이미 중단 완료).
+    public var abandonSession: @Sendable (_ sessionId: Int, _ cause: AbandonCause) async throws -> AbandonResult
+    /// GET /interview/sessions — 내 면접 레포트 목록(홈 위젯②·마이페이지). envelope `{ reports }` 는 Live 가 벗긴다.
     public var reportList: @Sendable () async throws -> [InterviewReportSummary]
 
     public init(
@@ -44,6 +55,9 @@ public struct InterviewClient: Sendable {
             _ fileURL: URL,
             _ wrapUp: InterviewVideoWrapUpSpan?
         ) async throws -> Void,
+        checkResume: @escaping @Sendable (_ sessionId: Int) async throws -> InterviewResumeCheck,
+        confirmResume: @escaping @Sendable (_ sessionId: Int) async throws -> AnswerResult,
+        abandonSession: @escaping @Sendable (_ sessionId: Int, _ cause: AbandonCause) async throws -> AbandonResult,
         reportList: @escaping @Sendable () async throws -> [InterviewReportSummary]
     ) {
         self.createSession = createSession
@@ -53,6 +67,9 @@ public struct InterviewClient: Sendable {
         self.videoUploadURL = videoUploadURL
         self.completeVideoUpload = completeVideoUpload
         self.uploadInterviewVideo = uploadInterviewVideo
+        self.checkResume = checkResume
+        self.confirmResume = confirmResume
+        self.abandonSession = abandonSession
         self.reportList = reportList
     }
 }
@@ -68,6 +85,9 @@ extension InterviewClient: TestDependencyKey {
             videoUploadURL: unimplemented("InterviewClient.videoUploadURL"),
             completeVideoUpload: unimplemented("InterviewClient.completeVideoUpload"),
             uploadInterviewVideo: unimplemented("InterviewClient.uploadInterviewVideo"),
+            checkResume: unimplemented("InterviewClient.checkResume"),
+            confirmResume: unimplemented("InterviewClient.confirmResume"),
+            abandonSession: unimplemented("InterviewClient.abandonSession"),
             reportList: unimplemented("InterviewClient.reportList")
         )
     }
@@ -123,21 +143,60 @@ extension InterviewClient: TestDependencyKey {
                     feedbackAvailable: true
                 )]
             }
+            // 재개는 «가능» 을 그린다 — 2:12 경과(= 남은 시간이 있는 상태)라 홈의 [이어서 진행] 시안이 보인다.
+            checkResume: { _ in
+                InterviewResumeCheck(
+                    resumeState: .resumable,
+                    startedAt: Date(timeIntervalSince1970: 1_782_000_000),
+                    elapsedSeconds: 132,
+                    status: nil
+                )
+            },
+            confirmResume: { _ in
+                AnswerResult(
+                    answerId: nil,
+                    nextQuestion: NextQuestion(questionId: 21, isLast: false, turn: TurnInfo(turnLevel: 2, depthLevel: 0)),
+                    sessionEnded: false,
+                    wrapUpMessage: nil,
+                    endType: nil
+                )
+            },
+            abandonSession: { _, cause in
+                AbandonResult(
+                    status: .abandoned,
+                    abandonCause: SessionAbandonCause(cause),
+                    ticketOutcome: cause == .userExit ? .held : .released,
+                    reportGenerating: cause == .userExit,
+                    endedAt: Date(timeIntervalSince1970: 1_782_000_300)
+                )
+            },
+            // 목록은 **여러 건**을 준다 — 홈 위젯② 는 펼친 행 1 + 접힌 행 N 이 시안이라 1건만 주면
+            // 프리뷰가 접힌 행·스크롤·확장 자리를 못 보여준다. 상태도 섞어 상태 문구 행까지 그린다.
+            reportList: { previewReports }
         )
     }
 
     /// 프리뷰 목록 5건 — 최신순, 상태 4종(준비·생성 중·분석 부족·실패)을 한 화면에서 본다.
     /// 시각은 KST 09:00 고정값이다(2026-07-11 → 07-07) — 프리뷰가 날마다 달라지지 않게.
+    /// `title` 은 앞 2건만 채운다 — 나머지로 요약 문장 없는 과거 세션의 스냅샷 제목까지 같이 본다.
     private static var previewReports: [InterviewReportSummary] {
         let day: TimeInterval = 86_400
         let latest: TimeInterval = 1_783_728_000
         let statuses: [ReportStatus] = [.ready, .ready, .generating, .insufficientAnalysis, .failed]
+        let titles: [String?] = [
+            "캐시 도입 결정의 이유와 한계까지 설명했어요",
+            "질문 의도를 되묻고 답변 범위를 좁혀 나갔어요",
+            nil,
+            nil,
+            nil
+        ]
         return statuses.enumerated().map { index, status in
             InterviewReportSummary(
                 sessionId: index + 1,
                 jobType: "BACKEND",
                 jobTypeLabel: "백엔드 개발자",
                 careerYears: 3,
+                title: titles[index],
                 interviewedAt: Date(timeIntervalSince1970: latest - day * TimeInterval(index)),
                 portfolioFileName: "portfolio.pdf",
                 portfolioDeleted: false,
