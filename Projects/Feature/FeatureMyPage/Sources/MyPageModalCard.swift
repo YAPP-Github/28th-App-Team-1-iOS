@@ -23,20 +23,20 @@ struct MyPageModalCard: View {
 
     var body: some View {
         switch modal {
-        case let .deleteConfirm(remaining):
+        case let .deleteConfirm(canReupload):
             Modal(
                 "포트폴리오를 삭제하시겠어요?",
-                subText: "포트폴리오 파일이 삭제되어도 지난 면접 레포트는 그대로 남아요.",
-                info: "이번달 남은 삭제 기회 \(remaining)번"
+                subText: "포트폴리오 파일이 삭제되어도 지난 면접 리포트는 그대로 남아요.",
+                info: Self.reuploadNotice(canReupload)
             ) {
                 buttons(cancel: "취소", confirm: "삭제하기")
             }
 
-        case let .deleteBlocked(remaining):
+        case let .deleteBlocked(canReupload):
             Modal(
                 "포트폴리오를 삭제할 수 없어요",
                 subText: "현재 면접이 진행되고 있어요. 면접이 끝나면 다시 삭제를 시도해주세요.",
-                info: remaining.map { "이번달 남은 삭제 기회 \($0)번" }
+                info: canReupload.map(Self.reuploadNotice)
             ) {
                 buttons(cancel: "취소", confirm: "확인")
             }
@@ -74,19 +74,24 @@ struct MyPageModalCard: View {
             Button(confirm, action: onConfirm)
         }
     }
+
+    /// 삭제 계열 안내줄 — «삭제 후 이번 달 재업로드 가능 여부» 고지(PRD 3.2-⑤). 카피 확정 시 이 함수만 고친다.
+    private static func reuploadNotice(_ canReupload: Bool) -> String {
+        canReupload ? "이번 달 안에 다시 올릴 수 있어요" : "다음 달 1일부터 다시 올릴 수 있어요"
+    }
 }
 
 #Preview("삭제 확인") {
     Color.GrayScale.g50
         .hilitModal(isPresented: true) {
-            MyPageModalCard(modal: .deleteConfirm(remaining: 1), onCancel: {}, onConfirm: {})
+            MyPageModalCard(modal: .deleteConfirm(canReupload: true), onCancel: {}, onConfirm: {})
         }
 }
 
 #Preview("삭제 불가 — 안내줄 없음") {
     Color.GrayScale.g50
         .hilitModal(isPresented: true) {
-            MyPageModalCard(modal: .deleteBlocked(remaining: nil), onCancel: {}, onConfirm: {})
+            MyPageModalCard(modal: .deleteBlocked(canReupload: nil), onCancel: {}, onConfirm: {})
         }
 }
 

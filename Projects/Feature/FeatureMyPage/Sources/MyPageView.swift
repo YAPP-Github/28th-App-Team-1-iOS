@@ -8,6 +8,7 @@
 import ComposableArchitecture
 import SharedDesignSystemInterface
 import SwiftUI
+import UniformTypeIdentifiers
 
 // @ViewAction 매크로가 send(_:) 를 제공한다 — View 는 store.send(.view(...)) 대신 send(.onAppear) 로만 방출.
 @ViewAction(for: MyPageFeature.self)
@@ -47,6 +48,11 @@ public struct MyPageView: View {
                 onConfirm: { send(.userTappedModalConfirm) }
             )
         }
+        .alert($store.scope(state: \.alert, action: \.alert))
+        // 문서 피커는 이 화면 안에서 연다 — 업로드 진입 3곳(빈 판·«다시 올리기»·교체 확인)이 같은 자리로 모인다.
+        .fileImporter(isPresented: $store.isFilePickerPresented, allowedContentTypes: [.pdf]) { result in
+            if case let .success(url) = result { send(.fileSelected(url)) } else { send(.fileSelectionFailed) }
+        }
         .onAppear { send(.onAppear) }
     }
 
@@ -78,12 +84,6 @@ public struct MyPageView: View {
                         TagLabel(store.profile.careerLevel, style: .noneGray, size: .regular)
                     }
                 }
-                Button {
-                    send(.userTappedEditProfile)
-                } label: {
-                    icon(Image.Edit.disabled16)
-                }
-                .buttonStyle(.plain)
             }
             ticketRow
         }
@@ -97,18 +97,12 @@ public struct MyPageView: View {
         HStack(spacing: 0) {
             HStack(spacing: .ds(.p4)) {
                 icon(Image.Coupon.default)
-                Text("남은 면접 티켓")
+                Text("남은 면접 기회")
                     .dsTypography(.body6)
                     .foregroundStyle(Color.GrayScale.g500)
-                Button {
-                    send(.userTappedTicketInfo)
-                } label: {
-                    icon(Image.Info.disabled)
-                }
-                .buttonStyle(.plain)
             }
             Spacer(minLength: .ds(.p8))
-            TagLabel("\(store.profile.remainingTickets)장", style: .greenGreen)
+            TagLabel("\(store.profile.remainingTickets)회", style: .greenGreen)
         }
         .padding(.horizontal, .ds(.p14))
         .padding(.vertical, .ds(.p8))
@@ -119,7 +113,7 @@ public struct MyPageView: View {
     /// max 케이스(MyPage_Main)를 따라 항상 노출한다.
     private var accountCard: some View {
         HStack(spacing: .ds(.p12)) {
-            icon(Image.Logo.kakaoWithBg)
+            icon(store.profile.provider == "APPLE" ? Image.Logo.appleWithBg : Image.Logo.kakaoWithBg)
             Text(store.profile.email)
                 .dsTypography(.body7)
                 .foregroundStyle(Color.GrayScale.g500)
@@ -176,7 +170,7 @@ public struct MyPageView: View {
                     size: file.size,
                     onRemove: { send(.userTappedRemovePortfolio) }
                 )
-                InfoField("포트폴리오는 한 달에 한 번 바꿀 수 있어요. 지워도 지난 면접 레포트는 그대로 남아요.")
+                InfoField("포트폴리오는 한 달에 한 번 바꿀 수 있어요. 지워도 지난 면접 리포트는 그대로 남아요.")
             }
 
         case let .failed(file):
@@ -215,11 +209,11 @@ public struct MyPageView: View {
         }
     }
 
-    // MARK: - 내 면접 레포트
+    // MARK: - 내 면접 리포트
 
     private var reportSection: some View {
         VStack(alignment: .leading, spacing: .ds(.p10)) {
-            sectionHeader("내 면접 레포트")
+            sectionHeader("내 면접 리포트")
             // 줄끼리 간격 0 — 접힘 카드의 테두리가 서로 맞닿아 목록 선을 만든다(시안 그대로).
             VStack(spacing: 0) {
                 ForEach(store.reports) { report in
@@ -254,10 +248,10 @@ public struct MyPageView: View {
                         .init("포트폴리오", report.portfolioName),
                         .init("JD", report.jobDescription)
                     ],
-                    leadingAction: report.showsActions
-                        ? .init("레포트 보기") { send(.userTappedOpenReport(id: report.id)) }
+                    leadingAction: report.canOpenReport
+                        ? .init("리포트 보기") { send(.userTappedOpenReport(id: report.id)) }
                         : nil,
-                    trailingAction: report.showsActions
+                    trailingAction: report.canRequestFeedback
                         ? .init("지인 피드백 받기") { send(.userTappedRequestFeedback(id: report.id)) }
                         : nil,
                     error: report.detailError
