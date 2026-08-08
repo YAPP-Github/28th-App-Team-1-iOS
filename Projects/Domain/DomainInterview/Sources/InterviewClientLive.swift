@@ -86,6 +86,8 @@ extension InterviewClient: @retroactive DependencyKey {
                     // Content-Type 은 발급 응답 값 원문 — presigned 서명에 포함되어 다르면 S3 가 거부한다.
                     try await fileTransfer.upload(uploadURL, target.contentType, fileURL)
                     try await network.api(completeVideoRequest(sessionId: sessionId, wrapUp: wrapUp))
+                }
+            },
             checkResume: { sessionId in
                 try await InterviewError.mapping {
                     try await network.api(
