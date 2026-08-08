@@ -16,11 +16,14 @@ public extension InterviewReportClient {
                 InterviewReport(
                     status: .ready,
                     headline: "mock 보고서",
-                    redFlagNotices: nil,
                     video: nil,
                     cards: [],
-                    guestFeedback: nil
+                    script: [],
+                    guestFeedback: GuestFeedbackSection(participantCount: 0, guests: [])
                 )
+            },
+            videoExpiry: { _ in
+                InterviewVideoExpiry(expiresInSeconds: 2_591_480, expired: false)
             }
         )
     }

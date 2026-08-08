@@ -9,7 +9,6 @@ import ComposableArchitecture
 import CoreNetworkInterface
 import DomainInterviewInterface
 import DomainPortfolioInterface
-import DomainSpeechInterface
 import DomainUserInterface
 import FeatureInterviewImplementation
 import Foundation
@@ -33,10 +32,13 @@ struct LiveInterviewBootstrap: View {
         case idle
         case running(String)
         case failed(String)
-        case ready(StoreOf<InterviewFeature>)
+        case ready(StoreOf<ExampleInterviewCoordinator>)
     }
 
     @State private var stage: Stage = .idle
+    /// bootstrap 재진입 가드 — `.task` 재발화(뷰 아이덴티티 변경 시 이전 Task 는 취소 신호만 받고 계속 돈다)나
+    /// 겹친 탭이 `createSession` 을 중복 호출해 이용권(희소한 테스트 자원)을 이중 소모하는 것을 막는다.
+    @State private var isBootstrapping = false
 
     var body: some View {
         Group {
@@ -58,14 +60,39 @@ struct LiveInterviewBootstrap: View {
                     }
                 }
             case let .ready(store):
-                InterviewView(store: store)
+                if let outcome = store.outcome {
+                    finishedView(outcome)
+                } else {
+                    InterviewView(store: store.scope(state: \.interview, action: \.interview))
+                }
             }
         }
         .task { await bootstrap() }
     }
 
+    /// 실앱이라면 홈으로 돌아갔을 자리 — 하네스엔 홈이 없어 결과만 보여주고 새 세션 동선을 준다.
+    /// 여기까지 왔다는 건 코디네이터가 종료 신호를 받았다는 뜻이고, 그 시점엔 카메라·마이크가 이미 꺼져 있다.
+    private func finishedView(_ outcome: ExampleInterviewCoordinator.State.Outcome) -> some View {
+        VStack(spacing: 16) {
+            Text(outcome == .finished ? "면접 정상 종료" : "면접 흐름 이탈").font(.headline)
+            Text(outcome == .finished
+                ? "산출물이 업로드 큐로 넘어갔어요. 업로드 완주는 콘솔 로그에서 확인하세요."
+                : "녹화는 폐기됐어요.")
+                .font(.caption)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+            Button("새 세션으로 다시") {
+                Task { await bootstrap() }
+            }
+        }
+    }
+
     @MainActor
     private func bootstrap() async {
+        guard !isBootstrapping else { return }   // 진행 중이면 무시 — 기존 흐름이 상태를 마저 끌고 간다
+        isBootstrapping = true
+        defer { isBootstrapping = false }
+
         // 스킴 env 복사 실수 흡수 — 줄바꿈·공백·따옴표·Bearer 접두를 벗기고 JWT 형태(점 2개)를 검증한다.
         let token = Self.normalize(accessToken)
         guard token.split(separator: ".").count == 3 else {
@@ -120,13 +147,8 @@ struct LiveInterviewBootstrap: View {
             let created = try await interviewClient.createSession(InterviewConfig(portfolioId: portfolio.portfolioId))
 
             stage = .ready(Store(
-                initialState: InterviewFeature.State(sessionId: created.sessionId),
-                reducer: { InterviewFeature() },
-                withDependencies: {
-                    // 실녹음(작업 B) 전 — 번들 샘플로 답변 오디오 seam 만 채운다.
-                    // 직접 키 오버라이드는 스코프에 즉시 적용된다(엔진 같은 캐시 싱글턴 내부 전파와는 다른 경로).
-                    $0.speechClient.answerAudio = { await Self.sampleAnswerAudio }
-                }
+                initialState: ExampleInterviewCoordinator.State(sessionId: created.sessionId),
+                reducer: { ExampleInterviewCoordinator() }
             ))
         } catch {
             print("⛳️ [HARNESS] \(step) 실패: \(String(describing: error))")
@@ -154,9 +176,4 @@ struct LiveInterviewBootstrap: View {
         }
         return token.trimmingCharacters(in: .whitespacesAndNewlines)
     }
-
-    /// 번들 샘플 답변(m4a — `say`+`afconvert` 산출물). 서버가 mp3 를 강제하면 리소스만 교체한다(스펙 §9-1).
-    static let sampleAnswerAudio: Data? = Bundle.main
-        .url(forResource: "SampleAnswer", withExtension: "m4a")
-        .flatMap { try? Data(contentsOf: $0) }
 }
