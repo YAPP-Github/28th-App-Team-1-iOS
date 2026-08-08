@@ -74,6 +74,25 @@ final class PortfolioClientLiveTests: XCTestCase {
         XCTAssertNil(list.deleteAvailable)
     }
 
+    func test_list_decodesCancelledStatusAndInterviewInProgress() async throws {
+        // CANCELLED 는 서버 스펙에 있는 값 — 케이스가 없으면 여기서 디코드가 throw 한다.
+        let client = makeClient { _ in
+            Data("""
+            {"success": true, "data": {"portfolios": [{
+                "portfolioId": "3E1A8E4B-6C1B-4E1F-9B5A-2F1C0D9E8A70",
+                "fileName": "portfolio.pdf",
+                "status": "CANCELLED",
+                "interviewInProgress": true
+            }]}}
+            """.utf8)
+        }
+
+        let list = try await client.list()
+
+        XCTAssertEqual(list.portfolios.first?.status, .cancelled)
+        XCTAssertEqual(list.portfolios.first?.interviewInProgress, true)
+    }
+
     func test_register_메타데이터는_query로_PDF는_multipart로_보낸다() async throws {
         let client = makeClient { request in
             XCTAssertEqual(request.path, "/api/v1/portfolios")

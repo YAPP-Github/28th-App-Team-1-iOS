@@ -16,6 +16,7 @@ public enum PortfolioProcessingStatus: String, Decodable, Equatable, Sendable {
     case ready = "READY"
     case failedFile = "FAILED_FILE"
     case failedSystem = "FAILED_SYSTEM"
+    case cancelled = "CANCELLED"
 }
 
 /// 등록된 포트폴리오. MVP 는 계정당 1개 (응답은 다건 확장 대비 배열).
@@ -27,6 +28,8 @@ public struct Portfolio: Decodable, Equatable, Sendable, Identifiable {
     public let pageCount: Int?
     public let status: PortfolioProcessingStatus?
     public let uploadedAt: Date?
+    /// 이 포폴을 참조하는 면접 세션이 진행 중인가 — 마이페이지 삭제 차단 조건.
+    public let interviewInProgress: Bool?
 
     public var id: UUID { portfolioId }
 
@@ -36,7 +39,8 @@ public struct Portfolio: Decodable, Equatable, Sendable, Identifiable {
         fileSize: Int?,
         pageCount: Int?,
         status: PortfolioProcessingStatus?,
-        uploadedAt: Date?
+        uploadedAt: Date?,
+        interviewInProgress: Bool? = nil
     ) {
         self.portfolioId = portfolioId
         self.fileName = fileName
@@ -44,6 +48,7 @@ public struct Portfolio: Decodable, Equatable, Sendable, Identifiable {
         self.pageCount = pageCount
         self.status = status
         self.uploadedAt = uploadedAt
+        self.interviewInProgress = interviewInProgress
     }
 }
 
@@ -174,7 +179,8 @@ extension PortfolioClient: TestDependencyKey {
                             fileSize: 1_048_576,
                             pageCount: 12,
                             status: .ready,
-                            uploadedAt: Date(timeIntervalSince1970: 1_782_000_000)
+                            uploadedAt: Date(timeIntervalSince1970: 1_782_000_000),
+                            interviewInProgress: false
                         )
                     ],
                     replaceAvailable: true,
