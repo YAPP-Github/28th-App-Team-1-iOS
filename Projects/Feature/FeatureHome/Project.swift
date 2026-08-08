@@ -9,7 +9,6 @@ let project = Project.makeModule(
         .feature(implements: "Home", factory: .init(dependencies: [
             .composableArchitecture,
             .domain(interface: .interview),   // 홈 진입 로드: 면접 기록(레포트) 목록
-            .domain(interface: .portfolio),   // 홈 진입 로드: 등록 포폴 유무 (docs/work/home-account.md §5)
             .domain(interface: .user),        // 홈 진입 로드: 이름·잔여 이용권
             .shared(interface: .designSystem)
         ])),
@@ -19,13 +18,11 @@ let project = Project.makeModule(
         .feature(tests: "Home", factory: .init(dependencies: [
             .composableArchitecture,
             .domain(interface: .interview),
-            .domain(interface: .portfolio),
             .domain(interface: .user)
         ])),
         .feature(example: "Home", factory: .init(dependencies: [
             .composableArchitecture,
             .domain(interface: .interview),
-            .domain(interface: .portfolio),
             .domain(interface: .user)
         ]))
     ]

@@ -80,13 +80,16 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 | `sessionStatus` | GET `/api/v1/interview/sessions/{id}/status` | 3~5초 폴링 |
 | `submitAnswer` | POST `/api/v1/interview/sessions/{id}/answers` | 메타=query + 오디오=multipart. 503(`AI_TEMPORARILY_UNAVAILABLE`)은 같은 요청 재시도 계약 |
 | `questionAudioStream` | GET `.../questions/{qid}/audio/stream` | 아래 스트리밍 규약 |
-| `reportList` | GET `/api/v1/interview/sessions` | 내 레포트 목록(홈 위젯②·마이페이지) — envelope `{reports}` 는 liveValue 가 벗김 |
+| `checkResume` | GET `.../sessions/{id}/resume` | 재개 가능 조회(순수) — RESUMABLE(IN_PROGRESS+hold 20분 이내)/ENDED. hold 만료의 ABANDONED 전환·환불은 서버가 이 호출 안에서 처리 |
+| `confirmResume` | POST `.../sessions/{id}/resume` | 재개 확정 — 응답은 `submitAnswer` 와 같은 `AnswerResult`(최신 턴 질문). 레이스는 409 아닌 200+`sessionEnded` |
+| `abandonSession` | POST `.../sessions/{id}/abandon` | 중단 — USER_EXIT(진행분 리포트 트리거·차감은 리포트 성공 시)/NETWORK_DISCONNECT(환불). 중복 409 는 «이미 중단 완료» |
+| `reportList` | GET `/api/v1/interview/sessions` | 내 레포트 목록(홈 위젯②·마이페이지) — envelope `{reports}` 는 liveValue 가 벗김. `title`(답변 한 줄 요약)은 2026-08-07 추가라 과거 세션엔 없다. **진행중·준비중 세션 제외** — held 판정은 로컬 보관([[home#진입 로드]]) |
 
 질문 음성 스트리밍 규약: `audio/mpeg` + `Transfer-Encoding: chunked` (Content-Length 없음). 전부 받고 재생하지 말고 `AVURLAsset(url:options:[헤더])` → `AVPlayer` 점진 재생 — 그래서 계약이 Data 가 아니라 `InterviewAudioStream(url·headers)` 다. 중간 실패는 HTTP 로 안 잡힌다 — 재생 에러 콜백으로 감지하고 같은 questionId 로 재호출(TTS 처음부터 재생성).
 
 `endType` 은 요청·응답이 다른 집합이다. 요청(`AnswerEndType`): nil=정상 / SKIP(오디오 없음) / MANUAL_END(8:00 후 수동 종료) / HARD_CAP(12:00 강제) / BACK_EXIT(8:00 전 뒤로가기 이탈 — 구 EARLY_EXIT, 2026-08-03 서버 개명·오디오 선택). 응답(`SessionEndType`): MANUAL_END·HARD_CAP·BACK_EXIT + NORMAL_END(자연 종료) + **STT_RESET**(STT 30% 실패 — 판정은 서버, 이용권 환불·리포트 없음). ⚠️ 2026-08-03 스웨거부터 BACK_EXIT 도 리포트 생성을 트리거한다(이용권 HELD → 리포트 성공 시 차감 확정) — «이탈=리포트 없음» 전제의 클라 문구·라우팅은 PM 재확인 대상. 종료 응답은 `sessionEnded`·`wrapUpMessage{ttsAudio}`(base64 mp3 마무리 멘트)를 동봉하고 `reportId` 는 삭제됐다. `isWrapUp` 은 8:45 경과 여부(required — 항상 전송) — 타이머 상태머신은 [ai-interview](../docs/work/ai-interview.md) §6.
 
-에러는 `InterviewError` 로 매핑된다 — NO_REMAINING_TICKET → noRemainingTicket(403), PORTFOLIO_NOT_FOUND / PORTFOLIO_PROCESSING / PORTFOLIO_UPLOAD_FAILED / JD_NOT_VALIDATED / FREETEXT_NOT_RELEVANT / USER_PROFILE_NOT_REGISTERED (세션 생성 400·404), INTERVIEW_SESSION_NOT_FOUND / QUESTION_NOT_FOUND (404), ANSWER_ALREADY_SUBMITTED / SESSION_ALREADY_ENDED (409), AI_TEMPORARILY_UNAVAILABLE → aiTemporarilyUnavailable(503 — 코드 매핑이 5xx 판정보다 먼저라 serverUnavailable 에 선점되지 않음, 같은 요청 재시도), 입력 검증군(VALIDATION_ERROR·INVALID_*)은 서버 문구를 실은 invalid(message:), 미승격 코드(4xx)는 server(code·message) 로 동봉 — 분기가 필요해지면 전용 케이스로 승격.
+에러는 `InterviewError` 로 매핑된다 — NO_REMAINING_TICKET → noRemainingTicket(403), PORTFOLIO_NOT_FOUND / PORTFOLIO_PROCESSING / PORTFOLIO_UPLOAD_FAILED / JD_NOT_VALIDATED / FREETEXT_NOT_RELEVANT / USER_PROFILE_NOT_REGISTERED (세션 생성 400·404), INTERVIEW_SESSION_NOT_FOUND / QUESTION_NOT_FOUND (404), ANSWER_ALREADY_SUBMITTED / SESSION_ALREADY_ENDED / SESSION_NOT_STARTED / SESSION_PRELOAD_FAILED (409 — 뒤 둘은 checkResume 없이 confirmResume 을 직행한 비정상 경우), AI_TEMPORARILY_UNAVAILABLE → aiTemporarilyUnavailable(503 — 코드 매핑이 5xx 판정보다 먼저라 serverUnavailable 에 선점되지 않음, 같은 요청 재시도), 입력 검증군(VALIDATION_ERROR·INVALID_* — INVALID_ABANDON_CAUSE 포함)은 서버 문구를 실은 invalid(message:), 미승격 코드(4xx)는 server(code·message) 로 동봉 — 분기가 필요해지면 전용 케이스로 승격. `AnswerResult` 는 resume 계약 합류로 `status`·`abandonCause`·`endedAt` 옵셔널이 붙었다(레이스 판별 재료).
 
 ## Interview Report
 
