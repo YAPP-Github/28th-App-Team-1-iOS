@@ -125,6 +125,7 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 | `register` | POST `/api/v1/portfolios` | 메타=query + PDF=multipart `file` |
 | `status` | GET `/api/v1/portfolios/{id}/status` | 3~5초 폴링 |
 | `delete` | DELETE `/api/v1/portfolios/{id}` | 재등록 전 필수 (1개 제한) |
+| `fileURL` | GET `/api/v1/portfolios/{id}/file-url` | PDF 열람용 S3 presigned GET URL. **10분 유효·READY 상태만** — 캐시하지 않고 열 때마다 발급 |
 
 `list` 응답의 `replaceAvailable`·`nextAvailableAt`·`deleteAvailable`·`nextDeleteAvailableAt` 는 **계정 단위 쿨다운**이라 `portfolios` 항목 안이 아니라 `data` 레벨에 온다 — `PortfolioList` 가 그대로 담는다. 전부 옵셔널이라 서버가 빼도 목록만으로 디코딩된다. 읽는 화면은 마이페이지의 `replaceAvailable` 하나뿐이고(삭제·교체 모달 안내 — [[mypage#포트폴리오 한 달 한 번 규칙]]), 나머지 셋은 아직 미소비다(온보딩 S2 삭제 문구는 1 고정 — `OnboardingPortfolioUploadView` TODO).
 
