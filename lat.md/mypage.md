@@ -1,20 +1,31 @@
 # MyPage 도메인
 
-마이페이지(Part5). 프로필·계정, 포트폴리오 한 개, 지난 면접 레포트 목록을 한 화면에 모은다. 지금은 **서버 연동 전**이라 `@Dependency` 없이 State 초기값(목데이터)만으로 서고, 화면 밖으로 나가는 동선은 전부 `delegate` 로만 올린다.
+마이페이지(Part5). 프로필·계정, 포트폴리오 한 개, 지난 면접 리포트 목록을 한 화면에 모은다. Client 4종(auth·interview·portfolio·user Interface)을 주입해 실서버로 선다. 진입 조회는 병렬 3콜 한 방 — 부분 성공 없이 통으로 서거나 알럿+재시도. 화면 밖 동선은 전부 `delegate`.
 
 ## 흐름
-`MyPageFeature`(Reducer) + `MyPageView` + `MyPageModalCard`(모달 카드 층). Action 3분류 — [[architecture#핵심 결정 (Trade-off 기록)#D5. Reducer Action 3분류]]. 도메인 내부 화면 전환은 없다(단일 스크롤 화면 + 모달).
+`MyPageFeature`(타입 선언) + `MyPageReducer`(리듀서 본문 — 파일 길이 한도를 넘어 갈랐다, GuestFeedback 선례) + `MyPageView` + `MyPageModalCard`(모달 카드 층). Action 3분류 — [[architecture#핵심 결정 (Trade-off 기록)#D5. Reducer Action 3분류]]. 도메인 내부 화면 전환은 없다(단일 스크롤 화면 + 모달).
 
-세 덩어리로 읽는다: ① 프로필·계정 카드 ② «내 포트폴리오» ③ «내 면접 레포트» 목록. ②·③ 만 상태를 갖는다 — 포트폴리오는 `Portfolio` enum(empty·uploading·uploaded·registered·failed) 하나가 판 생김새를 통째로 바꾸고, 레포트는 `expandedReportID` 로 한 줄만 펼친다.
+세 덩어리로 읽는다: ① 프로필·계정 카드 ② «내 포트폴리오» ③ «내 면접 리포트» 목록. ①은 조회값을 그대로 그리고 ②·③ 만 화면 자체의 상태를 갖는다 — 포트폴리오는 `Portfolio` enum(empty·uploading·uploaded·registered·failed) 하나가 판 생김새를 통째로 바꾸고, 리포트는 `expandedReportID` 로 한 줄만 펼친다.
+
+서버 응답 → 화면 값 변환은 `MyPageFeature+Mapping.swift` 가 표시 규칙의 **단일 소스**다 — 제목 조립, «삭제된 포트폴리오»·«생성 실패» 태그, 날짜·시각·용량 포맷이 전부 여기서 나온다.
 
 ## 포트폴리오 한 달 한 번 규칙
-포트폴리오는 **한 달에 한 번만** 교체·삭제할 수 있고, 지워도 지난 레포트는 남는다. 이 규칙이 화면에서 세 곳에 나타난다 — 등록 상태의 회색 안내줄, 삭제/교체를 누를 때 뜨는 확인 모달, 기회가 0 이거나 면접이 진행 중일 때의 «할 수 없어요» 모달.
+포트폴리오 **교체**가 한 달에 한 번이다 — 계정 최초 업로드는 세지 않고, 재업로드가 **완료된 시점**에 소진되며 매월 1일(서버 시간) 리셋된다. 삭제는 이 기회를 쓰지 않는다. 막는 사유는 진행 중 면접 하나뿐이고, 지워도 지난 리포트는 남는다.
 
-모달 5종은 `Modal` enum 하나로 닫아 동시 표출을 타입으로 막는다(`.hilitModal(item:)` 규칙). 삭제 불가 두 판은 안내줄 유무만 다르므로 `deleteBlocked(remaining: Int?)` 의 nil 로 접었다.
+모달 5종은 `Modal` enum 하나로 닫아 동시 표출을 타입으로 막는다(`.hilitModal(item:)` 규칙). 삭제 계열 안내줄은 «삭제 후 이번 달 재업로드 가능 여부» 고지다 — 지웠다가 이번 달 안에 못 올리는 상황을 미리 알리는 게 이 줄의 존재 이유다. 삭제 불가 두 판은 안내줄 유무만 다르므로 `deleteBlocked(canReupload: Bool?)` 의 nil 로 접었다.
+
+삭제 성공은 낙관 갱신하지 않고 진입 조회를 통째로 다시 돌린다 — 포폴 칸·재업로드 가용성뿐 아니라 리포트 행의 «삭제된 포트폴리오» 태그까지 함께 바뀌기 때문이다.
+
+업로드는 한 줄기다 — 고른 PDF 를 `PortfolioFileReader` 로 먼저 읽어 20MB·30쪽·암호를 클라에서 거르고(선검증은 UX 용 빠른 차단, 최종 판정은 서버 실측), **교체면 기존 포폴을 지운 뒤** `register` 한다. 계정당 1개 제한(`PORTFOLIO_ALREADY_EXISTS`) 때문에 삭제가 앞서야 하지만, 파일을 확정하기 전에 지우면 피커를 취소했을 때 멀쩡한 포폴만 사라진다 — 그래서 순서가 «선택 → 선검증 → 삭제 → 등록» 이다. 접수(202 PROCESSING)부터는 3초 간격 `status` 폴링이고, 진행 바는 실측 진행률이 아니라 단계 마커 0.3(등록 중) → 0.7(폴링 중)다(온보딩 S2 와 같은 값).
+
+끝나는 길은 셋이다. **READY** 는 낙관 전이 대신 진입 조회를 통째로 다시 돌린다 — 교체 기회 소진·가용성은 서버가 안다(삭제와 같은 정합 논리). **실패**(선검증·삭제·등록·폴링 어디서든)는 사유를 나르지 않고 고정 안내 실패 판 + 말풍선으로 닫는다 — 이때 서버 점유 id(`uploadServerID`)는 지우지 않는다. 서버엔 앞 포폴이 그대로일 수 있어, 실패 판에서 «다시 올리기» 할 때 그 id 를 먼저 지우고 등록해야 `PORTFOLIO_ALREADY_EXISTS` 로 되받아치는 루프에 안 빠진다(정리 삭제는 404 를 무시한다). **X(취소)** 는 폴링을 끊고 **서버 접수분까지 지운 뒤** 재조회한다 — 로컬만 비우면 다음 조회에서 PROCESSING 이 되살아난다. 그 재조회가 늦게 도착했는데 이미 새 업로드가 시작됐으면 버린다(완료 시 스스로 재조회한다). 반대로 진입 조회가 PROCESSING 을 받으면(다른 화면에서 올린 건이라도) 그 자리에서 폴링을 이어받아 완료를 따라잡는다.
 
 ## 주의사항
 확장할 때 따라야 할 규칙.
 - Feature 는 Interface 를 두지 않는 **단일 모듈**이다(D3). Reducer/View 는 `Sources/` 에. → DocC `FeatureInterface`
-- 연동 시 `DomainUser`·`DomainPortfolio`·`DomainInterviewReport` 의 **Interface 만** 의존한다. 추가되는 것은 ① Client 주입 ② `onAppear` 의 fetch effect ③ `Inner` 응답 케이스뿐이고, `View`·`Delegate` 계약은 그대로 둔다.
-- 화면 밖으로 나가는 다섯 동선(레포트 열기·지인 피드백·로그아웃·회원탈퇴·파일 선택기)은 전부 `delegate` 다. 직접 import 금지 — 조립은 AppFeature. → [[app#Cross-feature Routing]]
+- 의존은 `DomainAuth`·`DomainInterview`·`DomainPortfolio`·`DomainUser` 의 **Interface 만**이다. 리포트 목록은 `InterviewClient.reportList` 로 받으므로 단건 조회용 `DomainInterviewReport` 는 이 화면 밖이다.
+- 화면 밖으로 나가는 네 동선(리포트 열기·지인 피드백·로그아웃·회원탈퇴)은 전부 `delegate` 다. 직접 import 금지 — 조립은 AppFeature. → [[app#Cross-feature Routing]]
+- **파일 선택기는 이 동선에 없다** — `fileImporter` 를 화면에 직접 달아 업로드 진입 3곳(빈 판·«다시 올리기»·교체 확인)이 같은 자리로 모인다(온보딩 S2 와 같은 방식). 부모가 받아 줄 게 없으니 delegate 로 올릴 이유도 없다.
+- 로그아웃·탈퇴는 API·로컬 세션 정리까지 끝낸 뒤 **완료형**(`loggedOut`/`withdrawn`)으로 올린다. 탈퇴는 진행 중 면접이면 알럿으로 먼저 막고, 아니면 확인 알럿을 한 번 거친다.
+- AppFeature 배선(진입·delegate 소비)은 아직 없다 — delegate 는 올라가지만 받는 쪽이 다음 슬라이스다.
 - 시안의 모달 버튼 라벨이 «버튼1 / 버튼2» 플레이스홀더라 카피가 임시다. 확정되면 `MyPageModalCard` 만 고친다.
