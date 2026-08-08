@@ -29,7 +29,6 @@ public struct InterviewClient: Sendable {
     /// 발급(videoUploadURL) → presigned PUT → complete 를 한 방으로 응집 — 호출처는 이 메서드 하나만 안다.
     /// 1시도 계약: 재시도(발급부터 재시작) 정책은 호출처 몫.
     public var uploadInterviewVideo: @Sendable (_ sessionId: Int, _ fileURL: URL, _ wrapUp: InterviewVideoWrapUpSpan?) async throws -> Void
-    /// GET /interview/sessions — 내 면접 레포트 목록(마이페이지용). envelope `{ reports }` 는 Live 가 벗긴다.
     /// GET /interview/sessions/{id}/resume — 재개 가능 여부 조회. 상태를 바꾸지 않는다(hold 만료 정리는 서버 몫).
     /// 없거나 남의 세션이면 `sessionNotFound`.
     public var checkResume: @Sendable (_ sessionId: Int) async throws -> InterviewResumeCheck
@@ -129,20 +128,6 @@ extension InterviewClient: TestDependencyKey {
             },
             completeVideoUpload: { _, _ in },
             uploadInterviewVideo: { _, _, _ in },
-            reportList: {
-                [InterviewReportSummary(
-                    sessionId: 1,
-                    jobType: "BACKEND",
-                    jobTypeLabel: "백엔드 개발자",
-                    careerYears: 3,
-                    interviewedAt: Date(timeIntervalSince1970: 1_782_000_000),
-                    portfolioFileName: "portfolio.pdf",
-                    portfolioDeleted: false,
-                    jdUrl: nil,
-                    reportStatus: .ready,
-                    feedbackAvailable: true
-                )]
-            }
             // 재개는 «가능» 을 그린다 — 2:12 경과(= 남은 시간이 있는 상태)라 홈의 [이어서 진행] 시안이 보인다.
             checkResume: { _ in
                 InterviewResumeCheck(
