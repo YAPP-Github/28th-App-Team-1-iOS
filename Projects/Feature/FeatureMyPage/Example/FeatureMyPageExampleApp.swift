@@ -56,6 +56,14 @@ struct FeatureMyPageExampleApp: App {
             $0.portfolioClient.status = { id in
                 PortfolioProcessing(portfolioId: id, status: .ready, message: nil)
             }
+            // 열람 URL 도 채운다 — 안 채우면 mock 모드가 실서버로 나간다(Implementation 이 link 돼 있다).
+            // 공개 샘플 PDF 라 Safari 시트가 실제로 무언가를 그리는 것까지 확인된다.
+            $0.portfolioClient.fileURL = { id in
+                PortfolioFileURL(
+                    portfolioId: id,
+                    fileUrl: URL(string: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf")!
+                )
+            }
             $0.userClient.withdraw = {}
             $0.authClient.logout = {}
         }

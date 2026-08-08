@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import SafariServices
 import SharedDesignSystemInterface
 import SwiftUI
 import UniformTypeIdentifiers
@@ -49,6 +50,12 @@ public struct MyPageView: View {
             )
         }
         .alert($store.scope(state: \.alert, action: \.alert))
+        // PDF 열람 — 발급받은 presigned URL 을 Safari 뷰로 연다. 앱을 벗어나지 않고, PDF 렌더링과
+        // 닫기 버튼을 시스템이 맡는다(원격 URL 이라 로컬 파일이 필요한 QuickLook 은 못 쓴다).
+        .sheet(item: $store.portfolioPreview) { preview in
+            SafariView(url: preview.url)
+                .ignoresSafeArea()
+        }
         // 문서 피커는 이 화면 안에서 연다 — 업로드 진입 3곳(빈 판·«다시 올리기»·교체 확인)이 같은 자리로 모인다.
         .fileImporter(isPresented: $store.isFilePickerPresented, allowedContentTypes: [.pdf]) { result in
             if case let .success(url) = result { send(.fileSelected(url)) } else { send(.fileSelectionFailed) }
@@ -170,6 +177,10 @@ public struct MyPageView: View {
                     size: file.size,
                     onRemove: { send(.userTappedRemovePortfolio) }
                 )
+                // 카드 탭 = PDF 열람. Button 으로 감싸지 않는 건 카드 안의 X(onRemove)가 중첩 버튼에
+                // 삼켜지기 때문이다 — 탭 제스처는 그 버튼을 그대로 통과시킨다.
+                .contentShape(Rectangle())
+                .onTapGesture { send(.userTappedPortfolioFile) }
                 InfoField("포트폴리오는 한 달에 한 번 바꿀 수 있어요. 지워도 지난 면접 리포트는 그대로 남아요.")
             }
 
@@ -292,4 +303,17 @@ public struct MyPageView: View {
         /// 프로필 영역 아이콘 한 변 16 — Figma `edit/16px`·`coupon/16px`·`info/16px`·`logo/kakao`.
         static let iconSide: CGFloat = 16
     }
+}
+
+/// PDF 열람용 Safari 뷰. presigned URL 은 원격이라 로컬 파일이 필요한 QuickLook 을 못 쓰고,
+/// `openURL` 로 넘기면 앱을 벗어난다 — 시트 안에서 PDF 렌더링·닫기를 시스템에 맡기는 자리다.
+private struct SafariView: UIViewControllerRepresentable {
+    let url: URL
+
+    func makeUIViewController(context: Context) -> SFSafariViewController {
+        SFSafariViewController(url: url)
+    }
+
+    // 시트가 URL 별로 다시 만들어진다(`sheet(item:)`) — 갱신할 상태가 없다.
+    func updateUIViewController(_ controller: SFSafariViewController, context: Context) {}
 }

@@ -179,6 +179,8 @@ public struct MyPageFeature {
         /// 실패 후에도 남는다 — 서버 점유 후보라 다음 재시도가 이 id 로 정리 삭제를 선행한다(409 루프 차단).
         public var uploadServerID: UUID?
         public var presentedModal: Modal?
+        /// PDF 열람 시트 — 값이 있으면 뜬다. presigned URL 은 10분짜리라 들고 있지 않고 열 때마다 새로 받는다.
+        public var portfolioPreview: PortfolioPreview?
         @Presents public var alert: AlertState<Alert>?
 
         public init(
@@ -199,6 +201,16 @@ public struct MyPageFeature {
             self.expandedReportID = expandedReportID
             self.isPortfolioTooltipPresented = isPortfolioTooltipPresented
             self.presentedModal = presentedModal
+        }
+    }
+
+    /// PDF 열람 시트의 대상. 발급받은 presigned URL 자체가 신원이라 별도 id 를 두지 않는다.
+    public struct PortfolioPreview: Identifiable, Equatable, Sendable {
+        public let url: URL
+        public var id: URL { url }
+
+        public init(url: URL) {
+            self.url = url
         }
     }
 
@@ -235,6 +247,8 @@ public struct MyPageFeature {
             /// 파일 선택기 자체 실패 (파일 접근 불가 등).
             case fileSelectionFailed
             case userTappedCancelUpload
+            /// 등록된 파일 카드 탭 — PDF 열람 URL 을 발급받아 시트로 연다.
+            case userTappedPortfolioFile
             case userTappedRemovePortfolio
             /// 실패 카드 위 말풍선 탭 — 닫는다.
             case userTappedPortfolioTooltip
@@ -259,6 +273,10 @@ public struct MyPageFeature {
             case entryRefetchRequested
             case portfolioDeleteFailed
             case portfolioDeleted
+            /// PDF 열람 URL 발급 실패 — 만료·비 READY·네트워크가 한 자리로 모인다.
+            case portfolioFileURLFailed
+            /// PDF 열람 URL 발급 성공 — 시트가 이 URL 로 열린다.
+            case portfolioFileURLLoaded(URL)
             /// POST /portfolios 접수 응답 (202 PROCESSING — 드물게 즉시 READY/FAILED).
             case uploadAccepted(PortfolioProcessing)
             /// 파일 읽기·선검증·삭제·등록·폴링 중 어디서든 난 실패 — 판이 고정 안내를 그려 사유는 나르지 않는다.

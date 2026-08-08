@@ -69,8 +69,8 @@ extension MyPageFeature {
 
         // 포폴 칸 한 덩어리 — 업로드·교체·삭제와 그 모달은 서로 물려 있어 한 함수에서 읽는다.
         case .userTappedUploadPortfolio, .fileSelected, .fileSelectionFailed,
-             .userTappedCancelUpload, .userTappedRemovePortfolio, .userTappedPortfolioTooltip,
-             .userTappedModalCancel, .userTappedModalConfirm:
+             .userTappedCancelUpload, .userTappedPortfolioFile, .userTappedRemovePortfolio,
+             .userTappedPortfolioTooltip, .userTappedModalCancel, .userTappedModalConfirm:
             return reducePortfolio(&state, action)
 
         case let .userTappedReport(id):
@@ -112,6 +112,17 @@ extension MyPageFeature {
                     await send(.inner(.entryRefetchRequested))
                 }
             )
+
+        case .userTappedPortfolioFile:
+            // 등록된 판에서만 연다 — presigned URL 은 READY 상태에서만 발급된다(서버 스펙).
+            // 발급값은 10분짜리라 State 에 캐시하지 않고 탭할 때마다 새로 받는다.
+            guard case let .registered(file) = state.portfolio else { return .none }
+            return .run { send in
+                let issued = try await portfolioClient.fileURL(file.id)
+                await send(.inner(.portfolioFileURLLoaded(issued.fileUrl)))
+            } catch: { _, send in
+                await send(.inner(.portfolioFileURLFailed))
+            }
 
         case .userTappedRemovePortfolio:
             // 면접 중에는 지울 수 없다(PRD — 삭제 차단 사유는 이것뿐). 안내줄은 재업로드 가능 여부 고지.
@@ -254,6 +265,14 @@ extension MyPageFeature {
             // 새 업로드가 화면을 소유했으면 늦은 재조회를 버린다 — 완료 시 스스로 전체 재조회한다
             // (applyUploadProcessing 과 같은 철학).
             guard case .uploading = state.portfolio else { return fetchEntry() }
+            return .none
+
+        case .portfolioFileURLFailed:
+            state.alert = .plain(message: "포트폴리오를 여는 데 실패했어요. 잠시 후 다시 시도해 주세요.")
+            return .none
+
+        case let .portfolioFileURLLoaded(url):
+            state.portfolioPreview = .init(url: url)
             return .none
 
         case .portfolioDeleteFailed:
