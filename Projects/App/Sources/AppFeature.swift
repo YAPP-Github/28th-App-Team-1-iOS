@@ -10,6 +10,7 @@ import CoreCommonInterface
 import DomainAppVersionInterface
 import DomainAuthInterface
 import DomainConsentInterface
+import DomainInterviewInterface
 import Feature
 import Foundation
 
@@ -17,6 +18,7 @@ import Foundation
 // depends-on: [[auth]] — 로그인 전/후 루트 게이트. cross-feature 조립은 AppFeature 에서만.
 // depends-on: [[home]] — Home 을 로그인 후 루트로 임베드(owner). cross-feature delegate 라우팅은 Feature 추가 시 이 자리에서 조립.
 // depends-on: [[interview]] — 온보딩 완주 delegate(.finished(sessionId)) 를 받아 면접 흐름을 present. 종료 두 신호(.finished/.closed)는 cover 를 닫고 홈을 다시 태운다.
+//                             홈의 진행 중 두 갈래(중단·재개)도 여기서 InterviewClient·HeldSessionStore 로 배선한다.
 // depends-on: [[onboarding]] — dev 전용 진입(Home 버튼)으로 온보딩 위저드를 present. 조립은 여기서만 (온보딩 본체 통합 전 임시).
 @Reducer
 struct AppFeature {
@@ -43,7 +45,7 @@ struct AppFeature {
         var home = HomeFeature.State()
         /// 면접 흐름(Part2) — 온보딩 완주가 넘긴 sessionId 로 연다. 전면 몰입이라 fullScreenCover.
         @Presents var interview: InterviewFeature.State?
-        /// 온보딩 위저드 — 「면접 시작」의 [시작하기]·[수정하기] 가 present 한다.
+        /// 온보딩 위저드 — 「면접 시작」의 [시작하기]·[처음부터 시작](중단 후) 이 present 한다.
         @Presents var onboarding: OnboardingFeature.State?
         /// 업데이트 안내(강제·권장)의 근거 — «업데이트» 가 열 `storeUrl` 과 강제 여부를 여기서 읽는다.
         var updatePolicy: AppVersionPolicy?
@@ -65,6 +67,11 @@ struct AppFeature {
         case launchRoutingResolved(LaunchRouting)
         case auth(AuthFeature.Action)
         case home(HomeFeature.Action)
+        /// 진행 중 세션 중단(abandon) 처리 완료 — 이미 중단된 세션(409)도 여기로 온다.
+        /// 보관값까지 지운 뒤라 남은 일은 새 면접을 시작하는 것뿐이다.
+        case interviewAbandonResolved
+        /// 재개 확정 완료 — 이 세션으로 면접 화면을 연다.
+        case interviewResumeResolved(sessionId: Int)
         case interview(PresentationAction<InterviewFeature.Action>)
         case onboarding(PresentationAction<OnboardingFeature.Action>)
         /// dev 데이터 초기화 완료 — 초기 State 로 리셋하고 Splash 판정부터 다시 태운다.
@@ -99,6 +106,8 @@ struct AppFeature {
     @Dependency(\.authClient) var authClient
     @Dependency(\.consentClient) var consentClient
     @Dependency(\.firstLaunchStore) var firstLaunchStore
+    @Dependency(\.heldSessionStore) var heldSessionStore
+    @Dependency(\.interviewClient) var interviewClient
     @Dependency(\.onboardingDraftStore) var draftStore
     @Dependency(\.openURL) var openURL
 
@@ -165,30 +174,67 @@ struct AppFeature {
             case .auth:
                 return .none
             case .home(.delegate(.interviewStartRequested)):
-                // 면접에 필요한 정보(직군·연차·JD·포폴)를 모으는 게 온보딩 위저드다 — 첫 면접은 거기부터다.
+                // 면접에 필요한 정보(직군·연차·JD·포폴)를 모으는 게 온보딩 위저드다 — 면접은 거기부터다.
                 // 면접 화면은 **세션 id 로만** 열리는데(`InterviewFeature.State(sessionId:)`) 그 id 를 만드는
-                // 건 위저드의 세션 생성뿐이라, 재사용 경로도 지금은 같은 위저드를 태운다.
-                // 변형은 곧 회차다 — `first` = 1회차, `hasPortfolio` = 2회차 이상(판정 키는 READY 포폴
-                // 보유 하나 — docs/work/home-account.md §3 «회차 분기 판정 키»).
+                // 건 위저드의 세션 생성뿐이라, 2회차 이후도 같은 위저드를 태운다(저장된 draft 가 살아 있으면
+                // 위저드가 알아서 값을 복원한다 — TTL 14일, [[onboarding#코디네이터]]).
                 switch state.home.startInterview.variant {
                 case .first:
                     state.onboarding = OnboardingFeature.State(userName: state.home.userName)
-                case .hasPortfolio:
-                    // TODO: «이전 정보 그대로» 세션 생성 API 가 생기면 수집을 건너뛰고 곧장 면접으로
-                    //       (게이트 checkStartEligibility 결과별 라우팅 — 미결 6-1 서버 협의).
-                    //       그때까지는 위저드를 태운다 — draft 가 값을 복원해 대부분 넘기기만 하면 되고,
-                    //       아무 일도 안 일어나는 [시작하기] 보다는 낫다.
-                    state.onboarding = OnboardingFeature.State(userName: state.home.userName)
+                case .inProgress:
+                    // 진행 중 시안엔 [시작하기] 가 없다(CTA 는 «처음부터 시작»·«이어서 진행») — 도달하지 않는다.
+                    break
                 case .exhausted:
                     // 소진 시안엔 [시작하기] 가 없다(CTA 는 «홈으로») — 도달하지 않는다.
                     break
                 }
                 return .none
-            case .home(.delegate(.interviewInfoEditRequested)):
-                // [수정하기] — 고칠 대상이 온보딩이 모으는 그 정보다. 같은 위저드를 처음부터 다시 태운다.
-                // 저장된 draft 가 살아 있으면 위저드가 알아서 값을 복원한다(TTL 14일 — [[onboarding#코디네이터]]).
-                state.onboarding = OnboardingFeature.State(userName: state.home.userName)
-                return .none
+            // 진행 중(held) 면접 두 갈래 — 대상 세션 id 는 홈이 로컬 보관값에서 읽어 실어 준다.
+            //
+            // [처음부터 시작] = 진행분을 **버리고** 새로. 서버에 USER_EXIT 중단을 알려 진행분 리포트
+            // 생성을 트리거하고(차감은 리포트 성공 시 확정), 보관값을 지운 뒤 [시작하기] 와 **같은**
+            // 경로를 탄다(사용자 결정 2026-08-08).
+            case let .home(.delegate(.interviewRestartRequested(sessionId))):
+                return .run { [heldSessionStore, interviewClient] send in
+                    do {
+                        _ = try await interviewClient.abandonSession(sessionId, .userExit)
+                    } catch InterviewError.sessionAlreadyEnded {
+                        // 중복 호출의 409 는 «이미 중단 완료» 라는 서버 계약이다 — 실패가 아니라 목적 달성.
+                    } catch {
+                        // TODO: 중단 실패 안내 미도안(토스트 자리) — 화면을 유지하고 삼킨다.
+                        // 보관값은 **지우지 않는다**: 세션이 아직 서버에 살아 있어 재개 재료가 남아야 한다.
+                        return
+                    }
+                    heldSessionStore.clear()
+                    await send(.interviewAbandonResolved)
+                }
+            // [이어서 진행] = 서버에 살아 있는 세션으로 복귀 — ① 재개 가능 조회 ② 재개 확정 ③ 면접 화면.
+            // ①·② 가 «끝난 세션» 을 내면 재개 재료가 아니므로 보관값을 지우고 홈을 다시 태워
+            // 변형을 갱신한다(진행 중 → 처음·소진).
+            case let .home(.delegate(.interviewResumeRequested(sessionId))):
+                return .run { [heldSessionStore, interviewClient] send in
+                    do {
+                        let check = try await interviewClient.checkResume(sessionId)
+                        // ENDED — hold 만료 처리(세션 ABANDONED 전환·이용권 환불)는 서버가 이 호출
+                        // 안에서 이미 끝냈다. 클라가 할 일은 보관값 삭제뿐이다.
+                        // TODO(#69): status == .invalid 는 Interview_SttFailure 화면 —
+                        //            면접 Feature 머지 후 배선.
+                        guard check.isResumable else {
+                            heldSessionStore.clear()
+                            return await send(.home(.view(.onAppear)))
+                        }
+                        // 재개가 hold 무효화와 레이스면 409 가 아니라 200 + sessionEnded 로 온다(서버 계약).
+                        let resumed = try await interviewClient.confirmResume(sessionId)
+                        guard !resumed.sessionEnded else {
+                            heldSessionStore.clear()
+                            return await send(.home(.view(.onAppear)))
+                        }
+                        await send(.interviewResumeResolved(sessionId: sessionId))
+                    } catch {
+                        // TODO: 재개 실패 안내 미도안(토스트 자리) — 화면을 유지하고 삼킨다.
+                        // 네트워크가 죽은 것과 세션이 끝난 것은 다르므로 보관값은 지우지 않는다.
+                    }
+                }
             case .home(.delegate(.profileRequested)):
                 // TODO: 마이페이지 진입 — Part 5 Feature 가 생기면 조립한다(docs/work/home-account.md §4).
                 return .none
@@ -212,14 +258,29 @@ struct AppFeature {
                 }
             case .home:
                 return .none
+            case .interviewAbandonResolved:
+                // 버린 자리에서 곧장 새 면접 — 시작 경로는 [시작하기] 와 같은 온보딩 위저드다
+                // (사용자 결정 2026-08-08). 홈 변형 갱신은 위저드를 닫고 돌아올 때 온다.
+                state.onboarding = OnboardingFeature.State(userName: state.home.userName)
+                return .none
+            case let .interviewResumeResolved(sessionId):
+                // TODO(#69): confirmResume 응답의 nextQuestion 소비(재개 진입 — readiness 폴링 생략) 는
+                //            개발 중인 면접 Feature 브랜치 머지 후 배선. 지금은 InterviewFeature 가
+                //            기존 진입 경로로 돈다.
+                state.interview = InterviewFeature.State(sessionId: sessionId)
+                return .none
             // 온보딩 완주 = 분석까지 끝나 세션이 준비된 상태 — 위저드를 닫고 그 세션으로 면접을 연다.
             // 홈은 안 태운다 — 어차피 면접에 가려지고, 갱신 시점은 면접이 끝나 돌아올 때다(위 두 갈래).
             case let .onboarding(.presented(.delegate(.finished(sessionId)))):
                 state.onboarding = nil
                 state.interview = InterviewFeature.State(sessionId: sessionId)
-                return .none
-            // 중도 이탈 — 위저드만 닫고 홈을 다시 태운다. STEP4 에서 업로드는 이미 끝났을 수 있어
-            // 안 태우면 «이전 정보 재사용» 카드가 옛 값 그대로 남는다. cover 를 닫는 것만으론 홈의
+                // 면접 시작 = 진행 중 보관 시작 — 이 값의 존재가 홈의 «진행 중» 판정 재료다.
+                // TODO(#69): recordedSeconds 갱신은 면접 Feature(개발 중 브랜치) 몫 — 녹화가
+                //            진행되면 save 로 덮어쓴다.
+                return .run { [heldSessionStore] _ in
+                    heldSessionStore.save(HeldSession(sessionId: sessionId, recordedSeconds: 0))
+                }
+            // 중도 이탈 — 위저드만 닫고 홈을 다시 태운다. cover 를 닫는 것만으론 홈의
             // `onAppear` 가 다시 오지 않아 여기서 명시로 보낸다(겸사겸사 시트도 기본 자리로 —
             // 위저드를 다녀온 뒤 면접 시작 겹에 그대로 서 있지 않는다).
             case .onboarding(.presented(.delegate(.dismiss))):
@@ -234,15 +295,18 @@ struct AppFeature {
             //       sessionId 로 배선 (docs/work/home-account.md §4).
             //
             // 정상 종료 = 온보딩이 모은 입력이 제 역할을 다한 지점 — 여기서 온보딩 draft 를 폐기한다(PRD §4.4).
-            // 세션 생성 시점에 지우지 않는 이유: 그 사이 앱이 죽거나 면접에서 이탈하면 값이 다시 필요하고,
-            // 홈의 «이전 정보 재사용»·[수정하기] 도 draft 복원에 얹혀 있다.
+            // 세션 생성 시점에 지우지 않는 이유: 그 사이 앱이 죽거나 면접에서 이탈하면 값이 다시 필요하다.
             case .interview(.presented(.delegate(.finished))):
                 state.interview = nil
-                return .merge(
-                    .run { [draftStore] _ in draftStore.clear() },
-                    .send(.home(.view(.onAppear)))
-                )
+                // 삭제는 effect 가 아니라 본문에서 — .merge(.run{clear}, .send(onAppear)) 로 두면
+                // .send 가 먼저 도착해 홈이 지우기 전 보관값을 읽고, 끝난 면접이 [이어서 진행] 으로 뜬다
+                // (홈의 held 판정은 onAppear 본문의 동기 load). 둘 다 동기·non-throwing 이라 가능하다.
+                draftStore.clear()
+                // 완주 = 더는 진행 중이 아니다 — 보관값을 지워 홈의 «진행 중» 판정을 끈다.
+                heldSessionStore.clear()
+                return .send(.home(.view(.onAppear)))
             // 이탈은 draft 보존 — 같은 입력으로 다시 시작할 수 있어야 한다.
+            // 보관값도 **지우지 않는다** — 진행 중인 세션이 그대로라 홈 [이어서 진행] 의 재개 재료다.
             case .interview(.presented(.delegate(.closed))):
                 state.interview = nil
                 return .send(.home(.view(.onAppear)))

@@ -7,7 +7,6 @@
 
 import ComposableArchitecture
 import DomainInterviewInterface
-import DomainPortfolioInterface
 import DomainUserInterface
 import Foundation
 import Testing
@@ -29,62 +28,25 @@ struct HomeEntryLoadTests {
         )
     }
 
-    private static func portfolio(status: PortfolioProcessingStatus = .ready) -> Portfolio {
-        Portfolio(
-            portfolioId: UUID(uuidString: "00000000-0000-0000-0000-0000000000a2")!,
-            fileName: "포트폴리오.pdf",
-            fileSize: 3_355_443,
-            pageCount: 12,
-            status: status,
-            uploadedAt: Date(timeIntervalSince1970: 1_785_456_000)
-        )
-    }
-
-    @Test("홈 진입은 프로필·포폴을 함께 싣고 면접 시작 변형을 «재사용» 으로 바꾼다")
-    func entryLoadFillsNameRemainingAndPortfolio() async {
+    @Test("홈 진입은 프로필을 실어 이름·잔여를 채운다")
+    func entryLoadFillsNameAndRemaining() async {
         let store = TestStore(initialState: HomeFeature.State()) {
             HomeFeature()
         } withDependencies: {
+            // 진입 판정이 보관값을 읽는다 — testValue 는 unimplemented 라 명시로 주입한다.
+            $0.heldSessionStore = .inMemory()
             $0.userClient.profile = { Self.profile(remaining: 2) }
-            $0.portfolioClient.list = { PortfolioList(portfolios: [Self.portfolio()]) }
             $0.interviewClient.reportList = { [] }
         }
 
-        // 두 로드(프로필·포폴 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
+        // 두 로드(프로필 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
         store.exhaustivity = .off
         await store.send(.view(.onAppear))
         await store.receive(\.inner.entryLoaded) {
             $0.userName = "재원"
             $0.startInterview.userName = "재원"
             $0.startInterview.remainingChances = 2
-            $0.startInterview.portfolio = StartInterviewFeature.Portfolio(
-                fileName: "포트폴리오.pdf",
-                uploadedAt: Date(timeIntervalSince1970: 1_785_456_000),
-                byteCount: 3_355_443
-            )
-            $0.startInterview.variant = .hasPortfolio
-        }
-    }
-
-    @Test("포폴 로드가 실패해도 프로필 값은 그대로 반영된다")
-    func portfolioFailureKeepsProfileValues() async {
-        struct LoadFailure: Error {}
-        let store = TestStore(initialState: HomeFeature.State()) {
-            HomeFeature()
-        } withDependencies: {
-            $0.userClient.profile = { Self.profile(remaining: 1) }
-            $0.portfolioClient.list = { throw LoadFailure() }
-            $0.interviewClient.reportList = { [] }
-        }
-
-        // 두 로드(프로필·포폴 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
-        store.exhaustivity = .off
-        await store.send(.view(.onAppear))
-        await store.receive(\.inner.entryLoaded) {
-            $0.userName = "재원"
-            $0.startInterview.userName = "재원"
-            $0.startInterview.remainingChances = 1
-            // 포폴은 «모른다» 라서 직전 값을 유지한다 — nil 로 지우면 없는 것처럼 보인다.
+            // 잔여가 남았으면 `first` — 회차(포폴 보유) 분기는 없다(제품 결정 2026-08-08).
             $0.startInterview.variant = .first
         }
     }
@@ -95,12 +57,12 @@ struct HomeEntryLoadTests {
         let store = TestStore(initialState: HomeFeature.State()) {
             HomeFeature()
         } withDependencies: {
+            $0.heldSessionStore = .inMemory()
             $0.userClient.profile = { throw LoadFailure() }
-            $0.portfolioClient.list = { PortfolioList(portfolios: []) }
             $0.interviewClient.reportList = { [] }
         }
 
-        // 두 로드(프로필·포폴 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
+        // 두 로드(프로필 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
         store.exhaustivity = .off
         await store.send(.view(.onAppear))
         // 잔여는 nil 그대로 — 0 으로 떨어뜨리면 «무료 횟수를 모두 사용했어요» 가 떠서
@@ -108,49 +70,24 @@ struct HomeEntryLoadTests {
         await store.receive(\.inner.entryLoaded)
     }
 
-    @Test("잔여 0 이면 포폴이 있어도 소진 변형이 이긴다")
-    func exhaustedWinsOverPortfolio() async {
+    @Test("잔여 0 이면 소진 변형으로 바뀐다")
+    func zeroRemainingBecomesExhausted() async {
         let store = TestStore(initialState: HomeFeature.State()) {
             HomeFeature()
         } withDependencies: {
+            $0.heldSessionStore = .inMemory()
             $0.userClient.profile = { Self.profile(remaining: 0) }
-            $0.portfolioClient.list = { PortfolioList(portfolios: [Self.portfolio()]) }
             $0.interviewClient.reportList = { [] }
         }
 
-        // 두 로드(프로필·포폴 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
+        // 두 로드(프로필 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
         store.exhaustivity = .off
         await store.send(.view(.onAppear))
         await store.receive(\.inner.entryLoaded) {
             $0.userName = "재원"
             $0.startInterview.userName = "재원"
-            $0.startInterview.portfolio = StartInterviewFeature.Portfolio(
-                fileName: "포트폴리오.pdf",
-                uploadedAt: Date(timeIntervalSince1970: 1_785_456_000),
-                byteCount: 3_355_443
-            )
+            $0.startInterview.remainingChances = 0
             $0.startInterview.variant = .exhausted
-        }
-    }
-
-    @Test("처리 중(PROCESSING) 포폴은 재사용 카드에 걸지 않는다")
-    func processingPortfolioIsNotReusable() async {
-        let store = TestStore(initialState: HomeFeature.State()) {
-            HomeFeature()
-        } withDependencies: {
-            $0.userClient.profile = { Self.profile(remaining: 3) }
-            $0.portfolioClient.list = { PortfolioList(portfolios: [Self.portfolio(status: .processing)]) }
-            $0.interviewClient.reportList = { [] }
-        }
-
-        // 두 로드(프로필·포폴 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
-        store.exhaustivity = .off
-        await store.send(.view(.onAppear))
-        await store.receive(\.inner.entryLoaded) {
-            $0.userName = "재원"
-            $0.startInterview.userName = "재원"
-            $0.startInterview.remainingChances = 3
-            $0.startInterview.variant = .first
         }
     }
 
@@ -159,12 +96,12 @@ struct HomeEntryLoadTests {
         let store = TestStore(initialState: HomeFeature.State(userName: "재원")) {
             HomeFeature()
         } withDependencies: {
+            $0.heldSessionStore = .inMemory()
             $0.userClient.profile = { Self.profile(name: nil, remaining: 3) }
-            $0.portfolioClient.list = { PortfolioList(portfolios: []) }
             $0.interviewClient.reportList = { [] }
         }
 
-        // 두 로드(프로필·포폴 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
+        // 두 로드(프로필 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 값만 고정한다.
         store.exhaustivity = .off
         await store.send(.view(.onAppear))
         await store.receive(\.inner.entryLoaded) {
@@ -173,8 +110,104 @@ struct HomeEntryLoadTests {
     }
 }
 
-/// 기록 목록만 보는 테스트에서 프로필·포폴 로드를 죽여 두는 용도.
+/// 프로필 로드를 죽여 두는 용도 — 잔여가 판정에 끼어들지 않아야 하는 테스트가 공유한다.
 private struct ProfileUnavailable: Error {}
+
+/// 진행 중(held) 면접 판정 — 재료는 로컬 보관값 하나다(진행 중 세션 목록 API 가 없다).
+@MainActor
+struct HomeHeldSessionTests {
+    private static func profile(remaining: Int) -> UserProfile {
+        UserProfile(
+            userId: UUID(uuidString: "00000000-0000-0000-0000-0000000000b1")!,
+            name: "재원",
+            email: nil,
+            provider: "KAKAO",
+            jobRole: "BACKEND",
+            jobRoleLabel: "백엔드",
+            careerYears: 3,
+            remainingTicketCount: remaining
+        )
+    }
+
+    /// 보관값만 갈아 끼우는 스토어 — `remaining` 을 안 주면 프로필을 죽여 잔여를 «모른다» 로 둔다.
+    private static func store(
+        held: HeldSession?,
+        remaining: Int? = nil
+    ) -> TestStore<HomeFeature.State, HomeFeature.Action> {
+        let store = TestStore(initialState: HomeFeature.State()) {
+            HomeFeature()
+        } withDependencies: {
+            $0.heldSessionStore = .inMemory(initial: held)
+            $0.userClient.profile = {
+                guard let remaining else { throw ProfileUnavailable() }
+                return Self.profile(remaining: remaining)
+            }
+            $0.interviewClient.reportList = { [] }
+        }
+        // 두 로드(프로필 / 기록 목록)는 별개 effect 라 해소 순서가 비결정이다 — 변형만 고정한다.
+        store.exhaustivity = .off
+        return store
+    }
+
+    @Test("진행 중 세션이 있으면 잔여 0 이어도 소진이 아니라 진행 중이다")
+    func heldSessionOutranksExhausted() async {
+        // 갓 시작한 세션(0초 녹화) — 8분이 온전히 남아 질문 4개다.
+        let store = Self.store(held: HeldSession(sessionId: 7, recordedSeconds: 0), remaining: 0)
+
+        await store.send(.view(.onAppear))
+        // 판정이 보관값 읽기라 프로필이 오기 전에 이미 진행 중이다(effect 없음).
+        #expect(store.state.startInterview.variant == .inProgress(remainingQuestionCount: 4))
+        await store.receive(\.inner.entryLoaded)
+        // 잔여 0 이 실려 와도 덮어쓰지 않는다 — 진행 중이면 [이어서 진행] 이 유일한 정상 경로다.
+        #expect(store.state.startInterview.remainingChances == 0)
+        #expect(store.state.startInterview.variant == .inProgress(remainingQuestionCount: 4))
+    }
+
+    @Test("남은 질문 수는 남은 시간 구간으로 환산한다 — 경계 7:00(420초)은 3개다")
+    func remainingQuestionCountBoundaries() async {
+        // (남은 시간, 기대 질문 수) — 구간 경계 3분·5분·7분의 양쪽을 집는다.
+        let boundaries = [(179, 1), (180, 2), (299, 2), (300, 3), (420, 3), (421, 4)]
+        for (remainingSeconds, expected) in boundaries {
+            // 보관값은 «녹화된 초» 라 최대 길이 8분(480초)에서 남기려는 시간을 뺀다.
+            let store = Self.store(held: HeldSession(sessionId: 7, recordedSeconds: 480 - remainingSeconds))
+
+            await store.send(.view(.onAppear))
+            #expect(store.state.startInterview.variant == .inProgress(remainingQuestionCount: expected))
+            await store.finish()
+        }
+    }
+
+    @Test("보관값이 없으면 잔여 판정이 그대로다 — 잔여 0 은 소진")
+    func noHeldSessionFallsBackToRemainingJudgement() async {
+        let store = Self.store(held: nil, remaining: 0)
+
+        await store.send(.view(.onAppear))
+        // 보관값이 없고 잔여는 아직 모르는 자리 — 소진이 아니라 «처음» 이다.
+        #expect(store.state.startInterview.variant == .first)
+        await store.receive(\.inner.entryLoaded)
+        #expect(store.state.startInterview.variant == .exhausted)
+    }
+
+    @Test("진행 중 두 갈래는 보관값의 세션 id 를 실어 올린다")
+    func heldSessionIDRidesOnDelegates() async {
+        let store = Self.store(held: HeldSession(sessionId: 42, recordedSeconds: 0))
+
+        await store.send(.startInterview(.delegate(.restartRequested)))
+        await store.receive(\.delegate.interviewRestartRequested, 42)
+        await store.send(.startInterview(.delegate(.resumeRequested)))
+        await store.receive(\.delegate.interviewResumeRequested, 42)
+    }
+
+    @Test("보관값이 없으면 진행 중 두 갈래는 올릴 세션이 없어 삼킨다")
+    func missingHeldSessionSwallowsDelegates() async {
+        let store = Self.store(held: nil)
+
+        // 진행 중 변형이 아닌데 도달한 비정상 경로 — 세션을 특정할 수 없으니 신호를 만들지 않는다.
+        await store.send(.startInterview(.delegate(.restartRequested)))
+        await store.send(.startInterview(.delegate(.resumeRequested)))
+        await store.finish()
+    }
+}
 
 @MainActor
 struct HomeReportListTests {
@@ -211,11 +244,11 @@ struct HomeReportListTests {
         let store = TestStore(initialState: initialState) {
             HomeFeature()
         } withDependencies: {
+            $0.heldSessionStore = .inMemory()
             $0.userClient.profile = { throw ProfileUnavailable() }
-            $0.portfolioClient.list = { throw ProfileUnavailable() }
             $0.interviewClient.reportList = reportList
         }
-        // 프로필·포폴 로드와 순서가 섞인다 — 목록 쪽 값만 고정한다.
+        // 프로필 로드와 순서가 섞인다 — 목록 쪽 값만 고정한다.
         store.exhaustivity = .off
         return store
     }
