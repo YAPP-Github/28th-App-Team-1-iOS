@@ -48,6 +48,13 @@ struct AppView: View {
                 ) { interviewStore in
                     InterviewView(store: interviewStore)
                 }
+                // 마이페이지(Part5) — 홈 위젯③ 이 연다. 자체 상단 바(`hilitPresentedNavigationBar`)를
+                // 얹는 한 장짜리 화면이라 NavigationStack 없이 그대로 덮는다.
+                .fullScreenCover(
+                    item: $store.scope(state: \.myPage, action: \.myPage)
+                ) { myPageStore in
+                    MyPageView(store: myPageStore)
+                }
             case .auth:
                 // 로그인 전 + 가입 플로우(약관·온보딩) — 세션 복구가 게이트에 걸린 경우도 여기로 온다.
                 AuthView(store: store.scope(state: \.auth, action: \.auth))

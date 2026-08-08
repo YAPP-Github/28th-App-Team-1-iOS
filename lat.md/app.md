@@ -24,6 +24,11 @@
 2. 면접 종료 두 신호 모두 `state.interview = nil` + 홈 재조회(`.home(.view(.onAppear))`) — 어느 쪽이든 잔여가 줄었고 BACK_EXIT 이탈도 리포트를 만든다(2026-08-03 서버 계약). 케이스를 합치지 않는 건 정상 종료에 리포트 상세(r1) 라우팅이 붙을 자리라서다 → [[interview#코디네이터]]
 3. **면접 커버 중에는 전역 LoadingModal 을 끈다**(`AppView.showsGlobalLoading`) — 답변 제출·질문 스트림마다 전역 딤이 덮이면 면접이 끊겨 보이고, 타이머가 도는 화면을 잠그는 것 자체가 오동작이다. 면접은 자체 진행 표시(상태 칩·초읽기)로 대기를 말한다.
 
+대표 흐름 — **마이페이지 → 세션 종료** (2026-08-08):
+1. 홈 내비바 프로필이 `delegate(.profileRequested)` 방출 → `state.myPage = MyPageFeature.State()` 로 fullScreenCover 제시. 자체 상단 바를 얹는 한 장짜리 화면이라 NavigationStack 없이 덮는다
+2. 닫기(`closeRequested`)는 cover 를 닫고 **홈을 다시 태운다** — 마이페이지에서 포폴을 지우거나 새로 올렸을 수 있고 「면접 시작」 카드가 그 값에 얹혀 있다(온보딩 이탈과 같은 이유)
+3. 로그아웃·탈퇴는 마이페이지가 서버 호출과 로컬 토큰 정리까지 끝낸 뒤 **완료형**(`loggedOut`/`withdrawn`)으로 통보한다 — AppFeature 는 라우팅만 한다: `state = State()` + `root = .auth`(로그인 성공의 대칭) → [[mypage#주의사항]]
+
 ## 첫 실행 정리
 
 앱을 삭제해도 iOS 는 Keychain 을 지우지 않는다 — 재설치하면 토큰만 살아남아 Splash 가 «기존 세션» 으로 판정하고, 방금 새로 설치한 사용자가 로그인 상태로 들어온다. UserDefaults 쪽(온보딩 draft)은 앱과 함께 사라지므로 로컬끼리도 어긋난다. 그래서 판정을 시작하기 전에 «이 설치의 첫 실행인가» 를 묻고, 첫 실행이면 잔존 로컬 데이터를 지운다.
