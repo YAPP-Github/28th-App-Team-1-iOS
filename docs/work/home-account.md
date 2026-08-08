@@ -23,7 +23,7 @@
 | `AuthOnboardingJob` | Part1 S0a 직군 선택 | FeatureAuth/Onboarding — 면접 위저드 STEP1 **이관**(원본 삭제 완료 2026-08-02) | 골격 ✅ |
 | `AuthOnboardingExperience` | Part1 S0b 연차 선택 | FeatureAuth/Onboarding — 면접 위저드 STEP2 **이관**(원본 삭제 완료). CTA 에서 코디네이터가 `updateProfile` 일괄 PATCH | 골격 ✅ |
 | `AuthOnboardingRegister` | 등록 완료 (PRD «가입 완료 화면 없음» 을 디자인이 뒤집음) | FeatureAuth/Onboarding — 프로필 PATCH 성공 시에만 push, 완료 후 `delegate(.signedIn)` | 골격 ✅ |
-| 홈 — **두 덩어리(홈 3화면 + 면접 시작 3화면)** (§3) | Part6 전체 | FeatureHome — `Sources/Home/`(`HomeFeature.phase`) + `Sources/StartInterview/`(`StartInterviewFeature`, cover present) | 골격 ✅ / 로드 3종 ✅ (프로필·포폴·기록) / 🔴 로드 1종(held)·위젯 UI |
+| 홈 — **두 덩어리(홈 3화면 + 면접 시작 3화면)** (§3) | Part6 전체 | FeatureHome — `Sources/Home/`(`HomeFeature.phase`) + `Sources/StartInterview/`(`StartInterviewFeature`, cover present) | 골격 ✅ / 로드 2종 ✅ (프로필·기록 — 포폴 로드는 2026-08-08 분기 폐기로 제거) / held 판정·재개·중단 배선 ✅ 2026-08-08 / 🔴 위젯 UI |
 | A2 권한 안내 | Part7 | **Out — AOS 전용.** iOS 는 사용 시점 요청 (Part2 준비 화면 게이트 ✅, [[interview#권한]]) | — |
 | A3 재동의 | Part7 | MVP 미도안 — 분기 자리만 예약 | 🟡 |
 | 로그아웃·탈퇴 | Part 5 소유 (탈퇴 완료 → `AuthCreateAccount` 복귀만 계약) | 참고 | — |
@@ -127,10 +127,12 @@ AuthTerms 제출 후 이어지는 4화면. AuthFeature 도메인 내부 내비(�
 |---|---|
 | `HomeDefault` | 기본 상태 |
 | `HomeReport` | 면접 기록(레포트) 표시 상태 — 구현은 «오랜만이에요 OO님!» 인사말 표시 여부 2변형(`returning`/`recent`) |
-| `HomeStartInterview` | 시작 CTA 변형 — 처음 / 등록 포폴 있음 / 무료 횟수 모두 사용. **phase 아니라 present** (홈 위 전체화면 cover — 홈 스택 push 아님) |
-| `HomeDuringInterview` | 진행 중 면접 있음 / 레포트 제작 시점 — **MVP 제외 (2026-07-31 삭제)** |
+| `HomeStartInterview` | 시작 CTA 변형 — 처음 / 진행 중 / 무료 횟수 모두 사용 («등록 포폴 있음» 은 2026-08-08 폐기). **phase 아니라 present** (홈 위 전체화면 cover — 홈 스택 push 아님) |
+| `HomeDuringInterview` | 진행 중 면접 있음 — 2026-07-31 MVP 제외였다가 **2026-08-07 복귀**. phase 가 아니라 «면접 시작» 겹의 네 번째 변형이다(아래 위젯① 2026-08-07 배선) |
 
-### 회차 분기 판정 키 (2026-08-03 확정)
+### 회차 분기 판정 키 (2026-08-03 확정 → **2026-08-08 폐기**)
+
+> ⚠️ **폐기** — 포폴 여부를 홈에서 판정하지 않기로 했다(제품 결정 2026-08-08). `hasPortfolio` 변형·[수정하기]·홈의 포폴 로드가 함께 삭제됐고 2회차도 `first` 와 같은 위저드 경로를 탄다(draft 복원이 메운다). 아래는 결정 기록. 위저드 STEP2 의 «기존 포폴로 진행할까요?» 모달은 온보딩 소유라 그대로 산다.
 
 **«2회차 이상» = READY 포트폴리오 보유.** 서버에 면접 이력 필드를 추가하지 않는다 — 이 분기가 실제로 묻는 건 «불러올 포폴이 있나» 이고, 포폴은 계정당 1개([ai-interview](ai-interview.md) §3 Portfolio)라 `PortfolioClient.list` 에 READY 가 있으면 그게 곧 재사용 대상이다. 교체가 한 달 1회로 묶여([mypage](../../lat.md/mypage.md)) 보유자는 새로 올리지도 못하므로, 이들이 가야 할 자리가 «이전과 동일한 정보로» 시안이다.
 
@@ -155,6 +157,10 @@ AuthTerms 제출 후 이어지는 4화면. AuthFeature 도메인 내부 내비(�
 | `CONSENT_*` | 동의 플로우 (A3 자리 — §2) | 예약 |
 | `ACCOUNT_SUSPENDED` | `AuthSuspension` 정지 안내 (§2) | cross-feature — AppFeature 제시 |
 | 기타 (`RATE_LIMITED` 등) | 각 안내 | 홈 내부 |
+
+**추가 (2026-08-07 배선) — «진행 중 면접» 화면이 들어왔다.** 시안 [443:5890](https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=443-5890)(진행 중 — 카드 «면접 상태 · N개의 질문이 남았어요», CTA [처음부터 시작 | 이어서 진행])·[443:5873](https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=443-5873)(처음부터 확인 — 안내줄 «이용권이 하나 차감됩니다.», CTA [뒤로가기 | 처음부터 시작])를 «면접 시작» 겹의 **네 번째 변형** `Variant.inProgress(remainingQuestionCount:)` + State 안 한 단계(`isConfirmingRestart`)로 넣었다. 확인을 별도 화면으로 두지 않은 건 배경·내비바가 그대로고 갈리는 게 인사말·카드·CTA 셋뿐이라서다(띄우면 커튼·X 가 두 겹). 나가는 신호는 `interviewResumeRequested`·`interviewRestartRequested` 둘이었고 당시 AppFeature 는 `.none` + TODO 였다(아래 08-08 배선으로 해소).
+
+**추가 (2026-08-08 배선) — held 판정·재개·중단이 실배선됐다.** 서버에 진행중 세션 목록 API 가 없어(레포트 목록은 진행중 제외) **로컬 보관**을 채택했다: `HeldSessionStore`(DomainInterview, UserDefaults — `sessionId` + 녹화 길이 `recordedSeconds`)를 세션 생성 시 저장(0초)·면접 완료 시 삭제·이탈 시 보존하고, 홈 `onAppear` 가 `load()` 동기 읽기로 `startVariant` 를 가른다 — **held 최우선** → 잔여 0 → 처음. 카드 «N개의 질문이 남았어요» 는 서버 재료가 없어 **rule-base 환산**: 남은 시간 = 8분 − 녹화 길이, 3분 미만 1 / 3~5분 2 / 5~7분 3 / 7분 초과 4(녹화 길이 갱신은 면접 Feature 몫 — TODO #69). [처음부터 시작] 확정 = `abandonSession(USER_EXIT)`(진행분 리포트 트리거 — 안내줄 «이용권이 하나 차감됩니다.» 의 근거, 409 는 «이미 중단 완료» 취급) → 보관값 clear → 곧장 [시작하기] 와 같은 위저드(사용자 결정). [이어서 진행] = `checkResume` → RESUMABLE 이면 `confirmResume` → 면접 cover(`InterviewFeature.State(sessionId:)` — `nextQuestion` 소비 재개 진입은 면접 Feature 머지 후 TODO #69). ENDED·레이스는 보관값 clear + 홈 재판정, INVALID → SttFailure 배선도 TODO #69. 상세는 [[app]]·[[home]].
 
 **추가 (2026-08-04 배선)** — 확장 자리 진입도 «스크롤» 이다: 기본 자리에선 목록 스크롤을 끄고 목록 판 위 스와이프를 시트 올리기로 쓴다(확장 자리에서만 목록이 스크롤된다 — 같은 축이라 둘을 동시에 살리면 서로 먹는다). 내려오는 길은 헤더 드래그.
 
@@ -223,7 +229,7 @@ Interview --delegate(.finished/.closed)------▶ AppFeature → cover 닫고 홈
 
 ## 5. Client / Domain 영향
 
-홈 진입 시 4종 로드 — 묶음 API 1회 vs 기존 4회 호출은 서버 협의(미결 #1). **3종(프로필·포폴 2026-08-02 · 기록 목록 2026-08-04)은 기존 계약으로 배선했고** held 세션만 남았다 — 프로필·포폴은 결과를 `inner(.entryLoaded)` 한 케이스로 받아 묶음 API 로 바뀌어도 갈아끼울 자리가 하나고, 기록 목록은 느려도 인사말을 막지 않게 별개 effect(`inner(.reportsLoaded)`) 다.
+홈 진입 시 로드 — 묶음 API 1회 vs 개별 호출은 서버 협의(미결 #1). **서버 2종(프로필 2026-08-02 · 기록 목록 2026-08-04) + held 로컬 판정(2026-08-08)** 으로 완결 — 포폴 로드는 분기 폐기로 제거(2026-08-08). 프로필은 `inner(.entryLoaded)` 한 케이스로 받아 묶음 API 로 바뀌어도 갈아끼울 자리가 하나고, 기록 목록은 느려도 인사말을 막지 않게 별개 effect(`inner(.reportsLoaded)`), held 는 `HeldSessionStore.load()` 동기 읽기(effect 아님)다.
 
 **갱신 주기 = 매 진입 재조회**(첫 진입만 로드하지 않는다). 포폴은 온보딩 S2·마이페이지가, 잔여는 면접이 바꾸므로 캐시하면 무효화 신호를 Feature 밖으로 돌려야 하는데(Feature→Feature 금지) 1건짜리 GET 세 번보다 비싸다. §6 «지인 피드백 도착 직후 홈 복귀 → 재조회로 실현» 과도 같은 태도다. 부분 실패는 허용하고(한쪽이 죽어도 나머지는 그린다) 값은 덮어쓰기만 한다 — 재진입마다 비우면 깜빡인다. 상세는 [[home#진입 로드]].
 
@@ -231,8 +237,8 @@ Interview --delegate(.finished/.closed)------▶ AppFeature → cover 닫고 홈
 |---|---|---|
 | 잔여 횟수·이름 | `UserClient.profile` → `remainingTicketCount`·`name` — PRD 표기 `GET /me/entitlement` 와의 대응은 묶음 API 협의와 함께 확정 | ✅ 2026-08-02 배선 |
 | 면접 기록 리스트 | `InterviewClient.reportList` → GET /interview/sessions(`[InterviewReportSummary]`) — 세션 스냅샷 + `title`(답변 한 줄 요약) + `reportStatus` + `feedbackAvailable` + 포폴 삭제 여부 | ✅ 2026-08-04 배선, `title` 2026-08-07 — 🟠 잔여: 시각 4종·1차/최종 구분 |
-| 진행 중(held) 세션 유무 | 신규 — `InterviewClient` 확장. held 세션 존재 시 신규 POST /sessions 처리도 미결 #3 | 🔴 서버 협의 |
-| 포폴 상태 (위젯③·빈 상태·재사용 카드) | `PortfolioClient.list` — READY 건만 «이전 정보 재사용» 으로 친다(PROCESSING 은 게이트가 뒤집는다, 폴링 승격은 TODO) | ✅ 2026-08-02 배선 |
+| 진행 중(held) 세션 유무 | `HeldSessionStore` 로컬 보관(서버 목록 API 없음) + 탭 시 `checkResume` 재검증 | ✅ 2026-08-08 배선(§3 «08-08 배선» 문단) |
+| 포폴 상태 (위젯③·빈 상태·재사용 카드) | ~~`PortfolioClient.list`~~ 홈 재사용 카드·포폴 로드는 2026-08-08 분기 폐기로 제거. 위젯③ 표시는 Part 5 와 함께 재론 | 폐기 |
 | 시작 게이트 | 신규 — `checkStartEligibility`(사전확인·선택)· 사유 코드 `ACCOUNT_SUSPENDED`·`NO_REMAINING`·`PORTFOLIO_NOT_READY`·`CONSENT_VERSION_STALE`·`RATE_LIMITED`. 기존 `createSession` 에러(`NO_REMAINING_TICKET` 등 — [[api#Interview]])와 코드 체계 정리 필요 | 🔴 서버 협의 |
 | A1 동의 제출 | `ConsentClient.pending`·`document`·`submit` (3회 부여는 서버가 첫 제출 시) | ✅ 2026-08-01 |
 | 자동 로그인 판정 | `AuthClient.isAuthenticated`·`refresh` + `ConsentClient.pending` (게이트 2단) | ✅ 2026-08-01 — [launch-routing](launch-routing.md) |
@@ -248,7 +254,7 @@ public enum Phase: Equatable, Sendable {
     // case duringInterview(During)      // → MVP 제외로 삭제 (2026-07-31)
 }
 public enum ReportVariant: Equatable, Sendable { case returning, recent }
-// 면접 시작은 별 Reducer: StartInterviewFeature.Variant { first, hasPortfolio, exhausted }
+// 면접 시작은 별 Reducer: StartInterviewFeature.Variant { first, inProgress(remainingQuestionCount:), exhausted }
 // (삭제) During: Equatable, Sendable { case inProgress, reportGenerating } — MVP 제외
 // 위젯② 행별 상태는 phase 와 별개 유지:
 enum ReportRow { case first; case final(lastUpdatedAt:); case generationFailed } // + foldable 펼침 상태
@@ -273,10 +279,10 @@ enum ReportRow { case first; case final(lastUpdatedAt:); case generationFailed }
 
 | # | 항목 | 소유 | 클라 영향 |
 |---|---|---|---|
-| 6-1 | 홈 진입 API 묶음(1회) vs 기존 4회 + 기록 목록에 «답변 한 줄 요약» 문장 필드 | 서버 | 🟠 held 세션만 블로킹 — 프로필·포폴·기록은 기존 계약으로 선배선(§5). 요약 문장 필드는 `title` 로 도착·배선 완료(2026-08-07) ✅ — 없는 과거 세션만 직군·연차다 |
-| 6-2 | [이어서 진행]·위젯③ 미리보기·빈 상태 문구 | 디자인 | 🟡 문구 슬롯만 |
-| 6-3 | held 세션 존재 시 신규 POST /sessions 처리 | 서버 | 🟠 resume 경로 확정 |
-| 6-4 | [이어서 진행] 탭 시점 재검증(TTL 만료 → «세션 만료·미차감» 안내?) | 정책 | 🟠 탭 시 게이트 재호출로 흡수 제안 |
+| 6-1 | 홈 진입 API 묶음(1회) vs 기존 개별 + 기록 목록에 «답변 한 줄 요약» 문장 필드 | 서버 | 🟡 블로킹 없음 — 프로필·기록은 기존 계약, held 는 로컬 판정(2026-08-08). 요약 문장 필드는 `title` 로 도착·배선 완료(2026-08-07) ✅ — 없는 과거 세션만 직군·연차다 |
+| 6-2 | 위젯③ 미리보기·빈 상태 문구 | 디자인 | 🟡 문구 슬롯만 — [이어서 진행] 은 2026-08-07 시안 수령(443:5890·5873)으로 해소 |
+| 6-3 | ~~held 세션 resume 경로~~ | 서버→클라 | ✅ 2026-08-08 해소 — resume API 확정 + `HeldSessionStore` 로컬 보관·배선(§3 «08-08 배선»). 잔여: 녹화 길이 갱신·SttFailure·nextQuestion 재개 진입 = 면접 Feature 몫(TODO #69) |
+| 6-4 | [이어서 진행] 탭 시점 재검증(TTL 만료 → «세션 만료·미차감» 안내?) | 정책 | ✅ 2026-08-08 — 탭 시 `checkResume` 재검증으로 흡수(만료면 보관값 폐기 + 홈 재판정, 별도 안내 없음 — 문구가 생기면 재론) |
 | S-1 | 소셜 인증~동의 제출 사이 서버 상태(임시 토큰)·«동의 제출=계정 생성» 계약 | 서버 | 🔴 A1 API 블로커 |
 | S-2 | 국외 이전 동의 전문 | 벤더 대기 | 🟡 뼈대 먼저 |
 | S-3 | 재동의 변경 요약 | — | 소멸 (2026-07-29 확정 — 첫 개정 시점 이월) |
@@ -308,6 +314,6 @@ UI 는 전 단계 공통으로 **Figma 시안 수령 후 연결**(figma-screen) 
 
 1. ~~**AppFeature 루트 게이트 확장**~~ ✅ 2026-08-01 — Splash 세션 복구(refresh + pending) + `State.root` enum + 재시도. [launch-routing](launch-routing.md).
 2. **FeatureAuth 가입 플로우** — 골격 ✅ 2026-07-31 (코디네이터 `AuthFeature` + 화면 6종 + Example 완주 데모, STEP1·2 는 복사), 동의 제출·게이트 2단 분기 ✅ 2026-08-01, 프로필 일괄 PATCH ✅ 2026-08-02. 잔여 🔴: 실패 토스트, Figma UI.
-3. **FeatureHome 개편** — phase 골격 ✅ 2026-07-31 (`Phase` 4종 + 서브뷰 스텁), 진입 로드 3종(프로필·포폴 ✅ 2026-08-02 · 기록 목록 ✅ 2026-08-04). 잔여 🔴: 로드 1종(held)·위젯 3종 UI·빈 상태 (게이트 API 전엔 mock).
-4. **Domain 신규 계약** — 게이트·held 세션 (미결 6-1·6-3·S-1 서버 협의 후). 기록 리스트는 `InterviewClient.reportList` 로 해소 ✅.
+3. **FeatureHome 개편** — phase 골격 ✅ 2026-07-31 (`Phase` 4종 + 서브뷰 스텁), 진입 로드(프로필 ✅ 2026-08-02 · 기록 목록 ✅ 2026-08-04 · held 로컬 판정 ✅ 2026-08-08, 포폴 로드는 폐기). 잔여 🔴: 위젯 3종 UI·빈 상태 (게이트 API 전엔 mock).
+4. **Domain 신규 계약** — 게이트 (미결 6-1·S-1 서버 협의 후). 기록 리스트는 `InterviewClient.reportList` ✅, held 세션은 resume 3종 + `HeldSessionStore` ✅ 2026-08-08.
 5. **라우팅 배선** — 위젯①→면접 위저드/면접(작업 D 합류)·AuthSuspension, 위젯②→리포트 ✅ 2026-08-05, 위젯③→마이페이지(Part 5 대기). dev 임시 버튼 제거 ✅ (데이터 초기화 1개만 유지). 면접 위저드 S0 정리(§7 신규 미결 — 원본 STEP1·2 제거 포함).

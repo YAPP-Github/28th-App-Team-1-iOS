@@ -7,7 +7,6 @@
 
 import ComposableArchitecture
 import DomainInterviewInterface
-import DomainPortfolioInterface
 import DomainUserInterface
 import FeatureHomeImplementation
 import Foundation
@@ -23,11 +22,14 @@ struct FeatureHomeExampleApp: App {
                     store: Store(initialState: HomeFeature.State()) {
                         HomeFeature()
                     } withDependencies: {
-                        // Example 은 Implementation 을 link 하지 않는다 — 진입 로드 3종을 가짜로 채워
+                        // Example 은 Implementation 을 link 하지 않는다 — 진입 로드 2종을 가짜로 채워
                         // 네트워크 없이 홈을 돈다(안 채우면 liveValue 부재로 unimplemented 트랩).
                         $0.userClient.profile = { Self.profile }
-                        $0.portfolioClient.list = { Self.portfolios }
                         $0.interviewClient.reportList = { Self.reports }
+                        // 진행 중 세션 없음 — 기본은 «처음» 변형이다.
+                        // 진행 중 시연은 이 줄을 아래로 바꾼다(2:12 녹화 → 5:48 남음 → 질문 3개):
+                        // $0.heldSessionStore = .inMemory(initial: HeldSession(sessionId: 1, recordedSeconds: 132))
+                        $0.heldSessionStore = .inMemory()
                     }
                 )
             }
@@ -83,22 +85,4 @@ struct FeatureHomeExampleApp: App {
             feedbackAvailable: false
         )
     }
-
-    /// 가짜 포폴 1건(READY) — 면접 시작 카드가 «이전 정보 재사용» 변형으로 뜬다.
-    /// 빈 배열로 바꾸면 «처음» 변형을 볼 수 있다.
-    private static let portfolios = PortfolioList(
-        portfolios: [
-            Portfolio(
-                portfolioId: UUID(uuidString: "00000000-0000-0000-0000-0000000000e2")!,
-                fileName: "포트폴리오.pdf",
-                fileSize: 3_355_443,
-                pageCount: 12,
-                status: .ready,
-                // 2026-07-31 00:00 UTC — 데모가 흔들리지 않게 고정값.
-                uploadedAt: Date(timeIntervalSince1970: 1_785_456_000)
-            )
-        ],
-        replaceAvailable: true,
-        deleteAvailable: true
-    )
 }
