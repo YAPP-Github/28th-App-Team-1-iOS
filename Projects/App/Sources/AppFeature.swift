@@ -105,10 +105,10 @@ struct AppFeature {
     @Dependency(\.appVersionClient) var appVersionClient
     @Dependency(\.authClient) var authClient
     @Dependency(\.consentClient) var consentClient
-    @Dependency(\.interviewVideoUploadQueue) var uploadQueue
     @Dependency(\.firstLaunchStore) var firstLaunchStore
     @Dependency(\.heldSessionStore) var heldSessionStore
     @Dependency(\.interviewClient) var interviewClient
+    @Dependency(\.interviewVideoUploadQueue) var uploadQueue
     @Dependency(\.onboardingDraftStore) var draftStore
     @Dependency(\.openURL) var openURL
 
@@ -123,22 +123,19 @@ struct AppFeature {
         Reduce { state, action in
             switch action {
             case .onAppear:
-                // dev 계에서만 Home 온보딩 진입·디버그 로그아웃 버튼을 노출한다.
-                state.home.showsOnboardingEntry = AppEnvironment.isDev
-                state.home.showsDebugLogout = AppEnvironment.isDev
-                // 미완 영상 업로드 재개(저널) — 강제 종료·complete 실패 회복은 실행 시점 훅이 유일하다(스펙 ⑤).
-                return .merge(
-                    resolveLaunchRouting(),
-                    .run { _ in await uploadQueue.resumePending() }
-                )
                 // dev 계에서만 Home 데이터 초기화 버튼을 노출한다.
                 state.home.showsDevReset = AppEnvironment.isDev
                 // 잔존 정리를 **판정보다 먼저** 끝낸다 — 순서를 지키려 판정을 effect 안에서 잇지 않고
                 // 별도 액션으로 갈라 놓는다.
-                return .run { send in
-                    clearIfFirstLaunch()
-                    await send(.firstLaunchResolved)
-                }
+                // 미완 영상 업로드 재개(저널)는 그 순서에 얽히지 않아 나란히 건다 — 강제 종료·complete
+                // 실패 회복은 실행 시점 훅이 유일하다(스펙 ⑤).
+                return .merge(
+                    .run { send in
+                        clearIfFirstLaunch()
+                        await send(.firstLaunchResolved)
+                    },
+                    .run { _ in await uploadQueue.resumePending() }
+                )
 
             case .firstLaunchResolved:
                 return resolveLaunchRouting()
