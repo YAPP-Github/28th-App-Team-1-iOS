@@ -298,14 +298,13 @@ struct AppFeature {
             // 세션 생성 시점에 지우지 않는 이유: 그 사이 앱이 죽거나 면접에서 이탈하면 값이 다시 필요하다.
             case .interview(.presented(.delegate(.finished))):
                 state.interview = nil
-                return .merge(
-                    .run { [draftStore, heldSessionStore] _ in
-                        draftStore.clear()
-                        // 완주 = 더는 진행 중이 아니다 — 보관값을 지워 홈의 «진행 중» 판정을 끈다.
-                        heldSessionStore.clear()
-                    },
-                    .send(.home(.view(.onAppear)))
-                )
+                // 삭제는 effect 가 아니라 본문에서 — .merge(.run{clear}, .send(onAppear)) 로 두면
+                // .send 가 먼저 도착해 홈이 지우기 전 보관값을 읽고, 끝난 면접이 [이어서 진행] 으로 뜬다
+                // (홈의 held 판정은 onAppear 본문의 동기 load). 둘 다 동기·non-throwing 이라 가능하다.
+                draftStore.clear()
+                // 완주 = 더는 진행 중이 아니다 — 보관값을 지워 홈의 «진행 중» 판정을 끈다.
+                heldSessionStore.clear()
+                return .send(.home(.view(.onAppear)))
             // 이탈은 draft 보존 — 같은 입력으로 다시 시작할 수 있어야 한다.
             // 보관값도 **지우지 않는다** — 진행 중인 세션이 그대로라 홈 [이어서 진행] 의 재개 재료다.
             case .interview(.presented(.delegate(.closed))):

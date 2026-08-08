@@ -64,7 +64,7 @@
 3. 온보딩 `delegate(.finished(sessionId:))` = **세션 준비 완료** → 위저드 cover 를 닫고 그 자리에서 `state.interview = InterviewFeature.State(sessionId:)` 로 면접 cover 를 열고, **`HeldSessionStore.save(sessionId, 0초)`** 로 진행 중 보관을 시작한다(이 값의 존재가 홈 «진행 중» 판정 재료 — [[interview#Client 계약]]. 녹화 길이 갱신은 면접 Feature 몫, TODO #69) → [[interview]]
 4. 중도 이탈 `.dismiss` → cover 만 닫고 **`.home(.view(.onAppear))` 를 명시로 보내 홈을 다시 태운다** — cover 를 닫는 것만으론 홈 `onAppear` 가 다시 오지 않는다. 홈 위에서만 열리므로 **로그인 이후**라 토큰을 보유한다(온보딩 API 는 인증 필요) → [[onboarding]]
 5. 면접 `delegate(.finished)`(리포트 대기 → 홈)·`.closed`(중단·실패 닫기) → 둘 다 cover 닫고 홈 재조회 — 어느 쪽이든 잔여가 줄었다. 정상 종료의 리포트 상세(r1) 연결은 `InterviewReportFeature` 통합 후(TODO)
-6. 정상 종료(`.finished`)에서만 `onboardingDraftStore.clear()` + **`HeldSessionStore.clear()`**(완주 = 더는 진행 중이 아니다) — 온보딩 입력 draft 가 제 역할을 다한 지점이 여기다([[onboarding#입력 draft]]). 이탈(`.closed`)은 둘 다 보존 — draft 는 같은 입력으로 다시 시작할 재료, 보관값은 홈 [이어서 진행] 의 재개 재료다
+6. 정상 종료(`.finished`)에서만 `onboardingDraftStore.clear()` + **`HeldSessionStore.clear()`**(완주 = 더는 진행 중이 아니다) — 온보딩 입력 draft 가 제 역할을 다한 지점이 여기다([[onboarding#입력 draft]]). **삭제가 홈 재조회보다 먼저**여야 해서 effect 가 아니라 리듀서 본문 동기 호출이다 — `.merge(.run{clear}, .send(onAppear))` 로 두면 `.send` 가 먼저 도착해 홈 held 판정(onAppear 본문의 동기 load)이 옛 보관값을 읽고 끝난 면접을 [이어서 진행] 으로 그린다. 이탈(`.closed`)은 둘 다 보존 — draft 는 같은 입력으로 다시 시작할 재료, 보관값은 홈 [이어서 진행] 의 재개 재료다
 
 **진행 중(held) 면접 두 갈래** (2026-08-08 배선 — 발원은 [[home]] 의 `interviewRestartRequested(sessionId:)`·`interviewResumeRequested(sessionId:)`, id 는 홈이 로컬 보관값에서 읽어 싣는다):
 - [처음부터 시작] → `abandonSession(sessionId, .userExit)`(진행분 리포트 트리거 — 시안 «이용권이 하나 차감됩니다.» 의 근거) → 성공 또는 409 `sessionAlreadyEnded`(이미 중단 완료로 간주) → 보관값 clear → `interviewAbandonResolved` 가 [시작하기] 와 같은 위저드를 연다(사용자 결정 2026-08-08). 그 외 실패는 보관값 유지 + 화면 유지(안내 토스트 미도안 TODO).
