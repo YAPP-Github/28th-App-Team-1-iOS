@@ -91,24 +91,36 @@ public struct WrapUpMessage: Decodable, Equatable, Sendable {
 }
 
 /// 답변 제출 응답 — 다음 질문 또는 세션 종료(`endType` 5종). `reportId` 는 스펙에서 삭제됐다.
+/// **재개 확정(POST …/resume) 응답도 이 타입이다** — 서버가 같은 스키마를 쓰고 `answerId` 만 비운다.
+/// 뒤 세 필드(`status`·`abandonCause`·`endedAt`)가 그 공용 스키마 몫이라 옵셔널로 얹었다:
+/// 재개가 hold 무효화와 레이스면 409 가 아니라 200 + `sessionEnded` + `abandonCause == .holdExpired` 로 온다.
 public struct AnswerResult: Decodable, Equatable, Sendable {
     public let answerId: Int?
     public let nextQuestion: NextQuestion?
     public let sessionEnded: Bool
     public let wrapUpMessage: WrapUpMessage?
     public let endType: SessionEndType?
+    public let status: InterviewEndedStatus?
+    public let abandonCause: SessionAbandonCause?
+    public let endedAt: Date?
 
     public init(
         answerId: Int?,
         nextQuestion: NextQuestion?,
         sessionEnded: Bool,
         wrapUpMessage: WrapUpMessage?,
-        endType: SessionEndType?
+        endType: SessionEndType?,
+        status: InterviewEndedStatus? = nil,
+        abandonCause: SessionAbandonCause? = nil,
+        endedAt: Date? = nil
     ) {
         self.answerId = answerId
         self.nextQuestion = nextQuestion
         self.sessionEnded = sessionEnded
         self.wrapUpMessage = wrapUpMessage
         self.endType = endType
+        self.status = status
+        self.abandonCause = abandonCause
+        self.endedAt = endedAt
     }
 }

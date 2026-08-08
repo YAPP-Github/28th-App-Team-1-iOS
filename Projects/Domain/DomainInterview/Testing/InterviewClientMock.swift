@@ -37,6 +37,32 @@ public extension InterviewClient {
                     headers: [:]
                 )
             },
+            checkResume: { _ in
+                InterviewResumeCheck(
+                    resumeState: .resumable,
+                    startedAt: Date(timeIntervalSince1970: 1_782_000_000),
+                    elapsedSeconds: 132,
+                    status: nil
+                )
+            },
+            confirmResume: { _ in
+                AnswerResult(
+                    answerId: nil,
+                    nextQuestion: NextQuestion(questionId: 13, isLast: false, turn: TurnInfo(turnLevel: 1, depthLevel: 1)),
+                    sessionEnded: false,
+                    wrapUpMessage: nil,
+                    endType: nil
+                )
+            },
+            abandonSession: { _, cause in
+                AbandonResult(
+                    status: .abandoned,
+                    abandonCause: SessionAbandonCause(cause),
+                    ticketOutcome: cause == .userExit ? .held : .released,
+                    reportGenerating: cause == .userExit,
+                    endedAt: Date(timeIntervalSince1970: 1_782_000_300)
+                )
+            },
             reportList: { [] }
         )
     }
