@@ -86,6 +86,30 @@ extension InterviewClient: @retroactive DependencyKey {
                     // Content-Type 은 발급 응답 값 원문 — presigned 서명에 포함되어 다르면 S3 가 거부한다.
                     try await fileTransfer.upload(uploadURL, target.contentType, fileURL)
                     try await network.api(completeVideoRequest(sessionId: sessionId, wrapUp: wrapUp))
+            checkResume: { sessionId in
+                try await InterviewError.mapping {
+                    try await network.api(
+                        NetworkRequest(path: "/api/v1/interview/sessions/\(sessionId)/resume")
+                    )
+                }
+            },
+            // 재개 확정은 body 가 없다 — 같은 경로의 POST 하나로 서버가 이용권 hold 를 재확인하고 턴을 돌려준다.
+            confirmResume: { sessionId in
+                try await InterviewError.mapping {
+                    try await network.api(
+                        NetworkRequest(method: .post, path: "/api/v1/interview/sessions/\(sessionId)/resume")
+                    )
+                }
+            },
+            abandonSession: { sessionId, cause in
+                try await InterviewError.mapping {
+                    let request = try NetworkRequest.json(
+                        method: .post,
+                        path: "/api/v1/interview/sessions/\(sessionId)/abandon",
+                        body: AbandonBody(cause),
+                        encoder: .api
+                    )
+                    return try await network.api(request)
                 }
             },
             reportList: {
@@ -120,6 +144,16 @@ private func completeVideoRequest(sessionId: Int, wrapUp: InterviewVideoWrapUpSp
 /// GET /interview/sessions 의 payload — `reports` 배열만 도메인에 흘린다.
 private struct ReportListResponse: Decodable {
     let reports: [InterviewReportSummary]
+}
+
+/// POST .../abandon 요청 body — 사유 하나뿐이다. 요청 enum 에 `HOLD_EXPIRED` 가 없어
+/// `INVALID_ABANDON_CAUSE`(400) 는 타입 단계에서 막힌다.
+private struct AbandonBody: Encodable {
+    let cause: String
+
+    init(_ cause: AbandonCause) {
+        self.cause = cause.rawValue
+    }
 }
 
 /// jdUrl/jdText 상호 배타 규칙을 enum(JobDescriptionInput)에서 서버 필드로 펼친다.

@@ -78,7 +78,8 @@ struct HomeReportSheet: View {
     }
 
     /// 손잡이 — 시안은 라운드 없는 막대다. 위아래로 끌어 시트 자리를 바꾼다.
-    /// 판 안에서 손잡이가 되는 자리는 그래버·헤더 + (스크롤이 없는) 빈 상태 판·기본 자리 목록이다.
+    /// 판 안에서 `DragGesture` 를 받는 자리는 그래버·헤더 + (스크롤이 없는) 빈 상태 판이다.
+    /// 목록 판은 제스처 대신 `HomeSheetScrollView` 브리지가 이동량을 나눠 받는다.
     // @ds(component): 그래버 60×5 (컨테이너 h20) — 바텀시트 손잡이, 공용 컴포넌트 없음
     private var grabber: some View {
         Color.GrayScale.g400
@@ -136,13 +137,17 @@ struct HomeReportSheet: View {
 
     /// 목록 — 행 사이 1pt 흰 틈이 그대로 구분선이 된다(시안 gap 1).
     ///
-    /// **기본 자리에선 목록 위 스와이프가 «시트 올리기» 다** — 시안(649:6625)이 약속하는 «위로 스크롤하면
-    /// 목록만 남는다» 를 그 제스처로 잇는다. 스크롤과 시트 드래그는 **같은 축**이라 동시에 걸면 서로
-    /// 먹으므로, 자리에 따라 한쪽만 산다: 기본 자리 = 시트 드래그(스크롤 끔) / 확장 자리 = 목록 스크롤.
-    /// 확장 자리에서 다시 내려오는 길은 헤더 드래그다.
+    /// 스크롤과 시트 드래그는 **같은 축**이라 자리별로 한쪽만 살리면 손짓이 두 번 필요해진다
+    /// (올리고 → 놓고 → 다시 스크롤). 그래서 통을 `HomeSheetScrollView` 브리지로 바꿔 **한 손짓**으로
+    /// 잇는다: 기본 자리에선 이동량이 시트로 흘러 판이 올라오고, 확장 높이에 닿으면 그대로 목록
+    /// 스크롤이 된다(시안 649:6625 의 «위로 스크롤하면 목록만 남는다»). 확장 자리에서 목록 맨 위를
+    /// 아래로 당기면 반대로 시트가 내려온다 — 헤더 드래그 말고도 내려올 길이 생긴다.
+    ///
+    /// 브리지 안에선 lazy 가 얹힐 스크롤 지오메트리가 없어(행이 전부 즉시 생성된다) `VStack` 을 쓴다 —
+    /// 행이 4개 안팎이라 잃는 게 없고, 고유 높이가 그대로 잡혀 contentSize 계산이 단순해진다.
     private var reportList: some View {
-        ScrollView {
-            LazyVStack(spacing: 1) {
+        HomeSheetScrollView(dragHandle: dragHandle, isExpanded: isExpanded) {
+            VStack(spacing: 1) {
                 ForEach(store.reports) { report in
                     if store.expandedReportIDs.contains(report.id) {
                         expandedRow(report)
@@ -152,10 +157,8 @@ struct HomeReportSheet: View {
                 }
             }
         }
-        .scrollIndicators(.hidden)
-        .scrollDisabled(!isExpanded)
-        // 확장 자리에선 목록이 스크롤을 가져가므로 시트 드래그를 뺀다(`.subviews` = 부모 제스처 비활성).
-        .gesture(dragHandle.gesture, including: isExpanded ? .subviews : .all)
+        // 헤더 아래 남은 자리를 통이 다 먹는다 — 예전 `ScrollView` 와 같은 자리를 명시로 못 박는다.
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     /// 펼친 행 — 다크 카드에 날짜·제목·[레포트 보기] 버튼. 카드 본문을 탭하면 도로 접힌다
@@ -258,7 +261,7 @@ struct HomeReportSheet: View {
         ) {
             HomeFeature()
         },
-        dragHandle: HomeSheetDragHandle(onChanged: { _ in }, onEnded: { _ in })
+        dragHandle: HomeSheetDragHandle(onChanged: { _ in }, onEnded: { _ in .report })
     )
     .frame(height: 481)
 }
@@ -272,7 +275,7 @@ struct HomeReportSheet: View {
     state.sheetDetent = .expanded
     return HomeReportSheet(
         store: Store(initialState: state) { HomeFeature() },
-        dragHandle: HomeSheetDragHandle(onChanged: { _ in }, onEnded: { _ in })
+        dragHandle: HomeSheetDragHandle(onChanged: { _ in }, onEnded: { _ in .report })
     )
 }
 
@@ -281,7 +284,7 @@ struct HomeReportSheet: View {
         store: Store(initialState: HomeFeature.State()) {
             HomeFeature()
         },
-        dragHandle: HomeSheetDragHandle(onChanged: { _ in }, onEnded: { _ in })
+        dragHandle: HomeSheetDragHandle(onChanged: { _ in }, onEnded: { _ in .report })
     )
     .frame(height: 481)
 }
