@@ -37,21 +37,24 @@ let project = Project.makeModule(
                 "CFBundleIconName": "AppIcon",
                 // 카메라·마이크는 사용 시점 요청(ai-interview.md §권한) — 목적 문구 없으면 요청 즉시 크래시.
                 "NSCameraUsageDescription": "AI 면접에서 얼굴과 답변 영상 녹화를 위해 카메라를 사용합니다.",
-                "NSMicrophoneUsageDescription": "AI 면접에서 음성 답변 인식과 녹음을 위해 마이크를 사용합니다."
+                "NSMicrophoneUsageDescription": "AI 면접에서 음성 답변 인식과 녹음을 위해 마이크를 사용합니다.",
+                // 진단 탐침(HILIT_STT_PROBE) 전용 — 문구 없으면 인식 권한 요청 즉시 크래시.
+                "NSSpeechRecognitionUsageDescription": "마이크에 들어온 소리를 글로 옮겨 점검하기 위해 음성 인식을 사용합니다."
             ]),
-            // 번들 샘플 답변 오디오(SampleAnswer.m4a) — live 하네스가 answerAudio seam 으로 주입.
-            resources: ["Example/Resources/**"],
             dependencies: [
                 .composableArchitecture,
                 .core(interface: .network),       // live 하네스 — TokenStore(inMemory)·AuthTokens
                 .domain(interface: .interview),
+                .domain(interface: .interviewReport),   // 영상 스모크 — expiry·리포트 새 스키마 디코딩
                 .domain(interface: .portfolio),   // live 부트스트랩 — 첫 포트폴리오 조회
-                .domain(interface: .speech),      // live 하네스 — answerAudio 오버라이드
+                .domain(interface: .speech),      // Example 앱 — 프리뷰 모드 speechClient previewValue 주입
                 .domain(interface: .user),        // live 부트스트랩 — 프로필·잔여 이용권 진단
                 // live 하네스 실 IO — NetworkClient·AuthorizedNetworkClient liveValue 활성화.
                 .project(target: "CoreNetworkImplementation", path: .core(.network)),
                 // live 하네스 실 IO — InterviewClient liveValue (실서버 세션 생성·턴 루프).
                 .project(target: "DomainInterviewImplementation", path: .domain(.interview)),
+                // 영상 스모크 실 IO — InterviewReportClient liveValue (expiry·리포트 새 스키마 디코딩).
+                .project(target: "DomainInterviewReportImplementation", path: .domain(.interviewReport)),
                 // 권한만 실물 IO — 준비 화면의 요청→거부 alert→설정 이동 흐름 검증용 (liveValue 활성화).
                 .project(target: "DomainPermissionImplementation", path: .domain(.permission)),
                 // live 하네스 실 IO — PortfolioClient liveValue (부트스트랩 목록 조회).

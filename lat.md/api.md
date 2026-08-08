@@ -78,12 +78,16 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 |---|---|---|
 | `createSession` | POST `/api/v1/interview/sessions` | 이용권 무료 3회, `jdUrl`/`jdText` 상호 배타, 직군·연차는 프로필 스냅샷 |
 | `sessionStatus` | GET `/api/v1/interview/sessions/{id}/status` | 3~5초 폴링 |
-| `submitAnswer` | POST `/api/v1/interview/sessions/{id}/answers` | 메타=query + 오디오=multipart. 503(`AI_TEMPORARILY_UNAVAILABLE`)은 같은 요청 재시도 계약 |
+| `submitAnswer` | POST `/api/v1/interview/sessions/{id}/answers` | 메타=query + 오디오=multipart(`answer.m4a`/`audio/mp4` — iOS mp3 인코딩 미지원, 2026-08-05 작업B 슬라이스1). 503(`AI_TEMPORARILY_UNAVAILABLE`)은 같은 요청 재시도 계약 |
 | `questionAudioStream` | GET `.../questions/{qid}/audio/stream` | 아래 스트리밍 규약 |
+| `videoUploadURL` | POST `.../video/upload-url` | S3 presigned PUT 발급 — PUT 의 Content-Type 은 응답 `contentType` 그대로(서명 포함). `expiresInSeconds` 안에만 유효, 세션당 저장 1곳(재업로드=덮어쓰기) |
+| `completeVideoUpload` | POST `.../video/complete` | S3 PUT 성공 후 호출(호출처 책임)·멱등. `wrapUp`(마무리 멘트 구간, 녹화 타임라인 초) nil 이면 바디 생략 |
+| `uploadInterviewVideo` | (엔드포인트 아님 — 클라 오케스트레이션) | `videoUploadURL`→PUT([[domain.map#네트워킹 인프라]] `FileTransferClient`)→`completeVideoUpload` 3단을 1시도로 응집 — 재시도는 호출처 몫. **실 면접 경로는 이걸 쓰지 않는다**(이유·현행 사용처 → [[interview#Client 계약]]) |
+| `reportList` | GET `/api/v1/interview/sessions` | 내 레포트 목록(홈 위젯②·마이페이지) — envelope `{reports}` 는 liveValue 가 벗김. `title`(답변 한 줄 요약)은 2026-08-07 추가라 과거 세션엔 없다. **진행중·준비중 세션 제외** — held 판정은 로컬 보관([[home#진입 로드]]) |
 | `checkResume` | GET `.../sessions/{id}/resume` | 재개 가능 조회(순수) — RESUMABLE(IN_PROGRESS+hold 20분 이내)/ENDED. hold 만료의 ABANDONED 전환·환불은 서버가 이 호출 안에서 처리 |
 | `confirmResume` | POST `.../sessions/{id}/resume` | 재개 확정 — 응답은 `submitAnswer` 와 같은 `AnswerResult`(최신 턴 질문). 레이스는 409 아닌 200+`sessionEnded` |
 | `abandonSession` | POST `.../sessions/{id}/abandon` | 중단 — USER_EXIT(진행분 리포트 트리거·차감은 리포트 성공 시)/NETWORK_DISCONNECT(환불). 중복 409 는 «이미 중단 완료» |
-| `reportList` | GET `/api/v1/interview/sessions` | 내 레포트 목록(홈 위젯②·마이페이지) — envelope `{reports}` 는 liveValue 가 벗김. `title`(답변 한 줄 요약)은 2026-08-07 추가라 과거 세션엔 없다. **진행중·준비중 세션 제외** — held 판정은 로컬 보관([[home#진입 로드]]) |
+
 
 질문 음성 스트리밍 규약: `audio/mpeg` + `Transfer-Encoding: chunked` (Content-Length 없음). 전부 받고 재생하지 말고 `AVURLAsset(url:options:[헤더])` → `AVPlayer` 점진 재생 — 그래서 계약이 Data 가 아니라 `InterviewAudioStream(url·headers)` 다. 중간 실패는 HTTP 로 안 잡힌다 — 재생 에러 콜백으로 감지하고 같은 questionId 로 재호출(TTS 처음부터 재생성).
 
@@ -93,16 +97,22 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 
 ## Interview Report
 
-`DomainInterviewReport` — `InterviewReportClient.report`. 채점 파이프라인 결과를 사용자용 리포트(한 줄 요약 + 턴별 카드 + 영상 메타 + 지인 피드백 섹션)로 조회한다. 점수·판정 원값은 내려오지 않는다. 지인 피드백 요청/제출은 [[api#Feedback Share]]·[[api#Guest Feedback]].
+`DomainInterviewReport` — `InterviewReportClient`. 채점 파이프라인 결과를 사용자용 리포트(한 줄 요약 + 턴별 카드 + 전체 대본 타임라인 + 영상 메타 + 지인 피드백)로 조회한다. 점수·판정 원값은 안 내려온다. 지인 피드백 제출측은 [[api#Feedback Share]]·[[api#Guest Feedback]].
 
-- GET `/api/v1/interview/sessions/{id}/report`
-- `status` 는 채점 진행 상태만 — GENERATING(전 필드 nil, 폴링 지속) / READY / INSUFFICIENT_ANALYSIS(채점된 카드만) / FAILED.
-- 레드플래그 유무는 `status` 가 아니라 `redFlagNotices` 배열로 판단. 저장 5종 중 노출 3종(지어냄·모순·무결점 서사)만 중립 문구로 온다. READY + 레드플래그면 headline 이 중립 사실 요약으로 대체.
-- 카드는 질문/답변 턴당 1장 — 같은 축이면 `axisOrder` 동일, `depthLevel` 로 구분 (표시: "질문 {axisOrder}-{depthLevel}").
-- `resolutionNotice` 가 있으면 해상도 낮음 — 능력 판단 보류, `highlightSpans` 는 빈 배열.
-- 영상 만료 시 `video.url` 만 nil — 대본·하이라이트는 유지. `guestFeedback` 은 제출자 0명이면 통째로 nil.
+| 메서드 | 엔드포인트 | 비고 |
+|---|---|---|
+| `report` | GET `/api/v1/interview/sessions/{id}/report` | 보고서 미생성이면 404 가 아니라 `status=GENERATING` 응답 |
+| `videoExpiry` | GET `.../video/expiry` | 만료 카운트다운 폴링 — `video.expiresAt` 과 같은 시각의 초 단위 재계산. 만료면 `0/true`, 최대 보관 30일 |
 
-에러는 `InterviewReportError` 로 매핑된다 — INTERVIEW_SESSION_NOT_FOUND → sessionNotFound, INTERVIEW_REPORT_NOT_FOUND → reportNotFound (둘 다 404 — 보고서 미생성 상태는 에러 코드로 구분).
+- `status` 는 채점 진행 상태만 — GENERATING(전 필드 nil — script 포함, 폴링 지속) / READY / INSUFFICIENT_ANALYSIS(채점된 카드만) / FAILED.
+- 레드플래그는 보고서 단위 안내 없이 **걸린 카드의 `cardRedFlagNotices`(문자열 배열)로만** 노출. 저장 5종 중 노출 3종(지어냄·모순·무결점 서사)만 중립 문구. 심각 레드플래그면 headline 이 중립 사실 요약으로 대체.
+- 카드는 질문/답변 턴당 1장 — 같은 축이면 `axisOrder` 동일, `depthLevel` 로 구분(표시 "질문 {axisOrder}-{depthLevel}"). 카드마다 `questionIntentTitle`(의도 한 줄)과 문장 단위 `scriptSegments`(면접관·면접자 `role` 혼재, `startIndex`/`endIndex` 동봉).
+- 하이라이트는 `tone`(GOOD/IMPROVE)·`reason`(PROBE_WORTHY/OFF_INTENT/SHALLOW/SUFFICIENT)·`title`·`analysis`·`startSec`(영상 앵커). `followUpQuestions` 는 PROBE_WORTHY 만 비어있지 않음. OFF_INTENT 는 `answerTopicTitle`+카드 `questionIntentTitle`·`questionIntent` 복사 3필드 동봉(그 외 null).
+- 최상위 `script` 는 세션 전체 발화를 `startSec` 오름차순으로 담은 한 배열 — 영상 플레이어의 현재 발화 강조는 이것만 훑는다. `startSec`/`endSec` 는 합성 영상(=녹화) 타임라인 기준.
+- `resolutionNotice` 있으면 해상도 낮음(능력 판단 보류) — 짧음·얕음이면 `highlightSpans` 빈 배열, 딴 답이면 OFF_INTENT 하이라이트 1개.
+- 영상 만료 시 `video.url` 만 nil — 대본·하이라이트 유지. `guestFeedback` 은 0명이어도 `participantCount=0, guests=[]` — nil 은 GENERATING 뿐.
+
+에러는 `InterviewReportError` 로 매핑된다 — INTERVIEW_SESSION_NOT_FOUND → sessionNotFound(404), INTERVIEW_VIDEO_NOT_FOUND → videoNotFound(404 — 세션은 있으나 영상 레코드 없음, 업로드 완료 전), INTERVIEW_REPORT_NOT_FOUND → reportNotFound(현행 스웨거에서 빠짐 — 미생성은 GENERATING 응답. 매핑은 방어 유지).
 
 ## JD
 

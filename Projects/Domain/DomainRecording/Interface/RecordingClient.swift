@@ -9,7 +9,9 @@ import AVFoundation
 import ComposableArchitecture
 
 // @lat: [[interview#프리뷰]]
-// 전면 카메라 프리뷰 + A/V 캡처(골격) — 준비·세션 화면이 하나의 캡처 세션을 이어 쓴다.
+// 전면 카메라 프리뷰 + 비디오 녹화 — 준비·세션 화면이 하나의 캡처 세션을 이어 쓴다.
+// 캡처 세션은 «비디오 전용»(A안-2) — 마이크는 답변 오디오 엔진이 단독 소유하고,
+// 정지 시점에 세션 오디오(m4a)를 사후 합성해 통짜 mp4 를 만든다.
 // 소비처: 면접 준비·세션 화면(P0) — docs/work/ai-interview.md §3.
 // testValue 는 여기(Interface), liveValue 는 Implementation — App/Example 만 link (D4).
 
@@ -23,38 +25,51 @@ public struct CameraPreviewHandle: Equatable, @unchecked Sendable {
     }
 }
 
-/// 녹화 산출물 참조 — 필드는 작업 B(실녹화)에서 확정(파일 URL·업로드 키 등). 지금은 자리만.
+/// 녹화 산출물 참조 — 정상 종료 시 코디네이터가 업로드 큐에 넘겨 소유권을 이전한다 (2026-08-06 스펙 §①).
 public struct RecordingRef: Equatable, Sendable {
     public let sessionId: Int
+    public let fileURL: URL
+    public let durationSeconds: Double
 
-    public init(sessionId: Int) {
+    public init(sessionId: Int, fileURL: URL, durationSeconds: Double) {
         self.sessionId = sessionId
+        self.fileURL = fileURL
+        self.durationSeconds = durationSeconds
     }
 }
 
-/// 녹화 API 미구현 표시 — 작업 B 전까지 liveValue 가 던진다 (호출처 아직 없음).
+/// 녹화 실패 — 실패해도 면접은 계속된다(영상 없는 리포트, 스펙 §⑥). 사유 문자열은 로그용.
 public enum RecordingError: Error, Equatable {
-    case notImplemented
+    /// 프리뷰 세션 없음·입출력 추가 실패·기록 시작 실패.
+    case startFailed(String)
+    /// 진행 중 녹화 없음·기록 종료 실패·산출 파일 없음.
+    case stopFailed(String)
 }
 
 public struct RecordingClient: Sendable {
     public var startPreview: @Sendable () async -> CameraPreviewHandle?
     public var stopPreview: @Sendable () async -> Void
-    /// 녹화 시작 — 시그니처만 확정(work doc §3), 실구현·호출처는 작업 B.
+    /// 녹화 시작 — 프리뷰 세션에 비디오 전용 무비 출력을 더한다(마이크는 엔진 소유 — 넣지 않는다, A안-2).
+    /// 파일 기록이 실제로 구른 뒤(didStartRecordingTo) 반환 — 호출부가 이 시점을 세션 시계 0점으로 삼는다.
     public var startRecording: @Sendable (_ sessionId: Int) async throws -> Void
-    /// 녹화 종료 — 시그니처만 확정, 실구현·호출처는 작업 B.
-    public var stopRecording: @Sendable () async throws -> RecordingRef
+    /// 녹화 정지 + 세션 오디오(m4a) 합성 — passthrough 라 수초 내. 오디오 시작 호스트시각으로 립싱크 오프셋 보정.
+    /// 오디오가 없으면 throw — 무음 영상을 만들지 않는다(스펙 §⑥, 종착은 영상 없는 리포트).
+    public var stopRecording: @Sendable (_ audioFileURL: URL?, _ audioStartedAtHostSeconds: Double?) async throws -> RecordingRef
+    /// 녹화 폐기 — 진행 중이면 정지 후 산출 파일 삭제(멱등·비던짐). 이탈·실패·업로드 종착(성공·포기) 공통 정리.
+    public var discardRecording: @Sendable () async -> Void
 
     public init(
         startPreview: @escaping @Sendable () async -> CameraPreviewHandle?,
         stopPreview: @escaping @Sendable () async -> Void,
         startRecording: @escaping @Sendable (_ sessionId: Int) async throws -> Void,
-        stopRecording: @escaping @Sendable () async throws -> RecordingRef
+        stopRecording: @escaping @Sendable (_ audioFileURL: URL?, _ audioStartedAtHostSeconds: Double?) async throws -> RecordingRef,
+        discardRecording: @escaping @Sendable () async -> Void
     ) {
         self.startPreview = startPreview
         self.stopPreview = stopPreview
         self.startRecording = startRecording
         self.stopRecording = stopRecording
+        self.discardRecording = discardRecording
     }
 }
 
@@ -65,7 +80,8 @@ extension RecordingClient: TestDependencyKey {
             startPreview: unimplemented("RecordingClient.startPreview", placeholder: nil),
             stopPreview: unimplemented("RecordingClient.stopPreview"),
             startRecording: unimplemented("RecordingClient.startRecording"),
-            stopRecording: unimplemented("RecordingClient.stopRecording")
+            stopRecording: unimplemented("RecordingClient.stopRecording"),
+            discardRecording: unimplemented("RecordingClient.discardRecording")
         )
     }
 
@@ -75,7 +91,10 @@ extension RecordingClient: TestDependencyKey {
             startPreview: { nil },
             stopPreview: {},
             startRecording: { _ in },
-            stopRecording: { RecordingRef(sessionId: 0) }
+            stopRecording: { _, _ in
+                RecordingRef(sessionId: 0, fileURL: URL(fileURLWithPath: "/dev/null"), durationSeconds: 0)
+            },
+            discardRecording: {}
         )
     }
 }
