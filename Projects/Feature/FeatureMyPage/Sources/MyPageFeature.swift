@@ -16,7 +16,7 @@ import Foundation
 //
 // 조회 3종(프로필·포폴·리포트)·포폴 삭제·업로드/교체·로그아웃·탈퇴가 실서버로 붙어 있다 — 진입은
 // fetchEntry() 병렬 3콜 한 방(부분 성공 없음), 실패는 알럿+재시도.
-// AppFeature 배선(진입·delegate 소비)은 다음 슬라이스.
+// 진입은 홈 내비바 프로필, 로그아웃·탈퇴 뒤 로그인 복귀까지 AppFeature 가 조립한다.
 // 이 파일은 타입 선언만 — 리듀서 본문은 MyPageReducer.swift (GuestFeedback 선례, length 경고 회피).
 // @lat: [[mypage#흐름]]
 // depends-on: [[app#Cross-feature Routing]] — 리포트 열기·지인 피드백·로그아웃·회원탈퇴는
