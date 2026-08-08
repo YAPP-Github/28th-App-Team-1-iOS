@@ -88,9 +88,9 @@ struct InterviewConfig { portfolioId: UUID   /* 직군·연차 미전송 — 서
 enum JobDescriptionInput { case url(String) /* validate 선검증 필수 — JD_NOT_VALIDATED */
                            case text(String) /* 200~3,000자 */ }
 
-// DomainPortfolio — status 4개 확정 (PRD §3.3: EXPIRED/ACTIVE/DELETING 미제공)
-enum PortfolioProcessingStatus { PROCESSING · READY · FAILED_FILE · FAILED_SYSTEM }
-struct Portfolio { portfolioId: UUID; fileName?; fileSize?; pageCount?; status?; uploadedAt? }
+// DomainPortfolio — status 5종 (PRD §3.3 의 4종 + 서버 스펙의 CANCELLED. EXPIRED/ACTIVE/DELETING 미제공)
+enum PortfolioProcessingStatus { PROCESSING · READY · FAILED_FILE · FAILED_SYSTEM · CANCELLED }
+struct Portfolio { portfolioId: UUID; fileName?; fileSize?; pageCount?; status?; uploadedAt?; interviewInProgress? }
 struct PortfolioUpload { fileName; fileSize?; pageCount?; contentType; data }   // meta 는 클라 전달, 서버 실측 재검증
 struct PortfolioProcessing { portfolioId; status; message? }                    // 202·폴링 공통 응답
 
