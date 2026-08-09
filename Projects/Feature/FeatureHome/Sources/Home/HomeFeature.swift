@@ -132,6 +132,7 @@ public struct HomeFeature {
         case startInterview(StartInterviewFeature.Action)
 
         /// 사용자 입력·생명주기. View 의 send(...) 로만 방출된다.
+        @CasePathable
         public enum View: Sendable {
             // 홈 진입 로드 — 프로필은 `inner(.entryLoaded)`, 기록 목록은 `inner(.reportsLoaded)`.
             // 진행 중(held) 세션은 로컬 보관값이라 effect 없이 리듀서가 바로 읽는다.
@@ -149,6 +150,7 @@ public struct HomeFeature {
         }
 
         /// effect 결과·리듀서 내부 신호. 리듀서만 방출한다.
+        @CasePathable
         public enum Inner: Sendable {
             /// 홈 진입 로드 결과 — 실패면 nil 이다(직전 값을 지우지 않고 그대로 둔다).
             /// 묶음 API(미결 6-1)로 바뀌어도 갈아끼울 자리는 이 한 케이스다.
@@ -159,6 +161,7 @@ public struct HomeFeature {
         }
 
         /// 부모(AppFeature) 통보. 부모는 이것만 매칭한다 (D1).
+        @CasePathable
         public enum Delegate: Sendable {
             /// 마이페이지 진입 요청 — 홈 밖 화면이라 조립은 AppFeature (Feature→Feature 금지).
             case profileRequested
@@ -301,7 +304,8 @@ public struct HomeFeature {
 // MARK: - 진입 로드 → 표시값
 
 private extension HomeFeature {
-    /// 면접 시작 카드 변형 — 진행 중 세션이 있으면 진행 중, 없고 잔여 0 이면 소진, 아니면 `first` 다.
+    /// 면접 시작 카드 변형 — **재개 가능한** 진행 중 세션이 있으면 진행 중, 없고 잔여 0 이면 소진,
+    /// 아니면 `first` 다.
     /// 서버 판정의 표시일 뿐이다 — 시작 가능 여부의 진실은 탭 시점 게이트다.
     ///
     /// **진행 중(held) 세션이 잔여보다 먼저다** — 진행 중이면 [이어서 진행] 이 유일한 정상 경로라서,
@@ -316,7 +320,9 @@ private extension HomeFeature {
         heldSession: HeldSession?,
         remainingChances: Int?
     ) -> StartInterviewFeature.Variant {
-        if let heldSession {
+        // 죽은 프로세스의 진행분(>0초·토큰 불일치)은 없는 것처럼 — 세그먼트가 사라져 재개가 불가능하고
+        // (스펙 ⑤), 정리는 실행 시 클린업이 맡는다. 카드로 그리면 앞부분 없는 영상 재개를 제안하는 셈이다.
+        if let heldSession, heldSession.isResumableInCurrentProcess {
             return .inProgress(
                 remainingQuestionCount: remainingQuestionCount(recordedSeconds: heldSession.recordedSeconds)
             )
