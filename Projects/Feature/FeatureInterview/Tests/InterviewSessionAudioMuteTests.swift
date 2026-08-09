@@ -26,6 +26,7 @@ struct InterviewSessionAudioMuteTests {
         let store = TestStore(initialState: .fixture()) {
             InterviewSessionFeature()
         } withDependencies: {
+            $0.ignoreHeldSessionStamp()
             $0.continuousClock = TestClock()
             $0.recordingClient.startPreview = { nil }
             $0.recordingClient.startRecording = { _ in 0 }
@@ -69,6 +70,7 @@ struct InterviewSessionAudioMuteTests {
         let store = TestStore(initialState: initialState) {
             InterviewSessionFeature()
         } withDependencies: {
+            $0.ignoreHeldSessionStamp()
             $0.continuousClock = TestClock()
             $0.recordingClient.stopRecording = { _ in .stub }
             $0.speechClient.setSessionAudioMuted = { muted in
