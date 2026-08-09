@@ -10,23 +10,30 @@ import Testing
 
 @testable import DomainInterviewInterface
 
-// 프로세스 토큰 판정(스펙 ⑤) — 죽은 프로세스의 진행분(>0초) 보관값은 재개 제안 대상이 아니다.
+// 프로세스 토큰 판정(스펙 ⑤) — 다른 프로세스에서 **시작된** 면접의 보관값은 재개 제안 대상이 아니다.
 struct HeldSessionTests {
-    @Test("진행분이 있고 토큰이 현재 프로세스면 재개 가능")
-    func inProcessRecordedSessionIsResumable() {
+    @Test("토큰이 현재 프로세스면 재개 가능")
+    func inProcessSessionIsResumable() {
         let held = HeldSession(sessionId: 1, recordedSeconds: 60, processToken: HeldSession.currentProcessToken)
         #expect(held.isResumableInCurrentProcess)
     }
 
-    @Test("진행분이 있는데 토큰이 다르면(죽은 프로세스) 재개 불가")
-    func foreignRecordedSessionIsNotResumable() {
+    @Test("토큰이 다르면(죽은 프로세스) 재개 불가")
+    func foreignSessionIsNotResumable() {
         let held = HeldSession(sessionId: 1, recordedSeconds: 60, processToken: UUID())
         #expect(!held.isResumableInCurrentProcess)
     }
 
-    @Test("0초(준비 이탈 보관분)는 토큰과 무관하게 재개 가능 — 잃을 영상이 없다")
-    func zeroProgressSessionIsAlwaysResumable() {
-        #expect(HeldSession(sessionId: 1, recordedSeconds: 0, processToken: UUID()).isResumableInCurrentProcess)
+    // 이 케이스가 «0초는 무조건 재개 가능» 이던 옛 규칙의 구멍이었다 — `recordedSeconds` 는 백그라운드
+    // 마감에서만 갱신돼, 백그라운드를 거치지 않고 죽은 면접(크래시·메모리 압박)이 0초로 남는다.
+    // 그걸 준비 이탈 보관분으로 오인하면 킬 클린업이 대상으로 잡지 못해 서버 세션이 영영 살아남는다.
+    @Test("0초라도 토큰이 다르면 재개 불가 — 백그라운드 없이 죽은 면접이 0초로 남는다")
+    func foreignZeroProgressSessionIsNotResumable() {
+        #expect(!HeldSession(sessionId: 1, recordedSeconds: 0, processToken: UUID()).isResumableInCurrentProcess)
+    }
+
+    @Test("표식 없는 보관값은 준비 단계 — 아직 면접 전이라 프로세스를 넘어 재개 가능")
+    func unstampedSessionIsResumable() {
         #expect(HeldSession(sessionId: 1, recordedSeconds: 0, processToken: nil).isResumableInCurrentProcess)
     }
 

@@ -47,6 +47,7 @@ struct InterviewSessionFinishTests {
         let store = TestStore(initialState: .fixture()) {
             InterviewSessionFeature()
         } withDependencies: {
+            $0.ignoreHeldSessionStamp()
             $0.continuousClock = TestClock()
             $0.recordingClient.startPreview = { nil }
             $0.recordingClient.startRecording = { _ in 0 }
@@ -97,6 +98,7 @@ struct InterviewSessionFinishTests {
         let store = TestStore(initialState: initialState) {
             InterviewSessionFeature()
         } withDependencies: {
+            $0.ignoreHeldSessionStamp()
             $0.speechClient.finishSessionAudioRecording = {
                 calls.continuation.yield("sessionAudioFinished")
                 return .stub
@@ -129,6 +131,7 @@ struct InterviewSessionFinishTests {
         let store = TestStore(initialState: initialState) {
             InterviewSessionFeature()
         } withDependencies: {
+            $0.ignoreHeldSessionStamp()
             $0.recordingClient.stopRecording = { _ in ref }
             $0.speechClient.answerAudio = { nil }
             $0.speechClient.finishSessionAudioRecording = { .stub }

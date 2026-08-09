@@ -12,7 +12,7 @@ import Testing
 
 // 앱 사망 세션 정리 판정(스펙 ④) — App 테스트 타깃이 없어 판정만 순수 함수로 내려 고정한다.
 struct HeldSessionCleanupTests {
-    @Test("보관값 없음·0초(준비 이탈)·현재 프로세스 진행분은 정리 대상이 아니다")
+    @Test("보관값 없음·표식 없는 준비 단계·현재 프로세스 보관값은 정리 대상이 아니다")
     func nonTargets() {
         #expect(HeldSessionCleanup.target(nil) == nil)
         #expect(HeldSessionCleanup.target(HeldSession(sessionId: 1, recordedSeconds: 0, processToken: nil)) == nil)
@@ -21,9 +21,11 @@ struct HeldSessionCleanupTests {
         ) == nil)
     }
 
-    @Test("죽은 프로세스의 진행분(>0초·토큰 불일치 또는 없음)만 정리 대상이다")
-    func deadRecordedSessionIsTarget() {
+    @Test("죽은 프로세스에서 시작된 면접만 정리 대상이다 — 누적초 갱신 전에 죽은 0초도 포함")
+    func deadSessionIsTarget() {
         #expect(HeldSessionCleanup.target(HeldSession(sessionId: 7, recordedSeconds: 60, processToken: UUID())) == 7)
+        // 백그라운드를 거치지 않고 죽어 누적초가 0 으로 남은 면접 — 원 결함이 여기였다(2026-08-09).
+        #expect(HeldSessionCleanup.target(HeldSession(sessionId: 7, recordedSeconds: 0, processToken: UUID())) == 7)
         #expect(HeldSessionCleanup.target(HeldSession(sessionId: 7, recordedSeconds: 60, processToken: nil)) == 7)
     }
 
