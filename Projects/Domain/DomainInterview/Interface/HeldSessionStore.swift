@@ -17,10 +17,24 @@ public struct HeldSession: Codable, Equatable, Sendable {
     /// 지금까지 녹화된 면접 영상 길이(초). 남은 질문 수 표기의 재료 — 최대 면접 길이 8분에서 뺀
     /// 잔여 시간으로 rule-base 환산하는 계산은 Feature 몫이고, 여기엔 저장만 한다.
     public var recordedSeconds: Int
+    /// 저장한 프로세스의 표식 — 앱이 죽으면 세그먼트 파일(tmp·프로세스 수명)이 사라져 진행분(>0초)
+    /// 재개가 불가능해진다(스펙 ⑤). 구버전 저장값은 nil 로 디코딩되고 «죽은 프로세스» 로 취급한다.
+    public var processToken: UUID?
 
-    public init(sessionId: Int, recordedSeconds: Int) {
+    /// 이 프로세스의 표식 — 실행마다 새 값. 저장 시 스탬프해 재실행 후 진행분 재개를 차단한다.
+    public static let currentProcessToken = UUID()
+
+    /// 홈이 [이어서 진행] 을 제안해도 되는가 — 0초는 잃을 영상이 없어 프로세스를 넘어 재개 가능,
+    /// 진행분이 있으면 같은 프로세스(세그먼트 보유)일 때만이다. 어기면 앞부분 없는 영상에 마킹만
+    /// 이어져 서버 정렬이 무너진다(스펙 ⑤).
+    public var isResumableInCurrentProcess: Bool {
+        recordedSeconds == 0 || processToken == Self.currentProcessToken
+    }
+
+    public init(sessionId: Int, recordedSeconds: Int, processToken: UUID? = nil) {
         self.sessionId = sessionId
         self.recordedSeconds = recordedSeconds
+        self.processToken = processToken
     }
 }
 
@@ -28,8 +42,9 @@ public struct HeldSession: Codable, Equatable, Sendable {
 
 // 진행 중 세션의 로컬 영속 seam (UserDefaults, 외부 IO = Domain 레이어 규칙). 서버 무관이고
 // 한 번에 한 세션만 보관한다 — 이용권 예약이 세션 하나를 잡는 구조라 동시 진행이 없다.
-// 수명: 면접 세션 생성 시 저장(`recordedSeconds` 0) → 녹화 진행하며 갱신(면접 Feature 몫, 아직 미배선)
-// → 면접 완료 시 삭제. 중단(abandon)·재개 불가(ENDED) 판정도 끝난 세션이라 같이 삭제한다.
+// 수명: 면접 세션 생성 시 저장(`recordedSeconds` 0) → 백그라운드 마감(세그먼트 경계)마다 세션 Feature 가
+// 누적초 + 프로세스 토큰으로 갱신 → 면접 완료 시 삭제. 중단(abandon)·재개 불가(ENDED) 판정도 끝난
+// 세션이라 같이 삭제한다.
 public struct HeldSessionStore: Sendable {
     public var load: @Sendable () -> HeldSession?
     public var save: @Sendable (HeldSession) -> Void
@@ -69,8 +84,15 @@ extension HeldSessionStore: TestDependencyKey {
     }
 
     /// Preview 는 진행 중 세션이 **있는** 상태를 그린다 — 홈의 진행 중 변형이 그래야 보인다.
+    /// 프리뷰는 «살아 있는 프로세스의 진행분» 을 그린다 — 토큰을 안 찍으면 죽은 값이라 홈이 걸러 버린다.
     public static var previewValue: HeldSessionStore {
-        .inMemory(initial: HeldSession(sessionId: 1, recordedSeconds: 132))
+        .inMemory(
+            initial: HeldSession(
+                sessionId: 1,
+                recordedSeconds: 132,
+                processToken: HeldSession.currentProcessToken
+            )
+        )
     }
 }
 
