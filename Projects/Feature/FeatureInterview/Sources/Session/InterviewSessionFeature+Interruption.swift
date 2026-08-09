@@ -12,8 +12,9 @@ import Foundation
 
 // @lat: [[interview#세션]]
 // depends-on: [[interview#코디네이터]] — 동결 뒤 다음 상태는 코디네이터가 받는 `delegate(.interrupted)` 하나뿐이다.
-// 백그라운드 동결(스펙 ②) — 카메라 캡처는 백그라운드 진입 즉시 끊기므로 «유예» 는 없다. 모든
-// 백그라운드 = 세그먼트 경계다. 랩업·합성 중은 예외(이미 종료 확정) — 각각 즉시 마감·무시.
+// 세션 동결 — 진행 중인 면접을 **끝내지 않고** 세그먼트만 닫아 홈으로 내보낸다. 들어오는 문은 둘이다:
+// 백그라운드 진입(스펙 ② — 카메라 캡처가 즉시 끊겨 «유예» 가 없다. 모든 백그라운드 = 세그먼트 경계)과
+// 8분 전 중도 이탈(2026-08-09 개정 — 아래 `reduceUserLeave`). 랩업·합성 중은 예외(이미 종료 확정).
 extension InterviewSessionFeature {
     func reduceSceneBackgrounded(_ state: inout State) -> Effect<Action> {
         if state.isFinishing { return .none }
@@ -26,13 +27,28 @@ extension InterviewSessionFeature {
             }
             return .merge(.cancel(id: CancelID.playback), stopRecordingAndFinish(&state))
         }
+        // 시작 전(onAppear 직후 창)은 닫을 세그먼트도 갱신할 누적초도 없다 — 화면은 그대로 두고
+        // 복귀를 기다린다. 사용자 이탈과 갈리는 유일한 지점이다(그쪽은 «나가기» 를 반드시 이행해야 한다).
         guard state.hasStarted else { return .none }
+        return freezeAndLeave(&state)
+    }
 
+    /// 8분 전 중도 이탈 «그대로 나가기» — **서버 세션을 끝내지 않는다**(2026-08-09 개정).
+    /// 옛 동작은 BACK_EXIT 를 최선 노력 제출해 그 자리에서 세션을 닫고 진행분 리포트를 만들었는데,
+    /// 그러면 `checkResume` 이 ENDED 를 돌려줘 재개가 원천 봉쇄된다. 이제 백그라운드 동결과 **같은**
+    /// 경로를 타 세그먼트·held 를 남기고 홈으로 나가고, 홈 «진행 중» 카드의 [이어서 진행] 이 잇는다.
+    /// 확정 종료(진행분 리포트·차감)는 홈 [처음부터 시작] 의 `abandon(USER_EXIT)` 몫이다 → [[app#Cross-feature Routing]].
+    func reduceUserLeave(_ state: inout State) -> Effect<Action> {
+        freezeAndLeave(&state)
+    }
+
+    /// 동결 본체 — 진행 중 effect 를 끊고 세그먼트를 닫은 뒤 이탈을 통보한다.
+    private func freezeAndLeave(_ state: inout State) -> Effect<Action> {
         state.isInterrupted = true
         state.isEarlyExitWarningPresented = false
         state.isExitConfirmPresented = false
         state.isSubmitting = false   // 비행 중 제출은 취소한다 — 서버 처리 여부는 재개 재동기화가 흡수(스펙 ⑥)
-        state.failure = nil          // 오버레이보다 동결이 세다 — 복귀 시 resumeCheck 경로가 잇는다
+        state.failure = nil          // 오버레이보다 동결이 세다 — 이탈 뒤 재개(confirmResume)가 재동기화한다
         state.pendingRetry = nil
         state.toast = nil
         let sessionId = state.sessionId

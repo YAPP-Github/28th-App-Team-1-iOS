@@ -504,18 +504,22 @@ struct InterviewSessionSubmissionTests {
         #expect(captured.value?.endType == .manualEnd)
     }
 
-    @Test("8분 전 나가기는 BACK_EXIT 를 최선 노력 제출한 뒤 중단을 통보한다")
-    func earlyExitSubmitsBestEffortThenAborts() async {
-        let captured = LockIsolated<AnswerSubmission?>(nil)
+    // 옛 동작은 여기서 BACK_EXIT 를 최선 노력 제출해 서버 세션을 닫았는데, 그러면 `checkResume` 이
+    // ENDED 를 돌려줘 재개가 원천 봉쇄된다(2026-08-09 설계 수정). 제출이 되살아나면 `submitAnswer`
+    // 미스텁(unimplemented)이 잡는다 — 이 테스트의 핵심 단언이다.
+    @Test("8분 전 나가기는 제출 없이 세션을 동결한다 — 서버 세션이 살아 있어야 재개된다")
+    func earlyExitFreezesWithoutEndingSession() async {
+        let saved = LockIsolated<HeldSession?>(nil)
         var initialState = InterviewSessionFeature.State.fixture(hasStarted: true)
+        initialState.hasRecording = true
         initialState.elapsedSeconds = 100
         let store = TestStore(initialState: initialState) {
             InterviewSessionFeature()
         } withDependencies: {
-            $0.interviewClient.submitAnswer = { _, submission in
-                captured.setValue(submission)
-                return .ended(.backExit)
-            }
+            $0.speechClient.finishSessionAudioRecording = { nil }
+            $0.recordingClient.suspendRecording = { _ in 92.4 }
+            $0.speechClient.stopCapture = {}
+            $0.heldSessionStore.save = { saved.setValue($0) }
         }
 
         await store.send(.view(.userTappedClose)) {
@@ -523,28 +527,37 @@ struct InterviewSessionSubmissionTests {
         }
         await store.send(.view(.userTappedLeaveInterview)) {
             $0.isEarlyExitWarningPresented = false
+            $0.isInterrupted = true
         }
-        await store.receive(\.inner.earlyExitSubmissionFinished)
-        await store.receive(\.delegate.aborted)
-        #expect(captured.value?.endType == .backExit)
-        #expect(captured.value?.audio == nil)   // 최선 노력 — 오디오·백오프 재시도 없음
+        await store.receive(\.delegate.interrupted)
+        await store.finish()
+        // 재개 재료 — 누적초는 화면 경과초(100)가 아니라 세그먼트 실측(92.4→92)이다.
+        #expect(saved.value == HeldSession(
+            sessionId: initialState.sessionId, recordedSeconds: 92, processToken: HeldSession.currentProcessToken
+        ))
     }
 
-    @Test("BACK_EXIT 제출이 실패해도 이탈은 진행된다")
-    func earlyExitProceedsDespiteSubmissionFailure() async {
-        var initialState = InterviewSessionFeature.State.fixture(hasStarted: true)
+    // 백그라운드와 갈리는 유일한 지점 — 그쪽은 시작 전이면 화면을 지키고 복귀를 기다리지만,
+    // 사용자가 «나가기» 를 눌렀으면 닫을 세그먼트가 없어도 반드시 나가야 한다.
+    @Test("시작 전 나가기도 반드시 이행된다 — 닫을 세그먼트가 없어도 화면을 떠난다")
+    func earlyExitBeforeStartStillLeaves() async {
+        var initialState = InterviewSessionFeature.State.fixture()   // hasStarted false
         initialState.isEarlyExitWarningPresented = true
         let store = TestStore(initialState: initialState) {
             InterviewSessionFeature()
         } withDependencies: {
-            $0.interviewClient.submitAnswer = { _, _ in throw InterviewError.networkFailure }
+            $0.speechClient.finishSessionAudioRecording = { nil }
+            $0.recordingClient.suspendRecording = { _ in nil }
+            $0.speechClient.stopCapture = {}
+            // heldSessionStore.save 미스텁 — 녹화가 없던 세션이 0초 보관값을 덮으면 unimplemented 가 잡는다.
         }
 
         await store.send(.view(.userTappedLeaveInterview)) {
             $0.isEarlyExitWarningPresented = false
+            $0.isInterrupted = true
         }
-        await store.receive(\.inner.earlyExitSubmissionFinished)
-        await store.receive(\.delegate.aborted)
+        await store.receive(\.delegate.interrupted)
+        await store.finish()
     }
 
     @Test("제출 비행 중 12:00 도달은 응답의 새 질문을 열지 않고 HARD_CAP 으로 마감한다")

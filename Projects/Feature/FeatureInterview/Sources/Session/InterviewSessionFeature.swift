@@ -201,7 +201,8 @@ public struct InterviewSessionFeature {
             case userTappedAnswerComplete
             /// 좌상단 X — 8분 전엔 중도 이탈 경고, 8분 후엔 종료 확인 모달. (이탈 동선 표기는 «협의 가능» — 임시 X)
             case userTappedClose
-            /// 중도 이탈 경고 «나가기» — 차감 감수하고 이탈. BACK_EXIT 를 최선 노력 제출 후 서버가 턴을 보존한다.
+            /// 중도 이탈 경고 «그대로 나가기» — 서버 세션을 **끝내지 않고** 동결해 홈으로 나간다(2026-08-09 개정).
+            /// 재개는 홈 «진행 중» 카드의 [이어서 진행] 몫 → `reduceUserLeave`.
             case userTappedLeaveInterview
             case userTappedExit
             case userTappedContinueInterview
@@ -234,8 +235,6 @@ public struct InterviewSessionFeature {
             /// 답변 제출 실패(503 재시도 소진 포함) — 종료됐던 세션이면 정상 종료로, 그 외 네트워크 오버레이.
             /// 실패한 payload 를 동봉한다 — 오버레이의 «이어서 진행하기» 가 그대로 재전송한다.
             case answerSubmissionFailed(InterviewError, AnswerSubmission)
-            /// 8분 전 이탈의 최선 노력 제출 종료(성공·실패 무관) — 이탈을 진행한다.
-            case earlyExitSubmissionFinished
             /// 네트워크 단절 감지 — delegate 승격 대신 세션이 소유한 오버레이를 얹는다(세션·녹화 유지).
             /// STT 는 이 경로가 아니다 — `endSession` 이 delegate(.failed(.speechRecognition))로 직행한다.
             case networkFailureDetected(State.PendingRetry)
@@ -354,21 +353,7 @@ extension InterviewSessionFeature {
             return .none
 
         case .userTappedLeaveInterview:
-            state.isEarlyExitWarningPresented = false
-            // 최선 노력 1회 제출(재시도·오디오 없음, 스펙 §5.3) — 실패해도 이탈은 진행한다.
-            let submission = makeSubmission(state, endType: .backExit)
-            let sessionId = state.sessionId
-            return .merge(
-                .cancel(id: CancelID.clock),
-                .cancel(id: CancelID.toast),
-                .cancel(id: CancelID.submission),
-                .cancel(id: CancelID.playback),
-                .cancel(id: CancelID.micCapture),
-                .run { send in
-                    _ = try? await interviewClient.submitAnswer(sessionId, submission)
-                    await send(.inner(.earlyExitSubmissionFinished))
-                }
-            )
+            return reduceUserLeave(&state)
 
         case .userTappedExit:
             guard state.isExitAvailable else { return .none }
@@ -463,9 +448,6 @@ extension InterviewSessionFeature {
             default:
                 return reduceInner(&state, .networkFailureDetected(.submit(submission)))
             }
-
-        case .earlyExitSubmissionFinished:
-            return .send(.delegate(.aborted))
 
         case let .networkFailureDetected(retry):
             // 세션을 살린 채 오버레이만 얹는다 — 시계 tick 은 유지(clockTicked 가 suspended 로 접는다),
