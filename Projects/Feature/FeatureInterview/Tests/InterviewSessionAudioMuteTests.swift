@@ -28,7 +28,7 @@ struct InterviewSessionAudioMuteTests {
         } withDependencies: {
             $0.continuousClock = TestClock()
             $0.recordingClient.startPreview = { nil }
-            $0.recordingClient.startRecording = { _ in }
+            $0.recordingClient.startRecording = { _ in 0 }
             $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
             $0.speechClient.startSessionAudioRecording = {}
             $0.speechClient.setSessionAudioMuted = { muted in
@@ -70,7 +70,7 @@ struct InterviewSessionAudioMuteTests {
             InterviewSessionFeature()
         } withDependencies: {
             $0.continuousClock = TestClock()
-            $0.recordingClient.stopRecording = { _, _ in .stub }
+            $0.recordingClient.stopRecording = { _ in .stub }
             $0.speechClient.setSessionAudioMuted = { muted in
                 calls.withValue { $0.append(muted ? "mute" : "unmute") }
             }

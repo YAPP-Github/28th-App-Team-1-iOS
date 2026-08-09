@@ -13,6 +13,7 @@ import SwiftUI
 @ViewAction(for: InterviewSessionFeature.self)
 public struct InterviewSessionView: View {
     @Bindable public var store: StoreOf<InterviewSessionFeature>
+    @Environment(\.scenePhase) private var scenePhase
 
     public init(store: StoreOf<InterviewSessionFeature>) {
         self.store = store
@@ -62,6 +63,10 @@ public struct InterviewSessionView: View {
             InterviewFailureView(store: store)
         }
         .onAppear { send(.onAppear) }
+        // 백그라운드 진입 = 세그먼트 경계(스펙 ②). 복귀(.active) 관측은 코디네이터 뷰(InterviewView) 몫.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { send(.sceneBackgrounded) }
+        }
     }
 
     // MARK: - 상단 시간 칩 (Figma top 94 = 상태바 43 + 51)
