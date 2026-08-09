@@ -33,6 +33,18 @@ extension InterviewSessionFeature.State {
     }
 }
 
+extension AbandonResult {
+    /// 중단 응답 스텁 — 네트워크 단절 중단(이용권 환급). 값 자체를 검증하지 않는 테스트가
+    /// 오버레이 «중단하기» 경로를 통과시키는 용도 (리듀서는 결과를 읽지 않는다 — 결과 무관 이탈).
+    static let stub = AbandonResult(
+        status: .abandoned,
+        abandonCause: .networkDisconnect,
+        ticketOutcome: .released,
+        reportGenerating: false,
+        endedAt: nil
+    )
+}
+
 extension AnswerResult {
     /// 다음 질문 응답 — 세션 계속.
     static func next(_ questionId: Int) -> Self {

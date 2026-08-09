@@ -28,7 +28,7 @@ struct InterviewSessionFeatureTests {
         } withDependencies: {
             $0.continuousClock = clock
             $0.recordingClient.startPreview = { handle }
-            $0.recordingClient.startRecording = { _ in }
+            $0.recordingClient.startRecording = { _ in 0 }
             $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
             $0.speechClient.playStream = { _, _ in finishedPlayback() }
             $0.speechClient.startSessionAudioRecording = {}
@@ -58,7 +58,7 @@ struct InterviewSessionFeatureTests {
         } withDependencies: {
             $0.continuousClock = clock
             $0.recordingClient.startPreview = { nil }
-            $0.recordingClient.startRecording = { _ in }
+            $0.recordingClient.startRecording = { _ in 0 }
             $0.speechClient.startCapture = {
                 captureStarted.setValue(true)
                 return AsyncStream { $0.finish() }
@@ -92,8 +92,8 @@ struct InterviewSessionFeatureTests {
         } withDependencies: {
             $0.continuousClock = clock
             $0.recordingClient.startPreview = { nil }
-            $0.recordingClient.startRecording = { _ in }
-            $0.recordingClient.stopRecording = { _, _ in .stub }
+            $0.recordingClient.startRecording = { _ in 0 }
+            $0.recordingClient.stopRecording = { _ in .stub }
             $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
             $0.speechClient.playStream = { _, _ in finishedPlayback() }
             $0.speechClient.startSessionAudioRecording = {}
@@ -131,8 +131,8 @@ struct InterviewSessionFeatureTests {
         } withDependencies: {
             $0.continuousClock = clock
             $0.recordingClient.startPreview = { nil }
-            $0.recordingClient.startRecording = { _ in }
-            $0.recordingClient.stopRecording = { _, _ in .stub }
+            $0.recordingClient.startRecording = { _ in 0 }
+            $0.recordingClient.stopRecording = { _ in .stub }
             $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
             $0.speechClient.playStream = { _, _ in finishedPlayback() }
             $0.speechClient.startSessionAudioRecording = {}
@@ -188,7 +188,7 @@ struct InterviewSessionFeatureTests {
         } withDependencies: {
             $0.continuousClock = clock
             $0.recordingClient.startPreview = { nil }
-            $0.recordingClient.startRecording = { _ in }
+            $0.recordingClient.startRecording = { _ in 0 }
             $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
             // 5초 뒤에야 완료되는 질문 재생 — 오버레이가 재생 effect 를 끊지 않으면 그 완료가 도착해
             // answering 으로 넘어간다. 아래 «재생 취소» 단언이 이걸로 취소를 *시점째* 못 박는다
@@ -205,6 +205,10 @@ struct InterviewSessionFeatureTests {
             $0.speechClient.startSessionAudioRecording = {}
             $0.speechClient.setSessionAudioMuted = { _ in }
             $0.interviewClient.questionAudioStream = stubAudioStream
+            // «중단하기» 는 이제 abandon(NETWORK_DISCONNECT)+held clear 를 앞세운다 — 여기선 통과만 시킨다
+            // (사유·레이스 계약은 InterviewSessionNetworkFailureTests 가 고정).
+            $0.interviewClient.abandonSession = { _, _ in .stub }
+            $0.heldSessionStore.clear = {}
         }
         store.exhaustivity = .off   // 시계 틱은 기존 테스트가 고정 — 여기선 오버레이 전후 생존만 본다.
 
@@ -584,8 +588,8 @@ struct InterviewSessionSubmissionTests {
         } withDependencies: {
             $0.continuousClock = clock
             $0.recordingClient.startPreview = { nil }
-            $0.recordingClient.startRecording = { _ in }
-            $0.recordingClient.stopRecording = { _, _ in .stub }
+            $0.recordingClient.startRecording = { _ in 0 }
+            $0.recordingClient.stopRecording = { _ in .stub }
             $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
             $0.speechClient.playStream = { _, _ in finishedPlayback() }
             $0.speechClient.startSessionAudioRecording = {}
@@ -666,9 +670,9 @@ struct InterviewSessionRecordingTests {
         } withDependencies: {
             $0.continuousClock = clock
             $0.recordingClient.startPreview = { nil }
-            $0.recordingClient.startRecording = { _ in }
-            $0.recordingClient.stopRecording = { fileURL, startedAt in
-                stopArgs.setValue((fileURL, startedAt))
+            $0.recordingClient.startRecording = { _ in 0 }
+            $0.recordingClient.stopRecording = { audio in
+                stopArgs.setValue((audio?.fileURL, audio?.startedAtHostSeconds))
                 return ref
             }
             $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
@@ -725,7 +729,7 @@ struct InterviewSessionRecordingTests {
             InterviewSessionFeature()
         } withDependencies: {
             $0.continuousClock = clock
-            $0.recordingClient.stopRecording = { _, _ in .stub }
+            $0.recordingClient.stopRecording = { _ in .stub }
             $0.speechClient.setSessionAudioMuted = { _ in }
             $0.speechClient.play = { _ in wrapUpPlayback.stream }
             $0.speechClient.finishSessionAudioRecording = { .stub }
@@ -768,7 +772,7 @@ struct InterviewSessionRecordingTests {
         } withDependencies: {
             $0.continuousClock = TestClock()
             $0.recordingClient.startPreview = { nil }
-            $0.recordingClient.startRecording = { _ in }
+            $0.recordingClient.startRecording = { _ in 0 }
             $0.speechClient.startCapture = {
                 calls.continuation.yield("startCapture")
                 return AsyncStream { $0.finish() }
