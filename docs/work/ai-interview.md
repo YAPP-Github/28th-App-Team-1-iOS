@@ -198,7 +198,8 @@ enum Phase {
 
 ### (d) 세션 무결성 — P2 중단 = 이탈 신호(기록은 서버 보존)
 `scenePhase` + `AVAudioSession` interruption(전화·백그라운드·네트워크) 구독 → 모든 CancelID cancel + `.delegate(.aborted)`. (논의 N: 전화 차단 기술적 불가하면 이 경로 확정.)
-⚠️ `aborted` 는 **기록 폐기가 아니다** — PRD §3.7 상 그때까지의 턴은 서버가 보존하고 이용권도 차감된다(D1). 클라는 «흐름을 벗어났다» 는 신호만 올리고, 8분 전 X 탭은 그 사실을 먼저 알리는 중도 이탈 경고 모달을 띄운다(«지금 나가면 이용권 1회가 차감돼요» — 리포트 언급 금지) ✅.
+⚠️ `aborted` 는 **기록 폐기가 아니다** — PRD §3.7 상 그때까지의 턴은 서버가 보존한다. 남은 `aborted` 소비처는 네트워크 오버레이 «중단하기» 하나다(2026-08-09).
+⚠️ **8분 전 중도 이탈은 2026-08-09 부터 세션을 끝내지 않는다** — BACK_EXIT 제출을 걷어내고 백그라운드 동결과 같은 경로로 홈에 내보내, 홈 «진행 중» 카드가 `sessionId` 로 재개한다. 차감 확정은 홈 [처음부터 시작](USER_EXIT) 으로 밀렸다. 경고 모달 문구(«지금 나가면 방금 쓴 이용권 한장이 사라져요»)는 아직 옛 동작 기준 — 디자이너 확정 대기.
 
 ### (e) STT 30% 실패(P3) — 서버 판정으로 확정 (2026-08-02)
 ~~`Transcript.confidence` 턴별 집계~~ **폐기** — 판정은 서버 책임으로 확정됐다. `submitAnswer` 응답 `endType=STT_RESET`(이용권 환불·리포트 없음)으로 통보되고, 클라는 `failed(.speechRecognition)` 전환만 한다. 논의 H/I 는 종결.
@@ -214,7 +215,7 @@ enum Phase {
 - ✅ **상태 칩 3종**(§3.5) asking/answering/processingAnswer — «답변이 기록 됐어요» 토스트 제거
 - ✅ **질문 준비 게이트**(§3.2) 준비 화면 `sessionStatus` 3초 폴링, 시작 게이트 = guide2 + 권한 + READY 삼중, 클라 타임아웃 없음
 - ✅ **실패 화면 3종**(§3.2·§3.7·§3.9 → 2026-08-06 시안 갱신) questionPrep(처음으로만·재시도 없음) / network(«이어서 진행하기»|«중단하기» — 세션 위 오버레이) / speechRecognition(«중단하기» 단일 — 재시작 소멸)
-- ✅ **종료 경로**(§3.7·§3.8) 8분 전 중도 이탈 경고 → `aborted` / 8분 후·상한·마치기 → 업로드 큐 접수 후 `finished`(2026-08-06: 리포트 대기 화면 소멸, 홈 직행). 확정 문구는 부록 C
+- ✅ **종료 경로**(§3.7·§3.8) 8분 전 중도 이탈 경고 → 동결·`interrupted`(2026-08-09 — 세션 유지, 재개 가능) / 8분 후·상한·마치기 → 업로드 큐 접수 후 `finished`(2026-08-06: 리포트 대기 화면 소멸, 홈 직행). 확정 문구는 부록 C
 - ✅ **실녹화·업로드(작업B 슬라이스1)** — 2026-08-05: 비디오 전용 캡처 + 세션 오디오 사후 합성(A안-2) · `answerAudio` 실구현(m4a) · 조용한 업로드. 스펙 [2026-08-04-interview-recording-upload-design](../superpowers/specs/2026-08-04-interview-recording-upload-design.md) (§④·§⑤ 는 아래 개편이 대체)
 - ✅ **이탈·백그라운드 업로드 개편** — 2026-08-06: 종료 즉시 홈 직행 · `InterviewVideoUploadQueue`(저널 + background URLSession, 앱 재실행 재개·72h 폐기) · 네트워크 실패는 세션 오버레이(재개 가능). 스펙 [2026-08-06-interview-exit-background-upload-design](../superpowers/specs/2026-08-06-interview-exit-background-upload-design.md), 상세 [[interview#업로드 큐]]·[[interview#세션]](lat.md/interview.md)
 - 🔴 **Speech/Recording 배선(작업B 슬라이스a)** — 발화 감지 기반 «답변 완료하기» 게이팅 · 침묵 10초 확정 · 사고 5초 카운트다운 · 필러 멘트(PRD 수치 확정 후 별도 스펙). 질문 TTS·마무리 멘트 재생은 ✅(2026-08-02)

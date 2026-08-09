@@ -21,7 +21,7 @@
 
 대표 흐름 — **온보딩 완주 → 면접 → 홈 복귀** (2026-08-03):
 1. `OnboardingFeature` 가 분석까지 끝내고 `delegate(.finished(sessionId))` 방출 → 위저드를 닫고 `state.interview = InterviewFeature.State(sessionId:)` 로 fullScreenCover 제시 (`.dismiss` 는 위저드만 닫고 홈 재조회 — «온보딩 위저드 진입» 4)
-2. 면접 종료 두 신호 모두 `state.interview = nil` + 홈 재조회(`.home(.view(.onAppear))`) — 어느 쪽이든 잔여가 줄었고 BACK_EXIT 이탈도 리포트를 만든다(2026-08-03 서버 계약). 케이스를 합치지 않는 건 정상 종료에 리포트 상세(r1) 라우팅이 붙을 자리라서다 → [[interview#코디네이터]]
+2. 면접 종료 두 신호 모두 `state.interview = nil` + 홈 재조회(`.home(.view(.onAppear))`) — 어느 쪽이든 잔여가 줄었을 수 있다(중도 이탈은 2026-08-09 부터 세션을 끝내지 않아 잔여가 그대로다 — [[interview#세션]]). 케이스를 합치지 않는 건 정상 종료에 리포트 상세(r1) 라우팅이 붙을 자리라서다 → [[interview#코디네이터]]
 3. **면접 커버 중에는 전역 LoadingModal 을 끈다**(`AppView.showsGlobalLoading`) — 답변 제출·질문 스트림마다 전역 딤이 덮이면 면접이 끊겨 보이고, 타이머가 도는 화면을 잠그는 것 자체가 오동작이다. 면접은 자체 진행 표시(상태 칩·초읽기)로 대기를 말한다.
 
 ## 첫 실행 정리
