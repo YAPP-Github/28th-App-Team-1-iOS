@@ -7,6 +7,7 @@ import PackageDescription
     let packageSettings = PackageSettings(
         productTypes: [
             "ComposableArchitecture": .framework,
+            "Dependencies": .framework,
             "KakaoSDKCommon": .framework,
             "KakaoSDKAuth": .framework,
             "KakaoSDKUser": .framework
