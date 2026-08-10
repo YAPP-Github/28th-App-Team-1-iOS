@@ -85,7 +85,8 @@ struct ReportMainFeatureTests {
     }
 
     /// 채점 실패 응답 — 픽스처에 없어 여기서 만든다(전 필드 nil 이라 재료가 필요 없다).
-    private static var failedReport: InterviewReport {
+    /// 응답 클로저(nonisolated)에서 읽히므로 격리를 벗긴다.
+    private nonisolated static var failedReport: InterviewReport {
         InterviewReport(status: .failed, headline: nil, video: nil, cards: nil, guestFeedback: nil)
     }
 
@@ -314,6 +315,8 @@ struct ReportMainFeatureTests {
 
         await store.send(.highlightDetail(.presented(.view(.userTappedVideoJump))))
         await store.receive(\.highlightDetail.presented.delegate.videoJumpRequested) {
+            // 시트는 닫되 버리지 않는다 — 플레이어 하단 «이전 화면으로 가기» 가 되살릴 재료다.
+            $0.stashedHighlightDetail = $0.highlightDetail
             $0.highlightDetail = nil
         }
         await store.receive(\.delegate.videoRequested)

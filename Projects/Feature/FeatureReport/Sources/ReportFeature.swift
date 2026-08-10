@@ -18,6 +18,9 @@ import Foundation
 ///
 /// **지인 피드백 도착 후에도 화면이 늘지 않는다** — 결과는 메인의 «지인 피드백» 섹션이 이름 탭 +
 /// 태도 평가 목록으로 자라서 보여준다(시안 443:7102). 별도 «최종 보고서» 화면은 없다.
+///
+/// **시작 화면은 둘이다**(`Entry`) — 마이페이지 [지인 피드백 받기] 는 링크 생성이 목적지라 메인을
+/// 거치지 않고 그 화면 위에서 연다. 메인은 그래도 루트로 남는다(허브라 되돌아올 자리가 있어야 한다).
 @Reducer
 public struct ReportFeature {
     @Reducer
@@ -31,15 +34,31 @@ public struct ReportFeature {
     // @Reducer enum 이 생성하는 Path.State 는 Equatable 을 자동 채택하지 않는다 —
     // StackState<Path.State> 를 담는 코디네이터 State 의 Equatable 합성을 위해 명시한다.
 
+    /// 이 흐름을 어느 화면에서 시작하는가. 부모가 «리포트를 보여 달라» 와 «지인에게 보내게 해 달라» 를
+    /// 구분해 열 수 있어야 해서 값으로 둔다 — 메인은 어느 쪽이든 루트로 남지만(허브라 되돌아올 자리가
+    /// 있어야 한다), 시작 화면이 갈리면 **나가는 자리도 갈린다**([[report#지인 피드백]] 이탈 규약).
+    public enum Entry: Equatable, Sendable {
+        /// 리포트 메인(1차 리포트)부터 — 홈 위젯②·마이페이지 [리포트 보기].
+        case main
+        /// 링크 생성 화면부터 — 마이페이지 [지인 피드백 받기]. 메인 위에 얹은 채로 연다.
+        case peerFeedback
+    }
+
     @ObservableState
     public struct State: Equatable {
         /// 루트 화면(1차 리포트).
         public var main: ReportMainFeature.State
         /// 이후 화면 네비게이션 스택.
         public var path = StackState<Path.State>()
+        /// 시작 화면 — 링크 생성으로 곧장 들어왔는지 판정해 이탈 도착지를 가른다.
+        public let entry: Entry
 
-        public init(sessionId: Int) {
+        public init(sessionId: Int, entry: Entry = .main) {
             self.main = ReportMainFeature.State(sessionId: sessionId)
+            self.entry = entry
+            if entry == .peerFeedback {
+                path.append(.peerFeedback(ReportPeerFeedbackFeature.State(sessionId: sessionId)))
+            }
         }
     }
 
@@ -120,7 +139,11 @@ public struct ReportFeature {
 
         case .element(id: _, action: .peerFeedback(.delegate(.backRequested))):
             _ = state.path.popLast()
-            return .none
+            // 링크 생성으로 곧장 들어온 흐름(마이페이지 [지인 피드백 받기])은 아래 메인이 목적지가
+            // 아니다 — 보러 온 화면을 닫았으니 흐름째 닫아 왔던 자리(마이페이지 목록)로 돌려보낸다.
+            // 복사 완료 뒤 자동 이탈도 같은 신호를 쓰므로 이 규약을 함께 탄다.
+            guard state.entry == .peerFeedback else { return .none }
+            return .send(.delegate(.closeRequested))
 
         // 플레이어 하단 «이전 화면으로 가기» — pop 하고 왔던 상세 시트를 다시 올린다.
         // 시트에서 온 판에만 있는 버튼이라 접어 둔 시트가 있다(없으면 메인까지만).

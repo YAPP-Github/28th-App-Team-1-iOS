@@ -55,6 +55,14 @@ struct AppView: View {
                     item: $store.scope(state: \.myPage, action: \.myPage)
                 ) { myPageStore in
                     MyPageView(store: myPageStore)
+                        // 리포트 줄의 [리포트 보기]·[지인 피드백 받기] — 마이페이지를 **덮고** 얹혀,
+                        // 닫으면 보던 목록이 그대로 드러난다. 그래서 루트가 아니라 이 뷰에 부착한다
+                        // (루트에 두면 이미 떠 있는 마이페이지 cover 에 가려 아무것도 뜨지 않는다).
+                        .fullScreenCover(
+                            item: $store.scope(state: \.myPageReport, action: \.myPageReport)
+                        ) { reportStore in
+                            ReportView(store: reportStore)
+                        }
                 }
                 // AI 면접 리포트 — 홈 위젯②의 [레포트 보기] 가 세션 id 로 연다. 자체 NavigationStack 을
                 // 갖고 좌상단 X 로 나가는 전면 흐름이라 sheet 가 아니라 cover 다.
@@ -101,8 +109,9 @@ struct AppView: View {
         // 게스트 평가도 끈다 — G4 는 자체 loading phase 로 대기를 말하고, 비회원 게스트에게 앱 전역 딤은 과하다.
         guard store.guestFeedback == nil else { return false }
         // 리포트도 같은 이유로 끈다 — 채점 대기 중엔 4초마다 재조회가 나가서(폴링) 전역 딤이 깜빡이고,
-        // 그 대기는 리포트 화면이 자체 상태(`loadState`)로 이미 말하고 있다.
-        guard store.report == nil else { return false }
+        // 그 대기는 리포트 화면이 자체 상태(`loadState`)로 이미 말하고 있다. 마이페이지 위에 얹힌
+        // 리포트도 같은 화면이라 함께 본다.
+        guard store.report == nil, store.myPageReport == nil else { return false }
         // `default` 를 두지 않는다 — 루트가 늘면 여기서 컴파일이 깨져 판단을 강제한다.
         return switch store.root {
         case .splash, .splashFailed, .updateRequired: false

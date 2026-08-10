@@ -17,9 +17,9 @@ import Testing
 @MainActor
 struct ReportVideoPlayerFeatureTests {
     private static let videoURL = URL(string: "https://example.com/interview/1.mp4")!
-    private static var cards: [InterviewReportCard] {
-        InterviewReportFixtures.ready.cards ?? []
-    }
+    // 기본 인자에서 읽히는 자리라 계산 프로퍼티(= MainActor 격리)로 두면 안 된다 — 기본 인자는
+    // nonisolated 문맥에서 평가된다. Sendable 값의 `static let` 은 격리 없이 읽힌다.
+    private static let cards: [InterviewReportCard] = InterviewReportFixtures.ready.cards ?? []
 
     private func makeStore(
         clock: TestClock<Duration>,

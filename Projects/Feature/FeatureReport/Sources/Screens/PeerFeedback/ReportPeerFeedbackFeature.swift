@@ -80,6 +80,9 @@ public struct ReportPeerFeedbackFeature {
             case userTappedCopyLink
         }
 
+        /// @CasePathable — `receive(\.inner.shareLinkCreated)` 케이스 패스 매칭용
+        /// (@Reducer 는 Action 에만 자동 부착 — 중첩 enum 은 수동, MyPage·GuestFeedback 선례).
+        @CasePathable
         public enum Inner: Equatable, Sendable {
             /// 서버에 이미 있던 활성 링크 회수 — 진입 조회(`presentsPopup: false`)와 생성 409
             /// (`presentsPopup: true`)가 같은 재료를 쓰고 뒷처리만 다르다.
