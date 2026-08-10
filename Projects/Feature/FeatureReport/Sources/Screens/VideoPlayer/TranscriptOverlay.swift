@@ -16,7 +16,7 @@ import SwiftUI
 /// 처음부터 재생하면 문장이 밑에서 차곡차곡 올라오고, 하이라이트 점프로 중간부터 들으면
 /// 그 시점까지의 문장이 이미 쌓인 채 목표 문장이 바닥에 선다 — 별도 분기가 없다.
 /// 위로 밀려난 문장은 상단 페이드로 사라지고, 넘치면 스크롤로 되짚을 수 있다.
-/// 문장에는 **면접관 질문도 섞여** 시각 순으로 선다 — 질문은 Q 배지로 내 답변과 구분한다.
+/// 문장에는 **면접관 질문도 섞여** 시각 순으로 선다 — 질문과 답변은 같은 모양으로 그린다.
 /// 하이라이트 구간의 색·밴드·부분 탭은 공용 `TranscriptText` 가 담당한다(리포트 카드와 같은 규약).
 struct TranscriptOverlay: View {
     /// 현재 턴 대본. nil 이면(첫 발화 전) 스크림만 깐다.
@@ -75,7 +75,7 @@ struct TranscriptOverlay: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: .ds(.p20)) {
                     ForEach(visibleSentences) { sentence in
-                        row(sentence).id(sentence.id)
+                        text(sentence).id(sentence.id)
                     }
                 }
                 .padding(.horizontal, .ds(.p20))
@@ -100,24 +100,7 @@ struct TranscriptOverlay: View {
         }
     }
 
-    /// 문장 한 줄. 면접관 질문은 Q 배지를 앞에 세워 내 답변과 구분한다 —
-    /// 리포트 메인의 질문 행(`ReportMainView.questionRow`)과 같은 언어를 쓴다.
-    /// 배지는 색이 에셋에 구워져 있어 지난 문장에서도 흐려지지 않는다(틴트 금지 규칙).
-    @ViewBuilder
-    private func row(_ sentence: VideoTranscript.Sentence) -> some View {
-        if sentence.role == .interviewer {
-            HStack(alignment: .top, spacing: .ds(.p8)) {
-                Image.Q.default
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: Self.questionBadgeSide, height: Self.questionBadgeSide)
-                text(sentence)
-            }
-        } else {
-            text(sentence)
-        }
-    }
-
+    /// 문장 한 줄 — 면접관 질문도 내 답변과 같은 모양으로 그린다(2026-08-10, 앞의 Q 배지 폐기).
     private func text(_ sentence: VideoTranscript.Sentence) -> some View {
         TranscriptText(
             transcript: sentence.text,
@@ -148,8 +131,6 @@ struct TranscriptOverlay: View {
         endPoint: .bottom
     )
 
-    // @ds(icon): 20 — Q 배지. 리포트 메인 질문 행과 같은 크기(에셋 원본)
-    private static let questionBadgeSide: CGFloat = 20
     // @ds(layout): 182 — 대본 최고점의 네비 바 아래 간격 (Figma 443:7902 대본 상단 281 = 네비 끝 99 + 182)
     private static let topInset: CGFloat = 182
     // @ds(layout): 78 + 44 — 하단 바가 덮는 높이(진행바 6 + 간격 16 + 버튼 44 + 아래 여백 12)에
