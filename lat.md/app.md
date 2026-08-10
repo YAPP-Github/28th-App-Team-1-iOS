@@ -29,6 +29,11 @@
 2. 면접·온보딩 진행 중이거나 이미 게스트 cover 가 떠 있으면 무시 — 몰입을 끊지 않고, 진행 중 평가를 다른 토큰으로 갈아치우지 않는다
 3. `guestFeedback(.presented(.delegate(.dismissed)))` → cover 만 닫는다(홈 재조회 없음 — 게스트 평가는 사용자 데이터를 바꾸지 않는다). 게스트 cover 중에도 전역 LoadingModal 을 끈다 — G4 는 자체 loading phase 로 대기를 말한다
 
+대표 흐름 — **마이페이지 → 세션 종료** (2026-08-08):
+1. 홈 내비바 프로필이 `delegate(.profileRequested)` 방출 → `state.myPage = MyPageFeature.State()` 로 fullScreenCover 제시. 자체 상단 바를 얹는 한 장짜리 화면이라 NavigationStack 없이 덮는다
+2. 닫기(`closeRequested`)는 cover 를 닫고 **홈을 다시 태운다** — 마이페이지에서 포폴을 지우거나 새로 올렸을 수 있고 「면접 시작」 카드가 그 값에 얹혀 있다(온보딩 이탈과 같은 이유)
+3. 로그아웃·탈퇴는 마이페이지가 서버 호출과 로컬 토큰 정리까지 끝낸 뒤 **완료형**(`loggedOut`/`withdrawn`)으로 통보한다 — AppFeature 는 라우팅만 한다: `state = State()` + `root = .auth`(로그인 성공의 대칭) → [[mypage#주의사항]]
+
 ## 첫 실행 정리
 
 앱을 삭제해도 iOS 는 Keychain 을 지우지 않는다 — 재설치하면 토큰만 살아남아 Splash 가 «기존 세션» 으로 판정하고, 방금 새로 설치한 사용자가 로그인 상태로 들어온다. UserDefaults 쪽(온보딩 draft)은 앱과 함께 사라지므로 로컬끼리도 어긋난다. 그래서 판정을 시작하기 전에 «이 설치의 첫 실행인가» 를 묻고, 첫 실행이면 잔존 로컬 데이터를 지운다.

@@ -14,7 +14,7 @@ public extension PortfolioClient {
         let sampleId = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
         return PortfolioClient(
             list: {
-                [
+                PortfolioList(portfolios: [
                     Portfolio(
                         portfolioId: sampleId,
                         fileName: "portfolio.pdf",
@@ -23,7 +23,7 @@ public extension PortfolioClient {
                         status: .ready,
                         uploadedAt: Date(timeIntervalSince1970: 1_782_000_000)
                     )
-                ]
+                ])
             },
             register: { _ in
                 PortfolioProcessing(portfolioId: sampleId, status: .processing, message: nil)
@@ -33,6 +33,9 @@ public extension PortfolioClient {
             },
             delete: { id in
                 PortfolioDeletion(portfolioId: id, deletedAt: Date(timeIntervalSince1970: 1_782_000_000))
+            },
+            fileURL: { id in
+                PortfolioFileURL(portfolioId: id, fileUrl: URL(string: "https://example.com/preview.pdf")!)
             }
         )
     }
