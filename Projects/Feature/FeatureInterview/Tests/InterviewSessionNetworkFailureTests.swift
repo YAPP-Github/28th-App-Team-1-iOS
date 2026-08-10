@@ -108,20 +108,92 @@ struct InterviewSessionNetworkFailureTests {
         #expect(submitted.value == [stored])   // 같은 payload(오디오 포함) 그대로
     }
 
-    @Test("오버레이 중단하기는 서버 제출 없이 aborted 를 올린다 — 이용권 미차감 문구 계약")
+    @Test("오버레이 중단하기는 서버 제출 없이 abandon 만 보내고 aborted 를 올린다 — 이용권 미차감 문구 계약")
     func abortFromOverlayNotifiesAbortedWithoutSubmit() async {
         var state = InterviewSessionFeature.State.fixture(hasStarted: true)
         state.failure = InterviewFailureFeature.State(kind: .network)
         state.pendingRetry = .playQuestion
         // interviewClient.submitAnswer 미스텁 — BACK_EXIT 제출이 나가면 unimplemented 가 잡는다.
+        // (abandon 은 제출이 아니라 중단 API 라 이 계약을 깨지 않는다.)
         let store = TestStore(initialState: state) { InterviewSessionFeature() }
+        store.dependencies.continuousClock = TestClock()   // 안 흘린다 — 즉답 abandon 이 3초 레이스를 먼저 끝낸다
+        store.dependencies.interviewClient.abandonSession = { _, _ in .stub }
+        store.dependencies.heldSessionStore.clear = {}
 
+        // 오버레이는 남는다 — 이탈이 확정될 때까지가 «진행 중» 이고, 걷어 가는 건 코디네이터의 teardown 이다.
         await store.send(.failure(.presented(.delegate(.closeRequested)))) {
-            $0.failure = nil
             $0.pendingRetry = nil
+            $0.isAbandoning = true
         }
         await store.receive(\.delegate.aborted)
         await store.finish()
+    }
+
+    @Test("오버레이 중단하기는 abandon(NETWORK_DISCONNECT) 를 3초 레이스로 시도하고 결과와 무관하게 이탈한다")
+    func overlayCloseAbandonsWithNetworkDisconnect() async {
+        let clock = TestClock()
+        var state = InterviewSessionFeature.State.fixture(hasStarted: true)
+        state.failure = InterviewFailureFeature.State(kind: .network)
+        state.pendingRetry = .playQuestion
+        let abandoned = LockIsolated<AbandonCause?>(nil)
+        let cleared = LockIsolated(false)
+        let store = TestStore(initialState: state) { InterviewSessionFeature() }
+        store.dependencies.continuousClock = clock
+        store.dependencies.interviewClient.abandonSession = { _, cause in
+            abandoned.setValue(cause)
+            // 오프라인 시늉 — 영영 안 끝나는 요청. 3초 레이스가 이탈을 지켜야 한다.
+            try await Task.never()
+            return .stub   // 도달 불가 — Task.never() 는 취소로만 끝난다(컴파일러가 반환문을 요구할 뿐)
+        }
+        store.dependencies.heldSessionStore.clear = { cleared.setValue(true) }
+
+        await store.send(.failure(.presented(.delegate(.closeRequested)))) {
+            $0.pendingRetry = nil
+            $0.isAbandoning = true
+        }
+        await clock.advance(by: .seconds(3))
+        await store.receive(\.delegate.aborted)
+        #expect(abandoned.value == .networkDisconnect)
+        #expect(cleared.value)
+    }
+
+    // 오버레이는 즉시 닫히는데 이탈은 최대 3초 뒤다 — 그 창의 세션 화면은 «살아 있는 것처럼» 보인다.
+    // 잠금이 없으면 X→[이탈하기]가 BACK_EXIT 를 제출해 «제출 없이 중단» 계약이 깨지고, 8분 후엔
+    // X→[마치기]가 MANUAL_END 로 버린 세션의 영상을 업로드 큐에 넣는다. 백그라운드는 held 를 되살린다.
+    @Test("중단 레이스 창(최대 3초) 동안 입력은 전면 잠긴다 — 제출·동결 재발사 없이 이탈만 남는다")
+    func inputsAreLockedDuringAbandonRace() async {
+        let clock = TestClock()
+        var state = InterviewSessionFeature.State.fixture(hasStarted: true)
+        state.isExitAvailable = true   // 8분 경과 — X 가 종료 확인 모달을 열 수 있는 조건까지 열어 둔다
+        state.failure = InterviewFailureFeature.State(kind: .network)
+        state.pendingRetry = .playQuestion
+        let store = TestStore(initialState: state) { InterviewSessionFeature() }
+        store.dependencies.continuousClock = clock
+        // submitAnswer·finishSessionAudioRecording·heldSessionStore.save 미스텁 —
+        // 잠금이 뚫려 제출이나 동결이 발사되면 unimplemented 가 잡는다.
+        store.dependencies.interviewClient.abandonSession = { _, _ in
+            try await Task.never()
+            return .stub
+        }
+        store.dependencies.heldSessionStore.clear = {}
+
+        await store.send(.failure(.presented(.delegate(.closeRequested)))) {
+            $0.pendingRetry = nil
+            $0.isAbandoning = true
+        }
+        // 레이스가 도는 동안의 입력·잔광은 전부 죽는다 — 상태 무변화(클로저 없음) + effect 없음.
+        await store.send(.view(.userTappedClose))
+        await store.send(.view(.userTappedLeaveInterview))
+        await store.send(.view(.userTappedFinishInterview))
+        await store.send(.view(.sceneBackgrounded))
+        await store.send(.inner(.clockTicked))
+        // 오버레이가 그대로 떠 있어 [중단하기]도 계속 눌린다 — 재탭은 abandon 재발사 없이 no-op 이다
+        // (뚫리면 두 번째 레이스가 뒤늦은 aborted 를 하나 더 올려 아래 receive 가 못 받고 남는다).
+        await store.send(.failure(.presented(.delegate(.closeRequested))))
+
+        // 그래도 이탈은 제 시각에 온다 — 잠금이 레이스 effect 자신을 막지 않는다(delegate 는 잠금 밖).
+        await clock.advance(by: .seconds(3))
+        await store.receive(\.delegate.aborted)
     }
 
     @Test("유효시간이 랩업 임계를 넘어야 isWrapUp 제출이 된다 — 정지 구간은 임계 계산에서 빠진다")

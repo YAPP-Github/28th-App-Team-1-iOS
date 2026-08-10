@@ -15,7 +15,8 @@ import Testing
 
 @MainActor
 struct HomeEntryLoadTests {
-    private static func profile(name: String? = "재원", remaining: Int = 3) -> UserProfile {
+    // 표본 팩토리는 `nonisolated` — 의존성 클로저(@Sendable, 액터 밖)에서 부른다.
+    private nonisolated static func profile(name: String? = "재원", remaining: Int = 3) -> UserProfile {
         UserProfile(
             userId: UUID(uuidString: "00000000-0000-0000-0000-0000000000a1")!,
             name: name,
@@ -116,7 +117,8 @@ private struct ProfileUnavailable: Error {}
 /// 진행 중(held) 면접 판정 — 재료는 로컬 보관값 하나다(진행 중 세션 목록 API 가 없다).
 @MainActor
 struct HomeHeldSessionTests {
-    private static func profile(remaining: Int) -> UserProfile {
+    // 표본 팩토리는 `nonisolated` — 의존성 클로저(@Sendable, 액터 밖)에서 부른다.
+    private nonisolated static func profile(remaining: Int) -> UserProfile {
         UserProfile(
             userId: UUID(uuidString: "00000000-0000-0000-0000-0000000000b1")!,
             name: "재원",
@@ -169,7 +171,13 @@ struct HomeHeldSessionTests {
         let boundaries = [(179, 1), (180, 2), (299, 2), (300, 3), (420, 3), (421, 4)]
         for (remainingSeconds, expected) in boundaries {
             // 보관값은 «녹화된 초» 라 최대 길이 8분(480초)에서 남기려는 시간을 뺀다.
-            let store = Self.store(held: HeldSession(sessionId: 7, recordedSeconds: 480 - remainingSeconds))
+            // 여기서 보는 건 환산 구간이라 진행분이 살아 있어야 한다 — 토큰을 찍어 카드까지 도달시킨다.
+            let held = HeldSession(
+                sessionId: 7,
+                recordedSeconds: 480 - remainingSeconds,
+                processToken: HeldSession.currentProcessToken
+            )
+            let store = Self.store(held: held)
 
             await store.send(.view(.onAppear))
             #expect(store.state.startInterview.variant == .inProgress(remainingQuestionCount: expected))
@@ -186,6 +194,61 @@ struct HomeHeldSessionTests {
         #expect(store.state.startInterview.variant == .first)
         await store.receive(\.inner.entryLoaded)
         #expect(store.state.startInterview.variant == .exhausted)
+    }
+
+    @Test("죽은 프로세스의 진행분 보관값은 카드가 되지 않는다 — 없는 것처럼 first 로 떨어진다")
+    func deadHeldSessionIsIgnored() async {
+        // 지난 실행이 남긴 진행분 — 세그먼트 파일(tmp·프로세스 수명)이 사라져 이어 붙일 앞부분이 없다.
+        let store = Self.store(
+            held: HeldSession(sessionId: 1, recordedSeconds: 60, processToken: UUID()),
+            remaining: 3
+        )
+
+        await store.send(.view(.onAppear))
+        #expect(store.state.startInterview.variant == .first)
+        await store.receive(\.inner.entryLoaded)
+        #expect(store.state.startInterview.variant == .first)
+    }
+
+    @Test("죽은 진행분이 소진 판정을 가리지 않는다 — 잔여 0 이면 소진이다")
+    func deadHeldSessionDoesNotMaskExhausted() async {
+        // 걸러 낸 자리는 «보관값이 없는» 자리와 같아야 한다 — 잔여 판정이 그대로 이어진다.
+        let store = Self.store(
+            held: HeldSession(sessionId: 1, recordedSeconds: 60, processToken: UUID()),
+            remaining: 0
+        )
+
+        await store.send(.view(.onAppear))
+        await store.receive(\.inner.entryLoaded)
+        #expect(store.state.startInterview.variant == .exhausted)
+    }
+
+    @Test("0초 보관값(준비 이탈)은 프로세스를 넘어 카드가 된다 — 잃을 영상이 없다")
+    func zeroProgressHeldSurvivesRelaunch() async {
+        let store = Self.store(
+            held: HeldSession(sessionId: 1, recordedSeconds: 0, processToken: nil),
+            remaining: 3
+        )
+
+        await store.send(.view(.onAppear))
+        #expect(store.state.startInterview.variant == .inProgress(remainingQuestionCount: 4))
+        await store.receive(\.inner.entryLoaded)
+        #expect(store.state.startInterview.variant == .inProgress(remainingQuestionCount: 4))
+    }
+
+    @Test("현재 프로세스의 진행분 보관값은 환산된 남은 질문 수로 카드가 된다")
+    func inProcessHeldShowsConvertedCount() async {
+        let held = HeldSession(
+            sessionId: 1,
+            recordedSeconds: 320,
+            processToken: HeldSession.currentProcessToken
+        )
+        let store = Self.store(held: held, remaining: 3)
+
+        await store.send(.view(.onAppear))
+        // 480−320=160초 → 3분 미만 → 1개.
+        #expect(store.state.startInterview.variant == .inProgress(remainingQuestionCount: 1))
+        await store.receive(\.inner.entryLoaded)
     }
 
     @Test("진행 중 두 갈래는 보관값의 세션 id 를 실어 올린다")
@@ -215,7 +278,8 @@ struct HomeReportListTests {
     private static let interviewedAt = Date(timeIntervalSince1970: 1_783_728_000)
 
     /// `title` 기본값은 nil — 요약 문장 필드 이전에 만들어진 세션(스냅샷 제목 갈래)이 기본 표본이다.
-    private static func summary(
+    /// 표본 팩토리는 `nonisolated` — 의존성 클로저(@Sendable, 액터 밖)에서 부른다.
+    private nonisolated static func summary(
         sessionId: Int = 7,
         careerYears: Int? = 3,
         jobTypeLabel: String? = "백엔드 개발자",

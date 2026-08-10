@@ -17,6 +17,15 @@ import Foundation
 // 같은 스텁이 사본으로 갈라지지 않게 여기 한 곳에 둔다. 소비처: InterviewSessionAudioMuteTests.swift ·
 // InterviewSessionFeatureTests.swift · InterviewSessionNetworkFailureTests.swift.
 
+extension DependencyValues {
+    /// 세션 시작(`recordingStarted`)이 보관값에 프로세스 표식을 찍는 실배선을 삼킨다 — 표식이 없으면
+    /// 백그라운드를 거치지 않고 죽은 면접을 킬 클린업이 잡지 못한다(2026-08-09 결함 수정).
+    /// 표식·누적초 **자체**를 검증하는 테스트는 이걸 쓰지 않고 `save` 를 직접 잡는다.
+    mutating func ignoreHeldSessionStamp() {
+        heldSessionStore.save = { _ in }
+    }
+}
+
 extension InterviewSessionFeature.State {
     /// 표준 시작 상태 — sessionId 7, 요약 질문(questionId 1). summaryAudio 는 base64 mp3(없으면 스트림 폴백).
     static func fixture(hasStarted: Bool = false, summaryAudio: String? = nil) -> Self {
@@ -31,6 +40,18 @@ extension InterviewSessionFeature.State {
         state.hasStarted = hasStarted
         return state
     }
+}
+
+extension AbandonResult {
+    /// 중단 응답 스텁 — 네트워크 단절 중단(이용권 환급). 값 자체를 검증하지 않는 테스트가
+    /// 오버레이 «중단하기» 경로를 통과시키는 용도 (리듀서는 결과를 읽지 않는다 — 결과 무관 이탈).
+    static let stub = AbandonResult(
+        status: .abandoned,
+        abandonCause: .networkDisconnect,
+        ticketOutcome: .released,
+        reportGenerating: false,
+        endedAt: nil
+    )
 }
 
 extension AnswerResult {

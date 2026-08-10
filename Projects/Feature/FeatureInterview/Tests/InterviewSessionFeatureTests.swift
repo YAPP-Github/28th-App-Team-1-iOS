@@ -26,9 +26,10 @@ struct InterviewSessionFeatureTests {
         let store = TestStore(initialState: .fixture()) {
             InterviewSessionFeature()
         } withDependencies: {
+            $0.ignoreHeldSessionStamp()
             $0.continuousClock = clock
             $0.recordingClient.startPreview = { handle }
-            $0.recordingClient.startRecording = { _ in }
+            $0.recordingClient.startRecording = { _ in 0 }
             $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
             $0.speechClient.playStream = { _, _ in finishedPlayback() }
             $0.speechClient.startSessionAudioRecording = {}
@@ -56,9 +57,10 @@ struct InterviewSessionFeatureTests {
         let store = TestStore(initialState: .fixture(summaryAudio: "bXAz")) {
             InterviewSessionFeature()
         } withDependencies: {
+            $0.ignoreHeldSessionStamp()
             $0.continuousClock = clock
             $0.recordingClient.startPreview = { nil }
-            $0.recordingClient.startRecording = { _ in }
+            $0.recordingClient.startRecording = { _ in 0 }
             $0.speechClient.startCapture = {
                 captureStarted.setValue(true)
                 return AsyncStream { $0.finish() }
@@ -90,10 +92,11 @@ struct InterviewSessionFeatureTests {
         let store = TestStore(initialState: .fixture()) {
             InterviewSessionFeature()
         } withDependencies: {
+            $0.ignoreHeldSessionStamp()
             $0.continuousClock = clock
             $0.recordingClient.startPreview = { nil }
-            $0.recordingClient.startRecording = { _ in }
-            $0.recordingClient.stopRecording = { _, _ in .stub }
+            $0.recordingClient.startRecording = { _ in 0 }
+            $0.recordingClient.stopRecording = { _ in .stub }
             $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
             $0.speechClient.playStream = { _, _ in finishedPlayback() }
             $0.speechClient.startSessionAudioRecording = {}
@@ -129,10 +132,11 @@ struct InterviewSessionFeatureTests {
         let store = TestStore(initialState: .fixture()) {
             InterviewSessionFeature()
         } withDependencies: {
+            $0.ignoreHeldSessionStamp()
             $0.continuousClock = clock
             $0.recordingClient.startPreview = { nil }
-            $0.recordingClient.startRecording = { _ in }
-            $0.recordingClient.stopRecording = { _, _ in .stub }
+            $0.recordingClient.startRecording = { _ in 0 }
+            $0.recordingClient.stopRecording = { _ in .stub }
             $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
             $0.speechClient.playStream = { _, _ in finishedPlayback() }
             $0.speechClient.startSessionAudioRecording = {}
@@ -188,7 +192,7 @@ struct InterviewSessionFeatureTests {
         } withDependencies: {
             $0.continuousClock = clock
             $0.recordingClient.startPreview = { nil }
-            $0.recordingClient.startRecording = { _ in }
+            $0.recordingClient.startRecording = { _ in 0 }
             $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
             // 5초 뒤에야 완료되는 질문 재생 — 오버레이가 재생 effect 를 끊지 않으면 그 완료가 도착해
             // answering 으로 넘어간다. 아래 «재생 취소» 단언이 이걸로 취소를 *시점째* 못 박는다
@@ -205,6 +209,11 @@ struct InterviewSessionFeatureTests {
             $0.speechClient.startSessionAudioRecording = {}
             $0.speechClient.setSessionAudioMuted = { _ in }
             $0.interviewClient.questionAudioStream = stubAudioStream
+            // «중단하기» 는 이제 abandon(NETWORK_DISCONNECT)+held clear 를 앞세운다 — 여기선 통과만 시킨다
+            // (사유·레이스 계약은 InterviewSessionNetworkFailureTests 가 고정).
+            $0.interviewClient.abandonSession = { _, _ in .stub }
+            $0.heldSessionStore.clear = {}
+            $0.ignoreHeldSessionStamp()
         }
         store.exhaustivity = .off   // 시계 틱은 기존 테스트가 고정 — 여기선 오버레이 전후 생존만 본다.
 
@@ -254,6 +263,7 @@ struct InterviewSessionSubmissionTests {
         let store = TestStore(initialState: initialState) {
             InterviewSessionFeature()
         } withDependencies: {
+            $0.ignoreHeldSessionStamp()
             $0.speechClient.answerAudio = { Data("answer".utf8) }
             $0.speechClient.playStream = { _, _ in finishedPlayback() }
             $0.speechClient.setSessionAudioMuted = { _ in }
@@ -305,6 +315,7 @@ struct InterviewSessionSubmissionTests {
         let store = TestStore(initialState: initialState) {
             InterviewSessionFeature()
         } withDependencies: {
+            $0.ignoreHeldSessionStamp()
             $0.speechClient.answerAudio = { nil }
             $0.speechClient.play = { data in
                 played.setValue(data)
@@ -332,6 +343,7 @@ struct InterviewSessionSubmissionTests {
         let store = TestStore(initialState: initialState) {
             InterviewSessionFeature()
         } withDependencies: {
+            $0.ignoreHeldSessionStamp()
             $0.speechClient.answerAudio = { nil }
             $0.interviewClient.submitAnswer = { _, _ in .ended(.sttReset) }
         }
@@ -355,6 +367,7 @@ struct InterviewSessionSubmissionTests {
         let store = TestStore(initialState: initialState) {
             InterviewSessionFeature()
         } withDependencies: {
+            $0.ignoreHeldSessionStamp()
             $0.continuousClock = clock
             $0.speechClient.answerAudio = { nil }
             $0.interviewClient.submitAnswer = { _, _ in
@@ -386,6 +399,7 @@ struct InterviewSessionSubmissionTests {
         let store = TestStore(initialState: initialState) {
             InterviewSessionFeature()
         } withDependencies: {
+            $0.ignoreHeldSessionStamp()
             $0.continuousClock = clock
             $0.speechClient.answerAudio = { nil }
             $0.interviewClient.submitAnswer = { _, _ in
@@ -416,6 +430,7 @@ struct InterviewSessionSubmissionTests {
         let store = TestStore(initialState: initialState) {
             InterviewSessionFeature()
         } withDependencies: {
+            $0.ignoreHeldSessionStamp()
             $0.speechClient.answerAudio = { nil }
             $0.interviewClient.submitAnswer = { _, _ in throw InterviewError.sessionAlreadyEnded }
         }
@@ -439,6 +454,7 @@ struct InterviewSessionSubmissionTests {
         let store = TestStore(initialState: initialState) {
             InterviewSessionFeature()
         } withDependencies: {
+            $0.ignoreHeldSessionStamp()
             $0.speechClient.answerAudio = { nil }
             $0.interviewClient.submitAnswer = { _, submission in
                 captured.setValue(submission)
@@ -481,6 +497,7 @@ struct InterviewSessionSubmissionTests {
         let store = TestStore(initialState: initialState) {
             InterviewSessionFeature()
         } withDependencies: {
+            $0.ignoreHeldSessionStamp()
             $0.speechClient.answerAudio = { nil }
             $0.interviewClient.submitAnswer = { _, submission in
                 captured.setValue(submission)
@@ -500,49 +517,6 @@ struct InterviewSessionSubmissionTests {
         #expect(captured.value?.endType == .manualEnd)
     }
 
-    @Test("8분 전 나가기는 BACK_EXIT 를 최선 노력 제출한 뒤 중단을 통보한다")
-    func earlyExitSubmitsBestEffortThenAborts() async {
-        let captured = LockIsolated<AnswerSubmission?>(nil)
-        var initialState = InterviewSessionFeature.State.fixture(hasStarted: true)
-        initialState.elapsedSeconds = 100
-        let store = TestStore(initialState: initialState) {
-            InterviewSessionFeature()
-        } withDependencies: {
-            $0.interviewClient.submitAnswer = { _, submission in
-                captured.setValue(submission)
-                return .ended(.backExit)
-            }
-        }
-
-        await store.send(.view(.userTappedClose)) {
-            $0.isEarlyExitWarningPresented = true
-        }
-        await store.send(.view(.userTappedLeaveInterview)) {
-            $0.isEarlyExitWarningPresented = false
-        }
-        await store.receive(\.inner.earlyExitSubmissionFinished)
-        await store.receive(\.delegate.aborted)
-        #expect(captured.value?.endType == .backExit)
-        #expect(captured.value?.audio == nil)   // 최선 노력 — 오디오·백오프 재시도 없음
-    }
-
-    @Test("BACK_EXIT 제출이 실패해도 이탈은 진행된다")
-    func earlyExitProceedsDespiteSubmissionFailure() async {
-        var initialState = InterviewSessionFeature.State.fixture(hasStarted: true)
-        initialState.isEarlyExitWarningPresented = true
-        let store = TestStore(initialState: initialState) {
-            InterviewSessionFeature()
-        } withDependencies: {
-            $0.interviewClient.submitAnswer = { _, _ in throw InterviewError.networkFailure }
-        }
-
-        await store.send(.view(.userTappedLeaveInterview)) {
-            $0.isEarlyExitWarningPresented = false
-        }
-        await store.receive(\.inner.earlyExitSubmissionFinished)
-        await store.receive(\.delegate.aborted)
-    }
-
     @Test("제출 비행 중 12:00 도달은 응답의 새 질문을 열지 않고 HARD_CAP 으로 마감한다")
     func hardCapDuringInFlightSubmissionFinalizes() async {
         let captured = LockIsolated<AnswerSubmission?>(nil)
@@ -553,6 +527,7 @@ struct InterviewSessionSubmissionTests {
         let store = TestStore(initialState: initialState) {
             InterviewSessionFeature()
         } withDependencies: {
+            $0.ignoreHeldSessionStamp()
             $0.speechClient.answerAudio = { nil }
             $0.interviewClient.submitAnswer = { _, submission in
                 captured.setValue(submission)
@@ -582,10 +557,11 @@ struct InterviewSessionSubmissionTests {
         let store = TestStore(initialState: .fixture()) {
             InterviewSessionFeature()
         } withDependencies: {
+            $0.ignoreHeldSessionStamp()
             $0.continuousClock = clock
             $0.recordingClient.startPreview = { nil }
-            $0.recordingClient.startRecording = { _ in }
-            $0.recordingClient.stopRecording = { _, _ in .stub }
+            $0.recordingClient.startRecording = { _ in 0 }
+            $0.recordingClient.stopRecording = { _ in .stub }
             $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
             $0.speechClient.playStream = { _, _ in finishedPlayback() }
             $0.speechClient.startSessionAudioRecording = {}
@@ -626,6 +602,7 @@ struct InterviewSessionRecordingTests {
         let store = TestStore(initialState: .fixture()) {
             InterviewSessionFeature()
         } withDependencies: {
+            $0.ignoreHeldSessionStamp()
             $0.continuousClock = TestClock()
             $0.recordingClient.startPreview = { nil }
             $0.recordingClient.startRecording = { _ in throw RecordingError.startFailed("스텁") }
@@ -664,11 +641,12 @@ struct InterviewSessionRecordingTests {
         let store = TestStore(initialState: .fixture()) {
             InterviewSessionFeature()
         } withDependencies: {
+            $0.ignoreHeldSessionStamp()
             $0.continuousClock = clock
             $0.recordingClient.startPreview = { nil }
-            $0.recordingClient.startRecording = { _ in }
-            $0.recordingClient.stopRecording = { fileURL, startedAt in
-                stopArgs.setValue((fileURL, startedAt))
+            $0.recordingClient.startRecording = { _ in 0 }
+            $0.recordingClient.stopRecording = { audio in
+                stopArgs.setValue((audio?.fileURL, audio?.startedAtHostSeconds))
                 return ref
             }
             $0.speechClient.startCapture = { AsyncStream { $0.finish() } }
@@ -724,8 +702,9 @@ struct InterviewSessionRecordingTests {
         let store = TestStore(initialState: initialState) {
             InterviewSessionFeature()
         } withDependencies: {
+            $0.ignoreHeldSessionStamp()
             $0.continuousClock = clock
-            $0.recordingClient.stopRecording = { _, _ in .stub }
+            $0.recordingClient.stopRecording = { _ in .stub }
             $0.speechClient.setSessionAudioMuted = { _ in }
             $0.speechClient.play = { _ in wrapUpPlayback.stream }
             $0.speechClient.finishSessionAudioRecording = { .stub }
@@ -766,9 +745,10 @@ struct InterviewSessionRecordingTests {
         let store = TestStore(initialState: .fixture()) {
             InterviewSessionFeature()
         } withDependencies: {
+            $0.ignoreHeldSessionStamp()
             $0.continuousClock = TestClock()
             $0.recordingClient.startPreview = { nil }
-            $0.recordingClient.startRecording = { _ in }
+            $0.recordingClient.startRecording = { _ in 0 }
             $0.speechClient.startCapture = {
                 calls.continuation.yield("startCapture")
                 return AsyncStream { $0.finish() }
@@ -797,6 +777,7 @@ struct InterviewSessionRecordingTests {
         let store = TestStore(initialState: .fixture()) {
             InterviewSessionFeature()
         } withDependencies: {
+            $0.ignoreHeldSessionStamp()
             $0.continuousClock = TestClock()
             $0.recordingClient.startPreview = { nil }
             $0.recordingClient.startRecording = { _ in throw RecordingError.startFailed("스텁") }

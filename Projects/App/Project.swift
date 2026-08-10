@@ -14,6 +14,7 @@ let project = Project.makeModule(
             .domain(interface: .auth),
             .domain(interface: .consent),        // Splash 세션 복구 판정 — 게이트 2단(pending)
             .domain(interface: .interview),      // 진행 중 면접 두 갈래 — 중단·재개 호출 + held 세션 보관
+            .domain(interface: .recording),      // 앱 사망 세션 정리 — 죽은 프로세스가 남긴 녹화 파일 purge
             .shared(interface: .designSystem),   // AppView 전역 로딩 — LoadingModal 표출
             .composableArchitecture
         ])),

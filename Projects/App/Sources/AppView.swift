@@ -13,6 +13,7 @@ import SharedDesignSystemInterface
 
 struct AppView: View {
     @Bindable var store: StoreOf<AppFeature>
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         Group {
@@ -70,6 +71,11 @@ struct AppView: View {
         // 강제·권장 업데이트 안내 — 루트가 무엇이든 위에 얹힌다(강제는 root 가 .updateRequired).
         .alert($store.scope(state: \.updateAlert, action: \.updateAlert))
         .onAppear { store.send(.onAppear) }
+        // 복귀 시점 보관값 검증 — 동결된 면접은 백그라운드 진입 때 이미 홈으로 나와 있어(cover 없음)
+        // «그새 끝난 세션인가» 를 물을 자리가 루트뿐이다. 게이트는 리듀서가 건다.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { store.send(.sceneBecameActive) }
+        }
         // 전역 시스템 로딩 — 모든 API in-flight(NetworkActivity) 동안 화면을 잠근다.
         // 루트라 `overlay` 변형을 쓴다 — 화면 모달(`hilitModal` = cover)과 presentation 자리를
         // 다투지 않게 하려는 것이고, 루트는 NavigationStack 밖이라 overlay 로도 네비바 위에 깔린다.
