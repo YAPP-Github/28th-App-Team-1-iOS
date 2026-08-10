@@ -24,6 +24,13 @@ extension InterviewReportClient: @retroactive DependencyKey {
                         NetworkRequest(path: "/api/v1/interview/sessions/\(sessionId)/report")
                     )
                 }
+            },
+            videoExpiry: { sessionId in
+                try await InterviewReportError.mapping {
+                    try await network.api(
+                        NetworkRequest(path: "/api/v1/interview/sessions/\(sessionId)/video/expiry")
+                    )
+                }
             }
         )
     }

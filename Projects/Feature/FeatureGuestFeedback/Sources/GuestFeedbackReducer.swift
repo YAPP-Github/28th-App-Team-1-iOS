@@ -24,6 +24,10 @@ extension GuestFeedbackFeature {
         case .onAppear:
             return reduceOnAppear(&state)
 
+        case .closeTapped:
+            // 실앱 fullScreenCover 의 유일한 탈출구 — draft 는 로컬에 있어 재진입 시 이어하기로 복원된다.
+            return .send(.delegate(.dismissed))
+
         case .startTapped, .nicknameNextTapped, .nicknameSheetDismissed,
              .reviewTapped, .summaryCardTapped, .rewatchTapped,
              .submitTapped, .submitConfirmTapped, .submitConfirmDismissed:
