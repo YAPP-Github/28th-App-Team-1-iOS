@@ -94,6 +94,10 @@ public extension Target {
             // 늘어난다. SplashView 와 같은 로고·좌표를 그려 첫 프레임 전환에 깜빡임이 없게 한다
             // (App/Resources/LaunchScreen.storyboard 주석 참조). 두 키를 같이 두면 dict 가 이긴다.
             "UILaunchStoryboardName": "LaunchScreen",
+            // 세로 고정 — Xcode «Deployment Info» 의 Landscape 체크에 해당한다. 생성물(.xcodeproj)에서 끄면
+            // 다음 `tuist generate` 가 되살리므로 매니페스트가 단일 소스다. 화면이 전부 세로 기준이고
+            // 면접 녹화(전면 카메라 프리뷰)가 회전을 전제하지 않는다.
+            "UISupportedInterfaceOrientations": ["UIInterfaceOrientationPortrait"],
             // xcconfig → Info.plist 치환. NetworkClient.defaultBaseURL()(API_BASE_URL)·AppSecrets(카카오 키)가 여기서 읽는다.
             "UIUserInterfaceStyle": "Light",
             "APP_ENV": "$(APP_ENV)",
@@ -113,6 +117,9 @@ public extension Target {
                     "CFBundleURLSchemes": ["hilit"]
                 ]
             ],
+            // 앱 카테고리(교육) — Xcode «General → App Category». 스토어 노출 카테고리의 최종 결정은
+            // App Store Connect 몫이고, 이 키는 빌드가 신고하는 값이다(둘을 어긋나게 두지 않는다).
+            "LSApplicationCategoryType": "public.app-category.education",
             "LSApplicationQueriesSchemes": ["kakaokompassauth", "kakaolink", "kakaotalk"],
             // 카메라·마이크는 사용 시점 요청(docs/work/ai-interview.md §5 권한) — 목적 문구 없으면 요청 즉시 크래시.
             "NSCameraUsageDescription": "AI 면접에서 얼굴과 답변 영상 녹화를 위해 카메라를 사용합니다.",
