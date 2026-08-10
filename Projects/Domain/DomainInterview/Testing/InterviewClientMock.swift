@@ -37,6 +37,15 @@ public extension InterviewClient {
                     headers: [:]
                 )
             },
+            videoUploadURL: { sessionId in
+                InterviewVideoUploadTarget(
+                    uploadUrl: "mock://interview/\(sessionId)/video/upload",
+                    contentType: "video/mp4",
+                    expiresInSeconds: 600
+                )
+            },
+            completeVideoUpload: { _, _ in },
+            uploadInterviewVideo: { _, _, _ in },
             checkResume: { _ in
                 InterviewResumeCheck(
                     resumeState: .resumable,

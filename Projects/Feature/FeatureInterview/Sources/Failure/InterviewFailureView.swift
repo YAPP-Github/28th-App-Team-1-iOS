@@ -10,7 +10,8 @@ import SharedDesignSystemInterface
 import SwiftUI
 
 // Figma «[2] Interview_SttFailure»(2550:7504) · «[2] Interview_NetworkFailure»(2638:17018) 구현.
-// 흰 배경 · 좌상단 X 네비바 · 중앙(배지 54 + 타이틀/본문 + 이용권 안내) · 하단 버튼은 kind 별 분기(STT 다시 시작하기 / 네트워크 홈으로 / 질문 준비 처음으로).
+// 흰 배경 · 좌상단 X 네비바 · 중앙(배지 54 + 타이틀/본문 + 이용권 안내) ·
+// 하단 버튼은 kind 별 분기(STT «중단하기» 단일 / 네트워크 «이어서 진행하기»·«중단하기» 2분할 / 질문 준비 «처음으로»).
 // 질문 준비 실패(Interview_QuestionPrepFailure)는 시안 미출 — 동일 레이아웃 임시.
 // @ViewAction 매크로가 send(_:) 를 제공한다 — View 는 store.send(.view(...)) 대신 send(.onAppear) 로만 방출.
 @ViewAction(for: InterviewFailureFeature.self)
@@ -77,14 +78,19 @@ public struct InterviewFailureView: View {
             .padding(.horizontal, .ds(.p20))
     }
 
-    /// PRD §3.9 STT = 재시작 유도 · §3.7 네트워크 = 홈으로만 · §3.2 질문 준비 = 처음으로만(재시도 없음).
+    /// 시안: STT(2550:7504) «중단하기» 단일 · network(2638:17018) «이어서 진행하기»|«중단하기» 2분할(dark) ·
+    /// 질문 준비는 시안 미출 — «처음으로» 임시 유지(PRD §3.2 재시도 없음).
     @ViewBuilder
     private var bottomButton: some View {
         switch store.kind {
         case .speechRecognition:
-            ButtonLarge("다시 시작하기", .bottom) { send(.userTappedRestart) }
+            ButtonLarge("중단하기", .bottom) { send(.userTappedAbort) }
         case .network:
-            ButtonLarge("홈으로", .bottom) { send(.userTappedClose) }
+            ButtonLarge(.bottom, tone: .dark) {
+                Button("이어서 진행하기") { send(.userTappedResume) }
+            } trailing: {
+                Button("중단하기") { send(.userTappedAbort) }
+            }
         case .questionPrep:
             ButtonLarge("처음으로", .bottom) { send(.userTappedClose) }
         }
@@ -110,17 +116,18 @@ public struct InterviewFailureView: View {
 
     private var subtitle: String {
         switch store.kind {
-        case .speechRecognition: "음성이 잘 인식되지 않아 면접을 이어갈 수 없어요.\n조용한 곳에서 면접을 다시 시작해주세요."
-        case .network: "네트워크 연결이 끊겨 면접이 중단됐어요.\n연결 상태를 확인해주세요."
+        case .speechRecognition: "마이크 상태를 확인하고 조용한 곳에서\n면접을 다시 시작해주세요."
+        case .network: "네트워크가 불안정해 면접을 이어갈 수 없어요.\n연결을 확인하고 면접을 다시 시작해주세요."
         case .questionPrep: "면접 질문을 준비하지 못했어요.\n잠시 후 처음부터 다시 시도해주세요."
         }
     }
 
-    /// 이용권 안내 — 부록 C: 네트워크 «차감되지 않아요» · 질문 준비 «차감되지 않았어요» (STT 는 기존 유지).
+    /// 이용권 안내 — 시안 그대로: STT «면접을 중단해도 …» · network «중단하기를 선택할 경우에, …».
     private var ticketNotice: String {
         switch store.kind {
-        case .network: "이용권은 차감되지 않아요"
-        case .speechRecognition, .questionPrep: "이용권은 차감되지 않았어요"
+        case .speechRecognition: "면접을 중단해도 이용권은 차감되지 않아요"
+        case .network: "중단하기를 선택할 경우에, 이용권은 차감되지 않아요"
+        case .questionPrep: "이용권은 차감되지 않았어요"
         }
     }
 }
