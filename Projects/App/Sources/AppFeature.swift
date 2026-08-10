@@ -20,6 +20,7 @@ import Foundation
 // 루트 밖 cover 로 present. 무인증 플로우라 루트(스플래시·auth·home) 무관, delegate(.dismissed)로 닫는다.
 // depends-on: [[home]] — Home 을 로그인 후 루트로 임베드(owner). cross-feature delegate 라우팅은 Feature 추가 시 이 자리에서 조립.
 // depends-on: [[interview]] — 온보딩 완주 delegate(.finished(sessionId)) 를 받아 면접 흐름을 present. 종료 두 신호(.finished/.closed)는 cover 를 닫고 홈을 다시 태운다.
+// depends-on: [[mypage]] — 홈 내비바 프로필 delegate(.profileRequested) 로 present. 완료형 두 신호(.loggedOut/.withdrawn)는 루트를 로그인으로 되돌린다.
 //                             홈의 진행 중 두 갈래(중단·재개)도 여기서 InterviewClient·HeldSessionStore 로 배선한다.
 // depends-on: [[onboarding]] — dev 전용 진입(Home 버튼)으로 온보딩 위저드를 present. 조립은 여기서만 (온보딩 본체 통합 전 임시).
 @Reducer
@@ -49,6 +50,8 @@ struct AppFeature {
         var home = HomeFeature.State()
         /// 면접 흐름(Part2) — 온보딩 완주가 넘긴 sessionId 로 연다. 전면 몰입이라 fullScreenCover.
         @Presents var interview: InterviewFeature.State?
+        /// 마이페이지(Part5) — 홈 위젯③ 이 연다. 탭이 아니라 한 장짜리 present 화면이다.
+        @Presents var myPage: MyPageFeature.State?
         /// 온보딩 위저드 — 「면접 시작」의 [시작하기]·[처음부터 시작](중단 후) 이 present 한다.
         @Presents var onboarding: OnboardingFeature.State?
         /// 업데이트 안내(강제·권장)의 근거 — «업데이트» 가 열 `storeUrl` 과 강제 여부를 여기서 읽는다.
@@ -80,6 +83,7 @@ struct AppFeature {
         /// 재개 확정 완료 — 이 세션으로 면접 화면을 연다.
         case interviewResumeResolved(sessionId: Int)
         case interview(PresentationAction<InterviewFeature.Action>)
+        case myPage(PresentationAction<MyPageFeature.Action>)
         case onboarding(PresentationAction<OnboardingFeature.Action>)
         /// dev 데이터 초기화 완료 — 초기 State 로 리셋하고 Splash 판정부터 다시 태운다.
         case appDataCleared
@@ -266,7 +270,8 @@ struct AppFeature {
                     }
                 }
             case .home(.delegate(.profileRequested)):
-                // TODO: 마이페이지 진입 — Part 5 Feature 가 생기면 조립한다(docs/work/home-account.md §4).
+                // 홈 내비바의 프로필 아이콘 — 마이페이지(Part5)를 홈 위에 한 장으로 얹는다.
+                state.myPage = MyPageFeature.State()
                 return .none
             case .home(.delegate(.reportDetailRequested)):
                 // TODO: 리포트 상세(r1/최종) 제시 — Part 3 `InterviewReportFeature` 브랜치에서 배선한다.
@@ -342,6 +347,27 @@ struct AppFeature {
                 return .send(.home(.view(.onAppear)))
             case .interview:
                 return .none
+            // 마이페이지를 닫는다 — 그 안에서 포폴을 지우거나 새로 올렸을 수 있어 홈을 다시 태운다.
+            // 「면접 시작」 카드와 기록이 그 값에 얹혀 있고, cover 를 닫는 것만으론 홈의 `onAppear` 가
+            // 다시 오지 않는다(온보딩 이탈과 같은 이유).
+            case .myPage(.presented(.delegate(.closeRequested))):
+                state.myPage = nil
+                return .send(.home(.view(.onAppear)))
+            // 세션 종료 두 신호 — 마이페이지가 서버 호출과 로컬 토큰 정리까지 끝낸 뒤 통보한다(완료형).
+            // 여기서 할 일은 라우팅뿐이다: 이전 사용자의 화면·데이터를 전부 버리고 로그인부터 다시 —
+            // 로그인 성공(`.auth` → 초기 State + home)의 대칭이다.
+            case .myPage(.presented(.delegate(.loggedOut))),
+                 .myPage(.presented(.delegate(.withdrawn))):
+                state = State()
+                state.root = .auth
+                return .none
+            // TODO: 리포트 상세·지인 피드백 — 홈의 `reportDetailRequested` 와 같은 자리에서 배선한다
+            //       (`InterviewReportFeature` 통합 후, 인자는 이미 세션 id 다).
+            case .myPage(.presented(.delegate(.reportRequested))),
+                 .myPage(.presented(.delegate(.feedbackRequested))):
+                return .none
+            case .myPage:
+                return .none
             case .appDataCleared:
                 // 초기 State 로 되돌리고 **Splash 판정부터 다시** — 지운 게 세션만이 아니라 로컬 저장소
                 // 전부라, 재설치 직후와 같은 자리에서 시작해야 버전 게이트·동의·프로필 게이트가 모두 다시 돈다.
@@ -357,6 +383,9 @@ struct AppFeature {
         }
         .ifLet(\.$interview, action: \.interview) {
             InterviewFeature()
+        }
+        .ifLet(\.$myPage, action: \.myPage) {
+            MyPageFeature()
         }
         .ifLet(\.$onboarding, action: \.onboarding) {
             OnboardingFeature()
