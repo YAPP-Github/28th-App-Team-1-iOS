@@ -46,7 +46,10 @@ let project = Project.makeModule(
                 .composableArchitecture,
                 .domain(interface: .jd),
                 .domain(interface: .portfolio),
-                .domain(interface: .interview)
+                .domain(interface: .interview),
+                // 실 IO — 데모도 fileImporter 로 진짜 PDF 를 고른다(오버라이드 없음).
+                // PortfolioFileReader.liveValue 가 Implementation 소속이라 여기서 link 한다.
+                .project(target: "DomainPortfolioImplementation", path: .domain(.portfolio))
             ],
             settings: .settings(
                 base: [

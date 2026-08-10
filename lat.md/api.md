@@ -78,33 +78,41 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 |---|---|---|
 | `createSession` | POST `/api/v1/interview/sessions` | 이용권 무료 3회, `jdUrl`/`jdText` 상호 배타, 직군·연차는 프로필 스냅샷 |
 | `sessionStatus` | GET `/api/v1/interview/sessions/{id}/status` | 3~5초 폴링 |
-| `submitAnswer` | POST `/api/v1/interview/sessions/{id}/answers` | 메타=query + 오디오=multipart. 503(`AI_TEMPORARILY_UNAVAILABLE`)은 같은 요청 재시도 계약 |
+| `submitAnswer` | POST `/api/v1/interview/sessions/{id}/answers` | 메타=query + 오디오=multipart(`answer.m4a`/`audio/mp4` — iOS mp3 인코딩 미지원, 2026-08-05 작업B 슬라이스1). 503(`AI_TEMPORARILY_UNAVAILABLE`)은 같은 요청 재시도 계약 |
 | `questionAudioStream` | GET `.../questions/{qid}/audio/stream` | 아래 스트리밍 규약 |
+| `videoUploadURL` | POST `.../video/upload-url` | S3 presigned PUT 발급 — PUT 의 Content-Type 은 응답 `contentType` 그대로(서명 포함). `expiresInSeconds` 안에만 유효, 세션당 저장 1곳(재업로드=덮어쓰기) |
+| `completeVideoUpload` | POST `.../video/complete` | S3 PUT 성공 후 호출(호출처 책임)·멱등. `wrapUp`(마무리 멘트 구간, 녹화 타임라인 초) nil 이면 바디 생략 |
+| `uploadInterviewVideo` | (엔드포인트 아님 — 클라 오케스트레이션) | `videoUploadURL`→PUT([[domain.map#네트워킹 인프라]] `FileTransferClient`)→`completeVideoUpload` 3단을 1시도로 응집 — 재시도는 호출처 몫. **실 면접 경로는 이걸 쓰지 않는다**(이유·현행 사용처 → [[interview#Client 계약]]) |
+| `reportList` | GET `/api/v1/interview/sessions` | 내 레포트 목록(홈 위젯②·마이페이지) — envelope `{reports}` 는 liveValue 가 벗김. `title`(답변 한 줄 요약)은 2026-08-07 추가라 과거 세션엔 없다. **진행중·준비중 세션 제외** — held 판정은 로컬 보관([[home#진입 로드]]) |
 | `checkResume` | GET `.../sessions/{id}/resume` | 재개 가능 조회(순수) — RESUMABLE(IN_PROGRESS+hold 20분 이내)/ENDED. hold 만료의 ABANDONED 전환·환불은 서버가 이 호출 안에서 처리 |
 | `confirmResume` | POST `.../sessions/{id}/resume` | 재개 확정 — 응답은 `submitAnswer` 와 같은 `AnswerResult`(최신 턴 질문). 레이스는 409 아닌 200+`sessionEnded` |
 | `abandonSession` | POST `.../sessions/{id}/abandon` | 중단 — USER_EXIT(진행분 리포트 트리거·차감은 리포트 성공 시)/NETWORK_DISCONNECT(환불). 중복 409 는 «이미 중단 완료» |
-| `reportList` | GET `/api/v1/interview/sessions` | 내 레포트 목록(홈 위젯②·마이페이지) — envelope `{reports}` 는 liveValue 가 벗김. `title`(답변 한 줄 요약)은 2026-08-07 추가라 과거 세션엔 없다. **진행중·준비중 세션 제외** — held 판정은 로컬 보관([[home#진입 로드]]) |
+
 
 질문 음성 스트리밍 규약: `audio/mpeg` + `Transfer-Encoding: chunked` (Content-Length 없음). 전부 받고 재생하지 말고 `AVURLAsset(url:options:[헤더])` → `AVPlayer` 점진 재생 — 그래서 계약이 Data 가 아니라 `InterviewAudioStream(url·headers)` 다. 중간 실패는 HTTP 로 안 잡힌다 — 재생 에러 콜백으로 감지하고 같은 questionId 로 재호출(TTS 처음부터 재생성).
 
-`endType` 은 요청·응답이 다른 집합이다. 요청(`AnswerEndType`): nil=정상 / SKIP(오디오 없음) / MANUAL_END(8:00 후 수동 종료) / HARD_CAP(12:00 강제) / BACK_EXIT(8:00 전 뒤로가기 이탈 — 구 EARLY_EXIT, 2026-08-03 서버 개명·오디오 선택). 응답(`SessionEndType`): MANUAL_END·HARD_CAP·BACK_EXIT + NORMAL_END(자연 종료) + **STT_RESET**(STT 30% 실패 — 판정은 서버, 이용권 환불·리포트 없음). ⚠️ 2026-08-03 스웨거부터 BACK_EXIT 도 리포트 생성을 트리거한다(이용권 HELD → 리포트 성공 시 차감 확정) — «이탈=리포트 없음» 전제의 클라 문구·라우팅은 PM 재확인 대상. 종료 응답은 `sessionEnded`·`wrapUpMessage{ttsAudio}`(base64 mp3 마무리 멘트)를 동봉하고 `reportId` 는 삭제됐다. `isWrapUp` 은 8:45 경과 여부(required — 항상 전송) — 타이머 상태머신은 [ai-interview](../docs/work/ai-interview.md) §6.
+`endType` 은 요청·응답이 다른 집합이다. 요청(`AnswerEndType`): nil=정상 / SKIP(오디오 없음) / MANUAL_END(8:00 후 수동 종료) / HARD_CAP(12:00 강제) / BACK_EXIT(8:00 전 뒤로가기 이탈 — 구 EARLY_EXIT, 2026-08-03 서버 개명·오디오 선택. **클라는 2026-08-09 부터 보내지 않는다** — 중도 이탈이 세션을 살려 두고 재개에 맡기게 바뀌었다, [[interview#세션]]). 응답(`SessionEndType`): MANUAL_END·HARD_CAP·BACK_EXIT + NORMAL_END(자연 종료) + **STT_RESET**(STT 30% 실패 — 판정은 서버, 이용권 환불·리포트 없음). ⚠️ 2026-08-03 스웨거부터 BACK_EXIT 도 리포트 생성을 트리거한다(이용권 HELD → 리포트 성공 시 차감 확정) — 클라가 그 제출을 걷어낸 지금(위) 진행분 리포트를 만드는 건 홈 [처음부터 시작] 의 `abandon(USER_EXIT)` 뿐이고, 이탈 후 20분 안에 안 돌아오면 hold 만료로 리포트 없이 환불된다. 차감 시점이 «이탈 즉시» 에서 «포기 선택 시» 로 밀린 셈이라 PM 확인 대상. 종료 응답은 `sessionEnded`·`wrapUpMessage{ttsAudio}`(base64 mp3 마무리 멘트)를 동봉하고 `reportId` 는 삭제됐다. `isWrapUp` 은 8:45 경과 여부(required — 항상 전송) — 타이머 상태머신은 [ai-interview](../docs/work/ai-interview.md) §6.
 
 에러는 `InterviewError` 로 매핑된다 — NO_REMAINING_TICKET → noRemainingTicket(403), PORTFOLIO_NOT_FOUND / PORTFOLIO_PROCESSING / PORTFOLIO_UPLOAD_FAILED / JD_NOT_VALIDATED / FREETEXT_NOT_RELEVANT / USER_PROFILE_NOT_REGISTERED (세션 생성 400·404), INTERVIEW_SESSION_NOT_FOUND / QUESTION_NOT_FOUND (404), ANSWER_ALREADY_SUBMITTED / SESSION_ALREADY_ENDED / SESSION_NOT_STARTED / SESSION_PRELOAD_FAILED (409 — 뒤 둘은 checkResume 없이 confirmResume 을 직행한 비정상 경우), AI_TEMPORARILY_UNAVAILABLE → aiTemporarilyUnavailable(503 — 코드 매핑이 5xx 판정보다 먼저라 serverUnavailable 에 선점되지 않음, 같은 요청 재시도), 입력 검증군(VALIDATION_ERROR·INVALID_* — INVALID_ABANDON_CAUSE 포함)은 서버 문구를 실은 invalid(message:), 미승격 코드(4xx)는 server(code·message) 로 동봉 — 분기가 필요해지면 전용 케이스로 승격. `AnswerResult` 는 resume 계약 합류로 `status`·`abandonCause`·`endedAt` 옵셔널이 붙었다(레이스 판별 재료).
 
 ## Interview Report
 
-`DomainInterviewReport` — `InterviewReportClient.report`. 채점 파이프라인 결과를 사용자용 리포트(한 줄 요약 + 턴별 카드 + 영상 메타 + 지인 피드백 섹션)로 조회한다. 점수·판정 원값은 내려오지 않는다. 지인 피드백 요청/제출은 [[api#Feedback Share]]·[[api#Guest Feedback]].
+`DomainInterviewReport` — `InterviewReportClient`. 채점 파이프라인 결과를 사용자용 리포트(한 줄 요약 + 턴별 카드 + 전체 대본 타임라인 + 영상 메타 + 지인 피드백)로 조회한다. 점수·판정 원값은 안 내려온다. 지인 피드백 제출측은 [[api#Feedback Share]]·[[api#Guest Feedback]].
 
-- GET `/api/v1/interview/sessions/{id}/report`
-- `status` 는 채점 진행 상태만 — GENERATING(전 필드 nil, 폴링 지속) / READY / INSUFFICIENT_ANALYSIS(채점된 카드만) / FAILED.
+| 메서드 | 엔드포인트 | 비고 |
+|---|---|---|
+| `report` | GET `/api/v1/interview/sessions/{id}/report` | 보고서 미생성이면 404 가 아니라 `status=GENERATING` 응답 |
+| `videoExpiry` | GET `.../video/expiry` | 만료 카운트다운 폴링 — `video.expiresAt` 과 같은 시각의 초 단위 재계산. 만료면 `0/true`, 최대 보관 30일 |
+
+- `status` 는 채점 진행 상태만 — GENERATING(전 필드 nil — script 포함, 폴링 지속) / READY / INSUFFICIENT_ANALYSIS(채점된 카드만) / FAILED.
 - 레드플래그는 보고서 단위 배열이 없다 — 걸린 카드의 `cardRedFlagNotices` 로만 온다. 저장 5종 중 노출 3종(지어냄·모순·무결점 서사)만 중립 문구. READY + 심각 레드플래그면 headline 이 중립 사실 요약으로 대체. 원소는 **문구 문자열** 또는 `{type, message}` 둘 다로 오므로 `RedFlagNotice` 가 양쪽을 받는다(문자열이면 `type` 은 nil).
-- 카드는 질문/답변 턴당 1장 — 같은 축이면 `axisOrder` 동일, `depthLevel` 로 구분 (표시: "질문 {axisOrder}-{depthLevel}").
+- 카드는 질문/답변 턴당 1장 — 같은 축이면 `axisOrder` 동일, `depthLevel` 로 구분 (표시: "질문 {axisOrder}-{depthLevel}"). 카드마다 `questionIntentTitle`(의도 한 줄 명사구)이 붙는다.
 - `highlightSpans` 는 톤(GOOD/IMPROVE)에 더해 `reason`(PROBE_WORTHY/OFF_INTENT/SHALLOW/SUFFICIENT)·`title`·`startSec` 을 갖는다. `followUpQuestions` 는 PROBE_WORTHY 만, `answerTopicTitle`·`questionIntentTitle`·`questionIntent`(카드 값 복사) 는 OFF_INTENT 만 채워진다 — 그 외 reason 에선 셋 다 null/빈 배열.
 - `resolutionNotice` 가 있으면 해상도 낮음 — 능력 판단 보류. 사유가 짧음·얕음이면 `highlightSpans` 빈 배열, 딴 답이면 OFF_INTENT 하이라이트 1개.
 - 영상 만료 시 `video.url` 만 nil — 대본·하이라이트는 유지. `guestFeedback` 은 지인 0명이어도 `participantCount=0, guests=[]` 로 온다(GENERATING 때만 nil).
 - 대본 발화는 두 자리에 온다 — 카드 `scriptSegments`(그 턴의 문장들, 면접관/면접자 `role` 혼재, 문자 오프셋 동봉 — **면접자 행만 카드 `transcript` 기준**이고 면접관 행은 질문 문자열 기준이라 답변 대본에 대고 자르면 안 된다)와 최상위 `script`(첫 멘트부터 마무리까지 세션 전체를 `startSec` 오름차순 한 배열, 오프셋 없음). `startSec`/`endSec` 은 합성 영상(=녹화) 타임라인 기준이라 진행바·재생 강조가 그대로 쓴다. 플레이어 진행바 칸(= 질문 턴)·오버레이 문장(질문 포함)·하이라이트 시각 폴백은 전부 카드 `scriptSegments` — 최상위 `script` 는 화면 사용처가 없다(진행바 칸이 턴 단위가 되면서 폐기, 2026-08-07).
 
-에러는 `InterviewReportError` 로 매핑된다 — INTERVIEW_SESSION_NOT_FOUND → sessionNotFound, INTERVIEW_REPORT_NOT_FOUND → reportNotFound (둘 다 404 — 보고서 미생성 상태는 에러 코드로 구분), 미승격 4xx 는 server(원문 동봉 — 임시 노출 규칙, [[api#공통 규약]]).
+에러는 `InterviewReportError` 로 매핑된다 — INTERVIEW_SESSION_NOT_FOUND → sessionNotFound(404), INTERVIEW_VIDEO_NOT_FOUND → videoNotFound(404 — 세션은 있으나 영상 레코드 없음, 업로드 완료 전), INTERVIEW_REPORT_NOT_FOUND → reportNotFound(현행 스웨거에서 빠짐 — 미생성은 GENERATING 응답. 매핑은 방어 유지), 미승격 4xx 는 server(원문 동봉 — 임시 노출 규칙, [[api#공통 규약]]).
 
 ## JD
 
@@ -130,8 +138,9 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 | `register` | POST `/api/v1/portfolios` | 메타=query + PDF=multipart `file` |
 | `status` | GET `/api/v1/portfolios/{id}/status` | 3~5초 폴링 |
 | `delete` | DELETE `/api/v1/portfolios/{id}` | 재등록 전 필수 (1개 제한) |
+| `fileURL` | GET `/api/v1/portfolios/{id}/file-url` | PDF 열람용 S3 presigned GET URL. **10분 유효·READY 상태만** — 캐시하지 않고 열 때마다 발급 |
 
-`list` 응답의 `replaceAvailable`·`nextAvailableAt`·`deleteAvailable`·`nextDeleteAvailableAt` 는 **계정 단위 쿨다운**이라 `portfolios` 항목 안이 아니라 `data` 레벨에 온다 — `PortfolioList` 가 그대로 담는다. 전부 옵셔널이라 서버가 빼도 목록만으로 디코딩된다. 아직 화면은 안 읽는다(온보딩 S2 삭제 문구는 1 고정 — `OnboardingPortfolioUploadView` TODO).
+`list` 응답의 `replaceAvailable`·`nextAvailableAt`·`deleteAvailable`·`nextDeleteAvailableAt` 는 **계정 단위 쿨다운**이라 `portfolios` 항목 안이 아니라 `data` 레벨에 온다 — `PortfolioList` 가 그대로 담는다. 전부 옵셔널이라 서버가 빼도 목록만으로 디코딩된다. 읽는 화면은 마이페이지의 `replaceAvailable` 하나뿐이고(삭제·교체 모달 안내 — [[mypage#포트폴리오 한 달 한 번 규칙]]), 나머지 셋은 아직 미소비다(온보딩 S2 삭제 문구는 1 고정 — `OnboardingPortfolioUploadView` TODO).
 
 에러는 `PortfolioError` 로 매핑된다 — 업로드 검증군 INVALID_FILE_TYPE / FILE_TOO_LARGE / PAGE_COUNT_EXCEEDED / INVALID_PDF_FILE (400), PORTFOLIO_ALREADY_EXISTS → alreadyExists(409), PORTFOLIO_NOT_FOUND → notFound(404). 이 4xx 케이스들은 서버 한국어 `message` 를 associated value 로 보존한다(`userMessage`) — 클라 카피가 확정되지 않아 화면이 원문을 그대로 노출하기 때문(인프라 실패는 nil → 클라 폴백 문구).
 
@@ -167,7 +176,9 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 
 | 메서드 | 엔드포인트 | 비고 |
 |---|---|---|
-| `entry` | GET `/api/v1/feedback/guest/{token}` | 게이트 판정 + 영상·지정 항목·질문 경계. 최초 조회 시 영상 삭제 +7일 연장 |
+| `entry` | GET `/api/v1/feedback/guest/{token}` | 게이트 판정 + 영상·지정 항목(질문 경계는 현 스키마에 없음). 최초 조회 시 영상 삭제 +7일 연장 |
 | `submit` | POST `/api/v1/feedback/guest/{token}/submissions` | 지정 항목 전부 필수, 제출 확정(수정 불가). 첫 제출 시 +30일 연장 |
 
 게이트: OPEN / PRIVATE(비공개·무효) / EXPIRED(영상 만료) / FULL(정원 4명) / ALREADY_SUBMITTED(이 기기 제출 완료) — 진입 화면 분기의 전부다. 에러는 `GuestFeedbackError` 로 매핑된다 — FEEDBACK_SHARE_TOKEN_NOT_FOUND → tokenNotFound(404), FEEDBACK_SHARE_CLOSED / FEEDBACK_CAPACITY_FULL / FEEDBACK_ALREADY_SUBMITTED → shareClosed/capacityFull/alreadySubmitted(409, 진입 후 상태 변화 경합), 제출 검증군(INCOMPLETE_RATINGS·INVALID_RATING_LEVEL·MISSING_DEVICE_ID)은 invalid(message:).
+
+공유 딥링크는 `hilit://feedback/{token}` — 토큰으로 링크를 조립·판정하는 것은 클라이언트(GuestFeedbackDeeplink) 책임이다([[feedback#진입로와 닫기]]).

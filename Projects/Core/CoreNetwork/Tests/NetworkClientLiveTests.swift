@@ -89,8 +89,8 @@ final class NetworkClientLiveTests: XCTestCase {
     }
 }
 
-/// 네트워크를 타지 않고 응답/에러를 스텁하는 URLProtocol — 이 테스트 파일 전용.
-private final class StubURLProtocol: URLProtocol {
+/// 네트워크를 타지 않고 응답/에러를 스텁하는 URLProtocol — CoreNetworkTests 공용.
+final class StubURLProtocol: URLProtocol {
     nonisolated(unsafe) static var handler: ((URLRequest) throws -> (URLResponse, Data))?
 
     override static func canInit(with request: URLRequest) -> Bool { true }

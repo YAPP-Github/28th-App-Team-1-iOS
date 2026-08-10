@@ -214,4 +214,13 @@ struct GuestFeedbackEntryFlowTests {
             $0.phase = .onboarding
         }
     }
+
+    @Test("X 탭은 어느 phase 에서든 부모에게 dismissed 를 알린다")
+    func closeNotifiesParent() async {
+        let store = makeStore()
+
+        // onAppear 없이 즉시 탭 — loading phase 에서도 탈출구가 열려 있어야 한다.
+        await store.send(.view(.closeTapped))
+        await store.receive(\.delegate.dismissed)
+    }
 }

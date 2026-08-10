@@ -66,7 +66,7 @@ public struct OnboardingDraft: Codable, Equatable, Sendable {
 }
 
 /// 온보딩 입력 draft 의 로컬 영속 seam (UserDefaults). 서버 무관.
-/// TODO: 로컬 IO 는 Domain/Core 가 원칙이나 [[onboarding#포트폴리오 업로드]] PortfolioFileReader 와 같은 선상에서 임시로 Feature 에 둔다.
+/// TODO: 로컬 IO 는 Domain/Core 가 원칙 — 온보딩 전용 값이라 임시로 Feature 에 둔다 (PortfolioFileReader 는 DomainPortfolio 로 승격).
 public struct OnboardingDraftStore: Sendable {
     public var load: @Sendable () -> OnboardingDraft?
     public var save: @Sendable (OnboardingDraft) -> Void

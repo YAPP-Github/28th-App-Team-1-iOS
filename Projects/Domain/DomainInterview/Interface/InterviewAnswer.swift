@@ -24,7 +24,7 @@ public enum AnswerEndType: String, Equatable, Sendable {
 /// POST /interview/sessions/{id}/answers 입력. 시간값은 영상 녹화 기준 초 단위.
 public struct AnswerSubmission: Equatable, Sendable {
     public var questionId: Int
-    /// 답변 음성(mp3). `endType == .skip` 이면 nil 허용.
+    /// 답변 음성(m4a/AAC — multipart 메타는 `answer.m4a`·`audio/mp4`). `endType == .skip` 이면 nil 허용.
     public var audio: Data?
     /// AI 질문 TTS 재생 시작/종료 시간
     public var questionAudioStartAt: Double?
@@ -76,7 +76,7 @@ public enum SessionEndType: String, Decodable, Equatable, Sendable {
     case sttReset = "STT_RESET"
 }
 
-/// 마무리 멘트 — base64 mp3. 재생은 fire-and-forget(리포트 대기 전환을 멈춰 세우지 않는다, PRD §3.7).
+/// 마무리 멘트 — base64 mp3. 재생은 fire-and-forget(녹화 없는 종료가 홈 전환을 기다리지 않는다, PRD §3.7).
 public struct WrapUpMessage: Decodable, Equatable, Sendable {
     public let ttsAudio: String?
 

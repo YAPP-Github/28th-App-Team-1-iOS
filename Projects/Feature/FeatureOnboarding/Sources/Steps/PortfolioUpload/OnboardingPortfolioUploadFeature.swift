@@ -8,7 +8,6 @@
 import ComposableArchitecture
 import DomainPortfolioInterface
 import Foundation
-import PDFKit
 
 // Figma «Onboarding_PortfolioUpload» https://figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=443-9568
 //        대기 443:9568 · 실패 443:9624 · 업로드 중 443:9662 (완료 프레임은 시안에 없다 — View 주석 참조)
@@ -379,6 +378,11 @@ public struct OnboardingPortfolioUploadFeature {
         case .failedSystem:
             state.upload = .failed(message: processing.message ?? Self.genericFailureMessage)
             return .none
+
+        // CANCELLED 는 마이페이지 삭제 계열 상태라 온보딩 업로드 폴링엔 오지 않는다 — 와도 진행 불가라 실패로 닫는다.
+        case .cancelled:
+            state.upload = .failed(message: processing.message ?? Self.genericFailureMessage)
+            return .none
         }
     }
 
@@ -396,64 +400,5 @@ public struct OnboardingPortfolioUploadFeature {
             // TODO: 삭제 실패 UX 미정 — 우선 무시한다 (실패 시 다음 업로드에서 PORTFOLIO_ALREADY_EXISTS 로 드러남).
             _ = try? await portfolioClient.delete(portfolioId)
         }
-    }
-}
-
-// MARK: - PortfolioFileReader
-
-/// 선택한 PDF 의 바이트 + 클라 선검증용 메타(페이지 수·암호 여부).
-/// 페이지 수는 파싱 실패 시 nil — 그 경우 서버 실측에 판정을 위임한다.
-public struct PortfolioFile: Equatable, Sendable {
-    /// PDF 바이너리
-    public var data: Data
-    /// PDF 페이지 수 — 파싱 불가(손상·비PDF) 시 nil.
-    public var pageCount: Int?
-    /// 열기 암호가 걸린 PDF 여부.
-    public var isEncrypted: Bool
-
-    public init(data: Data, pageCount: Int? = nil, isEncrypted: Bool = false) {
-        self.data = data
-        self.pageCount = pageCount
-        self.isEncrypted = isEncrypted
-    }
-}
-
-/// fileImporter 가 준 security-scoped URL 에서 PDF 바이트·메타를 읽는 파일 IO seam.
-/// TODO: 외부 IO 는 Domain/Core 모듈이 원칙 — 모듈 추가는 이 스텝 범위 밖이라 임시로 Feature 에 둔다.
-public struct PortfolioFileReader: Sendable {
-    public var read: @Sendable (URL) async throws -> PortfolioFile
-
-    public init(read: @escaping @Sendable (URL) async throws -> PortfolioFile) {
-        self.read = read
-    }
-}
-
-extension PortfolioFileReader: DependencyKey {
-    public static var liveValue: PortfolioFileReader {
-        PortfolioFileReader { url in
-            let isScoped = url.startAccessingSecurityScopedResource()
-            defer {
-                if isScoped { url.stopAccessingSecurityScopedResource() }
-            }
-            let data = try Data(contentsOf: url)
-            // PDFKit 파싱 — 페이지 수·암호 여부만 뽑는다(내용 추출·글자 수 판정은 서버 Tika).
-            let document = PDFDocument(data: data)
-            return PortfolioFile(
-                data: data,
-                pageCount: document?.pageCount,
-                isEncrypted: document?.isEncrypted ?? false
-            )
-        }
-    }
-
-    public static var testValue: PortfolioFileReader {
-        PortfolioFileReader(read: unimplemented("PortfolioFileReader.read"))
-    }
-}
-
-public extension DependencyValues {
-    var portfolioFileReader: PortfolioFileReader {
-        get { self[PortfolioFileReader.self] }
-        set { self[PortfolioFileReader.self] = newValue }
     }
 }

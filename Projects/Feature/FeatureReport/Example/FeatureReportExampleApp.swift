@@ -23,9 +23,10 @@ struct FeatureReportExampleApp: App {
                     ReportFeature()
                 } withDependencies: {
                     // 다른 분기를 보려면 .generating / .insufficientAnalysis / .withRedFlags 로 바꾼다.
-                    $0.interviewReportClient = InterviewReportClient(
-                        report: { _ in InterviewReportFixtures.ready }
-                    )
+                    // Example 은 Domain Implementation 을 link 하지 않아 liveValue 가 없다 —
+                    // videoExpiry 까지 채워진 previewValue 를 바닥에 깔고 report 만 갈아끼운다.
+                    $0.interviewReportClient = .previewValue
+                    $0.interviewReportClient.report = { _ in InterviewReportFixtures.ready }
                     // Example 은 Domain Implementation 을 link 하지 않아 liveValue 가 없다 —
                     // 지인 피드백 링크 생성은 고정 토큰으로 대체한다.
                     $0.feedbackShareClient = .previewValue

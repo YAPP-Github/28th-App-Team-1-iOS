@@ -13,6 +13,7 @@ import SharedDesignSystemInterface
 
 struct AppView: View {
     @Bindable var store: StoreOf<AppFeature>
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         Group {
@@ -48,6 +49,13 @@ struct AppView: View {
                 ) { interviewStore in
                     InterviewView(store: interviewStore)
                 }
+                // 마이페이지(Part5) — 홈 위젯③ 이 연다. 자체 상단 바(`hilitPresentedNavigationBar`)를
+                // 얹는 한 장짜리 화면이라 NavigationStack 없이 그대로 덮는다.
+                .fullScreenCover(
+                    item: $store.scope(state: \.myPage, action: \.myPage)
+                ) { myPageStore in
+                    MyPageView(store: myPageStore)
+                }
                 // AI 면접 리포트 — 홈 위젯②의 [레포트 보기] 가 세션 id 로 연다. 자체 NavigationStack 을
                 // 갖고 좌상단 X 로 나가는 전면 흐름이라 sheet 가 아니라 cover 다.
                 .fullScreenCover(
@@ -60,9 +68,21 @@ struct AppView: View {
                 AuthView(store: store.scope(state: \.auth, action: \.auth))
             }
         }
+        // 게스트 평가(G4) — 공유 딥링크로 열린다. 무인증 플로우라 루트(스플래시·auth·home)와
+        // 무관하게 떠야 해서 .home 안쪽이 아니라 루트 Group 에 부착한다. 닫기는 delegate(.dismissed).
+        .fullScreenCover(
+            item: $store.scope(state: \.guestFeedback, action: \.guestFeedback)
+        ) { guestStore in
+            GuestFeedbackView(store: guestStore)
+        }
         // 강제·권장 업데이트 안내 — 루트가 무엇이든 위에 얹힌다(강제는 root 가 .updateRequired).
         .alert($store.scope(state: \.updateAlert, action: \.updateAlert))
         .onAppear { store.send(.onAppear) }
+        // 복귀 시점 보관값 검증 — 동결된 면접은 백그라운드 진입 때 이미 홈으로 나와 있어(cover 없음)
+        // «그새 끝난 세션인가» 를 물을 자리가 루트뿐이다. 게이트는 리듀서가 건다.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { store.send(.sceneBecameActive) }
+        }
         // 전역 시스템 로딩 — 모든 API in-flight(NetworkActivity) 동안 화면을 잠근다.
         // 루트라 `overlay` 변형을 쓴다 — 화면 모달(`hilitModal` = cover)과 presentation 자리를
         // 다투지 않게 하려는 것이고, 루트는 NavigationStack 밖이라 overlay 로도 네비바 위에 깔린다.
@@ -78,6 +98,8 @@ struct AppView: View {
         // 면접은 자체 진행 표시(상태 칩·초읽기)로 대기를 말한다 — 답변 제출·질문 스트림마다 전역 딤이
         // 덮이면 면접이 끊겨 보이고, 타이머가 도는 화면을 잠그는 것 자체가 오동작이다.
         guard store.interview == nil else { return false }
+        // 게스트 평가도 끈다 — G4 는 자체 loading phase 로 대기를 말하고, 비회원 게스트에게 앱 전역 딤은 과하다.
+        guard store.guestFeedback == nil else { return false }
         // 리포트도 같은 이유로 끈다 — 채점 대기 중엔 4초마다 재조회가 나가서(폴링) 전역 딤이 깜빡이고,
         // 그 대기는 리포트 화면이 자체 상태(`loadState`)로 이미 말하고 있다.
         guard store.report == nil else { return false }

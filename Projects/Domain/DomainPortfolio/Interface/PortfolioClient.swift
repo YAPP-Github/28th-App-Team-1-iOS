@@ -16,6 +16,7 @@ public enum PortfolioProcessingStatus: String, Decodable, Equatable, Sendable {
     case ready = "READY"
     case failedFile = "FAILED_FILE"
     case failedSystem = "FAILED_SYSTEM"
+    case cancelled = "CANCELLED"
 }
 
 /// 등록된 포트폴리오. MVP 는 계정당 1개 (응답은 다건 확장 대비 배열).
@@ -27,6 +28,8 @@ public struct Portfolio: Decodable, Equatable, Sendable, Identifiable {
     public let pageCount: Int?
     public let status: PortfolioProcessingStatus?
     public let uploadedAt: Date?
+    /// 이 포폴을 참조하는 면접 세션이 진행 중인가 — 마이페이지 삭제 차단 조건.
+    public let interviewInProgress: Bool?
 
     public var id: UUID { portfolioId }
 
@@ -36,7 +39,8 @@ public struct Portfolio: Decodable, Equatable, Sendable, Identifiable {
         fileSize: Int?,
         pageCount: Int?,
         status: PortfolioProcessingStatus?,
-        uploadedAt: Date?
+        uploadedAt: Date?,
+        interviewInProgress: Bool? = nil
     ) {
         self.portfolioId = portfolioId
         self.fileName = fileName
@@ -44,6 +48,7 @@ public struct Portfolio: Decodable, Equatable, Sendable, Identifiable {
         self.pageCount = pageCount
         self.status = status
         self.uploadedAt = uploadedAt
+        self.interviewInProgress = interviewInProgress
     }
 }
 
@@ -124,6 +129,19 @@ public struct PortfolioDeletion: Decodable, Equatable, Sendable {
     }
 }
 
+/// 파일 열람 URL 발급 응답 — `fileUrl` 은 S3 presigned GET URL 이고 **10분만** 유효하다.
+/// 그래서 값을 캐시하지 않고 열람할 때마다 새로 발급받는다(서버 스펙).
+public struct PortfolioFileURL: Decodable, Equatable, Sendable {
+    public let portfolioId: UUID?
+    /// PDF 열람용 presigned GET URL. 키 이름은 서버 그대로다(`jdUrl` 과 같은 규칙).
+    public let fileUrl: URL
+
+    public init(portfolioId: UUID?, fileUrl: URL) {
+        self.portfolioId = portfolioId
+        self.fileUrl = fileUrl
+    }
+}
+
 // MARK: - Client
 
 /// 포트폴리오 API (D14 `/api/v1/portfolios/**`).
@@ -138,17 +156,21 @@ public struct PortfolioClient: Sendable {
     public var status: @Sendable (_ portfolioId: UUID) async throws -> PortfolioProcessing
     /// DELETE /portfolios/{id}
     public var delete: @Sendable (_ portfolioId: UUID) async throws -> PortfolioDeletion
+    /// GET /portfolios/{id}/file-url — PDF 열람용 presigned URL 발급. **READY 상태에서만** 나온다.
+    public var fileURL: @Sendable (_ portfolioId: UUID) async throws -> PortfolioFileURL
 
     public init(
         list: @escaping @Sendable () async throws -> PortfolioList,
         register: @escaping @Sendable (PortfolioUpload) async throws -> PortfolioProcessing,
         status: @escaping @Sendable (_ portfolioId: UUID) async throws -> PortfolioProcessing,
-        delete: @escaping @Sendable (_ portfolioId: UUID) async throws -> PortfolioDeletion
+        delete: @escaping @Sendable (_ portfolioId: UUID) async throws -> PortfolioDeletion,
+        fileURL: @escaping @Sendable (_ portfolioId: UUID) async throws -> PortfolioFileURL
     ) {
         self.list = list
         self.register = register
         self.status = status
         self.delete = delete
+        self.fileURL = fileURL
     }
 }
 
@@ -158,7 +180,8 @@ extension PortfolioClient: TestDependencyKey {
             list: unimplemented("PortfolioClient.list", placeholder: PortfolioList(portfolios: [])),
             register: unimplemented("PortfolioClient.register"),
             status: unimplemented("PortfolioClient.status"),
-            delete: unimplemented("PortfolioClient.delete")
+            delete: unimplemented("PortfolioClient.delete"),
+            fileURL: unimplemented("PortfolioClient.fileURL")
         )
     }
 
@@ -174,7 +197,8 @@ extension PortfolioClient: TestDependencyKey {
                             fileSize: 1_048_576,
                             pageCount: 12,
                             status: .ready,
-                            uploadedAt: Date(timeIntervalSince1970: 1_782_000_000)
+                            uploadedAt: Date(timeIntervalSince1970: 1_782_000_000),
+                            interviewInProgress: false
                         )
                     ],
                     replaceAvailable: true,
@@ -189,6 +213,9 @@ extension PortfolioClient: TestDependencyKey {
             },
             delete: { id in
                 PortfolioDeletion(portfolioId: id, deletedAt: Date(timeIntervalSince1970: 1_782_000_000))
+            },
+            fileURL: { id in
+                PortfolioFileURL(portfolioId: id, fileUrl: URL(string: "https://example.com/preview.pdf")!)
             }
         )
     }

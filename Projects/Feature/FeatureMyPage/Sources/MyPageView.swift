@@ -6,8 +6,10 @@
 //
 
 import ComposableArchitecture
+import SafariServices
 import SharedDesignSystemInterface
 import SwiftUI
+import UniformTypeIdentifiers
 
 // @ViewAction 매크로가 send(_:) 를 제공한다 — View 는 store.send(.view(...)) 대신 send(.onAppear) 로만 방출.
 @ViewAction(for: MyPageFeature.self)
@@ -47,6 +49,17 @@ public struct MyPageView: View {
                 onConfirm: { send(.userTappedModalConfirm) }
             )
         }
+        .alert($store.scope(state: \.alert, action: \.alert))
+        // PDF 열람 — 발급받은 presigned URL 을 Safari 뷰로 연다. 앱을 벗어나지 않고, PDF 렌더링과
+        // 닫기 버튼을 시스템이 맡는다(원격 URL 이라 로컬 파일이 필요한 QuickLook 은 못 쓴다).
+        .sheet(item: $store.portfolioPreview) { preview in
+            SafariView(url: preview.url)
+                .ignoresSafeArea()
+        }
+        // 문서 피커는 이 화면 안에서 연다 — 업로드 진입 3곳(빈 판·«다시 올리기»·교체 확인)이 같은 자리로 모인다.
+        .fileImporter(isPresented: $store.isFilePickerPresented, allowedContentTypes: [.pdf]) { result in
+            if case let .success(url) = result { send(.fileSelected(url)) } else { send(.fileSelectionFailed) }
+        }
         .onAppear { send(.onAppear) }
     }
 
@@ -78,12 +91,6 @@ public struct MyPageView: View {
                         TagLabel(store.profile.careerLevel, style: .noneGray, size: .regular)
                     }
                 }
-                Button {
-                    send(.userTappedEditProfile)
-                } label: {
-                    icon(Image.Edit.disabled16)
-                }
-                .buttonStyle(.plain)
             }
             ticketRow
         }
@@ -97,18 +104,12 @@ public struct MyPageView: View {
         HStack(spacing: 0) {
             HStack(spacing: .ds(.p4)) {
                 icon(Image.Coupon.default)
-                Text("남은 면접 티켓")
+                Text("남은 면접 기회")
                     .dsTypography(.body6)
                     .foregroundStyle(Color.GrayScale.g500)
-                Button {
-                    send(.userTappedTicketInfo)
-                } label: {
-                    icon(Image.Info.disabled)
-                }
-                .buttonStyle(.plain)
             }
             Spacer(minLength: .ds(.p8))
-            TagLabel("\(store.profile.remainingTickets)장", style: .greenGreen)
+            TagLabel("\(store.profile.remainingTickets)회", style: .greenGreen)
         }
         .padding(.horizontal, .ds(.p14))
         .padding(.vertical, .ds(.p8))
@@ -119,7 +120,7 @@ public struct MyPageView: View {
     /// max 케이스(MyPage_Main)를 따라 항상 노출한다.
     private var accountCard: some View {
         HStack(spacing: .ds(.p12)) {
-            icon(Image.Logo.kakaoWithBg)
+            icon(store.profile.provider == "APPLE" ? Image.Logo.appleWithBg : Image.Logo.kakaoWithBg)
             Text(store.profile.email)
                 .dsTypography(.body7)
                 .foregroundStyle(Color.GrayScale.g500)
@@ -176,7 +177,11 @@ public struct MyPageView: View {
                     size: file.size,
                     onRemove: { send(.userTappedRemovePortfolio) }
                 )
-                InfoField("포트폴리오는 한 달에 한 번 바꿀 수 있어요. 지워도 지난 면접 레포트는 그대로 남아요.")
+                // 카드 탭 = PDF 열람. Button 으로 감싸지 않는 건 카드 안의 X(onRemove)가 중첩 버튼에
+                // 삼켜지기 때문이다 — 탭 제스처는 그 버튼을 그대로 통과시킨다.
+                .contentShape(Rectangle())
+                .onTapGesture { send(.userTappedPortfolioFile) }
+                InfoField("포트폴리오는 한 달에 한 번 바꿀 수 있어요. 지워도 지난 면접 리포트는 그대로 남아요.")
             }
 
         case let .failed(file):
@@ -215,11 +220,11 @@ public struct MyPageView: View {
         }
     }
 
-    // MARK: - 내 면접 레포트
+    // MARK: - 내 면접 리포트
 
     private var reportSection: some View {
         VStack(alignment: .leading, spacing: .ds(.p10)) {
-            sectionHeader("내 면접 레포트")
+            sectionHeader("내 면접 리포트")
             // 줄끼리 간격 0 — 접힘 카드의 테두리가 서로 맞닿아 목록 선을 만든다(시안 그대로).
             VStack(spacing: 0) {
                 ForEach(store.reports) { report in
@@ -254,10 +259,10 @@ public struct MyPageView: View {
                         .init("포트폴리오", report.portfolioName),
                         .init("JD", report.jobDescription)
                     ],
-                    leadingAction: report.showsActions
-                        ? .init("레포트 보기") { send(.userTappedOpenReport(id: report.id)) }
+                    leadingAction: report.canOpenReport
+                        ? .init("리포트 보기") { send(.userTappedOpenReport(id: report.id)) }
                         : nil,
-                    trailingAction: report.showsActions
+                    trailingAction: report.canRequestFeedback
                         ? .init("지인 피드백 받기") { send(.userTappedRequestFeedback(id: report.id)) }
                         : nil,
                     error: report.detailError
@@ -298,4 +303,17 @@ public struct MyPageView: View {
         /// 프로필 영역 아이콘 한 변 16 — Figma `edit/16px`·`coupon/16px`·`info/16px`·`logo/kakao`.
         static let iconSide: CGFloat = 16
     }
+}
+
+/// PDF 열람용 Safari 뷰. presigned URL 은 원격이라 로컬 파일이 필요한 QuickLook 을 못 쓰고,
+/// `openURL` 로 넘기면 앱을 벗어난다 — 시트 안에서 PDF 렌더링·닫기를 시스템에 맡기는 자리다.
+private struct SafariView: UIViewControllerRepresentable {
+    let url: URL
+
+    func makeUIViewController(context: Context) -> SFSafariViewController {
+        SFSafariViewController(url: url)
+    }
+
+    // 시트가 URL 별로 다시 만들어진다(`sheet(item:)`) — 갱신할 상태가 없다.
+    func updateUIViewController(_ controller: SFSafariViewController, context: Context) {}
 }

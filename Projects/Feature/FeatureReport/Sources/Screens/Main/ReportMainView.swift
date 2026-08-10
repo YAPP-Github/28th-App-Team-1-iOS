@@ -369,7 +369,7 @@ private func reportMainPreview(
         store: Store(initialState: ReportMainFeature.State(sessionId: 1)) {
             ReportMainFeature()
         } withDependencies: {
-            $0.interviewReportClient = InterviewReportClient(report: { _ in report })
+            $0.interviewReportClient.report = { _ in report }
         }
     )
 }

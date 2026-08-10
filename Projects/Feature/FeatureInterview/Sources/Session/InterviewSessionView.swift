@@ -13,6 +13,7 @@ import SwiftUI
 @ViewAction(for: InterviewSessionFeature.self)
 public struct InterviewSessionView: View {
     @Bindable public var store: StoreOf<InterviewSessionFeature>
+    @Environment(\.scenePhase) private var scenePhase
 
     public init(store: StoreOf<InterviewSessionFeature>) {
         self.store = store
@@ -49,13 +50,23 @@ public struct InterviewSessionView: View {
         .animation(.easeInOut(duration: 0.2), value: presentedModal)
         .hilitModal(item: presentedModal) { modal in
             switch modal {
+            case .finishing: LoadingModal()
             case .exitConfirm: exitConfirmModal
             case .earlyExitWarning: earlyExitWarningModal
             }
         }
         .animation(.easeInOut(duration: 0.3), value: store.phase)
         .animation(.easeInOut(duration: 0.3), value: store.toast)
+        // 네트워크 실패 오버레이 — 세션 상태·녹화를 살린 채 전체 화면으로 덮는다(스펙 ③).
+        // 시안(2638:17018)이 독립 풀스크린이라 ZStack 대신 cover — 세션 네비바·브래킷과 레이아웃 간섭이 없다.
+        .fullScreenCover(item: $store.scope(state: \.failure, action: \.failure)) { store in
+            InterviewFailureView(store: store)
+        }
         .onAppear { send(.onAppear) }
+        // 백그라운드 진입 = 세그먼트 경계(스펙 ②). 복귀(.active) 관측은 코디네이터 뷰(InterviewView) 몫.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { send(.sceneBackgrounded) }
+        }
     }
 
     // MARK: - 상단 시간 칩 (Figma top 94 = 상태바 43 + 51)
@@ -63,7 +74,7 @@ public struct InterviewSessionView: View {
         InterviewTimerChip(
             variant: store.phase == .finalCountdown
                 ? .countdown(remaining: store.countdownRemaining)
-                : .elapsed(seconds: store.elapsedSeconds)
+                : .elapsed(seconds: store.effectiveElapsedSeconds)
         )
     }
 
@@ -130,16 +141,22 @@ public struct InterviewSessionView: View {
         .frame(minHeight: 34)
     }
 
-    // MARK: - 종료 확인·이탈 경고 모달 (DS Modal + .hilitModal)
+    // MARK: - 마무리·종료 확인·이탈 경고 모달 (DS LoadingModal/Modal + .hilitModal)
 
-    /// 리듀서의 표출 Bool 2개를 뷰에서 enum 으로 접는다 — `.hilitModal(item:)` 규약(동시 표출 차단).
+    /// 리듀서의 표출 Bool 3개를 뷰에서 enum 으로 접는다 — `.hilitModal(item:)` 규약(동시 표출 차단).
     private enum PresentedModal: Equatable {
+        case finishing
         case exitConfirm
         case earlyExitWarning
     }
 
+    /// `finishing` 이 먼저다 — 정지+합성 구간엔 종료·이탈 입력이 이미 잠겨 있어(리듀서 `reduceView` 가드)
+    /// 확인 모달을 띄워도 답할 수 없다. 이 구간은 실기기에서 8~10초 걸리므로(합성 고정 대기, 2026-08-07 실측)
+    /// 아무것도 안 띄우면 «앱이 멈췄다» 로 읽힌다.
     private var presentedModal: PresentedModal? {
-        if store.isExitConfirmPresented {
+        if store.isFinishing {
+            .finishing
+        } else if store.isExitConfirmPresented {
             .exitConfirm
         } else if store.isEarlyExitWarningPresented {
             .earlyExitWarning
@@ -247,5 +264,14 @@ private func sessionPreview(
         $0.phase = .answering
         $0.elapsedSeconds = 200
         $0.isEarlyExitWarningPresented = true
+    }
+}
+
+#Preview("네트워크 실패 오버레이") {
+    sessionPreview {
+        $0.phase = .processingAnswer
+        $0.elapsedSeconds = 300
+        $0.failure = InterviewFailureFeature.State(kind: .network)
+        $0.pendingRetry = .playQuestion
     }
 }

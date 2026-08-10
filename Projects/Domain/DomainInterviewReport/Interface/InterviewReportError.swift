@@ -13,8 +13,11 @@ import DomainCommonInterface
 public enum InterviewReportError: Error, Equatable, Sendable {
     /// INTERVIEW_SESSION_NOT_FOUND (404) — 세션이 없거나 본인 소유가 아님.
     case sessionNotFound
-    /// INTERVIEW_REPORT_NOT_FOUND (404) — 보고서가 아직 생성되지 않음 (재폴링/대기 안내).
+    /// INTERVIEW_REPORT_NOT_FOUND (404) — 현행 스웨거에서 빠진 코드(미생성은 `status=GENERATING` 응답). 방어적으로 매핑만 유지.
     case reportNotFound
+    /// INTERVIEW_VIDEO_NOT_FOUND (404) — 세션은 있으나 영상 레코드가 없음(업로드 완료 전).
+    /// 세션 자체가 없으면 `sessionNotFound`.
+    case videoNotFound
     /// 미승격 서버 에러 원문 — 임시 노출 규칙(`ServerError.alertTitle/alertMessage`)으로 Alert 에 싣는다.
     /// 도메인 핸들링이 확정되면 전용 케이스로 승격.
     case server(ServerError)
@@ -32,6 +35,7 @@ extension InterviewReportError: DomainAPIError {
         switch code {
         case "INTERVIEW_SESSION_NOT_FOUND": self = .sessionNotFound
         case "INTERVIEW_REPORT_NOT_FOUND": self = .reportNotFound
+        case "INTERVIEW_VIDEO_NOT_FOUND": self = .videoNotFound
         default: return nil
         }
     }
