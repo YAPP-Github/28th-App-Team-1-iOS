@@ -16,6 +16,8 @@ import Foundation
 
 // @lat: [[app]]
 // depends-on: [[auth]] — 로그인 전/후 루트 게이트. cross-feature 조립은 AppFeature 에서만.
+// depends-on: [[feedback#진입로와 닫기]] — 공유 딥링크(hilit://feedback/{token})가 게스트 평가를
+// 루트 밖 cover 로 present. 무인증 플로우라 루트(스플래시·auth·home) 무관, delegate(.dismissed)로 닫는다.
 // depends-on: [[home]] — Home 을 로그인 후 루트로 임베드(owner). cross-feature delegate 라우팅은 Feature 추가 시 이 자리에서 조립.
 // depends-on: [[interview]] — 온보딩 완주 delegate(.finished(sessionId)) 를 받아 면접 흐름을 present. 종료 두 신호(.finished/.closed)는 cover 를 닫고 홈을 다시 태운다.
 //                             홈의 진행 중 두 갈래(중단·재개)도 여기서 InterviewClient·HeldSessionStore 로 배선한다.
@@ -40,6 +42,8 @@ struct AppFeature {
     @ObservableState
     struct State: Equatable {
         var auth = AuthFeature.State()
+        /// 게스트 평가(G4) — 공유 딥링크로 열린다. 무인증이라 루트 무관 cover.
+        @Presents var guestFeedback: GuestFeedbackFeature.State?
         /// 루트가 무엇을 띄우는지 — 초기값은 Splash(판정 전).
         var root: Root = .splash
         var home = HomeFeature.State()
@@ -65,7 +69,10 @@ struct AppFeature {
         case updateAlert(PresentationAction<UpdateAlert>)
         /// 세션 복구 판정 결과 — 목적지 또는 실패 종류.
         case launchRoutingResolved(LaunchRouting)
+        /// 커스텀 스킴 URL 수신 — 현재는 게스트 평가 딥링크 하나만 안다.
+        case deeplinkReceived(URL)
         case auth(AuthFeature.Action)
+        case guestFeedback(PresentationAction<GuestFeedbackFeature.Action>)
         case home(HomeFeature.Action)
         /// 진행 중 세션 중단(abandon) 처리 완료 — 이미 중단된 세션(409)도 여기로 온다.
         /// 보관값까지 지운 뒤라 남은 일은 새 면접을 시작하는 것뿐이다.
@@ -179,6 +186,23 @@ struct AppFeature {
                 return .none
             case .auth:
                 return .none
+
+            case let .deeplinkReceived(url):
+                // 게스트 평가는 무인증 — 루트(스플래시·로그인 전·홈) 무관하게 띄운다.
+                // 면접·온보딩 몰입 중엔 무시(흐름을 끊지 않는다 — 링크 재탭으로 복구되는 드문 엣지).
+                // 이미 게스트 cover 가 떠 있어도 무시 — 진행 중 평가를 다른 토큰으로 갈아치우지 않는다.
+                guard let token = GuestFeedbackDeeplink.parse(url),
+                      state.interview == nil, state.onboarding == nil, state.guestFeedback == nil
+                else { return .none }
+                state.guestFeedback = GuestFeedbackFeature.State(token: token)
+                return .none
+
+            case .guestFeedback(.presented(.delegate(.dismissed))):
+                state.guestFeedback = nil
+                return .none
+            case .guestFeedback:
+                return .none
+
             case .home(.delegate(.interviewStartRequested)):
                 // 면접에 필요한 정보(직군·연차·JD·포폴)를 모으는 게 온보딩 위저드다 — 면접은 거기부터다.
                 // 면접 화면은 **세션 id 로만** 열리는데(`InterviewFeature.State(sessionId:)`) 그 id 를 만드는
@@ -327,6 +351,9 @@ struct AppFeature {
             case .binding:
                 return .none
             }
+        }
+        .ifLet(\.$guestFeedback, action: \.guestFeedback) {
+            GuestFeedbackFeature()
         }
         .ifLet(\.$interview, action: \.interview) {
             InterviewFeature()

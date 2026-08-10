@@ -38,6 +38,20 @@ public struct GuestFeedbackView: View {
             }
         }
         .onAppear { send(.onAppear) }
+        // 실앱 fullScreenCover 탈출구 — 시안에 없는 코드 전용 상태다(플레이스홀더 관례,
+        // 시안 수령 시 교체). 몰입(다크)·카드/게이트(라이트) 어느 배경에서도 읽히도록
+        // 흰 원판 + g600 글리프로 띄운다. Example(내비 push)에선 delegate 를 아무도
+        // 안 받아 무반응 — 실앱 조립(AppFeature)에서만 유효하다.
+        .overlay(alignment: .topTrailing) {
+            Button { send(.closeTapped) } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Color.GrayScale.g600)
+                    .padding(.ds(.p8))
+                    .background(Color.BlackWhite.white.opacity(0.9), in: Circle())
+            }
+            .padding(.ds(.p16))
+        }
         .alert($store.scope(state: \.alert, action: \.alert))
     }
 

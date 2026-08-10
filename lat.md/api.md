@@ -175,7 +175,9 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 
 | 메서드 | 엔드포인트 | 비고 |
 |---|---|---|
-| `entry` | GET `/api/v1/feedback/guest/{token}` | 게이트 판정 + 영상·지정 항목·질문 경계. 최초 조회 시 영상 삭제 +7일 연장 |
+| `entry` | GET `/api/v1/feedback/guest/{token}` | 게이트 판정 + 영상·지정 항목(질문 경계는 현 스키마에 없음). 최초 조회 시 영상 삭제 +7일 연장 |
 | `submit` | POST `/api/v1/feedback/guest/{token}/submissions` | 지정 항목 전부 필수, 제출 확정(수정 불가). 첫 제출 시 +30일 연장 |
 
 게이트: OPEN / PRIVATE(비공개·무효) / EXPIRED(영상 만료) / FULL(정원 4명) / ALREADY_SUBMITTED(이 기기 제출 완료) — 진입 화면 분기의 전부다. 에러는 `GuestFeedbackError` 로 매핑된다 — FEEDBACK_SHARE_TOKEN_NOT_FOUND → tokenNotFound(404), FEEDBACK_SHARE_CLOSED / FEEDBACK_CAPACITY_FULL / FEEDBACK_ALREADY_SUBMITTED → shareClosed/capacityFull/alreadySubmitted(409, 진입 후 상태 변화 경합), 제출 검증군(INCOMPLETE_RATINGS·INVALID_RATING_LEVEL·MISSING_DEVICE_ID)은 invalid(message:).
+
+공유 딥링크는 `hilit://feedback/{token}` — 토큰으로 링크를 조립·판정하는 것은 클라이언트(GuestFeedbackDeeplink) 책임이다([[feedback#진입로와 닫기]]).
