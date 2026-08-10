@@ -42,6 +42,7 @@ Projects/
 ## 빌드 / 실행
 
 - `tuist install && tuist generate` — `.xcworkspace`/`.xcodeproj` 는 생성물, 커밋 안 함.
+- **스토어·TestFlight 아카이브는 `TUIST_PRODUCT_TYPE=static-library` 를 앞에 붙여 generate 한 뒤** 뽑는다 — 기본 generate 는 dylib 을 수십 개 임베드해 중복 심볼 경고·느린 실행을 낳고, 정적 모드는 앱 바이너리 한 벌로 합친다.
 - 앱 스킴 `Hilit-Dev|QA|Prod`. Feature 단독 실행: `Feature{Name}` 스킴 ⌘R (Example 앱이 실행 타겟).
 - 테스트: `make test scheme=FeatureHome` 권장 (시뮬레이터 UDID 자동 해석).
 - **umbrella 의존 변경 후 `tuist generate` 필수** — 캐시 그래프 빌드는 "거짓 성공".

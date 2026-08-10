@@ -98,11 +98,16 @@ public extension Target {
             // 다음 `tuist generate` 가 되살리므로 매니페스트가 단일 소스다. 화면이 전부 세로 기준이고
             // 면접 녹화(전면 카메라 프리뷰)가 회전을 전제하지 않는다.
             "UISupportedInterfaceOrientations": ["UIInterfaceOrientationPortrait"],
+            // 64비트 전용 — Tuist 기본값 `armv7` 은 32비트 시절 잔재라 실제 바이너리(arm64)와 어긋난다.
+            "UIRequiredDeviceCapabilities": ["arm64"],
             // xcconfig → Info.plist 치환. NetworkClient.defaultBaseURL()(API_BASE_URL)·AppSecrets(카카오 키)가 여기서 읽는다.
             "UIUserInterfaceStyle": "Light",
             "APP_ENV": "$(APP_ENV)",
             "API_BASE_URL": "$(API_BASE_URL)",
             "CFBundleDisplayName": "$(APP_DISPLAY_NAME)",
+            // actool 부분 plist 병합에 기대지 않고 명시 — 병합본은 `CFBundleIcons` 안쪽에만 이 키를 넣어
+            // 최상위가 비고, ASC 가 아이콘 누락으로 업로드를 거부한다(ITMS-90713). Example 도 같은 이유로 명시.
+            "CFBundleIconName": "AppIcon",
             // 버전 단일 소스는 Config/Version.xcconfig — 여기서 빌드 세팅으로 치환된다.
             "CFBundleShortVersionString": "$(MARKETING_VERSION)",
             "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
@@ -128,9 +133,10 @@ public extension Target {
             // 진단 탐침(DomainSpeech `MicTranscriptionProbe`, 환경변수 게이트)에서만 쓴다. 그래도 바이너리가
             // Speech 를 참조하면 심사가 목적 문구를 요구한다(ITMS-90683 — «앱이 안 써도 문구는 필요»).
             "NSSpeechRecognitionUsageDescription": "AI 면접에서 답변 음성이 올바르게 입력되는지 확인하기 위해 음성 인식을 사용합니다.",
-            // ⚠️ Dev 는 HTTPS(hilit.my)로 전환됐고, 남은 HTTP 경로는 IP 직결 디버깅(43.202.34.84:8080)뿐이다.
-            //    App Store 심사에서 사유를 요구하므로 IP 직결이 사라지면 제거할 것.
-            "NSAppTransportSecurity": ["NSAllowsArbitraryLoads": true]
+            // 수출 규정 — 통신은 HTTPS(OS 제공 암호)뿐이고 자체 암호 구현이 없다. false 를 박아 두면
+            // 업로드마다 App Store Connect 가 묻는 수출 규정 문항을 건너뛴다.
+            // (ATS 예외는 두지 않는다 — 전 계가 https://hilit.my 다. HTTP 디버깅은 Example 하네스 몫)
+            "ITSAppUsesNonExemptEncryption": false
         ])
         // Sign in with Apple — 시뮬레이터는 이 entitlement만으로 동작하고, 실기기는
         // Apple Developer 포털에서 App ID(환경별 번들 접미사 각각)에 capability 활성화가 필요하다.

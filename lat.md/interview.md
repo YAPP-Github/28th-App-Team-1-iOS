@@ -3,7 +3,9 @@
 AI 면접 연습의 중심 도메인. `DomainInterview` 가 D14 면접 세션 API([[api#Interview]])의 모델과 Repository 계약(`InterviewClient`)을 보유하고, Part 2 화면군은 `FeatureInterview` 가 구현한다([[interview#면접 흐름]]). 소비 Feature 는 `.domain(interface: .interview)` 로 연결된다.
 
 ## Client 계약
-`InterviewClient` 는 Feature 가 Interview 데이터에 접근하는 유일한 통로 — `createSession`(생성)·`sessionStatus`(준비 폴링)·`submitAnswer`(답변 제출 = 턴 루프의 축)·`questionAudioStream`(질문 TTS 재생 정보)·`checkResume`(재개 가능 조회)·`confirmResume`(재개 확정 — 응답은 `submitAnswer` 와 같은 `AnswerResult`)·`abandonSession`(중단 — `AbandonCause` 는 USER_EXIT/NETWORK_DISCONNECT 만, HOLD_EXPIRED 는 서버 내부 전용이라 타입에서 뺐다)·`reportList`(내 레포트 목록 — 홈 진입 로드가 쓴다, [[home#진입 로드]]).
+`InterviewClient` 는 Feature 가 Interview 데이터에 접근하는 유일한 통로다 — 세션 생성·준비 폴링·턴 루프(답변 제출)·질문 TTS·재개·중단·레포트 목록을 한 struct 로 노출한다.
+
+멤버는 `createSession`(생성)·`sessionStatus`(준비 폴링)·`submitAnswer`(답변 제출 = 턴 루프의 축)·`questionAudioStream`(질문 TTS 재생 정보)·`checkResume`(재개 가능 조회)·`confirmResume`(재개 확정 — 응답은 `submitAnswer` 와 같은 `AnswerResult`)·`abandonSession`(중단 — `AbandonCause` 는 USER_EXIT/NETWORK_DISCONNECT 만, HOLD_EXPIRED 는 서버 내부 전용이라 타입에서 뺐다)·`reportList`(내 레포트 목록 — 홈 진입 로드가 쓴다, [[home#진입 로드]]).
 
 같은 모듈의 `HeldSessionStore` 는 진행 중(held) 세션의 **로컬 보관** seam(UserDefaults) — 서버에 진행중 세션 목록 API 가 없어 클라가 `sessionId`(+ 녹화 길이 `recordedSeconds` + 프로세스 표식 `processToken`)를 들고 있어야 홈이 «진행 중» 을 판정한다([[home#진입 로드]]). 수명: 세션 생성 시 저장(0초) → 백그라운드 마감마다 누적초·토큰으로 갱신 → 완료·중단·ENDED 판정 시 삭제.
 
@@ -17,7 +19,7 @@ Interface 에 계약 + `testValue`(unimplemented) + `previewValue`(샘플), Impl
 - `questionAudioStream` 은 Data 가 아니라 `InterviewAudioStream(url·headers)` 를 준다 — chunked TTS 를 AVPlayer 로 점진 재생해야 해서다([[api#Interview]] 스트리밍 규약). 이 구조상 서버(Tomcat)엔 매 턴 `Broken pipe`(disconnected client)가 남을 수 있고 **정상이다**(2026-08-07 백엔드 합동 확인) — AVPlayer 의 프로브 연결 정리, 다음 재생의 선행 `stop()`, 이탈 전환의 `stopPlayback` 이 전부 mid-stream TCP 종료라서다. 클라 결함 신호가 아니며 대응은 서버 로그 레벨 조정 몫.
 - 영상 업로드 3단(발급 → S3 presigned PUT → 완료 확정)은 응집형 `uploadInterviewVideo(sessionId·fileURL·wrapUp)` 와 단계 seam(`videoUploadURL`·`completeVideoUpload`) 두 벌로 노출된다([[api#Interview]]). 응집형은 순서·PUT 실패 시 complete 생략을 도메인이 보장하는 **1시도 계약**(PUT 은 [[domain.map#네트워킹 인프라]] `FileTransferClient` 로 스트리밍, 발급 응답 `contentType` 원문 전달)이고, 재시도(발급부터 재시작) 정책은 호출처 몫이다.
 - **실 면접 경로는 그 응집형을 쓰지 않는다**(2026-08-06) — [[interview#업로드 큐]] 가 단계 seam 을 직접 조립한다. background 전송은 등록(발급→PUT 등록)과 완료(complete)가 **프로세스 경계를 넘어 갈라지므로**(앱이 죽어도 PUT 은 이어지고 완료 이벤트는 다음 실행에 온다) 한 함수의 await 안에 응집할 수 없다. 응집형은 계약·단독 검증·수동 조작용으로 존치한다 — 현재 프로덕션 호출처 0, 호출은 `InterviewClientLiveTests` 뿐이다.
-- 에러는 `InterviewError`(도메인) 로 노출한다 — liveValue 가 Core `ServerError` 코드를 전용 케이스(`.freeTextNotRelevant`·`.noRemainingTicket`·`.answerAlreadySubmitted` 등, 전체 표는 [[api#Interview]])로 매핑하고, 입력 검증군은 `.invalid(message)`, 미승격 코드는 `.server(code,message)` 로 동봉해 Feature 가 Core 를 모르고도(레이어) 코드별 분기한다. 온보딩 분석 스텝이 `.freeTextNotRelevant` 를 잡아 집중 프로젝트로 되돌린다 → [[onboarding#분석]].
+- 에러는 `InterviewError`(도메인) 로 노출한다 — liveValue 가 Core `ServerError` 코드를 전용 케이스(`.freeTextNotRelevant`·`.noRemainingTicket`·`.answerAlreadySubmitted` 등, 전체 표는 [[api#Interview]])로 매핑하고, 입력 검증군은 `.invalid(message)`, 미승격 코드는 `.server(code,message)` 로 동봉해 Feature 가 Core 를 모르고도(레이어) 코드별 분기한다. 온보딩 프리로드가 `.freeTextNotRelevant` 를 잡아 대표 프로젝트로 되돌린다 → [[onboarding#프리로드]].
 
 ## API
 서버 계약이 바뀌면 이 섹션·[[api#Interview]]·`liveValue` 를 함께 갱신한다. 인프라는 [[domain.map#네트워킹 인프라]] 의 `AuthorizedNetworkClient` 계약만 사용 — Bearer 첨부·토큰 재발급은 인프라 몫이고 liveValue 는 경로 조립·인코딩·디코딩만 한다.

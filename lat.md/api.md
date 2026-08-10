@@ -7,10 +7,10 @@ YAPP APP 1팀 백엔드(D14 API v1)와의 연동 지식. 서버 태그(AppVersio
 
 ## 서버와 환경
 
-개발 서버는 `https://hilit.my` (같은 인스턴스에 `http://43.202.34.84:8080` 로 IP 직결도 가능). baseURL 은 계별 xcconfig `API_BASE_URL` → Info.plist → `NetworkClient.defaultBaseURL()` 로 흐른다 (→ DocC Environments). QA/Prod 값은 아직 자리표시자다.
+개발 서버는 `https://hilit.my` (같은 인스턴스에 `http://43.202.34.84:8080` 로 IP 직결도 가능). baseURL 은 계별 xcconfig `API_BASE_URL` → Info.plist → `NetworkClient.defaultBaseURL()` 로 흐른다 (→ DocC Environments). 서버가 단일계라 Dev·QA·Prod 가 같은 호스트를 본다.
 
 - **도메인은 반드시 https** — `http://hilit.my` 로 붙으면 Caddy 가 308 로 https 에 넘기는데, scheme 이 바뀌어 origin 이 달라지므로 URLSession 이 `Authorization` 헤더를 떼고 재요청한다 → 전 API 403(익명 취급). body 로 자격증명을 싣는 재발급만 살아남아 «토큰은 멀쩡한데 전부 403» 로 보인다.
-- ATS 전면 허용(`NSAllowsArbitraryLoads`)은 IP 직결(HTTP) 디버깅 경로 때문에 남아 있다 — `Target+Templates.swift` 의 `.app()`/`feature(example:)`. IP 직결이 사라지면 제거 (App Store 심사에서 사유 요구).
+- ATS 전면 허용(`NSAllowsArbitraryLoads`)은 앱 타겟에서 뺐다 — 전 계가 https 라 예외가 필요 없고, 남겨 두면 App Store 심사가 사유를 요구한다. IP 직결(HTTP) 디버깅이 필요한 `feature(example:)` 하네스에만 남아 있다.
 
 ## 공통 규약
 
@@ -124,7 +124,9 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 
 ## Job
 
-`DomainJob` — `JobClient.jobs`. 가입 온보딩(`AuthOnboardingJob`)의 직군 선택지. 고른 `jobRole`(서버 Enum 값, 예: BACKEND)의 소비자는 **`UserClient.updateProfile`** 하나다 — 프로필에 올려 두고, 이후 세션 생성은 그 **서버 프로필 스냅샷**을 읽는다(`InterviewConfig` 에 직군·연차 필드가 없다 → `## Interview`). 서버 Enum 값을 그대로 실어 보내므로 클라이언트에 직군 Enum 을 중복 정의하지 않는다. 네트워킹 화면 표준형(NetworkExampleFeature)의 시연 대상이기도 하다.
+`DomainJob` — `JobClient.jobs`. 가입 온보딩(`AuthOnboardingJob`)의 직군 선택지. 고른 `jobRole`(서버 Enum 값, 예: BACKEND)의 소비자는 **`UserClient.updateProfile`** 하나다.
+
+프로필에 올려 두면 이후 세션 생성은 그 **서버 프로필 스냅샷**을 읽는다(`InterviewConfig` 에 직군·연차 필드가 없다 → `## Interview`). 서버 Enum 값을 그대로 실어 보내므로 클라이언트에 직군 Enum 을 중복 정의하지 않는다. 네트워킹 화면 표준형(NetworkExampleFeature)의 시연 대상이기도 하다.
 
 - GET `/api/v1/jobs`
 

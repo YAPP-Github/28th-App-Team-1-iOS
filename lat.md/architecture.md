@@ -41,6 +41,7 @@ umbrella link 만으로는 liveValue 가 켜지지 않는다. 정적 아카이�
 - **적용 위치**: `Target+Templates.swift` 의 `.app(factory:)` / `feature(example:)` 팩토리 — 새 모듈 추가 시 아무것도 기억할 필요 없다(레지스트리 자동화 철학 유지).
 - **비용**: 미참조 코드까지 실려 바이너리 소폭 증가. 서드파티 **정적** 라이브러리 도입 시 중복 심볼이 링크 에러로 드러날 수 있다 — 침묵 폴백보다 낫고, 그때는 `ModulePath` 순회 `-force_load` 로 좁히는 마이그레이션 경로가 있다.
 - **검증법**: 심볼 검사는 `App.app/App`(debug 에선 123KB 스텁)이 아니라 **`App.debug.dylib`** 을 `nm` 으로 본다. 플래그 없이는 conformance 0개 — 빌드·테스트는 전부 성공하고 런타임에만 testValue 로 침묵 폴백하는 최악의 증상이었다.
+- **SPM 산출물 타입은 1차 모듈과 맞춘다**(`Tuist/Package.swift`) — 정적 산출물은 자기를 link 한 이미지마다 사본이 박힌다. 1차 모듈이 동적인 로컬 generate 는 공유 패키지(TCA·Dependencies·카카오)를 `.framework` 로 올리고, 정적 릴리스(`TUIST_PRODUCT_TYPE=static-library`)는 오버라이드를 걷어 앱 바이너리 한 벌로 합친다. 어긋나면 `objc: Class … is implemented in both …` 경고와 전역 상태(DependencyValues 등) 분열이 난다.
 
 ### D5. Reducer Action 3분류
 Action enum 을 `view(View)` / `inner(Inner)` / `delegate(Delegate)` 로 나눈다. `view` 는 View 의 `send(...)` 로만, `inner` 는 리듀서만 방출하고, 부모는 자식의 `delegate` 만 매칭한다.

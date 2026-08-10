@@ -62,7 +62,9 @@
 
 ## Splash 세션 복구
 
-앱 진입 판정은 `firstLaunchResolved` 의 effect 하나다 (그 앞에 [[app#첫 실행 정리]]가 선다) — 버전 게이트 → 토큰 유무 → `pending` **한 콜**로 `State.root` 를 정한다. refresh 를 먼저 부르지 않는다 — Access 는 3시간이라 대부분 살아 있고, 만료면 이 콜의 403 을 AuthorizedNetworkClient 가 재발급·재시도로 흡수한다([[api#토큰 수명주기]]). 목적지 표·시퀀스는 [launch-routing](../docs/work/launch-routing.md), 게이트 규칙은 [[auth#게이트 2단 체인]].
+앱 진입 판정은 `firstLaunchResolved` 의 effect 하나다 (그 앞에 [[app#첫 실행 정리]]가 선다) — 버전 게이트 → 토큰 유무 → `pending` **한 콜**로 `State.root` 를 정한다. refresh 를 먼저 부르지 않는다 — Access 는 3시간이라 대부분 살아 있고, 만료면 이 콜의 403 을 AuthorizedNetworkClient 가 재발급·재시도로 흡수한다([[api#토큰 수명주기]]).
+
+목적지 표·시퀀스는 [launch-routing](../docs/work/launch-routing.md), 게이트 규칙은 [[auth#게이트 2단 체인]].
 
 런치스크린은 **storyboard 로 SplashView 를 흉내낸다** — `App/Resources/LaunchScreen.storyboard` 가 같은 로고(171×72, 화면 중심 -50)를 흰 판 위에 그려, 시스템 런치 화면 → 앱 첫 프레임 사이에 빈 흰 판이 스치지 않는다. `UILaunchScreen` dict 는 이미지 크기·위치를 못 잡아(늘어난다) 쓰지 않고 `UILaunchStoryboardName` 으로 간다 — 두 키가 함께 있으면 dict 가 이기므로 dict 는 두지 않는다. 로고 SVG 는 App 에셋 카탈로그에 **복사본**을 둔다: 런치스크린은 앱 코드가 돌기 전 메인 번들에서 읽어 DesignSystem 번들 에셋에 닿지 못한다. 값 3개(로고 크기·오프셋·배경)는 SplashView 상수와 짝이고 자동 동기화가 없다 — 한쪽을 바꾸면 다른 쪽 제약도 고친다.
 
