@@ -124,6 +124,10 @@ public extension Target {
             // 카메라·마이크는 사용 시점 요청(docs/work/ai-interview.md §5 권한) — 목적 문구 없으면 요청 즉시 크래시.
             "NSCameraUsageDescription": "AI 면접에서 얼굴과 답변 영상 녹화를 위해 카메라를 사용합니다.",
             "NSMicrophoneUsageDescription": "AI 면접에서 음성 답변 인식과 녹음을 위해 마이크를 사용합니다.",
+            // 음성 인식 — 제품 경로는 서버 STT 가 대본을 만들고, 온디바이스 SFSpeechRecognizer 는
+            // 진단 탐침(DomainSpeech `MicTranscriptionProbe`, 환경변수 게이트)에서만 쓴다. 그래도 바이너리가
+            // Speech 를 참조하면 심사가 목적 문구를 요구한다(ITMS-90683 — «앱이 안 써도 문구는 필요»).
+            "NSSpeechRecognitionUsageDescription": "AI 면접에서 답변 음성이 올바르게 입력되는지 확인하기 위해 음성 인식을 사용합니다.",
             // ⚠️ Dev 는 HTTPS(hilit.my)로 전환됐고, 남은 HTTP 경로는 IP 직결 디버깅(43.202.34.84:8080)뿐이다.
             //    App Store 심사에서 사유를 요구하므로 IP 직결이 사라지면 제거할 것.
             "NSAppTransportSecurity": ["NSAllowsArbitraryLoads": true]
