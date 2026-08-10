@@ -20,6 +20,15 @@ public struct InterviewClient: Sendable {
     public var submitAnswer: @Sendable (_ sessionId: Int, AnswerSubmission) async throws -> AnswerResult
     /// GET /interview/sessions/{id}/questions/{qid}/audio/stream 재생 정보 — AVPlayer 점진 재생용.
     public var questionAudioStream: @Sendable (_ sessionId: Int, _ questionId: Int) async throws -> InterviewAudioStream
+    /// POST /interview/sessions/{id}/video/upload-url — S3 presigned PUT 대상 발급.
+    /// `expiresInSeconds` 안에만 유효(만료 시 재발급). 저장 위치는 세션당 하나(재업로드 = 덮어쓰기).
+    public var videoUploadURL: @Sendable (_ sessionId: Int) async throws -> InterviewVideoUploadTarget
+    /// POST /interview/sessions/{id}/video/complete — 업로드 완료 확정. **S3 PUT 성공 후에만 호출**(호출처 책임). 멱등.
+    /// `wrapUp == nil` 이면 바디 생략(조기 종료 등 마무리 멘트 없음).
+    public var completeVideoUpload: @Sendable (_ sessionId: Int, _ wrapUp: InterviewVideoWrapUpSpan?) async throws -> Void
+    /// 발급(videoUploadURL) → presigned PUT → complete 를 한 방으로 응집 — 호출처는 이 메서드 하나만 안다.
+    /// 1시도 계약: 재시도(발급부터 재시작) 정책은 호출처 몫.
+    public var uploadInterviewVideo: @Sendable (_ sessionId: Int, _ fileURL: URL, _ wrapUp: InterviewVideoWrapUpSpan?) async throws -> Void
     /// GET /interview/sessions/{id}/resume — 재개 가능 여부 조회. 상태를 바꾸지 않는다(hold 만료 정리는 서버 몫).
     /// 없거나 남의 세션이면 `sessionNotFound`.
     public var checkResume: @Sendable (_ sessionId: Int) async throws -> InterviewResumeCheck
@@ -38,6 +47,13 @@ public struct InterviewClient: Sendable {
         sessionStatus: @escaping @Sendable (_ sessionId: Int) async throws -> InterviewSessionStatus,
         submitAnswer: @escaping @Sendable (_ sessionId: Int, AnswerSubmission) async throws -> AnswerResult,
         questionAudioStream: @escaping @Sendable (_ sessionId: Int, _ questionId: Int) async throws -> InterviewAudioStream,
+        videoUploadURL: @escaping @Sendable (_ sessionId: Int) async throws -> InterviewVideoUploadTarget,
+        completeVideoUpload: @escaping @Sendable (_ sessionId: Int, _ wrapUp: InterviewVideoWrapUpSpan?) async throws -> Void,
+        uploadInterviewVideo: @escaping @Sendable (
+            _ sessionId: Int,
+            _ fileURL: URL,
+            _ wrapUp: InterviewVideoWrapUpSpan?
+        ) async throws -> Void,
         checkResume: @escaping @Sendable (_ sessionId: Int) async throws -> InterviewResumeCheck,
         confirmResume: @escaping @Sendable (_ sessionId: Int) async throws -> AnswerResult,
         abandonSession: @escaping @Sendable (_ sessionId: Int, _ cause: AbandonCause) async throws -> AbandonResult,
@@ -47,6 +63,9 @@ public struct InterviewClient: Sendable {
         self.sessionStatus = sessionStatus
         self.submitAnswer = submitAnswer
         self.questionAudioStream = questionAudioStream
+        self.videoUploadURL = videoUploadURL
+        self.completeVideoUpload = completeVideoUpload
+        self.uploadInterviewVideo = uploadInterviewVideo
         self.checkResume = checkResume
         self.confirmResume = confirmResume
         self.abandonSession = abandonSession
@@ -62,6 +81,9 @@ extension InterviewClient: TestDependencyKey {
             sessionStatus: unimplemented("InterviewClient.sessionStatus"),
             submitAnswer: unimplemented("InterviewClient.submitAnswer"),
             questionAudioStream: unimplemented("InterviewClient.questionAudioStream"),
+            videoUploadURL: unimplemented("InterviewClient.videoUploadURL"),
+            completeVideoUpload: unimplemented("InterviewClient.completeVideoUpload"),
+            uploadInterviewVideo: unimplemented("InterviewClient.uploadInterviewVideo"),
             checkResume: unimplemented("InterviewClient.checkResume"),
             confirmResume: unimplemented("InterviewClient.confirmResume"),
             abandonSession: unimplemented("InterviewClient.abandonSession"),
@@ -97,6 +119,15 @@ extension InterviewClient: TestDependencyKey {
                     headers: [:]
                 )
             },
+            videoUploadURL: { sessionId in
+                InterviewVideoUploadTarget(
+                    uploadUrl: "preview://interview/\(sessionId)/video/upload",
+                    contentType: "video/mp4",
+                    expiresInSeconds: 600
+                )
+            },
+            completeVideoUpload: { _, _ in },
+            uploadInterviewVideo: { _, _, _ in },
             // 재개는 «가능» 을 그린다 — 2:12 경과(= 남은 시간이 있는 상태)라 홈의 [이어서 진행] 시안이 보인다.
             checkResume: { _ in
                 InterviewResumeCheck(

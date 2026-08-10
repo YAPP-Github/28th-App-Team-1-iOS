@@ -18,8 +18,12 @@ public extension InterviewReportClient {
                     headline: "mock 보고서",
                     video: nil,
                     cards: [],
-                    guestFeedback: nil
+                    script: [],
+                    guestFeedback: GuestFeedbackSection(participantCount: 0, guests: [])
                 )
+            },
+            videoExpiry: { _ in
+                InterviewVideoExpiry(expiresInSeconds: 2_591_480, expired: false)
             }
         )
     }

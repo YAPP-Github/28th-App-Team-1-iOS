@@ -73,6 +73,13 @@ extension PortfolioClient: @retroactive DependencyKey {
                         NetworkRequest(method: .delete, path: "/api/v1/portfolios/\(portfolioId.uuidString)")
                     )
                 }
+            },
+            fileURL: { portfolioId in
+                try await PortfolioError.mapping {
+                    try await network.api(
+                        NetworkRequest(path: "/api/v1/portfolios/\(portfolioId.uuidString)/file-url")
+                    )
+                }
             }
         )
     }

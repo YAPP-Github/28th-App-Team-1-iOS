@@ -23,7 +23,7 @@ struct ReportMainFeatureTests {
         TestStore(initialState: ReportMainFeature.State(sessionId: 1)) {
             ReportMainFeature()
         } withDependencies: {
-            $0.interviewReportClient = InterviewReportClient(report: report)
+            $0.interviewReportClient.report = report
             $0.continuousClock = clock
         }
     }
@@ -73,9 +73,7 @@ struct ReportMainFeatureTests {
         let store = TestStore(initialState: state) {
             ReportMainFeature()
         } withDependencies: {
-            $0.interviewReportClient = InterviewReportClient(
-                report: { _ in InterviewReportFixtures.generating }
-            )
+            $0.interviewReportClient.report = { _ in InterviewReportFixtures.generating }
             $0.continuousClock = clock
         }
 
@@ -453,9 +451,7 @@ struct ReportMainFeatureTests {
         let store = TestStore(initialState: state) {
             ReportMainFeature()
         } withDependencies: {
-            $0.interviewReportClient = InterviewReportClient(
-                report: { _ in responses.withValue { $0.removeFirst() } }
-            )
+            $0.interviewReportClient.report = { _ in responses.withValue { $0.removeFirst() } }
             $0.continuousClock = clock
         }
 

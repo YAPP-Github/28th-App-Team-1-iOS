@@ -1,6 +1,6 @@
 # Feedback — 지인 피드백
 
-지인(게스트)이 사용자의 면접 영상을 보고 태도 항목을 4단계 척도로 평가하는 도메인. MVP 범위는 G4(게스트 평가) — 무인증 공유 토큰으로 진입해 영상·지정 항목·질문 경계를 받고 제출한다. 도메인 모듈은 `DomainGuestFeedback`(서버 계약 [[api#Guest Feedback]] + 로컬 임시저장).
+지인(게스트)이 사용자의 면접 영상을 보고 태도 항목을 4단계 척도로 평가하는 도메인. MVP 범위는 G4(게스트 평가) — 무인증 공유 토큰으로 진입해 영상·지정 항목을 받고 제출한다. 도메인 모듈은 `DomainGuestFeedback`(서버 계약 [[api#Guest Feedback]] + 로컬 임시저장).
 
 사용자측 F4(공유 설정)·R1 지인 섹션은 후속. 스펙: docs/superpowers/specs/2026-07-20-guest-feedback-design.md.
 
@@ -21,6 +21,15 @@ AxisLevelChip 은 Figma «button-medium»(node 2150:7297·2192:5191) 1:1 직사�
 - 허용 문자셋(국문·영문·공백·숫자·`! - ~ ? . , / [ ] < >`)과 길이 제한은 binding 단계에서 sanitize.
 - 하단 CTA 는 SharedDesignSystem `ButtonLarge(.bottom)`(블랙 풀블리드) 공통 — 온보딩·닉네임·평가·요약 화면에서 재사용한다.
 
+## 진입로와 닫기
+
+실앱 진입은 공유 딥링크 `hilit://feedback/{token}` 하나다. 파서 GuestFeedbackDeeplink(Feature 소유 — 링크 형태는 이 도메인의 계약)가 토큰을 추출하고, AppFeature 가 루트 밖 fullScreenCover 로 present 한다(조립은 [[app#Cross-feature Routing]]). 닫기는 전 phase 상단 X → delegate(.dismissed) 가 유일한 탈출구다.
+
+- 파서는 엄격 판정 — scheme·host 일치 + path 세그먼트 정확히 1개. 유니버설 링크는 AASA 협의 후 같은 파서에 형식만 추가한다(호출부 불변).
+- X 는 시안에 없는 코드 전용 상태(플레이스홀더 관례) — 시안 수령 시 교체. 평가 중 닫아도 draft 가 남아 재진입 시 이어하기로 복원된다.
+- Example 은 dismissed 라우팅을 붙이지 않는다(화면 상태 확인 목적) — X 는 실앱에서만 유효. 실서버 하네스는 hilit.my 를 직접 주입한다.
+- 사용자측 공유 UI(F4·R1 지인 섹션)는 여전히 후속 — R1 리포트(PR #71) 머지 뒤 그 화면에서 FeedbackShareClient 로 배선한다.
+
 ## 게이트 판정
 
 진입 GET 의 gate 로 화면을 분기한다 — OPEN(평가 진행) / PRIVATE(비공개·무효) / EXPIRED(영상 만료) / FULL(정원 4명 마감, 영상 시청만 가능) / ALREADY_SUBMITTED(이 기기 제출 완료).
@@ -37,7 +46,7 @@ gate 는 닫힌 raw-String enum — 서버가 새 게이트 값을 추가하면 
 
 - GuestFeedbackError 케이스: tokenNotFound·shareClosed·capacityFull·alreadySubmitted·invalid(message:)·networkFailure·serverUnavailable·unexpected.
 - 사용자 노출 문구(userMessage)는 표현 관심사라 Feature(GuestFeedbackSupport)가 소유한다.
-- 응답 모델은 옵셔널 필드(axes·videoUrl·submissionOpen 등) — Feature 어댑터(axisList·videoURL)가 화면 형태로 좁힌다.
+- 응답 모델은 옵셔널 필드(axes·videoUrl·submissionOpen 등) — Feature 어댑터(axisList·videoURL)가 화면 형태로 좁힌다. questionBoundaries 는 현 서버 응답 스키마에서 빠졌다(2026-08-07 스웨거 기준) — 모델은 옵셔널로 유지하고 경계 칩은 값이 오면 그린다.
 
 ## 임시저장과 Device-Id
 

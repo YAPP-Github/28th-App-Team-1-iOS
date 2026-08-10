@@ -107,6 +107,10 @@ public extension Target {
             "CFBundleURLTypes": [
                 [
                     "CFBundleURLSchemes": ["kakao$(KAKAO_NATIVE_APP_KEY)"]
+                ],
+                // 지인 피드백 공유 딥링크 — hilit://feedback/{token} (GuestFeedbackDeeplink 가 판정).
+                [
+                    "CFBundleURLSchemes": ["hilit"]
                 ]
             ],
             "LSApplicationQueriesSchemes": ["kakaokompassauth", "kakaolink", "kakaotalk"],

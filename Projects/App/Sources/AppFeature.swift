@@ -11,14 +11,20 @@ import DomainAppVersionInterface
 import DomainAuthInterface
 import DomainConsentInterface
 import DomainInterviewInterface
+import DomainRecordingInterface
 import Feature
 import Foundation
 
 // @lat: [[app]]
 // depends-on: [[auth]] — 로그인 전/후 루트 게이트. cross-feature 조립은 AppFeature 에서만.
+// depends-on: [[feedback#진입로와 닫기]] — 공유 딥링크(hilit://feedback/{token})가 게스트 평가를
+// 루트 밖 cover 로 present. 무인증 플로우라 루트(스플래시·auth·home) 무관, delegate(.dismissed)로 닫는다.
 // depends-on: [[home]] — Home 을 로그인 후 루트로 임베드(owner). cross-feature delegate 라우팅은 Feature 추가 시 이 자리에서 조립.
 // depends-on: [[interview]] — 온보딩 완주 delegate(.finished(sessionId)) 를 받아 면접 흐름을 present. 종료 두 신호(.finished/.closed)는 cover 를 닫고 홈을 다시 태운다.
+// depends-on: [[mypage]] — 홈 내비바 프로필 delegate(.profileRequested) 로 present. 완료형 두 신호(.loggedOut/.withdrawn)는 루트를 로그인으로 되돌린다.
 //                             홈의 진행 중 두 갈래(중단·재개)도 여기서 InterviewClient·HeldSessionStore 로 배선한다.
+//                             .interrupted(백그라운드 동결 세션의 홈 경유)는 cover 만 닫고 held 를 보존한다 — [[interview#코디네이터]].
+// depends-on: [[interview#프리뷰]] — 앱 사망 세션 정리가 RecordingClient.purgeRecordings 로 죽은 프로세스의 잔존 세그먼트를 걷는다.
 // depends-on: [[onboarding]] — dev 전용 진입(Home 버튼)으로 온보딩 위저드를 present. 조립은 여기서만 (온보딩 본체 통합 전 임시).
 // depends-on: [[report]] — 홈 위젯②의 [레포트 보기] delegate 를 받아 리포트 커버를 세션 id 로 present. 리포트의 두 신호(닫기·다시 연습)도 여기서 받는다.
 @Reducer
@@ -41,11 +47,15 @@ struct AppFeature {
     @ObservableState
     struct State: Equatable {
         var auth = AuthFeature.State()
+        /// 게스트 평가(G4) — 공유 딥링크로 열린다. 무인증이라 루트 무관 cover.
+        @Presents var guestFeedback: GuestFeedbackFeature.State?
         /// 루트가 무엇을 띄우는지 — 초기값은 Splash(판정 전).
         var root: Root = .splash
         var home = HomeFeature.State()
         /// 면접 흐름(Part2) — 온보딩 완주가 넘긴 sessionId 로 연다. 전면 몰입이라 fullScreenCover.
         @Presents var interview: InterviewFeature.State?
+        /// 마이페이지(Part5) — 홈 위젯③ 이 연다. 탭이 아니라 한 장짜리 present 화면이다.
+        @Presents var myPage: MyPageFeature.State?
         /// 온보딩 위저드 — 「면접 시작」의 [시작하기]·[처음부터 시작](중단 후) 이 present 한다.
         @Presents var onboarding: OnboardingFeature.State?
         /// AI 면접 리포트 — 홈 위젯②의 [레포트 보기] 가 세션 id 로 연다. 자체 NavigationStack 을 가진 전면 흐름이라 cover.
@@ -57,6 +67,8 @@ struct AppFeature {
 
     enum Action: BindableAction {
         case onAppear
+        /// 포그라운드 복귀 — 홈에 남은 보관값이 아직 살아 있는 세션인지 확인한다.
+        case sceneBecameActive
         /// 첫 실행 정리가 끝났다 — 이제 세션 복구 판정을 시작해도 된다.
         case firstLaunchResolved
         /// Splash 판정 실패 후 재시도.
@@ -68,14 +80,19 @@ struct AppFeature {
         case updateAlert(PresentationAction<UpdateAlert>)
         /// 세션 복구 판정 결과 — 목적지 또는 실패 종류.
         case launchRoutingResolved(LaunchRouting)
+        /// 커스텀 스킴 URL 수신 — 현재는 게스트 평가 딥링크 하나만 안다.
+        case deeplinkReceived(URL)
         case auth(AuthFeature.Action)
+        case guestFeedback(PresentationAction<GuestFeedbackFeature.Action>)
         case home(HomeFeature.Action)
         /// 진행 중 세션 중단(abandon) 처리 완료 — 이미 중단된 세션(409)도 여기로 온다.
         /// 보관값까지 지운 뒤라 남은 일은 새 면접을 시작하는 것뿐이다.
         case interviewAbandonResolved
-        /// 재개 확정 완료 — 이 세션으로 면접 화면을 연다.
-        case interviewResumeResolved(sessionId: Int)
+        /// 재개 확정 완료 — 이 세션으로 면접 화면을 연다. 최신 질문은 확정 응답이 실어 준 것 그대로다
+        /// (재개 진입은 readiness 를 생략해 질문을 다시 물을 자리가 없다).
+        case interviewResumeResolved(sessionId: Int, question: NextQuestion)
         case interview(PresentationAction<InterviewFeature.Action>)
+        case myPage(PresentationAction<MyPageFeature.Action>)
         case onboarding(PresentationAction<OnboardingFeature.Action>)
         case report(PresentationAction<ReportFeature.Action>)
         /// dev 데이터 초기화 완료 — 초기 State 로 리셋하고 Splash 판정부터 다시 태운다.
@@ -112,8 +129,10 @@ struct AppFeature {
     @Dependency(\.firstLaunchStore) var firstLaunchStore
     @Dependency(\.heldSessionStore) var heldSessionStore
     @Dependency(\.interviewClient) var interviewClient
+    @Dependency(\.interviewVideoUploadQueue) var uploadQueue
     @Dependency(\.onboardingDraftStore) var draftStore
     @Dependency(\.openURL) var openURL
+    @Dependency(\.recordingClient) var recordingClient
 
     var body: some ReducerOf<Self> {
         BindingReducer()
@@ -130,10 +149,22 @@ struct AppFeature {
                 state.home.showsDevReset = AppEnvironment.isDev
                 // 잔존 정리를 **판정보다 먼저** 끝낸다 — 순서를 지키려 판정을 effect 안에서 잇지 않고
                 // 별도 액션으로 갈라 놓는다.
-                return .run { send in
-                    clearIfFirstLaunch()
-                    await send(.firstLaunchResolved)
-                }
+                // 미완 영상 업로드 재개(저널)는 그 순서에 얽히지 않아 나란히 건다 — 강제 종료·complete
+                // 실패 회복은 실행 시점 훅이 유일하다(스펙 ⑤).
+                // 앱 사망 세션 정리도 마찬가지로 실행 시점 훅뿐이라 여기 나란히 건다.
+                return .merge(
+                    .run { send in
+                        clearIfFirstLaunch()
+                        await send(.firstLaunchResolved)
+                    },
+                    .run { _ in await uploadQueue.resumePending() },
+                    cleanUpDeadHeldSession()
+                )
+
+            case .sceneBecameActive:
+                // 면접 흐름이 떠 있으면 그 흐름이 스스로 판정한다([[interview#코디네이터]]) — 여기선 홈만 본다.
+                guard state.interview == nil, state.onboarding == nil, state.root == .home else { return .none }
+                return validateHeldSession()
 
             case .firstLaunchResolved:
                 return resolveLaunchRouting()
@@ -177,6 +208,23 @@ struct AppFeature {
                 return .none
             case .auth:
                 return .none
+
+            case let .deeplinkReceived(url):
+                // 게스트 평가는 무인증 — 루트(스플래시·로그인 전·홈) 무관하게 띄운다.
+                // 면접·온보딩 몰입 중엔 무시(흐름을 끊지 않는다 — 링크 재탭으로 복구되는 드문 엣지).
+                // 이미 게스트 cover 가 떠 있어도 무시 — 진행 중 평가를 다른 토큰으로 갈아치우지 않는다.
+                guard let token = GuestFeedbackDeeplink.parse(url),
+                      state.interview == nil, state.onboarding == nil, state.guestFeedback == nil
+                else { return .none }
+                state.guestFeedback = GuestFeedbackFeature.State(token: token)
+                return .none
+
+            case .guestFeedback(.presented(.delegate(.dismissed))):
+                state.guestFeedback = nil
+                return .none
+            case .guestFeedback:
+                return .none
+
             case .home(.delegate(.interviewStartRequested)):
                 // 면접에 필요한 정보(직군·연차·JD·포폴)를 모으는 게 온보딩 위저드다 — 면접은 거기부터다.
                 // 면접 화면은 **세션 id 로만** 열리는데(`InterviewFeature.State(sessionId:)`) 그 id 를 만드는
@@ -199,7 +247,7 @@ struct AppFeature {
             // 생성을 트리거하고(차감은 리포트 성공 시 확정), 보관값을 지운 뒤 [시작하기] 와 **같은**
             // 경로를 탄다(사용자 결정 2026-08-08).
             case let .home(.delegate(.interviewRestartRequested(sessionId))):
-                return .run { [heldSessionStore, interviewClient] send in
+                return .run { [heldSessionStore, interviewClient, recordingClient] send in
                     do {
                         _ = try await interviewClient.abandonSession(sessionId, .userExit)
                     } catch InterviewError.sessionAlreadyEnded {
@@ -207,40 +255,51 @@ struct AppFeature {
                     } catch {
                         // TODO: 중단 실패 안내 미도안(토스트 자리) — 화면을 유지하고 삼킨다.
                         // 보관값은 **지우지 않는다**: 세션이 아직 서버에 살아 있어 재개 재료가 남아야 한다.
+                        // 세그먼트도 남긴다 — 세션이 살아 있으면 그게 재개 재료다.
                         return
                     }
                     heldSessionStore.clear()
+                    // 세션이 끝났으니 재개 재료(세그먼트)도 폐기 — `.interrupted` 만이 세그먼트를 보존하는 유일한
+                    // 이탈 경로다. purgeRecordings 는 원장이 그 세션을 아직 소유해 no-op 이라 discard 가 맞다(멱등·비던짐).
+                    await recordingClient.discardRecording()
                     await send(.interviewAbandonResolved)
                 }
             // [이어서 진행] = 서버에 살아 있는 세션으로 복귀 — ① 재개 가능 조회 ② 재개 확정 ③ 면접 화면.
             // ①·② 가 «끝난 세션» 을 내면 재개 재료가 아니므로 보관값을 지우고 홈을 다시 태워
             // 변형을 갱신한다(진행 중 → 처음·소진).
             case let .home(.delegate(.interviewResumeRequested(sessionId))):
-                return .run { [heldSessionStore, interviewClient] send in
+                return .run { [heldSessionStore, interviewClient, recordingClient] send in
                     do {
                         let check = try await interviewClient.checkResume(sessionId)
                         // ENDED — hold 만료 처리(세션 ABANDONED 전환·이용권 환불)는 서버가 이 호출
                         // 안에서 이미 끝냈다. 클라가 할 일은 보관값 삭제뿐이다.
-                        // TODO(#69): status == .invalid 는 Interview_SttFailure 화면 —
-                        //            면접 Feature 머지 후 배선.
+                        // TODO(#69): status == .invalid 는 Interview_SttFailure 화면 — 복귀 라우팅
+                        //            ([[interview#코디네이터]])엔 배선됐고, 홈 탭 경로의 화면 전환만 미도안.
                         guard check.isResumable else {
                             heldSessionStore.clear()
+                            // 세션이 끝났으니 재개 재료(세그먼트)도 폐기 — `.interrupted` 만이 세그먼트를 보존하는 유일한
+                            // 이탈 경로다. purgeRecordings 는 원장이 그 세션을 아직 소유해 no-op 이라 discard 가 맞다(멱등·비던짐).
+                            await recordingClient.discardRecording()
                             return await send(.home(.view(.onAppear)))
                         }
                         // 재개가 hold 무효화와 레이스면 409 가 아니라 200 + sessionEnded 로 온다(서버 계약).
+                        // 질문이 비어 오는 것도 «끝난 세션» 과 같게 다룬다 — 이어서 물을 게 없으면 재개가 아니다.
                         let resumed = try await interviewClient.confirmResume(sessionId)
-                        guard !resumed.sessionEnded else {
+                        guard !resumed.sessionEnded, let question = resumed.nextQuestion else {
                             heldSessionStore.clear()
+                            // 위와 같은 이유 — 끝난 세션의 세그먼트는 재개 재료가 아니다(discard 는 멱등·비던짐).
+                            await recordingClient.discardRecording()
                             return await send(.home(.view(.onAppear)))
                         }
-                        await send(.interviewResumeResolved(sessionId: sessionId))
+                        await send(.interviewResumeResolved(sessionId: sessionId, question: question))
                     } catch {
                         // TODO: 재개 실패 안내 미도안(토스트 자리) — 화면을 유지하고 삼킨다.
                         // 네트워크가 죽은 것과 세션이 끝난 것은 다르므로 보관값은 지우지 않는다.
                     }
                 }
             case .home(.delegate(.profileRequested)):
-                // TODO: 마이페이지 진입 — Part 5 Feature 가 생기면 조립한다(docs/work/home-account.md §4).
+                // 홈 내비바의 프로필 아이콘 — 마이페이지(Part5)를 홈 위에 한 장으로 얹는다.
+                state.myPage = MyPageFeature.State()
                 return .none
             case let .home(.delegate(.reportDetailRequested(sessionId))):
                 // 위젯② [레포트 보기] — 행 id = 세션 id. 채점 미완(404·GENERATING)도 그냥 연다(폴링은 리포트 몫 — [[report#1차 리포트]]).
@@ -266,11 +325,13 @@ struct AppFeature {
                 // (사용자 결정 2026-08-08). 홈 변형 갱신은 위저드를 닫고 돌아올 때 온다.
                 state.onboarding = OnboardingFeature.State(userName: state.home.userName)
                 return .none
-            case let .interviewResumeResolved(sessionId):
-                // TODO(#69): confirmResume 응답의 nextQuestion 소비(재개 진입 — readiness 폴링 생략) 는
-                //            개발 중인 면접 Feature 브랜치 머지 후 배선. 지금은 InterviewFeature 가
-                //            기존 진입 경로로 돈다.
-                state.interview = InterviewFeature.State(sessionId: sessionId)
+            case let .interviewResumeResolved(sessionId, question):
+                // 재개 진입(스펙 ④) — readiness 생략, confirmResume 의 최신 질문 + 표시용 근사초 시드.
+                // raw 축 확정은 세션 진입의 startRecording 반환(에셋 실측)이 한다. TODO(#69) 해소.
+                state.interview = InterviewFeature.State(sessionId: sessionId, resume: InterviewResumeSeed(
+                    question: question,
+                    approximateElapsedSeconds: heldSessionStore.load()?.recordedSeconds ?? 0
+                ))
                 return .none
             // 온보딩 완주 = 분석까지 끝나 세션이 준비된 상태 — 위저드를 닫고 그 세션으로 면접을 연다.
             // 홈은 안 태운다 — 어차피 면접에 가려지고, 갱신 시점은 면접이 끝나 돌아올 때다(위 두 갈래).
@@ -278,8 +339,8 @@ struct AppFeature {
                 state.onboarding = nil
                 state.interview = InterviewFeature.State(sessionId: sessionId)
                 // 면접 시작 = 진행 중 보관 시작 — 이 값의 존재가 홈의 «진행 중» 판정 재료다.
-                // TODO(#69): recordedSeconds 갱신은 면접 Feature(개발 중 브랜치) 몫 — 녹화가
-                //            진행되면 save 로 덮어쓴다.
+                // 0초로 여는 건 여기까지고, 이후 갱신은 세션 Feature 몫이다 — 백그라운드 마감이
+                // 누적초 + 프로세스 토큰으로 덮어쓴다([[interview#세션]] 동결 경로).
                 return .run { [heldSessionStore] _ in
                     heldSessionStore.save(HeldSession(sessionId: sessionId, recordedSeconds: 0))
                 }
@@ -307,12 +368,41 @@ struct AppFeature {
                 // 완주 = 더는 진행 중이 아니다 — 보관값을 지워 홈의 «진행 중» 판정을 끈다.
                 heldSessionStore.clear()
                 return .send(.home(.view(.onAppear)))
+            // 동결 세션의 홈 경유(스펙 ③④) — cover 만 닫는다. held 는 **보존**(재개 재료 — 홈 재조회가
+            // «진행 중» 카드를 그리고, «남은 질문 N개» 환산이 여기서 처음 실값을 받는다).
+            // 도달 시점은 **백그라운드 진입 직후**다(2026-08-09 개정) — 사용자가 화면을 보고 있지 않을 때
+            // 닫아야 복귀가 곧장 홈이다. 그새 세션이 끝났는지는 복귀 때 `sceneBecameActive` 가 묻는다.
+            case .interview(.presented(.delegate(.interrupted))):
+                state.interview = nil
+                return .send(.home(.view(.onAppear)))
             // 이탈은 draft 보존 — 같은 입력으로 다시 시작할 수 있어야 한다.
             // 보관값도 **지우지 않는다** — 진행 중인 세션이 그대로라 홈 [이어서 진행] 의 재개 재료다.
             case .interview(.presented(.delegate(.closed))):
                 state.interview = nil
                 return .send(.home(.view(.onAppear)))
             case .interview:
+                return .none
+            // 마이페이지를 닫는다 — 그 안에서 포폴을 지우거나 새로 올렸을 수 있어 홈을 다시 태운다.
+            // 「면접 시작」 카드와 기록이 그 값에 얹혀 있고, cover 를 닫는 것만으론 홈의 `onAppear` 가
+            // 다시 오지 않는다(온보딩 이탈과 같은 이유).
+            case .myPage(.presented(.delegate(.closeRequested))):
+                state.myPage = nil
+                return .send(.home(.view(.onAppear)))
+            // 세션 종료 두 신호 — 마이페이지가 서버 호출과 로컬 토큰 정리까지 끝낸 뒤 통보한다(완료형).
+            // 여기서 할 일은 라우팅뿐이다: 이전 사용자의 화면·데이터를 전부 버리고 로그인부터 다시 —
+            // 로그인 성공(`.auth` → 초기 State + home)의 대칭이다.
+            case .myPage(.presented(.delegate(.loggedOut))),
+                 .myPage(.presented(.delegate(.withdrawn))):
+                state = State()
+                state.root = .auth
+                return .none
+            // TODO: 리포트 상세·지인 피드백 — 홈의 `reportDetailRequested` 와 같은 자리에서 배선한다.
+            //       `ReportFeature` 는 이 병합으로 들어왔고 인자도 이미 세션 id 라, 마이페이지 커버와
+            //       리포트 커버를 어떻게 겹칠지(닫고 열지·위에 얹을지)만 정하면 된다.
+            case .myPage(.presented(.delegate(.reportRequested))),
+                 .myPage(.presented(.delegate(.feedbackRequested))):
+                return .none
+            case .myPage:
                 return .none
             // 리포트가 올리는 신호는 이탈(X) 하나 — 커버만 닫는다(리포트를 읽는 동안
             // 잔여·목록이 바뀌지 않아 홈 재조회가 없다).
@@ -331,8 +421,14 @@ struct AppFeature {
                 return .none
             }
         }
+        .ifLet(\.$guestFeedback, action: \.guestFeedback) {
+            GuestFeedbackFeature()
+        }
         .ifLet(\.$interview, action: \.interview) {
             InterviewFeature()
+        }
+        .ifLet(\.$myPage, action: \.myPage) {
+            MyPageFeature()
         }
         .ifLet(\.$onboarding, action: \.onboarding) {
             OnboardingFeature()
@@ -366,6 +462,52 @@ struct AppFeature {
     private func clearLocalData() {
         KeychainWipe.wipeAll()
         draftStore.clear()
+    }
+
+    // MARK: - 복귀 시점 보관값 검증
+
+    /// 포그라운드 복귀 — 홈에 남은 보관값이 그새 끝난 세션(hold 20분 만료 등)인지 확인하고, 끝났으면
+    /// 카드를 걷는다(스펙 ③ «20분 초과 복귀 → 카드 없이 홈»). 이 판정이 면접 화면이 아니라 여기 있는 건,
+    /// 동결 세션이 백그라운드 진입 즉시 홈으로 나오기 때문이다([[interview#코디네이터]] — 2026-08-09 개정).
+    /// 죽은 프로세스 보관값은 대상이 아니다 — 그건 실행 시점 킬 클린업 몫이라 술어를 정확히 반대로 쓴다.
+    /// 실패(오프라인)는 삼킨다: 보관값을 남겨 두고 다음 복귀나 카드 탭이 다시 묻는다.
+    private func validateHeldSession() -> Effect<Action> {
+        .run { [heldSessionStore, interviewClient, recordingClient] send in
+            guard let held = heldSessionStore.load(), held.isResumableInCurrentProcess else { return }
+            guard let check = try? await interviewClient.checkResume(held.sessionId), !check.isResumable
+            else { return }
+            // 끝난 세션이니 재개 재료(세그먼트)도 폐기한다 — 홈 두 갈래의 ENDED 처리와 같은 규약이다.
+            // 환불은 서버가 그 GET 안에서 끝냈다. INVALID 도 여기선 카드를 걷는 것까지다 —
+            // 띄울 면접 흐름이 없어 STT 실패 화면은 홈 [이어서 진행] 경로에 남는다(#69 TODO).
+            heldSessionStore.clear()
+            await recordingClient.discardRecording()
+            await send(.home(.view(.onAppear)))
+        }
+    }
+
+    // MARK: - 앱 사망 세션 정리
+
+    /// 앱 사망 세션 정리(스펙 ④) — 죽은 프로세스의 진행분 보관값을 서버에 USER_EXIT 로 닫고 로컬을 걷는다.
+    /// 실패(오프라인·미로그인 401 등)는 보관값 유지 — 다음 실행이 재시도하고, 그동안 홈 카드는
+    /// 프로세스 토큰 필터가 막는다(스펙 ⑤). 홈 렌더와 레이스해도 같은 이유로 무해하다.
+    private func cleanUpDeadHeldSession() -> Effect<Action> {
+        .run { [heldSessionStore, interviewClient, recordingClient] _ in
+            guard let sessionId = HeldSessionCleanup.target(heldSessionStore.load()) else { return }
+            do {
+                let check = try await interviewClient.checkResume(sessionId)
+                if HeldSessionCleanup.followup(check) == .abandonUserExit {
+                    _ = try await interviewClient.abandonSession(sessionId, .userExit)
+                }
+            } catch InterviewError.sessionAlreadyEnded {
+                // 이미 중단 완료(409) — 목적 달성으로 간주([처음부터 시작] 과 같은 규약).
+            } catch InterviewError.sessionNotFound {
+                // 내 세션이 아니다(계정 전환 등 404) — 서버에 닫을 것이 없으니 로컬만 걷는다.
+            } catch {
+                return
+            }
+            heldSessionStore.clear()
+            await recordingClient.purgeRecordings(sessionId)
+        }
     }
 
     // MARK: - Splash 세션 복구 판정 → [[auth#가입 플로우]]
