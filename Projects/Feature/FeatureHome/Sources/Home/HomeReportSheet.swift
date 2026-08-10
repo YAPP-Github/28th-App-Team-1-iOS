@@ -179,8 +179,8 @@ struct HomeReportSheet: View {
             }
             // 생성 실패 세션은 열 상세가 없어 버튼을 아예 뺀다 — 카드에 상태 문구만 남는다.
             if report.canOpenReport {
-                // TODO: Part 3 리포트 상세 진입 — delegate 는 이미 나간다(`reportDetailRequested(id:)`,
-                //       인자 = 세션 id). 남은 건 AppFeature 에서 `InterviewReportFeature` 를 제시하는 것뿐이다.
+                // 탭 → `reportDetailRequested(sessionId:)` → AppFeature 가 리포트 cover 를 연다
+                // (행 id = 세션 id, [[app#Cross-feature Routing]]).
                 Button {
                     send(.userTappedReport(id: report.id))
                 } label: {

@@ -388,7 +388,8 @@ public struct OnboardingPortfolioUploadFeature {
 
     /// 업로드·폴링 실패 문구 — 서버 4xx 는 원문 message 를 그대로 싣는다.
     /// TODO: 서버 문구 그대로 노출은 임시 규칙(ServerError.alertMessage 와 같은 계). 코드별 클라 카피 확정 시 교체.
-    /// TODO: PORTFOLIO_ALREADY_EXISTS 는 PRD 상 «기존 삭제 후 재업로드» dialog 안(자동 교체 금지) — 지금은 배너 문구만.
+    /// TODO: PORTFOLIO_ALREADY_EXISTS 복구 — 1개 제한의 주 방어선은 진입 시 사전 확인 모달이고(자동 교체 금지는 그대로),
+    ///       그게 못 막는 창구(PROCESSING 포폴·조회 경합·draft 복원)로 들어온 409 만 아직 배너 문구뿐이다.
     static func failureMessage(for error: any Error) -> String {
         (error as? PortfolioError)?.userMessage ?? genericFailureMessage
     }
