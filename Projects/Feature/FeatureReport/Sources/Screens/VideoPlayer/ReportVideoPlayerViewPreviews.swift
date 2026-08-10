@@ -49,7 +49,7 @@ private extension InterviewReportCard {
             resolutionNotice: nil,
             cardRedFlagNotices: nil,
             questionIntent: nil,
-            // 면접관 질문이 턴 첫 문장 — 오버레이가 Q 배지로 그린다.
+            // 면접관 질문이 턴 첫 문장 — 오버레이가 답변과 같은 모양으로 그린다.
             scriptSegments: [
                 ScriptSegment(
                     role: .interviewer,

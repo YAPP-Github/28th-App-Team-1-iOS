@@ -39,7 +39,7 @@ struct VideoTranscript: Equatable {
     struct Sentence: Equatable, Identifiable {
         /// 카드 안 순번 — 면접관·면접자를 한 줄로 세운 시각 순서다.
         let id: Int
-        /// 누가 말했는가 — 화면이 면접관 질문에 Q 배지를 붙이는 데 쓴다.
+        /// 누가 말했는가 — 하이라이트 구간을 면접자 답변에만 다는 판정에 쓴다.
         let role: ScriptRole
         let text: String
         let spans: [HighlightSpan]
