@@ -17,7 +17,8 @@ import Testing
 @MainActor
 struct ReportPeerFeedbackFeatureTests {
     /// 서버에 이미 만들어 둔 활성 링크 — 회수 경로 확인용 응답.
-    private static func activeStatus(axes: [String]) -> FeedbackShareStatus {
+    /// `withDependencies` 클로저(nonisolated)에서 부르므로 격리를 벗긴다.
+    private nonisolated static func activeStatus(axes: [String]) -> FeedbackShareStatus {
         FeedbackShareStatus(
             token: "tok",
             status: .active,

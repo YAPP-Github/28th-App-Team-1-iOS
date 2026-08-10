@@ -29,12 +29,11 @@ struct ReportFeatureTests {
 
         await store.send(.main(.view(.userTappedWatchVideo)))
         await store.receive(\.main.delegate.videoRequested) {
-            // 대본 타임라인까지 함께 넘긴다 — 진행바 칸이 세션 전체 `script` 를 재료로 쓴다.
+            // 카드까지 함께 넘긴다 — 진행바 칸·대본 오버레이가 질문 턴(`cards`)을 재료로 쓴다.
             $0.path[id: 0] = .videoPlayer(ReportVideoPlayerFeature.State(
                 videoURL: URL(string: "https://example.com/interview/1.mp4")!,
                 startAt: nil,
-                cards: InterviewReportFixtures.ready.cards ?? [],
-                script: InterviewReportFixtures.ready.script ?? []
+                cards: InterviewReportFixtures.ready.cards ?? []
             ))
         }
     }
@@ -70,7 +69,6 @@ struct ReportFeatureTests {
                 videoURL: URL(string: "https://example.com/interview/1.mp4")!,
                 startAt: 12,
                 cards: InterviewReportFixtures.ready.cards ?? [],
-                script: InterviewReportFixtures.ready.script ?? [],
                 entry: .highlightSheet
             ))
         }
@@ -109,6 +107,29 @@ struct ReportFeatureTests {
         await store.receive(\.path[id: 0].peerFeedback.delegate.backRequested) {
             $0.path = StackState()
         }
+    }
+
+    @Test("링크 생성 진입(마이페이지 [지인 피드백 받기])은 지인 피드백 화면 위에서 시작한다")
+    func peerFeedbackEntryStartsOnShareScreen() {
+        let state = ReportFeature.State(sessionId: 7, entry: .peerFeedback)
+
+        #expect(state.path.count == 1)
+        #expect(state.path[id: 0]?.peerFeedback?.sessionId == 7)
+        // 메인은 그래도 루트로 남는다 — 허브라 되돌아올 자리가 있어야 한다.
+        #expect(state.main.sessionId == 7)
+    }
+
+    @Test("링크 생성으로 곧장 들어온 흐름의 뒤로는 메인이 아니라 흐름째 닫는다")
+    func peerFeedbackEntryBackClosesFlow() async {
+        let store = TestStore(
+            initialState: ReportFeature.State(sessionId: 7, entry: .peerFeedback)
+        ) { ReportFeature() }
+
+        await store.send(.path(.element(id: 0, action: .peerFeedback(.view(.userTappedBack)))))
+        await store.receive(\.path[id: 0].peerFeedback.delegate.backRequested) {
+            $0.path = StackState()
+        }
+        await store.receive(\.delegate.closeRequested)
     }
 
     /// 시트 «영상 보러가기» 로 플레이어까지 들어와 있는 상태 — 접어 둔 시트가 옆에 있다.

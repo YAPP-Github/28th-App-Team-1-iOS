@@ -22,11 +22,13 @@ import Foundation
 // depends-on: [[home]] — Home 을 로그인 후 루트로 임베드(owner). cross-feature delegate 라우팅은 Feature 추가 시 이 자리에서 조립.
 // depends-on: [[interview]] — 온보딩 완주 delegate(.finished(sessionId)) 를 받아 면접 흐름을 present. 종료 두 신호(.finished/.closed)는 cover 를 닫고 홈을 다시 태운다.
 // depends-on: [[mypage]] — 홈 내비바 프로필 delegate(.profileRequested) 로 present. 완료형 두 신호(.loggedOut/.withdrawn)는 루트를 로그인으로 되돌린다.
+//                             리포트 줄 두 버튼(.reportRequested/.feedbackRequested)은 마이페이지를 **덮는** 별도 리포트 커버(`myPageReport`)를 세운다 — 목록이 도착지라서다.
 //                             홈의 진행 중 두 갈래(중단·재개)도 여기서 InterviewClient·HeldSessionStore 로 배선한다.
 //                             .interrupted(백그라운드 동결 세션의 홈 경유)는 cover 만 닫고 held 를 보존한다 — [[interview#코디네이터]].
 // depends-on: [[interview#프리뷰]] — 앱 사망 세션 정리가 RecordingClient.purgeRecordings 로 죽은 프로세스의 잔존 세그먼트를 걷는다.
 // depends-on: [[onboarding]] — dev 전용 진입(Home 버튼)으로 온보딩 위저드를 present. 조립은 여기서만 (온보딩 본체 통합 전 임시).
 // depends-on: [[report]] — 홈 위젯②의 [레포트 보기] delegate 를 받아 리포트 커버를 세션 id 로 present. 리포트의 두 신호(닫기·다시 연습)도 여기서 받는다.
+//                            마이페이지발 진입은 같은 Feature 를 **다른 자리**(`myPageReport`)에 세운다 — 링크 생성 직행은 `entry: .peerFeedback`.
 @Reducer
 struct AppFeature {
     /// 루트가 지금 무엇을 띄우는가. Bool 조합으로는 «재시도 가능한 판정 실패» 를 표현할 수 없어 값으로 둔다.
@@ -56,6 +58,10 @@ struct AppFeature {
         @Presents var interview: InterviewFeature.State?
         /// 마이페이지(Part5) — 홈 위젯③ 이 연다. 탭이 아니라 한 장짜리 present 화면이다.
         @Presents var myPage: MyPageFeature.State?
+        /// 마이페이지 리포트 줄이 연 리포트 — 홈 경로의 `report` 와 **자리를 나눠 갖는다**.
+        /// 하나로 합치면 두 cover(루트·마이페이지 위)가 같은 값을 동시에 present 하려 들어 화면이 깨진다.
+        /// 마이페이지를 닫지 않고 그 위에 얹는 건 도착지 때문이다 — 목록에서 왔으니 닫으면 목록이다.
+        @Presents var myPageReport: ReportFeature.State?
         /// 온보딩 위저드 — 「면접 시작」의 [시작하기]·[처음부터 시작](중단 후) 이 present 한다.
         @Presents var onboarding: OnboardingFeature.State?
         /// AI 면접 리포트 — 홈 위젯②의 [레포트 보기] 가 세션 id 로 연다. 자체 NavigationStack 을 가진 전면 흐름이라 cover.
@@ -93,6 +99,7 @@ struct AppFeature {
         case interviewResumeResolved(sessionId: Int, question: NextQuestion)
         case interview(PresentationAction<InterviewFeature.Action>)
         case myPage(PresentationAction<MyPageFeature.Action>)
+        case myPageReport(PresentationAction<ReportFeature.Action>)
         case onboarding(PresentationAction<OnboardingFeature.Action>)
         case report(PresentationAction<ReportFeature.Action>)
         /// dev 데이터 초기화 완료 — 초기 State 로 리셋하고 Splash 판정부터 다시 태운다.
@@ -142,284 +149,10 @@ struct AppFeature {
         Scope(state: \.home, action: \.home) {
             HomeFeature()
         }
+        // 라우팅 본문은 AppFeatureRouting.swift — 한 클로저에 다 넣으면 이 결과 빌더가
+        // 타입 체크 한계를 넘어 빌드가 깨진다.
         Reduce { state, action in
-            switch action {
-            case .onAppear:
-                // dev 계에서만 Home 데이터 초기화 버튼을 노출한다.
-                state.home.showsDevReset = AppEnvironment.isDev
-                // 잔존 정리를 **판정보다 먼저** 끝낸다 — 순서를 지키려 판정을 effect 안에서 잇지 않고
-                // 별도 액션으로 갈라 놓는다.
-                // 미완 영상 업로드 재개(저널)는 그 순서에 얽히지 않아 나란히 건다 — 강제 종료·complete
-                // 실패 회복은 실행 시점 훅이 유일하다(스펙 ⑤).
-                // 앱 사망 세션 정리도 마찬가지로 실행 시점 훅뿐이라 여기 나란히 건다.
-                return .merge(
-                    .run { send in
-                        clearIfFirstLaunch()
-                        await send(.firstLaunchResolved)
-                    },
-                    .run { _ in await uploadQueue.resumePending() },
-                    cleanUpDeadHeldSession()
-                )
-
-            case .sceneBecameActive:
-                // 면접 흐름이 떠 있으면 그 흐름이 스스로 판정한다([[interview#코디네이터]]) — 여기선 홈만 본다.
-                guard state.interview == nil, state.onboarding == nil, state.root == .home else { return .none }
-                return validateHeldSession()
-
-            case .firstLaunchResolved:
-                return resolveLaunchRouting()
-
-            case .retryLaunchRouting:
-                state.root = .splash
-                return resolveLaunchRouting()
-
-            case let .appVersionResolved(policy):
-                state.updatePolicy = policy
-                let isForced = policy.updateType == .force
-                // FORCE 는 세션 판정 자체가 멈춘 상태다 — 루트를 옮겨 Splash 에 갇힌 것과 구분한다.
-                if isForced { state.root = .updateRequired }
-                state.updateAlert = .update(isForced: isForced)
-                return .none
-
-            case .updateAlert(.presented(.userTappedUpdate)):
-                guard let policy = state.updatePolicy else { return .none }
-                let isForced = policy.updateType == .force
-                return .run { send in
-                    if let url = URL(string: policy.storeUrl) { await openURL(url) }
-                    // 스토어에서 그냥 돌아와도 강제 업데이트는 계속 막는다.
-                    if isForced { await send(.updateAlertReasserted) }
-                }
-
-            case .updateAlertReasserted:
-                state.updateAlert = .update(isForced: true)
-                return .none
-
-            case .updateAlert:
-                return .none
-
-            case let .launchRoutingResolved(routing):
-                return apply(routing, to: &state)
-
-            case let .auth(.delegate(.signedIn)):
-                // 새 로그인 = 새 세션. 이전 사용자가 하던 화면·데이터를 전부 버리고 초기 State 에서 시작한다.
-                state = State()
-                state.root = .home
-                state.home.showsDevReset = AppEnvironment.isDev
-                return .none
-            case .auth:
-                return .none
-
-            case let .deeplinkReceived(url):
-                // 게스트 평가는 무인증 — 루트(스플래시·로그인 전·홈) 무관하게 띄운다.
-                // 면접·온보딩 몰입 중엔 무시(흐름을 끊지 않는다 — 링크 재탭으로 복구되는 드문 엣지).
-                // 이미 게스트 cover 가 떠 있어도 무시 — 진행 중 평가를 다른 토큰으로 갈아치우지 않는다.
-                guard let token = GuestFeedbackDeeplink.parse(url),
-                      state.interview == nil, state.onboarding == nil, state.guestFeedback == nil
-                else { return .none }
-                state.guestFeedback = GuestFeedbackFeature.State(token: token)
-                return .none
-
-            case .guestFeedback(.presented(.delegate(.dismissed))):
-                state.guestFeedback = nil
-                return .none
-            case .guestFeedback:
-                return .none
-
-            case .home(.delegate(.interviewStartRequested)):
-                // 면접에 필요한 정보(직군·연차·JD·포폴)를 모으는 게 온보딩 위저드다 — 면접은 거기부터다.
-                // 면접 화면은 **세션 id 로만** 열리는데(`InterviewFeature.State(sessionId:)`) 그 id 를 만드는
-                // 건 위저드의 세션 생성뿐이라, 2회차 이후도 같은 위저드를 태운다(저장된 draft 가 살아 있으면
-                // 위저드가 알아서 값을 복원한다 — TTL 14일, [[onboarding#코디네이터]]).
-                switch state.home.startInterview.variant {
-                case .first:
-                    state.onboarding = OnboardingFeature.State(userName: state.home.userName)
-                case .inProgress:
-                    // 진행 중 시안엔 [시작하기] 가 없다(CTA 는 «처음부터 시작»·«이어서 진행») — 도달하지 않는다.
-                    break
-                case .exhausted:
-                    // 소진 시안엔 [시작하기] 가 없다(CTA 는 «홈으로») — 도달하지 않는다.
-                    break
-                }
-                return .none
-            // 진행 중(held) 면접 두 갈래 — 대상 세션 id 는 홈이 로컬 보관값에서 읽어 실어 준다.
-            //
-            // [처음부터 시작] = 진행분을 **버리고** 새로. 서버에 USER_EXIT 중단을 알려 진행분 리포트
-            // 생성을 트리거하고(차감은 리포트 성공 시 확정), 보관값을 지운 뒤 [시작하기] 와 **같은**
-            // 경로를 탄다(사용자 결정 2026-08-08).
-            case let .home(.delegate(.interviewRestartRequested(sessionId))):
-                return .run { [heldSessionStore, interviewClient, recordingClient] send in
-                    do {
-                        _ = try await interviewClient.abandonSession(sessionId, .userExit)
-                    } catch InterviewError.sessionAlreadyEnded {
-                        // 중복 호출의 409 는 «이미 중단 완료» 라는 서버 계약이다 — 실패가 아니라 목적 달성.
-                    } catch {
-                        // TODO: 중단 실패 안내 미도안(토스트 자리) — 화면을 유지하고 삼킨다.
-                        // 보관값은 **지우지 않는다**: 세션이 아직 서버에 살아 있어 재개 재료가 남아야 한다.
-                        // 세그먼트도 남긴다 — 세션이 살아 있으면 그게 재개 재료다.
-                        return
-                    }
-                    heldSessionStore.clear()
-                    // 세션이 끝났으니 재개 재료(세그먼트)도 폐기 — `.interrupted` 만이 세그먼트를 보존하는 유일한
-                    // 이탈 경로다. purgeRecordings 는 원장이 그 세션을 아직 소유해 no-op 이라 discard 가 맞다(멱등·비던짐).
-                    await recordingClient.discardRecording()
-                    await send(.interviewAbandonResolved)
-                }
-            // [이어서 진행] = 서버에 살아 있는 세션으로 복귀 — ① 재개 가능 조회 ② 재개 확정 ③ 면접 화면.
-            // ①·② 가 «끝난 세션» 을 내면 재개 재료가 아니므로 보관값을 지우고 홈을 다시 태워
-            // 변형을 갱신한다(진행 중 → 처음·소진).
-            case let .home(.delegate(.interviewResumeRequested(sessionId))):
-                return .run { [heldSessionStore, interviewClient, recordingClient] send in
-                    do {
-                        let check = try await interviewClient.checkResume(sessionId)
-                        // ENDED — hold 만료 처리(세션 ABANDONED 전환·이용권 환불)는 서버가 이 호출
-                        // 안에서 이미 끝냈다. 클라가 할 일은 보관값 삭제뿐이다.
-                        // TODO(#69): status == .invalid 는 Interview_SttFailure 화면 — 복귀 라우팅
-                        //            ([[interview#코디네이터]])엔 배선됐고, 홈 탭 경로의 화면 전환만 미도안.
-                        guard check.isResumable else {
-                            heldSessionStore.clear()
-                            // 세션이 끝났으니 재개 재료(세그먼트)도 폐기 — `.interrupted` 만이 세그먼트를 보존하는 유일한
-                            // 이탈 경로다. purgeRecordings 는 원장이 그 세션을 아직 소유해 no-op 이라 discard 가 맞다(멱등·비던짐).
-                            await recordingClient.discardRecording()
-                            return await send(.home(.view(.onAppear)))
-                        }
-                        // 재개가 hold 무효화와 레이스면 409 가 아니라 200 + sessionEnded 로 온다(서버 계약).
-                        // 질문이 비어 오는 것도 «끝난 세션» 과 같게 다룬다 — 이어서 물을 게 없으면 재개가 아니다.
-                        let resumed = try await interviewClient.confirmResume(sessionId)
-                        guard !resumed.sessionEnded, let question = resumed.nextQuestion else {
-                            heldSessionStore.clear()
-                            // 위와 같은 이유 — 끝난 세션의 세그먼트는 재개 재료가 아니다(discard 는 멱등·비던짐).
-                            await recordingClient.discardRecording()
-                            return await send(.home(.view(.onAppear)))
-                        }
-                        await send(.interviewResumeResolved(sessionId: sessionId, question: question))
-                    } catch {
-                        // TODO: 재개 실패 안내 미도안(토스트 자리) — 화면을 유지하고 삼킨다.
-                        // 네트워크가 죽은 것과 세션이 끝난 것은 다르므로 보관값은 지우지 않는다.
-                    }
-                }
-            case .home(.delegate(.profileRequested)):
-                // 홈 내비바의 프로필 아이콘 — 마이페이지(Part5)를 홈 위에 한 장으로 얹는다.
-                state.myPage = MyPageFeature.State()
-                return .none
-            case let .home(.delegate(.reportDetailRequested(sessionId))):
-                // 위젯② [레포트 보기] — 행 id = 세션 id. 채점 미완(404·GENERATING)도 그냥 연다(폴링은 리포트 몫 — [[report#1차 리포트]]).
-                state.report = ReportFeature.State(sessionId: sessionId)
-                return .none
-            case .home(.delegate(.appDataResetRequested)):
-                // dev 전용 «재설치 흉내» — 서버 로그아웃 · Keychain 전체 · 온보딩 draft ·
-                // 앱 UserDefaults 도메인 전체를 지운다. 서버 호출이 실패해도 로컬 정리는 그대로 진행한다.
-                // 첫 실행 마커까지 함께 날리는 건 의도다 — 다음 콜드 스타트가 재설치 직후와 같은 자리에서
-                // 정리를 한 번 더 돌게 된다(빈 저장소를 지우는 것이라 손해가 없다, [[app#첫 실행 정리]]).
-                return .run { send in
-                    try? await authClient.logout()
-                    clearLocalData()
-                    if let bundleId = Bundle.main.bundleIdentifier {
-                        UserDefaults.standard.removePersistentDomain(forName: bundleId)
-                    }
-                    await send(.appDataCleared)
-                }
-            case .home:
-                return .none
-            case .interviewAbandonResolved:
-                // 버린 자리에서 곧장 새 면접 — 시작 경로는 [시작하기] 와 같은 온보딩 위저드다
-                // (사용자 결정 2026-08-08). 홈 변형 갱신은 위저드를 닫고 돌아올 때 온다.
-                state.onboarding = OnboardingFeature.State(userName: state.home.userName)
-                return .none
-            case let .interviewResumeResolved(sessionId, question):
-                // 재개 진입(스펙 ④) — readiness 생략, confirmResume 의 최신 질문 + 표시용 근사초 시드.
-                // raw 축 확정은 세션 진입의 startRecording 반환(에셋 실측)이 한다. TODO(#69) 해소.
-                state.interview = InterviewFeature.State(sessionId: sessionId, resume: InterviewResumeSeed(
-                    question: question,
-                    approximateElapsedSeconds: heldSessionStore.load()?.recordedSeconds ?? 0
-                ))
-                return .none
-            // 온보딩 완주 = 분석까지 끝나 세션이 준비된 상태 — 위저드를 닫고 그 세션으로 면접을 연다.
-            // 홈은 안 태운다 — 어차피 면접에 가려지고, 갱신 시점은 면접이 끝나 돌아올 때다(위 두 갈래).
-            case let .onboarding(.presented(.delegate(.finished(sessionId)))):
-                state.onboarding = nil
-                state.interview = InterviewFeature.State(sessionId: sessionId)
-                // 면접 시작 = 진행 중 보관 시작 — 이 값의 존재가 홈의 «진행 중» 판정 재료다.
-                // 0초로 여는 건 여기까지고, 이후 갱신은 세션 Feature 몫이다 — 백그라운드 마감이
-                // 누적초 + 프로세스 토큰으로 덮어쓴다([[interview#세션]] 동결 경로).
-                return .run { [heldSessionStore] _ in
-                    heldSessionStore.save(HeldSession(sessionId: sessionId, recordedSeconds: 0))
-                }
-            // 중도 이탈 — 위저드만 닫고 홈을 다시 태운다. cover 를 닫는 것만으론 홈의
-            // `onAppear` 가 다시 오지 않아 여기서 명시로 보낸다(겸사겸사 시트도 기본 자리로 —
-            // 위저드를 다녀온 뒤 면접 시작 겹에 그대로 서 있지 않는다).
-            case .onboarding(.presented(.delegate(.dismiss))):
-                state.onboarding = nil
-                return .send(.home(.view(.onAppear)))
-            case .onboarding:
-                return .none
-            // 면접 종료·이탈 모두 cover 를 닫고 홈을 다시 태운다 — 어느 쪽이든 잔여가 줄었고,
-            // 리포트도 늘었을 수 있다(BACK_EXIT 이탈도 생성 트리거 — 2026-08-03 서버 계약).
-            // 케이스를 합치지 않는 건 곧 갈라지기 때문이다: 정상 종료엔 리포트 상세(r1) 라우팅이 붙는다.
-            // TODO: 정상 종료 → r1 직행. 커버(`state.report`)는 이미 있어 `finished` 가 sessionId 만 실어 주면 된다.
-            //
-            // 정상 종료 = 온보딩이 모은 입력이 제 역할을 다한 지점 — 여기서 온보딩 draft 를 폐기한다(PRD §4.4).
-            // 세션 생성 시점에 지우지 않는 이유: 그 사이 앱이 죽거나 면접에서 이탈하면 값이 다시 필요하다.
-            case .interview(.presented(.delegate(.finished))):
-                state.interview = nil
-                // 삭제는 effect 가 아니라 본문에서 — .merge(.run{clear}, .send(onAppear)) 로 두면
-                // .send 가 먼저 도착해 홈이 지우기 전 보관값을 읽고, 끝난 면접이 [이어서 진행] 으로 뜬다
-                // (홈의 held 판정은 onAppear 본문의 동기 load). 둘 다 동기·non-throwing 이라 가능하다.
-                draftStore.clear()
-                // 완주 = 더는 진행 중이 아니다 — 보관값을 지워 홈의 «진행 중» 판정을 끈다.
-                heldSessionStore.clear()
-                return .send(.home(.view(.onAppear)))
-            // 동결 세션의 홈 경유(스펙 ③④) — cover 만 닫는다. held 는 **보존**(재개 재료 — 홈 재조회가
-            // «진행 중» 카드를 그리고, «남은 질문 N개» 환산이 여기서 처음 실값을 받는다).
-            // 도달 시점은 **백그라운드 진입 직후**다(2026-08-09 개정) — 사용자가 화면을 보고 있지 않을 때
-            // 닫아야 복귀가 곧장 홈이다. 그새 세션이 끝났는지는 복귀 때 `sceneBecameActive` 가 묻는다.
-            case .interview(.presented(.delegate(.interrupted))):
-                state.interview = nil
-                return .send(.home(.view(.onAppear)))
-            // 이탈은 draft 보존 — 같은 입력으로 다시 시작할 수 있어야 한다.
-            // 보관값도 **지우지 않는다** — 진행 중인 세션이 그대로라 홈 [이어서 진행] 의 재개 재료다.
-            case .interview(.presented(.delegate(.closed))):
-                state.interview = nil
-                return .send(.home(.view(.onAppear)))
-            case .interview:
-                return .none
-            // 마이페이지를 닫는다 — 그 안에서 포폴을 지우거나 새로 올렸을 수 있어 홈을 다시 태운다.
-            // 「면접 시작」 카드와 기록이 그 값에 얹혀 있고, cover 를 닫는 것만으론 홈의 `onAppear` 가
-            // 다시 오지 않는다(온보딩 이탈과 같은 이유).
-            case .myPage(.presented(.delegate(.closeRequested))):
-                state.myPage = nil
-                return .send(.home(.view(.onAppear)))
-            // 세션 종료 두 신호 — 마이페이지가 서버 호출과 로컬 토큰 정리까지 끝낸 뒤 통보한다(완료형).
-            // 여기서 할 일은 라우팅뿐이다: 이전 사용자의 화면·데이터를 전부 버리고 로그인부터 다시 —
-            // 로그인 성공(`.auth` → 초기 State + home)의 대칭이다.
-            case .myPage(.presented(.delegate(.loggedOut))),
-                 .myPage(.presented(.delegate(.withdrawn))):
-                state = State()
-                state.root = .auth
-                return .none
-            // TODO: 리포트 상세·지인 피드백 — 홈의 `reportDetailRequested` 와 같은 자리에서 배선한다.
-            //       `ReportFeature` 는 이 병합으로 들어왔고 인자도 이미 세션 id 라, 마이페이지 커버와
-            //       리포트 커버를 어떻게 겹칠지(닫고 열지·위에 얹을지)만 정하면 된다.
-            case .myPage(.presented(.delegate(.reportRequested))),
-                 .myPage(.presented(.delegate(.feedbackRequested))):
-                return .none
-            case .myPage:
-                return .none
-            // 리포트가 올리는 신호는 이탈(X) 하나 — 커버만 닫는다(리포트를 읽는 동안
-            // 잔여·목록이 바뀌지 않아 홈 재조회가 없다).
-            case .report(.presented(.delegate(.closeRequested))):
-                state.report = nil
-                return .none
-            case .report:
-                return .none
-            case .appDataCleared:
-                // 초기 State 로 되돌리고 **Splash 판정부터 다시** — 지운 게 세션만이 아니라 로컬 저장소
-                // 전부라, 재설치 직후와 같은 자리에서 시작해야 버전 게이트·동의·프로필 게이트가 모두 다시 돈다.
-                state = State()
-                state.home.showsDevReset = AppEnvironment.isDev
-                return resolveLaunchRouting()
-            case .binding:
-                return .none
-            }
+            reduceCore(&state, action)
         }
         .ifLet(\.$guestFeedback, action: \.guestFeedback) {
             GuestFeedbackFeature()
@@ -430,6 +163,9 @@ struct AppFeature {
         .ifLet(\.$myPage, action: \.myPage) {
             MyPageFeature()
         }
+        .ifLet(\.$myPageReport, action: \.myPageReport) {
+            ReportFeature()
+        }
         .ifLet(\.$onboarding, action: \.onboarding) {
             OnboardingFeature()
         }
@@ -437,170 +173,5 @@ struct AppFeature {
             ReportFeature()
         }
         .ifLet(\.$updateAlert, action: \.updateAlert)
-    }
-
-    // MARK: - 첫 실행 정리 → [[app#첫 실행 정리]]
-
-    /// 이 설치의 첫 실행이면 잔존 로컬 데이터를 지운다 — 앱을 지워도 Keychain 은 남기 때문이다.
-    ///
-    /// 남는 게 토큰뿐이라 정리를 안 하면 재설치 직후가 «로그인된 상태» 로 판정된다. 삭제와 함께
-    /// 사라지는 UserDefaults 쪽(draft)은 이미 비어 있어 지워도 손해가 없다 — 판정 하나로 둘 다 맞춘다.
-    ///
-    /// 마커는 **정리 뒤에** 찍는다. 사이에서 앱이 죽으면 다음 실행이 다시 첫 실행으로 판정돼 정리를
-    /// 마치는데, 먼저 찍으면 지우다 만 상태로 굳는다.
-    private func clearIfFirstLaunch() {
-        guard firstLaunchStore.isFirstLaunch() else { return }
-        clearLocalData()
-        firstLaunchStore.markLaunched()
-    }
-
-    /// 로컬 저장소 정리 — 첫 실행 정리와 로그아웃이 공유한다. 서버 호출은 하지 않는다.
-    ///
-    /// Keychain 은 `tokenStore.clear()`(항목 하나)가 아니라 **전체**를 지운다 — 목적이 «앱이 남긴 것
-    /// 전부» 라 Keychain 항목이 늘어도 놓치지 않아야 한다. UserDefaults 는 도메인째 지우지 않는다:
-    /// 첫 실행 마커가 거기 있어 통째로 날리면 다음 실행이 다시 첫 실행으로 판정된다.
-    private func clearLocalData() {
-        KeychainWipe.wipeAll()
-        draftStore.clear()
-    }
-
-    // MARK: - 복귀 시점 보관값 검증
-
-    /// 포그라운드 복귀 — 홈에 남은 보관값이 그새 끝난 세션(hold 20분 만료 등)인지 확인하고, 끝났으면
-    /// 카드를 걷는다(스펙 ③ «20분 초과 복귀 → 카드 없이 홈»). 이 판정이 면접 화면이 아니라 여기 있는 건,
-    /// 동결 세션이 백그라운드 진입 즉시 홈으로 나오기 때문이다([[interview#코디네이터]] — 2026-08-09 개정).
-    /// 죽은 프로세스 보관값은 대상이 아니다 — 그건 실행 시점 킬 클린업 몫이라 술어를 정확히 반대로 쓴다.
-    /// 실패(오프라인)는 삼킨다: 보관값을 남겨 두고 다음 복귀나 카드 탭이 다시 묻는다.
-    private func validateHeldSession() -> Effect<Action> {
-        .run { [heldSessionStore, interviewClient, recordingClient] send in
-            guard let held = heldSessionStore.load(), held.isResumableInCurrentProcess else { return }
-            guard let check = try? await interviewClient.checkResume(held.sessionId), !check.isResumable
-            else { return }
-            // 끝난 세션이니 재개 재료(세그먼트)도 폐기한다 — 홈 두 갈래의 ENDED 처리와 같은 규약이다.
-            // 환불은 서버가 그 GET 안에서 끝냈다. INVALID 도 여기선 카드를 걷는 것까지다 —
-            // 띄울 면접 흐름이 없어 STT 실패 화면은 홈 [이어서 진행] 경로에 남는다(#69 TODO).
-            heldSessionStore.clear()
-            await recordingClient.discardRecording()
-            await send(.home(.view(.onAppear)))
-        }
-    }
-
-    // MARK: - 앱 사망 세션 정리
-
-    /// 앱 사망 세션 정리(스펙 ④) — 죽은 프로세스의 진행분 보관값을 서버에 USER_EXIT 로 닫고 로컬을 걷는다.
-    /// 실패(오프라인·미로그인 401 등)는 보관값 유지 — 다음 실행이 재시도하고, 그동안 홈 카드는
-    /// 프로세스 토큰 필터가 막는다(스펙 ⑤). 홈 렌더와 레이스해도 같은 이유로 무해하다.
-    private func cleanUpDeadHeldSession() -> Effect<Action> {
-        .run { [heldSessionStore, interviewClient, recordingClient] _ in
-            guard let sessionId = HeldSessionCleanup.target(heldSessionStore.load()) else { return }
-            do {
-                let check = try await interviewClient.checkResume(sessionId)
-                if HeldSessionCleanup.followup(check) == .abandonUserExit {
-                    _ = try await interviewClient.abandonSession(sessionId, .userExit)
-                }
-            } catch InterviewError.sessionAlreadyEnded {
-                // 이미 중단 완료(409) — 목적 달성으로 간주([처음부터 시작] 과 같은 규약).
-            } catch InterviewError.sessionNotFound {
-                // 내 세션이 아니다(계정 전환 등 404) — 서버에 닫을 것이 없으니 로컬만 걷는다.
-            } catch {
-                return
-            }
-            heldSessionStore.clear()
-            await recordingClient.purgeRecordings(sessionId)
-        }
-    }
-
-    // MARK: - Splash 세션 복구 판정 → [[auth#가입 플로우]]
-
-    /// 버전 게이트 → 토큰 유무 → pending 한 콜로 목적지를 정한다 (docs/work/launch-routing.md §4).
-    ///
-    /// 버전 게이트가 **먼저**다 — FORCE 인데 뒤에 두면 이미 홈에 들어간 뒤에 막게 된다. 무인증 API 라
-    /// 토큰 유무와 무관하게 돌릴 수 있다. 실패는 **fail-open** — 버전 정책 서버가 죽었다고 앱 실행까지
-    /// 막지 않는다([[api#AppVersion]]).
-    ///
-    /// refresh 를 **먼저 때리지 않는다** — Access 는 3시간이라 콜드 스타트 대부분 살아 있고,
-    /// 만료면 이 호출의 403 을 AuthorizedNetworkClient 가 잡아 재발급 후 재시도한다([[api#토큰 수명주기]]).
-    /// 매 실행 무조건 rotation 은 콜 낭비 + 페어 교체 중 앱 킬 = 세션 유실 리스크만 키운다.
-    ///
-    /// 실패는 **두 종류로 갈라야** 한다 — `sessionExpired`(재발급까지 실패, 토큰은 인터셉터가 이미 폐기)는
-    /// 재로그인이고, 네트워크·5xx 는 판정 불가라 토큰을 살려 둔 채 재시도한다.
-    /// 뭉뚱그리면 오프라인에서 앱을 켠 사용자가 로그아웃당한다.
-    private func resolveLaunchRouting() -> Effect<Action> {
-        .run { send in
-            if let policy = await checkAppVersion(), policy.updateType != .none {
-                await send(.appVersionResolved(policy))
-                // FORCE 는 여기서 끝 — 세션 판정을 시작하지 않는다.
-                if policy.updateType == .force { return }
-            }
-            guard authClient.isAuthenticated() else {
-                return await send(.launchRoutingResolved(.login))
-            }
-            do {
-                // 게이트 판정값 2개를 한 번에 받는다 — 약관 항목까지 딸려와 재조회가 없고,
-                // 인증 필요 API 라 세션 유효성 검증을 겸한다.
-                let pending = try await consentClient.pending()
-                await send(.launchRoutingResolved(routing(for: pending)))
-            } catch ConsentError.sessionExpired {
-                await send(.launchRoutingResolved(.login))
-            } catch {
-                await send(.launchRoutingResolved(.failed(step: "consents/pending", reason: "\(error)")))
-            }
-        }
-    }
-
-    /// 버전 판정 — 실패(네트워크·5xx·버전 키 없음)는 nil 로 삼켜 진입을 막지 않는다(fail-open).
-    private func checkAppVersion() async -> AppVersionPolicy? {
-        guard let version = AppEnvironment.marketingVersion else { return nil }
-        return try? await appVersionClient.check(version)
-    }
-
-    /// 게이트 2단 체인 — ① 동의(`status`) ② 프로필(`profileRegistered`). 순서가 고정이다.
-    private func routing(for pending: ConsentPending) -> LaunchRouting {
-        guard pending.status == .upToDate else {
-            return .resume(.terms(items: pending.items, profileRegistered: pending.profileRegistered))
-        }
-        return pending.profileRegistered ? .home : .resume(.onboarding)
-    }
-
-    private func apply(_ routing: LaunchRouting, to state: inout State) -> Effect<Action> {
-        switch routing {
-        case .login:
-            state.auth = AuthFeature.State()
-            state.root = .auth
-        case let .resume(destination):
-            state.auth = AuthFeature.State(resuming: destination)
-            state.root = .auth
-        case .home:
-            state.root = .home
-        case let .failed(step, reason):
-            #if DEBUG
-            print("🚧 [LAUNCH-ROUTING] \(step) 실패 — \(reason)")
-            #endif
-            state.root = .splashFailed
-        }
-        return .none
-    }
-}
-
-// MARK: - 업데이트 안내
-
-// TODO: 시안 수령 시 OS 기본 Alert → 전용 화면/시트로 교체. 문구도 그때 확정한다.
-private extension AlertState where Action == AppFeature.Action.UpdateAlert {
-    /// 강제면 «나중에» 를 만들지 않는다 — 버튼이 하나뿐이라 알럿을 닫고 앱을 쓸 길이 없다.
-    static func update(isForced: Bool) -> Self {
-        AlertState {
-            TextState(isForced ? "업데이트가 필요해요" : "새 버전이 나왔어요")
-        } actions: {
-            ButtonState(action: .userTappedUpdate) { TextState("업데이트") }
-            if !isForced {
-                ButtonState(role: .cancel, action: .userTappedLater) { TextState("나중에") }
-            }
-        } message: {
-            TextState(
-                isForced
-                    ? "계속 사용하려면 최신 버전으로 업데이트해주세요."
-                    : "더 편해진 기능을 쓰려면 업데이트해주세요."
-            )
-        }
     }
 }
