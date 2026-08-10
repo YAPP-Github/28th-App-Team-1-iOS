@@ -38,7 +38,8 @@ public struct BubbleField: View {
     /// 꼬리 조각 크기 — Figma tail SVG 는 97×11 프레임이고 삼각형은 그 안 x40..57 구간뿐이다.
     private static let tailSize = CGSize(width: 17, height: 11)
     /// 꼬리가 붙는 변의 기준 모서리에서 안쪽으로 들어온 거리(위 SVG 의 40). 대응 spacing 토큰 없어 리터럴.
-    private static let tailInset: CGFloat = 40
+    /// 표출 위치가 호출부 책임이라 **공개**한다 — 꼬리 끝을 무언가에 겨누려면 이 값이 필요하다.
+    public static let tailInset: CGFloat = 40
 
     private let message: String
     private let kind: Kind

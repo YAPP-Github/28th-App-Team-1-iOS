@@ -48,8 +48,8 @@ public struct HomeFeature {
         case expanded
     }
 
-    /// 리포트 행 표시 모델 — 위젯② 면접 기록 한 줄. `id` 는 **세션 id** 라 그대로 리포트 상세 인자가 된다
-    /// (GET /interview/sessions 의 `sessionId`).
+    /// 리포트 행 표시 모델 — 위젯② 면접 기록 한 줄. `id` 는 **세션 id** 라 그대로 리포트 상세
+    /// (`ReportFeature.State(sessionId:)`) 인자가 된다 — 표시용 UUID 를 따로 만들면 매핑 표가 하나 더 생긴다.
     /// `dateText` 는 이미 포맷된 문자열이다(«7월 11일 월» 포맷은 목록을 만드는 쪽 몫).
     public struct Report: Identifiable, Equatable, Sendable {
         public let id: Int
@@ -132,7 +132,6 @@ public struct HomeFeature {
         case startInterview(StartInterviewFeature.Action)
 
         /// 사용자 입력·생명주기. View 의 send(...) 로만 방출된다.
-        @CasePathable
         public enum View: Sendable {
             // 홈 진입 로드 — 프로필은 `inner(.entryLoaded)`, 기록 목록은 `inner(.reportsLoaded)`.
             // 진행 중(held) 세션은 로컬 보관값이라 effect 없이 리듀서가 바로 읽는다.
@@ -141,7 +140,7 @@ public struct HomeFeature {
             case userSettledSheet(SheetDetent)
             /// 내비바 프로필 탭 — 마이페이지 진입 요청.
             case userTappedProfile
-            /// 펼친 행의 [레포트 보기](>) 탭 — 리포트 상세 진입 요청.
+            /// 펼친 행의 [레포트 보기](>) 탭 — 리포트 상세 진입 요청. `id` 가 곧 세션 id 다.
             case userTappedReport(id: Report.ID)
             /// 리포트 행 탭 — 펼침 토글(홈 내부 상태, 화면 전환 아님). 펼친 행 본문 탭이면 접힌다.
             case userTappedReportRow(id: Report.ID)
@@ -150,6 +149,8 @@ public struct HomeFeature {
         }
 
         /// effect 결과·리듀서 내부 신호. 리듀서만 방출한다.
+        /// `@CasePathable` — 테스트가 `\.inner.reportsLoaded` 처럼 케이스 키패스로 받는다
+        /// (`@Reducer` 는 `Action` 까지만 붙여 준다 — 그 안의 enum 은 직접 달아야 한다).
         @CasePathable
         public enum Inner: Sendable {
             /// 홈 진입 로드 결과 — 실패면 nil 이다(직전 값을 지우지 않고 그대로 둔다).
@@ -166,7 +167,7 @@ public struct HomeFeature {
             /// 마이페이지 진입 요청 — 홈 밖 화면이라 조립은 AppFeature (Feature→Feature 금지).
             case profileRequested
             /// 리포트 상세 진입 요청 — 리포트 뷰는 홈 밖이라 조립은 AppFeature.
-            case reportDetailRequested(id: Report.ID)
+            case reportDetailRequested(sessionId: Int)
             /// 면접 시작 요청 — 면접 시작 화면의 [시작하기] 가 발원지. 전환은 AppFeature.
             case interviewStartRequested
             /// 진행 중 면접을 버리고 처음부터 요청 — 확인 단계를 통과한 [처음부터 시작] 이 발원지.
@@ -213,8 +214,14 @@ public struct HomeFeature {
                     // 기록 목록은 별도 effect — 목록이 느려도 인사말·면접 시작 카드는 먼저 그린다.
                     .run { send in
                         let summaries = try? await interviewClient.reportList()
+                        // 최신순으로 다시 세운다 — 응답 순서는 계약에 없고, 시안은 맨 위가 최근 면접이다
+                        // (펼치는 행도 «최신 1개» 라 순서가 흔들리면 엉뚱한 행이 펼쳐진다).
                         // compactMap — 생성 중 세션은 행을 만들지 않는다(Report.init?(summary:)).
-                        await send(.inner(.reportsLoaded(summaries?.compactMap(Report.init(summary:)))))
+                        await send(.inner(.reportsLoaded(
+                            summaries?
+                                .sorted { $0.interviewedAt > $1.interviewedAt }
+                                .compactMap(Report.init(summary:))
+                        )))
                     }
                 )
                 .cancellable(id: CancelID.entryLoad, cancelInFlight: true)
@@ -224,7 +231,7 @@ public struct HomeFeature {
             case .view(.userTappedProfile):
                 return .send(.delegate(.profileRequested))
             case let .view(.userTappedReport(id)):
-                return .send(.delegate(.reportDetailRequested(id: id)))
+                return .send(.delegate(.reportDetailRequested(sessionId: id)))
             case let .view(.userTappedReportRow(id)):
                 // 재탭이면 접는다 — foldable 행은 홈 내부 상태다(docs/work/home-account.md §3 위젯②).
                 // 다른 행을 닫지 않는다 — 여러 행을 펼쳐 둔 채 비교할 수 있다(사용자 결정 2026-08-05).
@@ -304,8 +311,7 @@ public struct HomeFeature {
 // MARK: - 진입 로드 → 표시값
 
 private extension HomeFeature {
-    /// 면접 시작 카드 변형 — **재개 가능한** 진행 중 세션이 있으면 진행 중, 없고 잔여 0 이면 소진,
-    /// 아니면 `first` 다.
+    /// 면접 시작 카드 변형 — 진행 중 세션이 있으면 진행 중, 없고 잔여 0 이면 소진, 아니면 `first` 다.
     /// 서버 판정의 표시일 뿐이다 — 시작 가능 여부의 진실은 탭 시점 게이트다.
     ///
     /// **진행 중(held) 세션이 잔여보다 먼저다** — 진행 중이면 [이어서 진행] 이 유일한 정상 경로라서,
@@ -320,9 +326,7 @@ private extension HomeFeature {
         heldSession: HeldSession?,
         remainingChances: Int?
     ) -> StartInterviewFeature.Variant {
-        // 죽은 프로세스의 진행분(>0초·토큰 불일치)은 없는 것처럼 — 세그먼트가 사라져 재개가 불가능하고
-        // (스펙 ⑤), 정리는 실행 시 클린업이 맡는다. 카드로 그리면 앞부분 없는 영상 재개를 제안하는 셈이다.
-        if let heldSession, heldSession.isResumableInCurrentProcess {
+        if let heldSession {
             return .inProgress(
                 remainingQuestionCount: remainingQuestionCount(recordedSeconds: heldSession.recordedSeconds)
             )

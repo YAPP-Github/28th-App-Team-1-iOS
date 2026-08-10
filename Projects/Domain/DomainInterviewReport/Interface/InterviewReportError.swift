@@ -5,6 +5,7 @@
 //  Created by EunseoKim on 26/07/23.
 //
 
+import CoreNetworkInterface
 import DomainCommonInterface
 
 /// Interview Report API 에러 — State 가 다르게 반응해야 하는 경우의 수만큼만 둔다.
@@ -17,6 +18,9 @@ public enum InterviewReportError: Error, Equatable, Sendable {
     /// INTERVIEW_VIDEO_NOT_FOUND (404) — 세션은 있으나 영상 레코드가 없음(업로드 완료 전).
     /// 세션 자체가 없으면 `sessionNotFound`.
     case videoNotFound
+    /// 미승격 서버 에러 원문 — 임시 노출 규칙(`ServerError.alertTitle/alertMessage`)으로 Alert 에 싣는다.
+    /// 도메인 핸들링이 확정되면 전용 케이스로 승격.
+    case server(ServerError)
     /// 재로그인 필요 (LOGIN_EXPIRED — 자동 재발급까지 실패한 뒤 도달)
     case sessionExpired
     case networkFailure
@@ -34,5 +38,16 @@ extension InterviewReportError: DomainAPIError {
         case "INTERVIEW_VIDEO_NOT_FOUND": self = .videoNotFound
         default: return nil
         }
+    }
+
+    /// 미승격 4xx 는 원문 그대로 동봉 — 임시 노출 규칙(2026-08-02).
+    public static func fallback(unrecognized error: ServerError) -> InterviewReportError {
+        .server(error)
+    }
+
+    /// 공통 Alert(`serverAlertState`)가 읽을 원문.
+    public var unrecognizedServerError: ServerError? {
+        guard case let .server(error) = self else { return nil }
+        return error
     }
 }

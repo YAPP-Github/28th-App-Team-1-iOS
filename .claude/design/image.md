@@ -35,7 +35,7 @@ Image.Img.micError           // 일러스트 — 크기·변형 없이 이름만
 | `Expand` | 네 모서리 바깥 화살표 | 전체화면·확대 |
 | `Feedback` | 태도 픽토그램 5종 — body(자세)·eyes(시선)·face(표정)·hand(손동작)·voice(목소리) | 태도 평가 축 |
 | `File` | 문서 낱장 (모서리 접힘) | 첨부·포트폴리오 |
-| `HilitAnalyze` | 36px 원형 배지 3종 — aiSparkle·problem·success | 분석 결과 항목 머리 |
+| `HilitAnalyze` | 36px 원형 배지 4종 — aiSparkle·problem·question·success | 분석 결과 항목 머리 |
 | `Info` | 원 안 i (빨강 = error·청록 = positive 변형) | 안내 |
 | `Issue` | 원 안 느낌표 (빨강 = 채운 원 + 흰 글리프인 error 변형) | 오류·경고 · `InfoField(.error)` 아이콘 |
 | `Left` / `Right` | 쉐브론 ‹ / › | 뒤로·앞으로 |

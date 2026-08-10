@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import DomainCommonInterface
 import DomainConsentInterface
 
 // @lat: [[auth#가입 플로우]]
@@ -187,13 +188,9 @@ public struct AuthTermsFeature {
                     )
                     return loadPending()
                 }
-                // 미승격 서버 에러는 임시 노출 규칙(2026-08-02) — title «CODE(status)», message 원문.
-                if let serverAlert = error.serverAlert {
-                    state.alert = AlertState(
-                        title: { TextState(serverAlert.title) },
-                        actions: { ButtonState(role: .cancel) { TextState("확인") } },
-                        message: { TextState(serverAlert.message) }
-                    )
+                // 미승격 서버 에러는 공통 Alert 로 — title «CODE(status)», message 원문.
+                if let serverAlert: AlertState<Action.Alert> = error.serverAlertState() {
+                    state.alert = serverAlert
                     return .none
                 }
                 if case let .invalid(message) = error {

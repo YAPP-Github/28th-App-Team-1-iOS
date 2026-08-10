@@ -19,8 +19,8 @@ YAPP APP 1팀 백엔드(D14 API v1)와의 연동 지식. 서버 태그(AppVersio
 - Swagger 스키마 일부는 envelope 없이 표기돼 있다(annotation 누락) → `ServerEnvelope.unwrap` 이 직접 디코드 폴백을 가진다.
 - 날짜는 ISO8601 과 LocalDateTime(타임존 표기 없음)이 혼재 → `JSONDecoder.api` 가 KST 가정으로 파싱. 백엔드와 타임존 계약 확정 필요.
 - 서버 에러 body 는 **두 포맷**(2026-08-02 확인) — 정의된 코드 `{success:false, code, message}` / 미정의(Spring 기본) `{timestamp, status, error, path}`. `ServerError.decode` 가 둘 다 읽는다(후자는 `code:""` + `message:error원문`).
-- Domain 은 `ServerError.code` 로 도메인 에러를 매핑한다 — 서버 정의 에러 코드가 있는 모든 도메인이 자체 에러 enum 을 갖는다(AppVersionError·AuthError·ConsentError·InterviewError·InterviewReportError·JDError·PortfolioError·UserError·FeedbackShareError·GuestFeedbackError). 케이스는 State 가 다르게 반응할 경우의 수만큼만. 매핑 공통부(토큰 만료 3코드 → sessionExpired, 미인식 5xx → serverUnavailable, transport → networkFailure, 취소 통과)는 `DomainCommonInterface` 의 `DomainAPIError` 프로토콜이 수행하고, 각 도메인 enum 은 고유 코드 매핑 `init?(serverCode:message:)` 만 구현한다 (Interview·Consent·Auth 는 미승격 4xx 폴백을 `server(…)` 케이스로 재정의해 원문을 화면까지 흘린다, 무인증 GuestFeedback·AppVersion 은 `sessionExpired` 를 unexpected 별칭으로 충족). Implementation 은 `XxxError.mapping { }` 래퍼로 감싼다. 에러 코드가 없는 도메인(Job)만 ServerError/NetworkError 를 그대로 던진다.
-- **미승격 에러 임시 노출 규칙(2026-08-02)** — 도메인 핸들링 확정 전까지 OS 기본 Alert 에 `ServerError.alertTitle/alertMessage` 로 노출: 정의 코드는 title «CODE(status)»·message 서버 문구, Spring 포맷은 title 상태코드·message `error` 원문. 도메인별 핸들링이 정해지면 전용 케이스 승격이 우선.
+- Domain 은 `ServerError.code` 로 도메인 에러를 매핑한다 — 서버 정의 에러 코드가 있는 모든 도메인이 자체 에러 enum 을 갖는다(AppVersionError·AuthError·ConsentError·InterviewError·InterviewReportError·JDError·PortfolioError·UserError·FeedbackShareError·GuestFeedbackError). 케이스는 State 가 다르게 반응할 경우의 수만큼만. 매핑 공통부(토큰 만료 3코드 → sessionExpired, 미인식 5xx → serverUnavailable, transport → networkFailure, 취소 통과)는 `DomainCommonInterface` 의 `DomainAPIError` 프로토콜이 수행하고, 각 도메인 enum 은 고유 코드 매핑 `init?(serverCode:message:)` 만 구현한다 (Auth·Consent·FeedbackShare·Interview·InterviewReport 는 미승격 4xx 폴백을 `server(…)` 케이스로 재정의해 원문을 화면까지 흘린다, 무인증 GuestFeedback·AppVersion 은 `sessionExpired` 를 unexpected 별칭으로 충족). Implementation 은 `XxxError.mapping { }` 래퍼로 감싼다. 에러 코드가 없는 도메인(Job)만 ServerError/NetworkError 를 그대로 던진다.
+- **미승격 에러 임시 노출 규칙(2026-08-02)** — 도메인 핸들링 확정 전까지 OS 기본 Alert 에 `ServerError.alertTitle/alertMessage` 로 노출: 정의 코드는 title «CODE(status)»·message 서버 문구, Spring 포맷은 title 상태코드·message `error` 원문. 도메인별 핸들링이 정해지면 전용 케이스 승격이 우선. Alert 조립은 `DomainAPIError.serverAlertState()` 한 곳이 한다(각 enum 은 원문을 꺼내는 `unrecognizedServerError` 만 구현, 기본 nil) — Feature 마다 같은 AlertState 를 짜지 않고 CoreNetwork 타입도 화면으로 새지 않는다. 적용은 Report·Auth 뿐이고 나머지 Feature 는 미적용이다 — 그 화면을 만질 때 붙인다.
 - multipart(파일 업로드)는 `NetworkRequest.multipart(...)` 빌더 — 기존 NetworkRequest 계약(헤더+body) 위의 편의일 뿐이다.
 
 ## 토큰 수명주기
@@ -105,14 +105,14 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 | `videoExpiry` | GET `.../video/expiry` | 만료 카운트다운 폴링 — `video.expiresAt` 과 같은 시각의 초 단위 재계산. 만료면 `0/true`, 최대 보관 30일 |
 
 - `status` 는 채점 진행 상태만 — GENERATING(전 필드 nil — script 포함, 폴링 지속) / READY / INSUFFICIENT_ANALYSIS(채점된 카드만) / FAILED.
-- 레드플래그는 보고서 단위 안내 없이 **걸린 카드의 `cardRedFlagNotices`(문자열 배열)로만** 노출. 저장 5종 중 노출 3종(지어냄·모순·무결점 서사)만 중립 문구. 심각 레드플래그면 headline 이 중립 사실 요약으로 대체.
-- 카드는 질문/답변 턴당 1장 — 같은 축이면 `axisOrder` 동일, `depthLevel` 로 구분(표시 "질문 {axisOrder}-{depthLevel}"). 카드마다 `questionIntentTitle`(의도 한 줄)과 문장 단위 `scriptSegments`(면접관·면접자 `role` 혼재, `startIndex`/`endIndex` 동봉).
-- 하이라이트는 `tone`(GOOD/IMPROVE)·`reason`(PROBE_WORTHY/OFF_INTENT/SHALLOW/SUFFICIENT)·`title`·`analysis`·`startSec`(영상 앵커). `followUpQuestions` 는 PROBE_WORTHY 만 비어있지 않음. OFF_INTENT 는 `answerTopicTitle`+카드 `questionIntentTitle`·`questionIntent` 복사 3필드 동봉(그 외 null).
-- 최상위 `script` 는 세션 전체 발화를 `startSec` 오름차순으로 담은 한 배열 — 영상 플레이어의 현재 발화 강조는 이것만 훑는다. `startSec`/`endSec` 는 합성 영상(=녹화) 타임라인 기준.
-- `resolutionNotice` 있으면 해상도 낮음(능력 판단 보류) — 짧음·얕음이면 `highlightSpans` 빈 배열, 딴 답이면 OFF_INTENT 하이라이트 1개.
-- 영상 만료 시 `video.url` 만 nil — 대본·하이라이트 유지. `guestFeedback` 은 0명이어도 `participantCount=0, guests=[]` — nil 은 GENERATING 뿐.
+- 레드플래그는 보고서 단위 배열이 없다 — 걸린 카드의 `cardRedFlagNotices` 로만 온다. 저장 5종 중 노출 3종(지어냄·모순·무결점 서사)만 중립 문구. READY + 심각 레드플래그면 headline 이 중립 사실 요약으로 대체. 원소는 **문구 문자열** 또는 `{type, message}` 둘 다로 오므로 `RedFlagNotice` 가 양쪽을 받는다(문자열이면 `type` 은 nil).
+- 카드는 질문/답변 턴당 1장 — 같은 축이면 `axisOrder` 동일, `depthLevel` 로 구분 (표시: "질문 {axisOrder}-{depthLevel}"). 카드마다 `questionIntentTitle`(의도 한 줄 명사구)이 붙는다.
+- `highlightSpans` 는 톤(GOOD/IMPROVE)에 더해 `reason`(PROBE_WORTHY/OFF_INTENT/SHALLOW/SUFFICIENT)·`title`·`startSec` 을 갖는다. `followUpQuestions` 는 PROBE_WORTHY 만, `answerTopicTitle`·`questionIntentTitle`·`questionIntent`(카드 값 복사) 는 OFF_INTENT 만 채워진다 — 그 외 reason 에선 셋 다 null/빈 배열.
+- `resolutionNotice` 가 있으면 해상도 낮음 — 능력 판단 보류. 사유가 짧음·얕음이면 `highlightSpans` 빈 배열, 딴 답이면 OFF_INTENT 하이라이트 1개.
+- 영상 만료 시 `video.url` 만 nil — 대본·하이라이트는 유지. `guestFeedback` 은 지인 0명이어도 `participantCount=0, guests=[]` 로 온다(GENERATING 때만 nil).
+- 대본 발화는 두 자리에 온다 — 카드 `scriptSegments`(그 턴의 문장들, 면접관/면접자 `role` 혼재, 문자 오프셋 동봉 — **면접자 행만 카드 `transcript` 기준**이고 면접관 행은 질문 문자열 기준이라 답변 대본에 대고 자르면 안 된다)와 최상위 `script`(첫 멘트부터 마무리까지 세션 전체를 `startSec` 오름차순 한 배열, 오프셋 없음). `startSec`/`endSec` 은 합성 영상(=녹화) 타임라인 기준이라 진행바·재생 강조가 그대로 쓴다. 플레이어 진행바 칸(= 질문 턴)·오버레이 문장(질문 포함)·하이라이트 시각 폴백은 전부 카드 `scriptSegments` — 최상위 `script` 는 화면 사용처가 없다(진행바 칸이 턴 단위가 되면서 폐기, 2026-08-07).
 
-에러는 `InterviewReportError` 로 매핑된다 — INTERVIEW_SESSION_NOT_FOUND → sessionNotFound(404), INTERVIEW_VIDEO_NOT_FOUND → videoNotFound(404 — 세션은 있으나 영상 레코드 없음, 업로드 완료 전), INTERVIEW_REPORT_NOT_FOUND → reportNotFound(현행 스웨거에서 빠짐 — 미생성은 GENERATING 응답. 매핑은 방어 유지).
+에러는 `InterviewReportError` 로 매핑된다 — INTERVIEW_SESSION_NOT_FOUND → sessionNotFound(404), INTERVIEW_VIDEO_NOT_FOUND → videoNotFound(404 — 세션은 있으나 영상 레코드 없음, 업로드 완료 전), INTERVIEW_REPORT_NOT_FOUND → reportNotFound(현행 스웨거에서 빠짐 — 미생성은 GENERATING 응답. 매핑은 방어 유지), 미승격 4xx 는 server(원문 동봉 — 임시 노출 규칙, [[api#공통 규약]]).
 
 ## JD
 
@@ -168,7 +168,7 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 | `create` | POST `/api/v1/feedback/sessions/{id}/share` | 최초 생성 = 피드백 요청 사건, 영상 삭제 +48h 연장 |
 | `makePrivate` | PATCH `/api/v1/feedback/sessions/{id}/share` | 기제출 피드백·영상 삭제 시각은 유지 |
 
-토큰으로 공유 딥링크를 조립하는 것은 클라이언트 책임이다. 에러는 `FeedbackShareError` 로 매핑된다 — FEEDBACK_SHARE_NOT_FOUND → shareNotFound(404), INTERVIEW_SESSION_NOT_FOUND → sessionNotFound(404), FEEDBACK_SHARE_ALREADY_EXISTS → alreadyExists(409, 재생성 미지원), 항목 검증군(EMPTY_ATTITUDE_AXES·TOO_MANY_ATTITUDE_AXES·INVALID_ATTITUDE_AXIS)은 invalidAxes(message:), INVALID_SHARE_STATUS → invalidStatusTransition(400).
+토큰으로 공유 딥링크를 조립하는 것은 클라이언트 책임이다. 에러는 `FeedbackShareError` 로 매핑된다 — FEEDBACK_SHARE_NOT_FOUND → shareNotFound(404), INTERVIEW_SESSION_NOT_FOUND → sessionNotFound(404), FEEDBACK_SHARE_ALREADY_EXISTS → alreadyExists(409, 재생성 미지원), 항목 검증군(EMPTY_ATTITUDE_AXES·TOO_MANY_ATTITUDE_AXES·INVALID_ATTITUDE_AXIS)은 invalidAxes(message:), INVALID_SHARE_STATUS → invalidStatusTransition(400), 미승격 4xx 는 server(원문 동봉 — 임시 노출 규칙, [[api#공통 규약]]).
 
 ## Guest Feedback
 

@@ -12,6 +12,7 @@ public enum ModulePath {
         case onboarding = "Onboarding"
         case interview = "Interview"
         case myPage = "MyPage"
+        case report = "Report"
 
         public static let name = "Feature"
     }

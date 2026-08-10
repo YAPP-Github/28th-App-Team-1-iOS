@@ -57,15 +57,11 @@ extension InterviewReportClient: TestDependencyKey {
                                 HighlightSpan(
                                     startIndex: 0,
                                     endIndex: 20,
-                                    tone: .good,
-                                    reason: .probeWorthy,
+                                    tone: "GOOD",
+                                    reason: "SUFFICIENT",
                                     title: "구체적 수치로 문제 설명",
                                     analysis: "구체적인 수치를 근거로 문제를 설명했습니다.",
-                                    followUpQuestions: ["그 수치는 어떤 기간을 기준으로 집계한 건가요?"],
-                                    startSec: 18.2,
-                                    answerTopicTitle: nil,
-                                    questionIntentTitle: nil,
-                                    questionIntent: nil
+                                    startSec: 18.2
                                 )
                             ],
                             resolutionNotice: nil,
@@ -73,7 +69,7 @@ extension InterviewReportClient: TestDependencyKey {
                             questionIntentTitle: "성능 저하 인지 수준",
                             questionIntent: "성능 문제를 얼마나 구체적으로 인지했는지 확인하는 질문입니다.",
                             scriptSegments: [
-                                InterviewScriptSegment(
+                                ScriptSegment(
                                     role: .interviewer,
                                     text: "Q. 결제 응답 속도를 개선하신 경험을 말씀해주세요.",
                                     startIndex: 0,
@@ -81,7 +77,7 @@ extension InterviewReportClient: TestDependencyKey {
                                     startSec: 12.0,
                                     endSec: 15.4
                                 ),
-                                InterviewScriptSegment(
+                                ScriptSegment(
                                     role: .interviewee,
                                     text: "결제 화면에서 응답이 평균 800ms 정도로 느려서 사용자 이탈이 있었어요.",
                                     startIndex: 0,
@@ -93,27 +89,21 @@ extension InterviewReportClient: TestDependencyKey {
                         )
                     ],
                     script: [
-                        InterviewScriptSegment(
+                        ScriptSegment(
                             role: .interviewer,
                             text: "안녕하세요, 오늘 면접을 진행하겠습니다.",
-                            startIndex: nil,
-                            endIndex: nil,
                             startSec: 0.0,
                             endSec: 3.2
                         ),
-                        InterviewScriptSegment(
+                        ScriptSegment(
                             role: .interviewer,
                             text: "Q. 결제 응답 속도를 개선하신 경험을 말씀해주세요.",
-                            startIndex: nil,
-                            endIndex: nil,
                             startSec: 12.0,
                             endSec: 15.4
                         ),
-                        InterviewScriptSegment(
+                        ScriptSegment(
                             role: .interviewee,
                             text: "결제 화면에서 응답이 평균 800ms 정도로 느려서 사용자 이탈이 있었어요.",
-                            startIndex: nil,
-                            endIndex: nil,
                             startSec: 18.2,
                             endSec: 22.6
                         )

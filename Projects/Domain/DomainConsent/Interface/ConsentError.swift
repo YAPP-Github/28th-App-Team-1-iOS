@@ -41,13 +41,10 @@ extension ConsentError: DomainAPIError {
     public static func fallback(unrecognized error: ServerError) -> ConsentError {
         .server(error)
     }
-}
 
-public extension ConsentError {
-    /// 미승격 에러의 Alert 표기(«CODE(status)» / 상태코드) — Feature 가 CoreNetwork 타입을
-    /// 직접 만지지 않도록 여기서 문자열로 풀어 준다. server 케이스가 아니면 nil.
-    var serverAlert: (title: String, message: String)? {
+    /// 공통 Alert(`serverAlertState`)가 읽을 원문.
+    public var unrecognizedServerError: ServerError? {
         guard case let .server(error) = self else { return nil }
-        return (error.alertTitle, error.alertMessage)
+        return error
     }
 }

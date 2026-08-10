@@ -26,6 +26,7 @@ import Foundation
 //                             .interrupted(백그라운드 동결 세션의 홈 경유)는 cover 만 닫고 held 를 보존한다 — [[interview#코디네이터]].
 // depends-on: [[interview#프리뷰]] — 앱 사망 세션 정리가 RecordingClient.purgeRecordings 로 죽은 프로세스의 잔존 세그먼트를 걷는다.
 // depends-on: [[onboarding]] — dev 전용 진입(Home 버튼)으로 온보딩 위저드를 present. 조립은 여기서만 (온보딩 본체 통합 전 임시).
+// depends-on: [[report]] — 홈 위젯②의 [레포트 보기] delegate 를 받아 리포트 커버를 세션 id 로 present. 리포트의 두 신호(닫기·다시 연습)도 여기서 받는다.
 @Reducer
 struct AppFeature {
     /// 루트가 지금 무엇을 띄우는가. Bool 조합으로는 «재시도 가능한 판정 실패» 를 표현할 수 없어 값으로 둔다.
@@ -57,6 +58,8 @@ struct AppFeature {
         @Presents var myPage: MyPageFeature.State?
         /// 온보딩 위저드 — 「면접 시작」의 [시작하기]·[처음부터 시작](중단 후) 이 present 한다.
         @Presents var onboarding: OnboardingFeature.State?
+        /// AI 면접 리포트 — 홈 위젯②의 [레포트 보기] 가 세션 id 로 연다. 자체 NavigationStack 을 가진 전면 흐름이라 cover.
+        @Presents var report: ReportFeature.State?
         /// 업데이트 안내(강제·권장)의 근거 — «업데이트» 가 열 `storeUrl` 과 강제 여부를 여기서 읽는다.
         var updatePolicy: AppVersionPolicy?
         @Presents var updateAlert: AlertState<Action.UpdateAlert>?
@@ -91,6 +94,7 @@ struct AppFeature {
         case interview(PresentationAction<InterviewFeature.Action>)
         case myPage(PresentationAction<MyPageFeature.Action>)
         case onboarding(PresentationAction<OnboardingFeature.Action>)
+        case report(PresentationAction<ReportFeature.Action>)
         /// dev 데이터 초기화 완료 — 초기 State 로 리셋하고 Splash 판정부터 다시 태운다.
         case appDataCleared
         case binding(BindingAction<State>)
@@ -297,10 +301,9 @@ struct AppFeature {
                 // 홈 내비바의 프로필 아이콘 — 마이페이지(Part5)를 홈 위에 한 장으로 얹는다.
                 state.myPage = MyPageFeature.State()
                 return .none
-            case .home(.delegate(.reportDetailRequested)):
-                // TODO: 리포트 상세(r1/최종) 제시 — Part 3 `InterviewReportFeature` 브랜치에서 배선한다.
-                //       발원지는 홈 펼친 행의 [>] 버튼이고, 인자는 이미 세션 id 다
-                //       (GET /interview/sessions 의 `sessionId`) — 그대로 넘기면 된다.
+            case let .home(.delegate(.reportDetailRequested(sessionId))):
+                // 위젯② [레포트 보기] — 행 id = 세션 id. 채점 미완(404·GENERATING)도 그냥 연다(폴링은 리포트 몫 — [[report#1차 리포트]]).
+                state.report = ReportFeature.State(sessionId: sessionId)
                 return .none
             case .home(.delegate(.appDataResetRequested)):
                 // dev 전용 «재설치 흉내» — 서버 로그아웃 · Keychain 전체 · 온보딩 draft ·
@@ -352,8 +355,7 @@ struct AppFeature {
             // 면접 종료·이탈 모두 cover 를 닫고 홈을 다시 태운다 — 어느 쪽이든 잔여가 줄었고,
             // 리포트도 늘었을 수 있다(BACK_EXIT 이탈도 생성 트리거 — 2026-08-03 서버 계약).
             // 케이스를 합치지 않는 건 곧 갈라지기 때문이다: 정상 종료엔 리포트 상세(r1) 라우팅이 붙는다.
-            // TODO: 정상 종료는 리포트 상세(r1)로 이어져야 한다 — `InterviewReportFeature` 통합 후
-            //       sessionId 로 배선 (docs/work/home-account.md §4).
+            // TODO: 정상 종료 → r1 직행. 커버(`state.report`)는 이미 있어 `finished` 가 sessionId 만 실어 주면 된다.
             //
             // 정상 종료 = 온보딩이 모은 입력이 제 역할을 다한 지점 — 여기서 온보딩 draft 를 폐기한다(PRD §4.4).
             // 세션 생성 시점에 지우지 않는 이유: 그 사이 앱이 죽거나 면접에서 이탈하면 값이 다시 필요하다.
@@ -394,12 +396,20 @@ struct AppFeature {
                 state = State()
                 state.root = .auth
                 return .none
-            // TODO: 리포트 상세·지인 피드백 — 홈의 `reportDetailRequested` 와 같은 자리에서 배선한다
-            //       (`InterviewReportFeature` 통합 후, 인자는 이미 세션 id 다).
+            // TODO: 리포트 상세·지인 피드백 — 홈의 `reportDetailRequested` 와 같은 자리에서 배선한다.
+            //       `ReportFeature` 는 이 병합으로 들어왔고 인자도 이미 세션 id 라, 마이페이지 커버와
+            //       리포트 커버를 어떻게 겹칠지(닫고 열지·위에 얹을지)만 정하면 된다.
             case .myPage(.presented(.delegate(.reportRequested))),
                  .myPage(.presented(.delegate(.feedbackRequested))):
                 return .none
             case .myPage:
+                return .none
+            // 리포트가 올리는 신호는 이탈(X) 하나 — 커버만 닫는다(리포트를 읽는 동안
+            // 잔여·목록이 바뀌지 않아 홈 재조회가 없다).
+            case .report(.presented(.delegate(.closeRequested))):
+                state.report = nil
+                return .none
+            case .report:
                 return .none
             case .appDataCleared:
                 // 초기 State 로 되돌리고 **Splash 판정부터 다시** — 지운 게 세션만이 아니라 로컬 저장소
@@ -422,6 +432,9 @@ struct AppFeature {
         }
         .ifLet(\.$onboarding, action: \.onboarding) {
             OnboardingFeature()
+        }
+        .ifLet(\.$report, action: \.report) {
+            ReportFeature()
         }
         .ifLet(\.$updateAlert, action: \.updateAlert)
     }

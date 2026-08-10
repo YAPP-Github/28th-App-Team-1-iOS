@@ -63,9 +63,19 @@ extension HomeFeature.Report {
     }
 
     /// 세션 스냅샷 제목 — 없는 조각은 뺀다(가짜 «0년차» 를 만들지 않는다).
+    /// 연차 표기(0 = 신입, 상한 10 = «10년 이상»)는 온보딩 연차 휠(`CareerOption.label`)과 같은 규칙인데
+    /// 그 타입은 다른 Feature 라 가져오지 못한다(Feature→Feature 금지) — 규칙만 옮겨 적는다.
     private static func snapshotTitle(for summary: InterviewReportSummary) -> String {
-        let pieces = [summary.jobTypeLabel, summary.careerYears.map { "\($0)년차" }].compactMap(\.self)
+        let pieces = [summary.jobTypeLabel, summary.careerYears.map(Self.careerText)].compactMap(\.self)
         return pieces.isEmpty ? "면접 레포트가 준비됐어요" : pieces.joined(separator: " · ")
+    }
+
+    private static func careerText(_ years: Int) -> String {
+        switch years {
+        case ..<1: "신입"
+        case 10...: "10년 이상"
+        default: "\(years)년차"
+        }
     }
 }
 
@@ -73,7 +83,7 @@ extension HomeFeature.Report {
 
 extension HomeFeature.Report {
     /// 시안(3368:17266)의 목록 5행 — **프리뷰·시안 확인 전용** 픽스처다.
-    /// 실제 목록은 `inner(.reportsLoaded)` 로만 들어온다.
+    /// 실제 목록은 `inner(.reportsLoaded)` 로만 들어온다(id 도 거기선 세션 id 다).
     public static let placeholders: [Self] = [
         .init(id: 1, dateText: "7월 11일 월", title: "캐시 도입 결정의 이유와 한계까지 구체적인 수치로 설명해 주셨어요"),
         .init(id: 2, dateText: "7월 10일 월", title: "질문 의도를 되묻고 답변 범위를 좁혀 나갔어요"),
@@ -96,4 +106,11 @@ extension HomeFeature.Report {
             canOpenReport: false
         )
     ]
+
+    /// 프리뷰 전용 목록 스텁 — 진입 재조회를 «실패» 로 두어 위 픽스처(또는 «기록 없음»)를 지킨다.
+    /// 프리뷰 클라이언트(`InterviewClient.previewValue`)는 1행을 주므로, 안 막으면 시안 5행이
+    /// 그 1행으로 갈리고 `HomeDefault` 프리뷰마저 report phase 로 넘어간다.
+    public static let previewKeepingFixtures: @Sendable () async throws -> [InterviewReportSummary] = {
+        throw CancellationError()
+    }
 }

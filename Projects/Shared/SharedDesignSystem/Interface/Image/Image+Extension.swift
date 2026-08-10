@@ -103,6 +103,7 @@ public extension Image {
     enum HilitAnalyze {
         public static var aiSparkle: Image { Asset.Assets.hilitAnalyzeAiSparkle.swiftUIImage }
         public static var problem: Image { Asset.Assets.hilitAnalyzeProblem.swiftUIImage }
+        public static var question: Image { Asset.Assets.hilitAnalyzeQuestion.swiftUIImage }
         public static var success: Image { Asset.Assets.hilitAnalyzeSuccess.swiftUIImage }
     }
 
@@ -275,6 +276,7 @@ public extension Image {
         public static var default16: Image { Asset.Assets.videoDefault16.swiftUIImage }
         public static var default24: Image { Asset.Assets.videoDefault24.swiftUIImage }
         public static var disabled24: Image { Asset.Assets.videoDisabled24.swiftUIImage }
+        public static var white16: Image { Asset.Assets.videoWhite16.swiftUIImage }
         public static var white24: Image { Asset.Assets.videoWhite24.swiftUIImage }
     }
 }

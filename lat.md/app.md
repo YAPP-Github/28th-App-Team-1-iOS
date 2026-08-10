@@ -24,6 +24,13 @@
 2. 면접 종료 두 신호 모두 `state.interview = nil` + 홈 재조회(`.home(.view(.onAppear))`) — 어느 쪽이든 잔여가 줄었을 수 있다(중도 이탈은 2026-08-09 부터 세션을 끝내지 않아 잔여가 그대로다 — [[interview#세션]]). 케이스를 합치지 않는 건 정상 종료에 리포트 상세(r1) 라우팅이 붙을 자리라서다 → [[interview#코디네이터]]
 3. **면접 커버 중에는 전역 LoadingModal 을 끈다**(`AppView.showsGlobalLoading`) — 답변 제출·질문 스트림마다 전역 딤이 덮이면 면접이 끊겨 보이고, 타이머가 도는 화면을 잠그는 것 자체가 오동작이다. 면접은 자체 진행 표시(상태 칩·초읽기)로 대기를 말한다.
 
+대표 흐름 — **홈 위젯② → 리포트 상세** (2026-08-05):
+1. `HomeFeature` 가 [레포트 보기] 를 `delegate(.reportDetailRequested(sessionId:))` 로 올린다 — 목록 행의 id 가 곧 세션 id 다(→ [[home#진입 로드]])
+2. AppFeature 가 `state.report = ReportFeature.State(sessionId:)` 로 fullScreenCover 제시 (`@Presents` + `.ifLet` + `AppView`). 리포트는 자체 NavigationStack 을 갖는 전면 흐름이라 sheet 가 아니다
+3. **채점 상태로 진입을 막지 않는다** — 미생성(404)·GENERATING 은 리포트 화면이 스스로 폴링해 채운다(→ [[report#1차 리포트]]). 홈이 걸러 내면 같은 판정이 두 곳에 생긴다
+4. 되돌아오는 신호는 `closeRequested` 하나 — 커버만 닫는다(리포트를 읽는 동안 잔여·목록이 바뀌지 않아 홈 재조회가 없다). 분석 부족의 «다시 연습하기» CTA 는 2026-08-06 에 제거됐다(재도전은 홈에서 «면접 시작» 으로 간다)
+5. **리포트 커버 중에도 전역 LoadingModal 을 끈다** — 채점 대기 중 4초 폴링마다 전역 딤이 깜빡이고, 그 대기는 리포트 화면이 `loadState` 로 이미 말한다
+
 대표 흐름 — **공유 딥링크 → 게스트 평가** (2026-08-07):
 1. `HilitApp.onOpenURL` 이 `hilit` 스킴만 `deeplinkReceived(url)` 로 보낸다(그 외는 카카오 SDK 콜백). `GuestFeedbackDeeplink.parse` 성공 시 `state.guestFeedback = GuestFeedbackFeature.State(token:)` — cover 는 **루트 Group 밖**이라 스플래시·로그인 전에도 뜬다(무인증 플로우, → [[feedback#진입로와 닫기]])
 2. 면접·온보딩 진행 중이거나 이미 게스트 cover 가 떠 있으면 무시 — 몰입을 끊지 않고, 진행 중 평가를 다른 토큰으로 갈아치우지 않는다

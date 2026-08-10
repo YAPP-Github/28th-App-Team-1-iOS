@@ -102,8 +102,6 @@ public extension Target {
             // 버전 단일 소스는 Config/Version.xcconfig — 여기서 빌드 세팅으로 치환된다.
             "CFBundleShortVersionString": "$(MARKETING_VERSION)",
             "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
-            // 수출 규정(암호화) 자동 응답 — OS 기본 TLS 외 자체 암호화 없음(면제). 커스텀 암호화 도입 시 재검토.
-            "ITSAppUsesNonExemptEncryption": false,
             // 카카오 로그인 — AppSecrets 가 여기서 읽는다.
             "KAKAO_NATIVE_APP_KEY": "$(KAKAO_NATIVE_APP_KEY)",
             "CFBundleURLTypes": [
@@ -238,8 +236,6 @@ public extension Target {
             // 단일 소스는 앱과 동일한 Config/Version.xcconfig (아래 settings 에서 연결).
             "CFBundleShortVersionString": "$(MARKETING_VERSION)",
             "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
-            // 수출 규정(암호화) 자동 응답 — 앱 타겟과 동일 사유(위 .app() 주석 참조).
-            "ITSAppUsesNonExemptEncryption": false,
             // actool 부분 plist 병합에 기대지 않고 명시 — 없으면 ASC 가 아이콘 누락으로 거부한다.
             // 모듈이 Example/Resources/Assets.xcassets 에 AppIcon 을 두면 이 이름으로 컴파일된다.
             "CFBundleIconName": "AppIcon"

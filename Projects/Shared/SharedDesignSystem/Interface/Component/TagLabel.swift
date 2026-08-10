@@ -61,7 +61,7 @@ public struct TagLabel: View {
         case darkGrayGreen
         /// `dg-white` — 짙은 회색 판 + 흰 글자
         case darkGrayWhite
-        /// `dg-g` — 짙은 회색 판 + 회색 글자
+        /// `dg-g` — 더 짙은 회색 판(g900) + 옅은 회색 글자(g200). 다른 `dg-*` 보다 판이 한 단 어둡다.
         case darkGrayGray
         /// `n-g` — 판 없음(투명) + 회색 글자
         case noneGray
@@ -86,7 +86,9 @@ public struct TagLabel: View {
         var foreground: Color {
             switch self {
             case .blackGreen, .darkGrayGreen: Color.HilitGreen.g500
-            case .grayGray, .darkGrayGray, .noneGray: Color.GrayScale.g600
+            case .grayGray, .noneGray: Color.GrayScale.g600
+            // 다크 판 위 g600 글자는 판(g900)과 명도가 붙어 거의 안 읽힌다 — 시트 `dg-g` 대로 g200.
+            case .darkGrayGray: Color.GrayScale.g200
             case .darkGrayWhite: Color.BlackWhite.white
             case .whiteBlack: Color.HilitBlack.b800
             case .greenGreen: Color.HilitGreen.g800
@@ -99,7 +101,8 @@ public struct TagLabel: View {
             switch self {
             case .blackGreen: Color.HilitBlack.b800
             case .grayGray: Color.GrayScale.g100
-            case .darkGrayGreen, .darkGrayWhite, .darkGrayGray: Color.GrayScale.g800
+            case .darkGrayGreen, .darkGrayWhite: Color.GrayScale.g800
+            case .darkGrayGray: Color.GrayScale.g900
             case .noneGray: .clear
             case .whiteBlack: Color.BlackWhite.white
             case .greenGreen: Color.HilitGreen.g500
