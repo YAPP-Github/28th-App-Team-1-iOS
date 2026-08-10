@@ -53,6 +53,13 @@ struct AppView: View {
                 AuthView(store: store.scope(state: \.auth, action: \.auth))
             }
         }
+        // 게스트 평가(G4) — 공유 딥링크로 열린다. 무인증 플로우라 루트(스플래시·auth·home)와
+        // 무관하게 떠야 해서 .home 안쪽이 아니라 루트 Group 에 부착한다. 닫기는 delegate(.dismissed).
+        .fullScreenCover(
+            item: $store.scope(state: \.guestFeedback, action: \.guestFeedback)
+        ) { guestStore in
+            GuestFeedbackView(store: guestStore)
+        }
         // 강제·권장 업데이트 안내 — 루트가 무엇이든 위에 얹힌다(강제는 root 가 .updateRequired).
         .alert($store.scope(state: \.updateAlert, action: \.updateAlert))
         .onAppear { store.send(.onAppear) }
@@ -71,6 +78,8 @@ struct AppView: View {
         // 면접은 자체 진행 표시(상태 칩·초읽기)로 대기를 말한다 — 답변 제출·질문 스트림마다 전역 딤이
         // 덮이면 면접이 끊겨 보이고, 타이머가 도는 화면을 잠그는 것 자체가 오동작이다.
         guard store.interview == nil else { return false }
+        // 게스트 평가도 끈다 — G4 는 자체 loading phase 로 대기를 말하고, 비회원 게스트에게 앱 전역 딤은 과하다.
+        guard store.guestFeedback == nil else { return false }
         // `default` 를 두지 않는다 — 루트가 늘면 여기서 컴파일이 깨져 판단을 강제한다.
         return switch store.root {
         case .splash, .splashFailed, .updateRequired: false
