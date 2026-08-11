@@ -11,7 +11,7 @@ YAPP APP 1팀 백엔드(D14 API v1)와의 연동 지식. 서버 태그(AppVersio
 
 - **도메인은 반드시 https** — `http://hilit.my` 로 붙으면 Caddy 가 308 로 https 에 넘기는데, scheme 이 바뀌어 origin 이 달라지므로 URLSession 이 `Authorization` 헤더를 떼고 재요청한다 → 전 API 403(익명 취급). body 로 자격증명을 싣는 재발급만 살아남아 «토큰은 멀쩡한데 전부 403» 로 보인다.
 - ATS 전면 허용(`NSAllowsArbitraryLoads`)은 앱 타겟에서 뺐다 — 전 계가 https 라 예외가 필요 없고, 남겨 두면 App Store 심사가 사유를 요구한다. IP 직결(HTTP) 디버깅이 필요한 `feature(example:)` 하네스에만 남아 있다.
-- **상세 로그는 계로 끊는다(컴파일 조건 아님)** — 요청/응답·디코딩 실패·부팅 라우팅 로그의 스위치는 `LogGate.isVerbose`(CoreCommonInterface). 예전엔 `#if DEBUG` 라 release 구성인 **QA 에서도 안 보였다**. 판정은 **허용 목록**(`APP_ENV ∈ {dev, qa}`, DEBUG 은 계 무관하게 켬)이고, «prod 가 아니면 켠다» 로 쓰지 않는다 — 키 누락·오타·새 계 이름이 전부 «켜라» 로 읽혀 실수 한 번이 운영 유출이 된다. 실행 인자 우회로(`-verboseLog`)는 두지 않는다.
+- **상세 로그는 계로 끊는다(컴파일 조건 아님)** — 요청/응답·디코딩 실패·부팅 라우팅 로그의 스위치는 `LogGate.isVerbose`(CoreCommonInterface). 예전엔 `#if DEBUG` 라 release 구성인 **QA 에서도 안 보였다**. 판정은 **허용 목록**(`APP_ENV ∈ {dev, qa}`, DEBUG 은 계 무관하게 켬)이고, «prod 가 아니면 켠다» 로 쓰지 않는다 — 키 누락·오타·새 계 이름이 전부 «켜라» 로 읽혀 실수 한 번이 운영 유출이 된다. **허용 목록 밖은 디버거가 붙었을 때만 열린다**(`P_TRACED` — Xcode/lldb 세션 전용): Prod 로만 재현되는 문제를 볼 길이 필요하지만, 스토어에서 받아 탭한 앱은 추적자가 없어 참이 될 수 없다. 실행 인자(`-verboseLog`)·숨은 토글은 **켜진 채 남을 수 있는 스위치**라 두지 않는다.
 - **찍히는 값은 가리지 않는다** — 헤더·바디가 원문 그대로 나간다(access·refresh 토큰, `Authorization`, 소셜 credential 포함). 마스킹 층(`LogRedaction`)은 2026-08-12 삭제했다 — 로그인 실패 진단에서 «비었나·모양이 틀렸나» 를 볼 수 없게 만드는 값이 방어 이득보다 컸다. 방어선은 `LogGate` 하나뿐이므로 **새 로거도 반드시 그 게이트 안에서만** 찍는다. QA 는 release 구성이라 기기 로그로 읽히는 것을 전제한다(Prod 는 게이트가 닫혀 안 찍힌다).
 
 ## 공통 규약
