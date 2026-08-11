@@ -97,16 +97,26 @@ public struct ProfileFeature {
         public init(profileId: Int) { self.profileId = profileId }
     }
 
-    public enum Action: BindableAction {
-        case binding(BindingAction<State>)
-        case onAppear
-        case userTappedSaveButton
-        case profileLoaded(Profile)
+    public enum Action: ViewAction {
+        case view(View)
+        case inner(Inner)
         case delegate(Delegate)
 
-        @CasePathable
+        /// 사용자 입력·생명주기 — View 의 send(...) 로만 방출된다.
+        public enum View: BindableAction, Sendable {
+            case binding(BindingAction<State>)
+            case onAppear
+            case userTappedSaveButton
+        }
+
+        /// effect 결과·내부 신호 — 리듀서만 방출한다.
+        public enum Inner: Sendable {
+            case profileLoaded(Profile)
+        }
+
+        /// 부모(코디네이터) 통보 — 부모는 이것만 매칭한다.
         public enum Delegate: Equatable {
-            case profileSaved(Profile)   // 결과를 위(코디네이터)로 통보
+            case profileSaved(Profile)
         }
     }
 
@@ -114,13 +124,13 @@ public struct ProfileFeature {
     public init() {}
 
     public var body: some ReducerOf<Self> {
-        BindingReducer()
+        BindingReducer(action: \.view)
         Reduce { state, action in /* … */ }
     }
 }
 ```
 
-**주의** — Action 네이밍: 입력 `userTapped...`, 응답 `...Loaded`/`...Saved`, 생명주기 `onAppear`/`onDisappear`, 상위 통보 `delegate(Delegate)`. 다른 Feature 로의 전환은 여기서 직접 하지 말고 `delegate` 로만 신호한다. 리듀서 선언부 위에 `// @lat: [[profile]]` 앵커를 단다.
+**주의** — Action 은 3분류(D5): `view` = 사용자 입력·생명주기(View 의 `send(...)` 로만), `inner` = effect 결과·내부 신호(리듀서만), `delegate` = 상위 통보(부모는 이것만 매칭). `async` 카테고리는 두지 않는다 — 응답은 `inner` 로. 네이밍: 입력 `userTapped...`, 응답 `...Loaded`/`...Saved`, 생명주기 `onAppear`/`onDisappear`. 다른 Feature 로의 전환은 여기서 직접 하지 말고 `delegate` 로만 신호한다. 리듀서 선언부 위에 `// @lat: [[profile]]` 앵커를 단다.
 
 ## Step 4 — View
 
@@ -128,8 +138,9 @@ View 도 `Sources/` 에 둔다. **Feature 는 Interface 를 두지 않는다**(D
 
 ```swift
 // Projects/Feature/FeatureProfile/Sources/ProfileView.swift
+@ViewAction(for: ProfileFeature.self)
 public struct ProfileView: View {
-    @Bindable var store: StoreOf<ProfileFeature>
+    @Bindable public var store: StoreOf<ProfileFeature>
     public init(store: StoreOf<ProfileFeature>) { self.store = store }
 
     public var body: some View {
@@ -137,14 +148,14 @@ public struct ProfileView: View {
             TextField("Display name", text: $store.profile.displayName)   // 예시
         }
         .toolbar { ToolbarItem(placement: .topBarTrailing) {
-            Button("Save") { store.send(.userTappedSaveButton) }
+            Button("Save") { send(.userTappedSaveButton) }
         }}
-        .onAppear { store.send(.onAppear) }
+        .onAppear { send(.onAppear) }
     }
 }
 ```
 
-**주의** — `@Bindable var store` 표준, `WithViewStore` 금지. `SharedDesignSystem` 토큰/컴포넌트(`Color.dsPrimary`, `PrimaryButton`) 우선. View 에서 `Task { await }` 직접 만들지 말고 `store.send` 로 위임.
+**주의** — `@Bindable var store` + `@ViewAction(for:)` 표준 (매크로가 주는 `send(_:)` 는 `Action.View` 만 받는다 — View 가 `inner`/`delegate` 를 못 쏘게 컴파일 수준에서 막힌다), `WithViewStore` 금지. `SharedDesignSystem` 토큰/컴포넌트(`Color.GrayScale.g900`, `ButtonLarge`) 우선. View 에서 `Task { await }` 직접 만들지 말고 `store.send` 로 위임.
 
 ## Step 5 — Project.swift + umbrella + 생성
 
@@ -193,20 +204,20 @@ tuist install && tuist generate
 
 ## Step 6 — 호스트에 연결
 
-### (a) 새 탭으로 추가
+### (a) 루트 화면으로 추가
 
 호스트가 `AppFeature` 가 된다.
 
 ```swift
 // AppFeature.State
 public var profile: ProfileFeature.State
-// AppFeature.Tab
-case home, users, activity, profile
 // AppFeature.body
 Scope(state: \.profile, action: \.profile) { ProfileFeature() }
 ```
 
-`AppView` 의 `TabView` 에 `.tabItem` + `.tag` 한 쌍을 추가하면 끝. (App 은 `.feature` umbrella 를 link 하므로 `ProfileFeature` 구체 타입을 안다.)
+`AppView` 에서 그 화면을 제시하면 끝. (App 은 `.feature` umbrella 를 link 하므로 `ProfileFeature` 구체 타입을 안다.)
+
+> 현재 앱엔 **탭바가 없다** — 탭이 홈 하나뿐이라 `TabView` 를 두면 바 자리만 차지하고 홈 배경 그라디언트가 반투명 바로 새어 나왔다. 둘째 탭이 실제로 생기는 시점에 `Tab` enum · `State.selectedTab` · `AppView` 의 `TabView`(+ `.tabItem`/`.tag`)를 함께 되살린다.
 
 ### (b) 다른 Feature 에서 진입 (cross-feature)
 

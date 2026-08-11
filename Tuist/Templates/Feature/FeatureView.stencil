@@ -8,8 +8,10 @@
 import ComposableArchitecture
 import SwiftUI
 
+// @ViewAction 매크로가 send(_:) 를 제공한다 — View 는 store.send(.view(...)) 대신 send(.onAppear) 로만 방출.
+@ViewAction(for: {{ name }}Feature.self)
 public struct {{ name }}View: View {
-    @Bindable var store: StoreOf<{{ name }}Feature>
+    @Bindable public var store: StoreOf<{{ name }}Feature>
 
     public init(store: StoreOf<{{ name }}Feature>) {
         self.store = store
@@ -17,5 +19,30 @@ public struct {{ name }}View: View {
 
     public var body: some View {
         Text("{{ name }}")
+            .onAppear { send(.onAppear) }
     }
 }
+
+#Preview {
+    {{ name }}View(
+        store: Store(initialState: {{ name }}Feature.State()) {
+            {{ name }}Feature()
+        }
+    )
+}
+
+// MARK: - 프리뷰 가이드
+//
+// ▸ 캔버스는 Feature{{ name }} 스킴에서 동작한다 (Example 앱이 Implementation 을 빌드).
+// ▸ 프리뷰는 .preview 컨텍스트로 실행돼 @Dependency 가 previewValue 로 자동 해석된다
+//   — testValue(unimplemented) 크래시 걱정 없이 그대로 열면 된다.
+// ▸ 특정 상태·스텁으로 보고 싶으면:
+//     #Preview("로딩 중") {
+//         {{ name }}View(
+//             store: Store(initialState: {{ name }}Feature.State(isLoading: true)) {
+//                 {{ name }}Feature()
+//             } withDependencies: {
+//                 $0.someClient = SomeClient(fetch: { [.mock] })
+//             }
+//         )
+//     }

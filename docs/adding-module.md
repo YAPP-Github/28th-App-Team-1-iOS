@@ -8,8 +8,8 @@ Tuist 기반 TMA(The Modular Architecture) 4레이어 구조에서 새 모듈을
 Projects/
 ├── Core/       {Name}/   CoreCommon, CoreNetwork, ...
 ├── Domain/     {Name}/   DomainCommon, DomainInterview, ...
-├── Feature/    {Name}/   FeatureCommon, FeatureInterviewSetup, ...
-└── Shared/     {Name}/   SharedCommon, SharedDesignSystem, ...
+├── Feature/    {Name}/   FeatureHome, FeatureInterview, ...
+└── Shared/     {Name}/   SharedDesignSystem, ...
 ```
 
 각 서브모듈은 아래 타겟 세트를 가진다.
@@ -154,7 +154,7 @@ let project = Project.makeModule(
 
 ```swift
 // Projects/Feature/Sources/Source.swift
-@_exported import FeatureCommonImplementation
+@_exported import FeatureHomeImplementation
 @_exported import FeatureInterviewSetupImplementation   // ← 추가
 ```
 

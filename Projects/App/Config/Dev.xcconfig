@@ -1,8 +1,16 @@
+#include? "Secrets.xcconfig"
+#include "Version.xcconfig"
+
 // 개발계 — Dev Configuration 에 연결.
-// `https:/$()/` 의 $() 는 xcconfig 가 // 를 주석으로 먹는 걸 피하는 트릭.
+// `http:/$()/` 의 $() 는 xcconfig 가 // 를 주석으로 먹는 걸 피하는 트릭.
+// D14 개발 서버. HTTPS 필수 — http 로 붙으면 Caddy 가 308 로 https 에 넘기는데
+// scheme 이 바뀌어 origin 이 달라지므로 URLSession 이 Authorization 헤더를 떼고 재요청 → 403.
 APP_ENV = dev
-API_BASE_URL = https:/$()/dev-api.architecture.com
+API_BASE_URL = https:/$()/hilit.my
+
+// 카카오 Native 앱 키 — 개발계 Kakao 앱 (Secrets.xcconfig)
+KAKAO_NATIVE_APP_KEY = $(KAKAO_NATIVE_APP_KEY_DEV)
 
 // 운영계와 동시 설치 가능하도록 bundle ID·표시 이름을 분리.
 BUNDLE_ID_SUFFIX = .dev
-APP_DISPLAY_NAME = App Dev
+APP_DISPLAY_NAME = Hilit Dev

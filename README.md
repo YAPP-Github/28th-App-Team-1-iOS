@@ -8,7 +8,7 @@ SwiftUI + TCA(The Composable Architecture) 레퍼런스 프로젝트.
 ## 요구 사항
 
 - [Tuist](https://tuist.io) 4.x (`mise install tuist` 또는 `brew install --cask tuist`)
-- Xcode (iOS 26 SDK) / iOS 26 시뮬레이터 (deployment target)
+- Xcode (iOS 26 SDK) / iOS 17.0+ (deployment target)
 - 의존성: [pointfreeco/swift-composable-architecture](https://github.com/pointfreeco/swift-composable-architecture) (Tuist 가 자동 해결)
 
 ## 빌드 & 실행
@@ -18,12 +18,12 @@ SwiftUI + TCA(The Composable Architecture) 레퍼런스 프로젝트.
 tuist install
 tuist generate
 
-# 2) 앱 빌드
-xcodebuild -workspace App.xcworkspace -scheme App \
+# 2) 앱 빌드 (환경별 스킴: Hilit-Dev / Hilit-QA / Hilit-Prod)
+xcodebuild -workspace Hilit.xcworkspace -scheme Hilit-Dev \
   -destination 'generic/platform=iOS Simulator' build
 ```
 
-- `App.xcworkspace` / 각 `*.xcodeproj` 는 **Tuist 생성물**이라 커밋하지 않는다. clone 후 `tuist generate` 로 만든다.
+- `Hilit.xcworkspace` / 각 `*.xcodeproj` 는 **Tuist 생성물**이라 커밋하지 않는다. clone 후 `tuist generate` 로 만든다.
 - 각 Feature 는 단독 실행용 **Example 앱**을 갖는다 — `Feature{Name}` 스킴(예: `FeatureHome`)의 실행 타겟이 Example 앱이다.
 
 ## 프로젝트 구조 (TMA)
@@ -39,8 +39,8 @@ Projects/
   ├── App/                                   # composition root (App @main + AppFeature + Config + Documentation)
   ├── Core/    {CoreCommon,…}                 # 인프라 (네트워킹 등)
   ├── Domain/  {DomainCommon,…}                  # 도메인 모델 + Repository(Client)
-  ├── Feature/ {FeatureCommon, FeatureHome,…}     # 화면 도메인 (단일 모듈)
-  └── Shared/  {SharedCommon, SharedDesignSystem,…} # 디자인 토큰 등 공용
+  ├── Feature/ {FeatureHome, FeatureInterview,…}    # 화면 도메인 (단일 모듈)
+  └── Shared/  {SharedDesignSystem,…}             # 디자인 토큰 등 공용
 ```
 
 Domain·Core·Shared 모듈은 `{Layer}{Name}Interface` / `Implementation` / `Testing` / `Tests` 타겟 세트를 갖고, **Feature 는 Interface 없이** 구현 + `Testing`/`Tests`/`Example` 로 둔다. 레이어 루트의 `Projects/{Layer}/Project.swift` 는 하위 구현을 `@_exported` 로 재노출하는 **umbrella** 로, **App/Example 만** link 한다.
@@ -56,7 +56,7 @@ Domain·Core·Shared 모듈은 `{Layer}{Name}Interface` / `Implementation` / `Te
 ## 테스트
 
 ```bash
-xcodebuild -workspace App.xcworkspace -scheme FeatureHome \
+xcodebuild -workspace Hilit.xcworkspace -scheme FeatureHome \
   -destination 'platform=iOS Simulator,name=iPhone 16' test
 ```
 

@@ -1,0 +1,6 @@
+# append-only 문서 — 둘이 동시에 항목을 덧붙여도 양쪽 다 남긴다(충돌 없음).
+# 표·산문처럼 같은 줄을 고칠 수 있는 문서엔 쓰면 안 된다 — union 은 양쪽 줄을 다 남겨 중복이 된다.
+.claude/design/lessons.md merge=union
+
+# Tuist 생성물 — 커밋 대상이 아니지만 혹시 들어와도 diff 노이즈를 줄인다.
+*.pbxproj -diff

@@ -33,8 +33,8 @@ Projects/
   ├── App/                       # composition root (App @main + AppFeature + Config + Documentation)
   ├── Core/    {CoreCommon,…}     # 인프라 (네트워킹 등)
   ├── Domain/  {DomainCommon,…}                  # 도메인 모델 + Repository
-  ├── Feature/ {FeatureCommon, FeatureHome,…}     # 화면 도메인 (단일 모듈)
-  └── Shared/  {SharedCommon, SharedDesignSystem,…} # 디자인 토큰 등 공용
+  ├── Feature/ {FeatureHome, FeatureInterview,…}    # 화면 도메인 (단일 모듈)
+  └── Shared/  {SharedDesignSystem,…}             # 디자인 토큰 등 공용
 ```
 
 modular architecture 의 핵심 조건을 모두 만족한다:
@@ -83,20 +83,20 @@ Domain  Implementation → .core(interface: .network)     # 인프라 계약만
 
 ```text
 App  (composition root: 레이어 umbrella link + AppFeature 코디네이터)
-└── AppFeature  (TabView 코디네이터 + cross-feature 라우팅)
+└── AppFeature  (루트 화면 코디네이터 + cross-feature 라우팅)
     │
     ├── Feature 레이어 ── FeatureHome (단일 모듈)
-    │                     FeatureCommon ──┐ .domain(interface:)
-    │                                     ▼
-    ├── Domain 레이어 ─── DomainCommon ───┐   (Interface: Client 계약·모델 / Impl: liveValue)
-    │                                     │ .core(interface:)
-    │                                     ▼
-    ├── Core 레이어 ───── CoreCommon        (인프라: 네트워킹 등)
+    │                     FeatureInterview ─┐ .domain(interface:)
+    │                                       ▼
+    ├── Domain 레이어 ─── DomainInterview ──┐   (Interface: Client 계약·모델 / Impl: liveValue)
+    │                                       │ .core(interface:)
+    │                                       ▼
+    ├── Core 레이어 ───── CoreNetwork          (인프라: 네트워킹 등)
     │
-    └── Shared 레이어 ── SharedCommon (+ SharedDesignSystem 이관 대기)   ← 전 레이어가 .shared(interface:) 로 의존
+    └── Shared 레이어 ── SharedDesignSystem   ← 전 레이어가 .shared(interface:) 로 의존
 ```
 
-전 모듈이 단방향 DAG 로 정렬된다. `Shared/SharedDesignSystem`(이관 대기)은 색상/타이포/spacing 토큰 + 표준 컴포넌트를 보유하고 어느 레이어든 공통으로 의존하게 된다. cross-feature 전환(예: Users 상세 → 프로필 편집)은 모듈 간 화살표로 직접 연결되지 않고 `AppFeature` 를 경유한다 — 그래서 Feature 사이에 의존 선이 없다.
+전 모듈이 단방향 DAG 로 정렬된다. `Shared/SharedDesignSystem` 은 색상/타이포/spacing 토큰 + 표준 컴포넌트를 보유하고 어느 레이어든 공통으로 의존한다. cross-feature 전환(예: 리포트 → 지인 피드백 공유)은 모듈 간 화살표로 직접 연결되지 않고 `AppFeature` 를 경유한다 — 그래서 Feature 사이에 의존 선이 없다.
 
 > **현재 상태**: `refactor/#6` 은 TMA 스켈레톤 단계다. 실체가 있는 건 `FeatureHome` 과 레이어별 `*Common` 뿐이고, 나머지(SharedDesignSystem·Users·Profile 등)는 이 골격이 찍어낼 표준형이다.
 

@@ -5,6 +5,9 @@ public extension TargetDependency {
     // MARK: External
 
     static let composableArchitecture: TargetDependency = .external(name: "ComposableArchitecture")
+    static let kakaoSDKCommon: TargetDependency = .external(name: "KakaoSDKCommon")
+    static let kakaoSDKAuth: TargetDependency = .external(name: "KakaoSDKAuth")
+    static let kakaoSDKUser: TargetDependency = .external(name: "KakaoSDKUser")
 
     // MARK: Layer Umbrellas
     //

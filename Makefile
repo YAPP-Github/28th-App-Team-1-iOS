@@ -11,7 +11,7 @@ else
   SEARCH = rg --type swift -n
 endif
 
-.PHONY: lat lat-all lat-deps lint lint-fix generate test scaffold-feature scaffold-domain scaffold-core scaffold-shared
+.PHONY: lat lat-all lat-deps lint lint-fix generate test scaffold-feature scaffold-domain scaffold-core scaffold-shared install-snippets
 
 # 특정 도메인과 엮인 코드 전부 (위키링크 [[도메인 으로 검색 → delegate 의존도 잡힘)
 lat:
@@ -67,13 +67,28 @@ scaffold-shared:
 	@tuist scaffold Shared --name $(name) --author "$$(git config user.name)"
 	@echo "✅ Shared$(name) 생성 완료. Projects/Shared/Shared$(name)/Project.swift 의 ⚠️ 주석을 확인하세요."
 
+# Xcode 코드 스니펫 설치 — Tools/XcodeSnippets/ 의 팀 공용 스니펫을 Xcode 로 복사
+# (tcapreview: TCA 기본 프리뷰 / tcapreviews: 시나리오·의존성 주입 프리뷰. Xcode 재시작 후 적용)
+install-snippets:
+	@mkdir -p ~/Library/Developer/Xcode/UserData/CodeSnippets
+	@cp Tools/XcodeSnippets/*.codesnippet ~/Library/Developer/Xcode/UserData/CodeSnippets/
+	@echo "✅ 스니펫 설치 완료. Xcode 를 재시작하면 tcapreview / tcapreviews 자동완성이 뜹니다."
+
 # Feature 테스트 (예: make test scheme=FeatureHome [device='iPhone 15'])
 #
-# 기기 이름이 여러 OS 런타임에 중복되면(예: iPhone 16 이 18.0·26.1 둘 다 존재)
-# xcodebuild 가 name 만으론 못 골라 "Unable to find a device" 로 죽는다.
-# → 사용 가능한 시뮬레이터 UDID 로 해석해서 넘긴다. device= 로 기기 변경 가능.
+# UDID 는 simctl 이 아니라 xcodebuild -showdestinations 에서 해석한다.
+# simctl 목록엔 있어도 현재 Xcode 가 destination 으로 못 쓰는 런타임이 있어서
+# (예: iPhone 16 이 iOS 18.0·26.1 둘 다 존재하는데 destination 은 26.1 만 유효)
+# simctl 첫 UDID 를 집으면 "Unable to find a destination"(Error 70) 으로 죽는다.
+# → 스킴이 실제 인식하는 destination 중 같은 이름의 최신 OS UDID 를 고른다.
 device ?= iPhone 16
 test:
-	@id=$$(xcrun simctl list devices available | grep -E '^ +$(device) \(' | grep -oE '[0-9A-Fa-f-]{36}' | head -1); \
-	if [ -z "$$id" ]; then echo "❌ '$(device)' 시뮬레이터 없음. 사용 가능:"; xcrun simctl list devices available | grep -E '^ +iPhone'; exit 1; fi; \
-	xcodebuild -workspace App.xcworkspace -scheme $(scheme) -destination "platform=iOS Simulator,id=$$id" test
+	@[ -n "$(scheme)" ] || (echo "❌ scheme 필수. 예: make test scheme=FeatureHome"; exit 1)
+	@dests=$$(xcodebuild -workspace Hilit.xcworkspace -scheme $(scheme) -showdestinations 2>/dev/null \
+		| awk '/Ineligible destinations/{exit} /platform:iOS Simulator/ && /OS:/'); \
+	if [ -z "$$dests" ]; then echo "❌ '$(scheme)' 스킴의 destination 조회 실패. Hilit.xcworkspace 가 없으면 make generate 먼저 실행하세요."; exit 1; fi; \
+	id=$$(printf '%s\n' "$$dests" | grep -F "name:$(device) }" \
+		| sed -E 's/.*id:([0-9A-Fa-f-]+),.*OS:([0-9.]+).*/\2 \1/' \
+		| sort -t. -k1,1n -k2,2n | tail -1 | awk '{print $$2}'); \
+	if [ -z "$$id" ]; then echo "❌ '$(device)' 는 '$(scheme)' 스킴의 destination 에 없음. 인식되는 시뮬레이터:"; printf '%s\n' "$$dests"; exit 1; fi; \
+	xcodebuild -workspace Hilit.xcworkspace -scheme $(scheme) -destination "platform=iOS Simulator,id=$$id" test

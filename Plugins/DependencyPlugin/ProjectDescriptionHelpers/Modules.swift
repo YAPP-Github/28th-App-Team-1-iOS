@@ -5,30 +5,50 @@ import Foundation
 /// CaseIterable을 통해 전체 모듈 목록 순회 및 검증 자동화가 가능하다.
 public enum ModulePath {
     public enum Feature: String, CaseIterable {
-        case common = "Common"
         case home = "Home"
-        // 추후 추가 예시: case interviewSetup = "InterviewSetup"
+        case auth = "Auth"
+        case guestFeedback = "GuestFeedback"
+        case onboarding = "Onboarding"
+        case interview = "Interview"
+        case myPage = "MyPage"
+        case report = "Report"
 
         public static let name = "Feature"
     }
 
     public enum Domain: String, CaseIterable {
         case common = "Common"
-        // 추후 추가 예시: case interview = "Interview"
+        case auth = "Auth"
+        case interview = "Interview"
+        // 디바이스 측 IO (서버 API 아님) — 카메라·마이크 권한
+        case permission = "Permission"
+        // 디바이스 측 IO — 카메라 프리뷰·A/V 캡처 (RecordingClient)
+        case recording = "Recording"
+        // 디바이스 측 IO — 마이크 캡처·발화 감지, 추후 TTS/STT (SpeechClient)
+        case speech = "Speech"
+        // D14 서버 API 도메인 미러링 — [[api]]
+        case appVersion = "AppVersion"
+        case consent = "Consent"
+        case jd = "JD"
+        case job = "Job"
+        case portfolio = "Portfolio"
+        case user = "User"
+        case interviewReport = "InterviewReport"
+        case feedbackShare = "FeedbackShare"
+        case guestFeedback = "GuestFeedback"
 
         public static let name = "Domain"
     }
 
     public enum Core: String, CaseIterable {
         case common = "Common"
-        // 추후 추가 예시: case network = "Network"
+        case network = "Network"
 
         public static let name = "Core"
     }
 
     public enum Shared: String, CaseIterable {
-        case common = "Common"
-        // 추후 추가 예시: case designSystem = "DesignSystem"
+        case designSystem = "DesignSystem"
 
         public static let name = "Shared"
     }

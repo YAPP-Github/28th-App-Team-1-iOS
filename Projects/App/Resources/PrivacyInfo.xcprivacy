@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  PrivacyInfo.xcprivacy — 앱 타겟 개인정보 매니페스트.
+  App/Resources/** 는 앱 번들 루트로 복사된다(Target+Templates .app() 팩토리).
+
+  필수 사유 API(required reason API)를 쓰면서 여기 사유를 안 적으면 업로드가 거부된다(ITMS-91053).
+  서드파티(Kakao·TCA·Alamofire·Sharing)는 각자 매니페스트를 갖고 있어 여기 옮겨 적지 않는다.
+
+  수집 항목(NSPrivacyCollectedDataTypes)은 App Store Connect «앱 개인정보» 설문이 정본이라
+  여기서는 선언하지 않는다 — 빈 배열은 «아무것도 수집 안 함» 선언이 되어 사실과 어긋난다.
+-->
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<!-- 첫 실행 마커·중단 세션 보관·게스트 제출 기록·온보딩 값 (FirstLaunchStoreLive 등) -->
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+		<dict>
+			<!-- 녹음 시작 시각 기준점 — mach_absolute_time (RecordingClientLive) -->
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategorySystemBootTime</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>35F9.1</string>
+			</array>
+		</dict>
+	</array>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+</dict>
+</plist>
