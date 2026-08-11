@@ -58,8 +58,8 @@ enum NetworkDecodeLogger {
         print("   envelope: \(envelopeError)")
         print("   직접디코드: \(fallbackError)")
         if !body.isEmpty {
-            // 계약이 어긋난 응답이라 무엇이 왔는지 봐야 하지만, 그 바디도 토큰을 싣고 있을 수 있다.
-            print("   body: \(LogRedaction.redacted(body: body))")
+            // 계약이 어긋난 응답이라 무엇이 왔는지 원문으로 봐야 한다.
+            print("   body: \(String(decoding: body, as: UTF8.self))")
         }
     }
 }
