@@ -84,7 +84,7 @@ withDependencies {
 } operation: { JobClient.liveValue }
 ```
 
-Example 앱은 반대로 transport 만 스텁하고 Domain `liveValue` 를 실구동한다(`FeatureCommonExampleApp`) — 경로·디코딩 코드가 실제로 돈다.
+Example 앱은 반대로 `.domain`·`.core` umbrella 를 link 해 Domain `liveValue` 를 실구동한다(`GuestFeedbackExampleApp`) — 경로·디코딩 코드가 실제로 돈다. 실서버 하네스(`LiveMyPageBootstrap`·`LiveInterviewBootstrap`)는 토큰만 주입하고 나머지 조회를 그대로 태운다.
 
 ## 관련 파일
 

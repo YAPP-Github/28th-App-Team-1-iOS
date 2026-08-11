@@ -103,7 +103,7 @@ AI 면접 리포트 Feature(`FeatureReport`)의 도메인 노드. 화면 3개 + 
 - 생성 실패 안내는 토스트가 기본이지만 **미승격 에러코드는 Alert 로 갈린다** — 클라가 번역할 문구가 없어 서버 원문을 공통 Alert(`serverAlertState()` — [[api#공통 규약]])로 띄운다. 토스트는 같이 띄우지 않는다(한 사건을 두 자리에 쓰지 않는다).
 - 항목을 서버로 보내는 순서는 `AttitudeAxisKind.allCases` 로 고정한다 — `Set` 순회 순서는 실행마다 달라서 게스트 화면의 항목 순서가 흔들린다.
 - 항목 0개는 CTA `.disabled` 로 막는다(서버도 0개면 400). 다크 화면용 disabled 변형이 시안에 없어 라이트용 g50 바로 그려진다 — 시안 나오면 교체.
-- 클립보드는 Feature 안의 `PasteboardClient` seam — 네트워크 Repository 가 아니라 기기 IO 라 Domain 모듈 근거가 없다. 두 번째 사용처가 생기면 `SharedCommon` 승격.
+- 클립보드는 Feature 안의 `PasteboardClient` seam — 네트워크 Repository 가 아니라 기기 IO 라 Domain 모듈 근거가 없다. 두 번째 사용처가 생기면 `CoreCommon` 승격 (기기 IO 인프라 — `FirstLaunchStore` 선례).
 
 ## 최종 보고서 화면은 없다
 

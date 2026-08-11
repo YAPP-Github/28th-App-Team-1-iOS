@@ -5,7 +5,6 @@ import Foundation
 /// CaseIterable을 통해 전체 모듈 목록 순회 및 검증 자동화가 가능하다.
 public enum ModulePath {
     public enum Feature: String, CaseIterable {
-        case common = "Common"
         case home = "Home"
         case auth = "Auth"
         case guestFeedback = "GuestFeedback"
@@ -49,7 +48,6 @@ public enum ModulePath {
     }
 
     public enum Shared: String, CaseIterable {
-        case common = "Common"
         case designSystem = "DesignSystem"
 
         public static let name = "Shared"

@@ -39,8 +39,8 @@ Projects/
   ├── App/                                   # composition root (App @main + AppFeature + Config + Documentation)
   ├── Core/    {CoreCommon,…}                 # 인프라 (네트워킹 등)
   ├── Domain/  {DomainCommon,…}                  # 도메인 모델 + Repository(Client)
-  ├── Feature/ {FeatureCommon, FeatureHome,…}     # 화면 도메인 (단일 모듈)
-  └── Shared/  {SharedCommon, SharedDesignSystem,…} # 디자인 토큰 등 공용
+  ├── Feature/ {FeatureHome, FeatureInterview,…}    # 화면 도메인 (단일 모듈)
+  └── Shared/  {SharedDesignSystem,…}             # 디자인 토큰 등 공용
 ```
 
 Domain·Core·Shared 모듈은 `{Layer}{Name}Interface` / `Implementation` / `Testing` / `Tests` 타겟 세트를 갖고, **Feature 는 Interface 없이** 구현 + `Testing`/`Tests`/`Example` 로 둔다. 레이어 루트의 `Projects/{Layer}/Project.swift` 는 하위 구현을 `@_exported` 로 재노출하는 **umbrella** 로, **App/Example 만** link 한다.

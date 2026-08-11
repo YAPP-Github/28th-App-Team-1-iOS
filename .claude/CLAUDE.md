@@ -11,8 +11,8 @@ Projects/
 ├── App/       composition root — AppFeature(화면 코디네이터) · Config/{Dev,QA,Prod}.xcconfig · DocC
 ├── Core/      Common · Network
 ├── Domain/    AppVersion · Auth · Common · Consent · FeedbackShare · GuestFeedback · Interview · InterviewReport · JD · Job · Permission · Portfolio · Recording · Speech · User    (모델 + Client)
-├── Feature/   Auth · Common · GuestFeedback · Home · Interview · MyPage · Onboarding · Report   (화면 — Interface 없음)
-└── Shared/    Common · DesignSystem (토큰 + 공용 컴포넌트)
+├── Feature/   Auth · GuestFeedback · Home · Interview · MyPage · Onboarding · Report   (화면 — Interface 없음)
+└── Shared/    DesignSystem (토큰 + 공용 컴포넌트)
 ```
 
 - 의존 방향: `App → Feature(Impl) → Domain(Interface) → Core(Interface)`. `Shared(Interface)` 는 전 레이어 가능.

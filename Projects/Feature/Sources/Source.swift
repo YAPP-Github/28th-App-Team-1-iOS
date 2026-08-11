@@ -3,7 +3,6 @@
 // App/다른 모듈은 "import Feature" 한 줄로 모든 Feature 서브모듈에 접근한다.
 
 @_exported import FeatureAuthImplementation
-@_exported import FeatureCommonImplementation
 @_exported import FeatureGuestFeedbackImplementation
 @_exported import FeatureHomeImplementation
 @_exported import FeatureInterviewImplementation
