@@ -5,6 +5,7 @@
 //  Created by EunseoKim on 26/07/18.
 //
 
+import CoreCommonInterface
 import Foundation
 
 // @lat: [[api#공통 규약]]
@@ -40,17 +41,17 @@ public extension ServerEnvelope {
         do {
             return try decoder.decode(T.self, from: data)
         } catch {
-#if DEBUG
-            NetworkDecodeLogger.failure(type: T.self, body: data, envelopeError: envelopeError, fallbackError: error)
-#endif
+            if LogGate.isVerbose {
+                NetworkDecodeLogger.failure(type: T.self, body: data, envelopeError: envelopeError, fallbackError: error)
+            }
             throw envelopeError
         }
     }
 }
 
-#if DEBUG
 /// 디코딩 실패 로깅 — HTTP 는 200 인데 계약이 어긋난 경우를 눈에 보이게 한다.
 /// 이게 없으면 도메인 에러 매핑이 `unexpected` 로 뭉개 «왜 실패했는지» 가 사라진다.
+/// 노출 여부는 런타임 `LogGate.isVerbose`.
 enum NetworkDecodeLogger {
     static func failure(type: Any.Type, body: Data, envelopeError: any Error, fallbackError: any Error) {
         print("🧩 [DECODE-FAIL] \(type)")
@@ -61,7 +62,6 @@ enum NetworkDecodeLogger {
         }
     }
 }
-#endif
 
 /// 서버 에러. 두 포맷이 실재한다(2026-08-02 확인):
 /// - **정의된 코드** `{ success: false, code, message }` — `message` 는 그대로 사용자 노출 가능한 한국어 문구,

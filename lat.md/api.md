@@ -11,6 +11,7 @@ YAPP APP 1팀 백엔드(D14 API v1)와의 연동 지식. 서버 태그(AppVersio
 
 - **도메인은 반드시 https** — `http://hilit.my` 로 붙으면 Caddy 가 308 로 https 에 넘기는데, scheme 이 바뀌어 origin 이 달라지므로 URLSession 이 `Authorization` 헤더를 떼고 재요청한다 → 전 API 403(익명 취급). body 로 자격증명을 싣는 재발급만 살아남아 «토큰은 멀쩡한데 전부 403» 로 보인다.
 - ATS 전면 허용(`NSAllowsArbitraryLoads`)은 앱 타겟에서 뺐다 — 전 계가 https 라 예외가 필요 없고, 남겨 두면 App Store 심사가 사유를 요구한다. IP 직결(HTTP) 디버깅이 필요한 `feature(example:)` 하네스에만 남아 있다.
+- **상세 로그는 계로 끊는다(컴파일 조건 아님)** — 요청/응답·디코딩 실패·부팅 라우팅 로그의 스위치는 `LogGate.isVerbose`(CoreCommonInterface)이고 기준은 `APP_ENV != "prod"`. 예전엔 `#if DEBUG` 라 release 구성인 **QA 에서도 안 보였다**. 운영 빌드에서 잠깐 봐야 하면 실행 인자 `-verboseLog`(설치본은 못 준다). 켜지면 `Authorization` 헤더와 바디 원문이 그대로 찍힌다.
 
 ## 공통 규약
 

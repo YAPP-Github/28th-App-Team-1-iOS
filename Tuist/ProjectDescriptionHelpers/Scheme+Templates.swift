@@ -19,7 +19,14 @@ public extension Scheme {
             name: name,
             shared: true,
             buildAction: .buildAction(targets: [app]),
-            runAction: .runAction(configuration: configuration, executable: app),
+            runAction: .runAction(
+                configuration: configuration,
+                executable: app,
+                // 계 판정으로 꺼지는 상세 로그(`LogGate`)를 Xcode 실행에서만 강제로 켜는 스위치.
+                // 꺼진 채 선언해 둔다 — 필요할 때 Edit Scheme → Run → Arguments 에서 체크만 하면 되고,
+                // 선언을 여기 두어야 `tuist generate` 후에도 살아남는다.
+                arguments: .arguments(launchArguments: [.launchArgument(name: "-verboseLog", isEnabled: false)])
+            ),
             archiveAction: .archiveAction(configuration: configuration),
             profileAction: .profileAction(configuration: configuration, executable: app),
             analyzeAction: .analyzeAction(configuration: configuration)
