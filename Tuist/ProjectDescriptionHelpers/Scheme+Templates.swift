@@ -19,6 +19,8 @@ public extension Scheme {
             name: name,
             shared: true,
             buildAction: .buildAction(targets: [app]),
+            // 상세 로그를 실행 인자로 켜는 스위치는 두지 않는다 — 운영 구성에서 로그를 여는 경로가
+            // 곧 자격증명 유출 경로다. 판정은 `LogGate` 의 계 허용 목록 하나로 닫는다.
             runAction: .runAction(configuration: configuration, executable: app),
             archiveAction: .archiveAction(configuration: configuration),
             profileAction: .profileAction(configuration: configuration, executable: app),

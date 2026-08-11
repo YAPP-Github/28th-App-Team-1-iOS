@@ -11,6 +11,8 @@ YAPP APP 1팀 백엔드(D14 API v1)와의 연동 지식. 서버 태그(AppVersio
 
 - **도메인은 반드시 https** — `http://hilit.my` 로 붙으면 Caddy 가 308 로 https 에 넘기는데, scheme 이 바뀌어 origin 이 달라지므로 URLSession 이 `Authorization` 헤더를 떼고 재요청한다 → 전 API 403(익명 취급). body 로 자격증명을 싣는 재발급만 살아남아 «토큰은 멀쩡한데 전부 403» 로 보인다.
 - ATS 전면 허용(`NSAllowsArbitraryLoads`)은 앱 타겟에서 뺐다 — 전 계가 https 라 예외가 필요 없고, 남겨 두면 App Store 심사가 사유를 요구한다. IP 직결(HTTP) 디버깅이 필요한 `feature(example:)` 하네스에만 남아 있다.
+- **상세 로그는 계로 끊는다(컴파일 조건 아님)** — 요청/응답·디코딩 실패·부팅 라우팅 로그의 스위치는 `LogGate.isVerbose`(CoreCommonInterface). 예전엔 `#if DEBUG` 라 release 구성인 **QA 에서도 안 보였다**. 판정은 **허용 목록**(`APP_ENV ∈ {dev, qa}`, DEBUG 은 계 무관하게 켬)이고, «prod 가 아니면 켠다» 로 쓰지 않는다 — 키 누락·오타·새 계 이름이 전부 «켜라» 로 읽혀 실수 한 번이 운영 유출이 된다. 실행 인자 우회로(`-verboseLog`)는 두지 않는다.
+- **찍히는 값은 `LogRedaction` 이 가린다** — 게이트가 «찍을지», 이쪽이 «무엇을 찍을지» 를 정한다. 헤더는 이름(`Authorization`·`Cookie`…) 완전일치, JSON 바디는 키 부분일치(`token`·`credential`·`password`·`secret`·`apikey`)로 값만 치환하고 중첩도 따라 내려간다. 비-JSON 바디는 **원문을 내보내지 않는다**(키 구조가 없어 가릴 수 없다 — 크기만 남긴다). 로거를 새로 만들면 반드시 이걸 통과시킨다.
 
 ## 공통 규약
 
@@ -52,6 +54,7 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 | 메서드 | 엔드포인트 | 비고 |
 |---|---|---|
 | `login` | POST `/api/v1/auth/social/login` | KAKAO=액세스 토큰 / APPLE=authorization code 를 credential 로 전송. 성공 시 토큰 저장 + `LoginResult`(consentStatus·profileRegistered — 진입 게이트 판정값, [launch-routing](../docs/work/launch-routing.md)) 반환. 응답의 `newUser`·`userInfo` 는 소비자가 없어 디코딩하지 않는다 |
+| `loginWithReviewCode` | POST `/api/v1/auth/social/login` | 같은 엔드포인트·같은 `provider=KAKAO` 에 credential 만 스토어 심사용 코드. 전용 provider 가 없어 **서버가 credential 값으로** 코드와 카카오 액세스 토큰을 갈라내고(코드면 카카오 API 호출 없이 지정 데모 계정 토큰 발급, rate limit 은 서버 몫), 응답 스키마·후처리는 `login` 과 동일 — 흐름은 [[auth#심사용 코드 로그인]] |
 | `refresh` | POST `/api/v1/auth/token/refresh` | 명시적 재발급 (자동은 AuthorizedNetworkClient) |
 | `logout` | DELETE `/api/v1/auth/logout` | 204. 로컬 토큰은 서버 응답과 무관하게 삭제 |
 | `check` | GET `/api/v1/auth/check` | 인증 동작 확인(테스트용) |

@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import CoreCommonInterface
 import CoreNetworkInterface
 import Foundation
 
@@ -24,9 +25,9 @@ extension NetworkClient: DependencyKey {
         NetworkClient(
             request: { request in
                 let urlRequest = try request.urlRequest(baseURL: baseURL())
-                #if DEBUG
-                NetworkLogger.request(urlRequest)
-                #endif
+                if LogGate.isVerbose {
+                    NetworkLogger.request(urlRequest)
+                }
                 let data: Data
                 let response: URLResponse
                 do {
@@ -35,17 +36,17 @@ extension NetworkClient: DependencyKey {
                     // 구조적 동시성 취소는 실패가 아니다 — TCA `.run` 이 조용히 무시하도록 취소로 전파
                     throw CancellationError()
                 } catch let error as URLError {
-                    #if DEBUG
-                    NetworkLogger.failure("transport \(error.code.rawValue)", url: urlRequest.url?.absoluteString ?? "")
-                    #endif
+                    if LogGate.isVerbose {
+                        NetworkLogger.failure("transport \(error.code.rawValue)", url: urlRequest.url?.absoluteString ?? "")
+                    }
                     throw NetworkError.transport(error.code)
                 }
                 guard let http = response as? HTTPURLResponse else {
                     throw NetworkError.invalidResponse
                 }
-                #if DEBUG
-                NetworkLogger.response(http, data: data, url: urlRequest.url?.absoluteString ?? "")
-                #endif
+                if LogGate.isVerbose {
+                    NetworkLogger.response(http, data: data, url: urlRequest.url?.absoluteString ?? "")
+                }
                 guard (200..<300).contains(http.statusCode) else {
                     throw NetworkError.statusCode(http.statusCode, data)
                 }
@@ -89,25 +90,25 @@ extension NetworkRequest {
     }
 }
 
-#if DEBUG
-/// 개발용 네트워크 로깅. 모든 실 HTTP 가 `NetworkClient.live` 한 곳을 지나므로 요청/응답이 전부 찍힌다.
-/// release(QA/Prod)에는 컴파일되지 않는다 (#if DEBUG).
+/// 네트워크 로깅. 모든 실 HTTP 가 `NetworkClient.live` 한 곳을 지나므로 요청/응답이 전부 찍힌다.
+/// 모든 구성에 컴파일되고 노출 여부는 런타임 `LogGate.isVerbose` 가 정한다 — QA(release 구성)에서도 보인다.
 enum NetworkLogger {
     static func request(_ req: URLRequest) {
         print("🌐 [REQ] \(req.httpMethod ?? "?") \(req.url?.absoluteString ?? "?")")
         if let headers = req.allHTTPHeaderFields, !headers.isEmpty {
-            print("   headers: \(headers)")
+            print("   headers: \(LogRedaction.redacted(headers: headers))")
         }
-        if let body = req.httpBody, let json = String(data: body, encoding: .utf8), !json.isEmpty {
-            print("   body: \(json)")
+        if let body = req.httpBody, !body.isEmpty {
+            print("   body: \(LogRedaction.redacted(body: body))")
         }
     }
 
     static func response(_ http: HTTPURLResponse, data: Data, url: String) {
         let icon = (200..<300).contains(http.statusCode) ? "✅" : "❌"
         print("\(icon) [RES] \(http.statusCode) \(url)")
-        if let json = String(data: data, encoding: .utf8), !json.isEmpty {
-            print("   body: \(json)")
+        if !data.isEmpty {
+            // 로그인·재발급 응답이 토큰 페어를 실어 오므로 요청과 같은 가림을 통과시킨다.
+            print("   body: \(LogRedaction.redacted(body: data))")
         }
     }
 
@@ -115,4 +116,3 @@ enum NetworkLogger {
         print("❌ [REQ-FAIL] \(message) \(url)")
     }
 }
-#endif

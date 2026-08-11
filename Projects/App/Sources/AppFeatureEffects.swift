@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import CoreCommonInterface
 import DomainAppVersionInterface
 import DomainConsentInterface
 import DomainInterviewInterface
@@ -240,9 +241,9 @@ extension AppFeature {
         case .home:
             state.root = .home
         case let .failed(step, reason):
-            #if DEBUG
-            print("🚧 [LAUNCH-ROUTING] \(step) 실패 — \(reason)")
-            #endif
+            if LogGate.isVerbose {
+                print("🚧 [LAUNCH-ROUTING] \(step) 실패 — \(reason)")
+            }
             state.root = .splashFailed
         }
         return .none

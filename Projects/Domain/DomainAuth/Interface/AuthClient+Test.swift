@@ -15,6 +15,7 @@ extension AuthClient {
         handleOpenURL: unimplemented("AuthClient.handleOpenURL"),
         signIn: unimplemented("AuthClient.signIn"),
         login: unimplemented("AuthClient.login"),
+        loginWithReviewCode: unimplemented("AuthClient.loginWithReviewCode"),
         refresh: unimplemented("AuthClient.refresh"),
         logout: unimplemented("AuthClient.logout"),
         check: unimplemented("AuthClient.check"),
@@ -40,6 +41,8 @@ extension AuthClient {
         },
         // 신규 취급(최초 동의·프로필 미등록) — 프리뷰·Example 이 가입 플로우 전체를 밟게 한다.
         login: { _ in LoginResult(consentStatus: .notSubmitted, profileRegistered: false) },
+        // 심사용 코드는 반대로 기존 회원 취급 — 실서버 데모 계정이 온보딩을 마친 상태라 그 판정값을 흉내낸다.
+        loginWithReviewCode: { _ in LoginResult(consentStatus: .upToDate, profileRegistered: true) },
         refresh: {},
         logout: {},
         check: { AuthCheck(message: "인증 성공", userId: UUID()) },

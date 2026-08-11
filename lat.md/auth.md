@@ -43,6 +43,18 @@ PRD Part 6·7 확정(2026-07-31)으로 FeatureAuth 가 로그인 단일 화면�
 - `AuthSuspensionFeature`(A4) — 정지 안내. Path 밖 — 진입이 홈 게이트(`ACCOUNT_SUSPENDED`)라 제시는 AppFeature(cross-feature). CS 메일 주소는 placeholder.
 - `SplashView` — 판정 결과를 모르는 뷰. `onRetry` 를 받으면 판정 실패 상태(재시도 노출), nil 이면 판정 중. 판정 자체는 AppFeature 몫 → [[app#Splash 세션 복구]].
 
+## 심사용 코드 로그인
+
+App Store 심사자가 카카오·애플을 거치지 않고 데모 계정에 들어오는 대체 경로. 카카오 로그인이 심사 기기에서 막히는 경우(해외 IP 이상 로그인 감지·새 기기 인증 — 앱이 통제할 수 없는 변수)가 2.1 리젝의 실질 위험이라서다.
+
+`AuthClient.loginWithReviewCode(code)` 는 `login` 과 **같은 엔드포인트·같은 `provider=KAKAO`** 를 쓰고 `credential` 만 심사자가 입력한 코드다([[api#Auth]]). 전용 provider 를 두지 않은 것은 서버 계약이 그렇기 때문 — 그래서 **판정 책임이 서버에** 있다: 카카오 핸들러가 카카오 API 를 호출하기 전에 credential 이 심사 코드인지 먼저 본다. 실제 액세스 토큰과 코드가 겹칠 일은 없어 이 순서로 안전하다. 두 진입점은 Implementation 의 `exchange(_:)` 를 공유하므로 토큰 저장·판정값 조립·에러 매핑이 한 곳뿐이다.
+
+앱은 코드도 계정 식별자도 모른다 — 데모 계정 UUID 는 서버에만 있고, 코드는 심사자 입력으로 들어온다.
+
+**코드를 앱에 심지 않는다** — 심사자가 화면에서 입력하므로 바이너리 문자열에 남지 않는다. 서버 측 rate limit 이 브루트포스 방어의 유일한 층이다(클라가 할 수 있는 게 없다).
+
+A0(`AuthCreateAccountFeature`)에서 로고를 `reviewCodeTapThreshold`(5)번 탭하면 입력이 열린다. 숨긴 상대는 사용자고 Apple 에는 App Review 노트로 경로를 공개한다 — 그래서 2.3.1(hidden features)에 걸리지 않는다. 제출은 소셜 경로와 **같은 `inner(.signInFinished)`·`delegate(.authenticated)`** 로 합류해 게이트 2단 체인을 그대로 탄다: 다른 것은 교환 함수 하나뿐이고, 실패 얼럿·재탭 차단(`isAuthenticating`)도 공유한다.
+
 ## 게이트 2단 체인
 
 목적지는 **두 값만으로** 정해진다 — ① 동의 `consentStatus` ② 프로필 `profileRegistered`. 순서 고정(동의를 통과해야 프로필 게이트를 본다). 전체 표·시퀀스는 [launch-routing](../docs/work/launch-routing.md).

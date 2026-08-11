@@ -20,6 +20,27 @@ extension AuthClient: @retroactive DependencyKey {
         @Dependency(\.authorizedNetworkClient) var authorizedNetwork
         @Dependency(\.tokenStore) var tokenStore
 
+        /// `login`·`loginWithReviewCode` 공통 후처리 — 세션 교환 요청을 보내고 토큰 페어를 저장한 뒤
+        /// 라우팅 판정값만 남긴다. 두 진입점의 차이는 body 의 `provider`·`credential` 뿐이다.
+        @Sendable func exchange(_ body: LoginBody) async throws -> LoginResult {
+            try await AuthError.mapping {
+                let request = try NetworkRequest.json(
+                    method: .post,
+                    path: "/api/v1/auth/social/login",
+                    body: body
+                )
+                let response: LoginResponse = try await network.api(request)
+                try tokenStore.save(AuthTokens(
+                    accessToken: response.accessToken,
+                    refreshToken: response.refreshToken
+                ))
+                return LoginResult(
+                    consentStatus: response.consentStatus,
+                    profileRegistered: response.profileRegistered
+                )
+            }
+        }
+
         return AuthClient(
             configure: { appKey in
                 KakaoLoginProvider.configure(appKey: appKey)
@@ -36,22 +57,11 @@ extension AuthClient: @retroactive DependencyKey {
                 }
             },
             login: { credential in
-                try await AuthError.mapping {
-                    let request = try NetworkRequest.json(
-                        method: .post,
-                        path: "/api/v1/auth/social/login",
-                        body: credential.loginBody
-                    )
-                    let response: LoginResponse = try await network.api(request)
-                    try tokenStore.save(AuthTokens(
-                        accessToken: response.accessToken,
-                        refreshToken: response.refreshToken
-                    ))
-                    return LoginResult(
-                        consentStatus: response.consentStatus,
-                        profileRegistered: response.profileRegistered
-                    )
-                }
+                try await exchange(credential.loginBody)
+            },
+            loginWithReviewCode: { code in
+                // provider 는 KAKAO 그대로 — 서버가 credential 값으로 심사 코드를 갈라낸다(전용 provider 없음).
+                try await exchange(LoginBody(provider: "KAKAO", credential: code))
             },
             refresh: {
                 try await AuthError.mapping {
@@ -91,7 +101,9 @@ extension AuthClient: @retroactive DependencyKey {
 
 // MARK: - 서버 계약 매핑
 
-private struct LoginBody: Encodable {
+/// `provider` 는 D14 계약의 열거값(KAKAO·APPLE). 심사용 코드도 KAKAO 로 보낸다 —
+/// 전용 provider 가 없어 서버가 credential 값으로 갈라낸다. → [[auth#심사용 코드 로그인]]
+private struct LoginBody: Encodable, Sendable {
     let provider: String
     let credential: String
 }

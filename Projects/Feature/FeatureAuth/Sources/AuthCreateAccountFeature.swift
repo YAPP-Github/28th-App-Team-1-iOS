@@ -12,15 +12,35 @@ import DomainCommonInterface
 // @lat: [[auth]]
 /// AuthCreateAccount(A0) — 가입·로그인 단일 진입점. 소셜 인증(signIn) + 서버 세션 교환(login)까지 마치고
 /// 코디네이터(AuthFeature)에 `delegate(.authenticated)` 를 올린다. 신규/기존 분기는 코디네이터 몫.
+///
+/// 스토어 심사용 코드 로그인도 이 화면에 얹혀 있다 — 소셜 경로와 **같은 inner·delegate 를 탄다**
+/// (교환 함수만 다르다). → [[auth#심사용 코드 로그인]]
 @Reducer
 public struct AuthCreateAccountFeature {
+    /// 심사용 코드 입력을 여는 로고 탭 횟수.
+    public static let reviewCodeTapThreshold = 5
+
     @ObservableState
     public struct State: Equatable {
         /// 인증 진행 중 — **표시용이 아니라 재탭 차단용**이다. 로딩 표시는 AppView 의 전역
         /// LoadingModal(NetworkActivity) 몫이지만, 그건 HTTP in-flight 만 센다. 소셜 SDK 구간
         /// (`authClient.signIn`)은 네트워크 계측 밖이라 이 플래그가 없으면 시트가 뜨기 전 두 번 눌린다.
         public var isAuthenticating = false
+        /// 로고 탭 누적 — 심사용 코드 입력을 여는 카운터. 임계치에 닿으면 더 세지 않는다.
+        public var logoTapCount = 0
+        public var reviewCode = ""
         @Presents public var alert: AlertState<Action.Alert>?
+
+        /// 심사용 코드 입력 노출 여부. 일반 사용자는 로고를 5번 두드릴 일이 없어 평소엔 닫혀 있다 —
+        /// 숨긴 상대는 사용자가 아니라 화면이고, 경로 자체는 App Review 노트에 적어 공개한다.
+        public var showsReviewCodeField: Bool {
+            logoTapCount >= AuthCreateAccountFeature.reviewCodeTapThreshold
+        }
+
+        /// 빈 코드로 서버를 때리지 않는다 — 앞뒤 공백만 있는 입력도 막는다.
+        public var isReviewCodeSubmittable: Bool {
+            !reviewCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
 
         public init() {}
     }
@@ -32,7 +52,13 @@ public struct AuthCreateAccountFeature {
         case alert(PresentationAction<Alert>)
 
         /// 사용자 입력·생명주기. View 의 send(...) 로만 방출된다.
-        public enum View: Equatable, Sendable {
+        @CasePathable
+        public enum View: BindableAction, Sendable {
+            case binding(BindingAction<State>)
+            /// 로고 탭 — 임계치까지 세어 심사용 코드 입력을 연다.
+            case userTappedLogo
+            /// 심사용 코드 제출 — 소셜 경로와 같은 inner 로 합류한다.
+            case userTappedReviewCodeSignIn
             case userTappedSignIn(SocialProvider)
         }
 
@@ -61,8 +87,30 @@ public struct AuthCreateAccountFeature {
     public init() {}
 
     public var body: some ReducerOf<Self> {
+        BindingReducer(action: \.view)
         Reduce { state, action in
             switch action {
+            case .view(.userTappedLogo):
+                // 열린 뒤로는 셀 필요가 없다 — 카운터를 계속 올리면 Int 만 자란다.
+                guard !state.showsReviewCodeField else { return .none }
+                state.logoTapCount += 1
+                return .none
+
+            // 심사용 코드 교환 — signIn(소셜 SDK) 단계가 없어 서버 교환 한 번이 전부다.
+            // 성공·실패 처리는 아래 소셜 경로와 공유한다(같은 inner).
+            case .view(.userTappedReviewCodeSignIn):
+                guard !state.isAuthenticating, state.isReviewCodeSubmittable else { return .none }
+                state.isAuthenticating = true
+                let code = state.reviewCode.trimmingCharacters(in: .whitespacesAndNewlines)
+                return .run { send in
+                    do {
+                        let result = try await authClient.loginWithReviewCode(code)
+                        await send(.inner(.signInFinished(.success(result))))
+                    } catch {
+                        await send(.inner(.signInFinished(.failure(error as? AuthError ?? .unexpected))))
+                    }
+                }
+
             case let .view(.userTappedSignIn(provider)):
                 guard !state.isAuthenticating else { return .none }
                 state.isAuthenticating = true
@@ -77,6 +125,10 @@ public struct AuthCreateAccountFeature {
                         await send(.inner(.signInFinished(.failure(error as? AuthError ?? .unexpected))))
                     }
                 }
+
+            // 코드 입력 바인딩 — 반영은 BindingReducer 가 이미 했다.
+            case .view(.binding):
+                return .none
 
             case let .inner(.signInFinished(.success(result))):
                 state.isAuthenticating = false
