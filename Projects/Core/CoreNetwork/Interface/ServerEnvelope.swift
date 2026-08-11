@@ -57,8 +57,9 @@ enum NetworkDecodeLogger {
         print("🧩 [DECODE-FAIL] \(type)")
         print("   envelope: \(envelopeError)")
         print("   직접디코드: \(fallbackError)")
-        if let json = String(data: body, encoding: .utf8) {
-            print("   body: \(json)")
+        if !body.isEmpty {
+            // 계약이 어긋난 응답이라 무엇이 왔는지 봐야 하지만, 그 바디도 토큰을 싣고 있을 수 있다.
+            print("   body: \(LogRedaction.redacted(body: body))")
         }
     }
 }
