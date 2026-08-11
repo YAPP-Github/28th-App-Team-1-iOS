@@ -47,7 +47,9 @@ PRD Part 6·7 확정(2026-07-31)으로 FeatureAuth 가 로그인 단일 화면�
 
 App Store 심사자가 카카오·애플을 거치지 않고 데모 계정에 들어오는 대체 경로. 카카오 로그인이 심사 기기에서 막히는 경우(해외 IP 이상 로그인 감지·새 기기 인증 — 앱이 통제할 수 없는 변수)가 2.1 리젝의 실질 위험이라서다.
 
-`AuthClient.loginWithReviewCode(code)` 는 `login` 과 **같은 엔드포인트**를 쓴다 — body 의 `provider` 가 `REVIEW` 이고 `credential` 이 심사자가 입력한 코드다([[api#Auth]]). 두 진입점은 Implementation 의 `exchange(_:)` 를 공유하므로 토큰 저장·판정값 조립·에러 매핑이 한 곳뿐이다. 서버는 코드를 검증해 지정 데모 계정의 토큰을 발급한다 — 앱은 계정도 코드도 모른다.
+`AuthClient.loginWithReviewCode(code)` 는 `login` 과 **같은 엔드포인트·같은 `provider=KAKAO`** 를 쓰고 `credential` 만 심사자가 입력한 코드다([[api#Auth]]). 전용 provider 를 두지 않은 것은 서버 계약이 그렇기 때문 — 그래서 **판정 책임이 서버에** 있다: 카카오 핸들러가 카카오 API 를 호출하기 전에 credential 이 심사 코드인지 먼저 본다. 실제 액세스 토큰과 코드가 겹칠 일은 없어 이 순서로 안전하다. 두 진입점은 Implementation 의 `exchange(_:)` 를 공유하므로 토큰 저장·판정값 조립·에러 매핑이 한 곳뿐이다.
+
+앱은 코드도 계정 식별자도 모른다 — 데모 계정 UUID 는 서버에만 있고, 코드는 심사자 입력으로 들어온다.
 
 **코드를 앱에 심지 않는다** — 심사자가 화면에서 입력하므로 바이너리 문자열에 남지 않는다. 서버 측 rate limit 이 브루트포스 방어의 유일한 층이다(클라가 할 수 있는 게 없다).
 

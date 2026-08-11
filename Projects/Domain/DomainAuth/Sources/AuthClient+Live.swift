@@ -60,7 +60,8 @@ extension AuthClient: @retroactive DependencyKey {
                 try await exchange(credential.loginBody)
             },
             loginWithReviewCode: { code in
-                try await exchange(LoginBody(provider: "REVIEW", credential: code))
+                // provider 는 KAKAO 그대로 — 서버가 credential 값으로 심사 코드를 갈라낸다(전용 provider 없음).
+                try await exchange(LoginBody(provider: "KAKAO", credential: code))
             },
             refresh: {
                 try await AuthError.mapping {
@@ -100,7 +101,8 @@ extension AuthClient: @retroactive DependencyKey {
 
 // MARK: - 서버 계약 매핑
 
-/// `provider` 는 D14 계약의 열거값 — KAKAO·APPLE 은 소셜 자격증명, REVIEW 는 스토어 심사용 코드다.
+/// `provider` 는 D14 계약의 열거값(KAKAO·APPLE). 심사용 코드도 KAKAO 로 보낸다 —
+/// 전용 provider 가 없어 서버가 credential 값으로 갈라낸다. → [[auth#심사용 코드 로그인]]
 private struct LoginBody: Encodable, Sendable {
     let provider: String
     let credential: String
