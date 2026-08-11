@@ -109,6 +109,96 @@ final class AuthCreateAccountFeatureTests: XCTestCase {
         await store.send(.view(.userTappedSignIn(.kakao)))
     }
 
+    /// 로고 탭이 임계치에 닿아야 심사용 코드 입력이 열린다 — 그 전엔 화면에 없다.
+    @MainActor
+    func testLogoTapsOpenReviewCodeFieldAtThreshold() async {
+        let store = TestStore(initialState: AuthCreateAccountFeature.State()) {
+            AuthCreateAccountFeature()
+        }
+
+        for tap in 1..<AuthCreateAccountFeature.reviewCodeTapThreshold {
+            await store.send(.view(.userTappedLogo)) {
+                $0.logoTapCount = tap
+            }
+            XCTAssertFalse(store.state.showsReviewCodeField)
+        }
+
+        await store.send(.view(.userTappedLogo)) {
+            $0.logoTapCount = AuthCreateAccountFeature.reviewCodeTapThreshold
+        }
+        XCTAssertTrue(store.state.showsReviewCodeField)
+
+        // 열린 뒤 탭은 카운터를 올리지 않는다.
+        await store.send(.view(.userTappedLogo))
+    }
+
+    /// 심사용 코드 경로는 소셜 경로와 같은 inner·delegate 를 탄다 — 다른 건 교환 함수뿐이다.
+    @MainActor
+    func testReviewCodeLoginSendsCodeAndReusesSocialPath() async {
+        let result = LoginResult(consentStatus: .upToDate, profileRegistered: true)
+        var state = AuthCreateAccountFeature.State()
+        state.logoTapCount = AuthCreateAccountFeature.reviewCodeTapThreshold
+        state.reviewCode = "  956ThisisDemo++Hilit  "
+        let store = TestStore(initialState: state) {
+            AuthCreateAccountFeature()
+        } withDependencies: {
+            // 앞뒤 공백은 잘라 보낸다 — 심사자 입력에 딸려 오는 공백이 401 을 만들지 않게.
+            $0.authClient.loginWithReviewCode = { code in
+                XCTAssertEqual(code, "956ThisisDemo++Hilit")
+                return result
+            }
+        }
+
+        await store.send(.view(.userTappedReviewCodeSignIn)) {
+            $0.isAuthenticating = true
+        }
+        await store.receive(\.inner.signInFinished.success, result) {
+            $0.isAuthenticating = false
+        }
+        await store.receive(\.delegate.authenticated, result)
+    }
+
+    /// 코드가 비었으면(공백뿐 포함) 서버를 때리지 않는다 — testValue 가 unimplemented 라 호출 시 실패한다.
+    @MainActor
+    func testBlankReviewCodeDoesNotCallServer() async {
+        var state = AuthCreateAccountFeature.State()
+        state.logoTapCount = AuthCreateAccountFeature.reviewCodeTapThreshold
+        state.reviewCode = "   "
+        let store = TestStore(initialState: state) {
+            AuthCreateAccountFeature()
+        }
+
+        await store.send(.view(.userTappedReviewCodeSignIn))
+    }
+
+    /// 틀린 코드 — 소셜 실패와 같은 얼럿 경로.
+    @MainActor
+    func testWrongReviewCodeShowsAlert() async {
+        var state = AuthCreateAccountFeature.State()
+        state.logoTapCount = AuthCreateAccountFeature.reviewCodeTapThreshold
+        state.reviewCode = "wrong"
+        let store = TestStore(initialState: state) {
+            AuthCreateAccountFeature()
+        } withDependencies: {
+            $0.authClient.loginWithReviewCode = { _ in throw AuthError.invalidCredential }
+        }
+
+        await store.send(.view(.userTappedReviewCodeSignIn)) {
+            $0.isAuthenticating = true
+        }
+        await store.receive(\.inner.signInFinished.failure) {
+            $0.isAuthenticating = false
+            $0.alert = AlertState(
+                title: { TextState("로그인 정보가 올바르지 않습니다.") },
+                actions: {
+                    ButtonState(role: .cancel) {
+                        TextState("확인")
+                    }
+                }
+            )
+        }
+    }
+
     @MainActor
     func test_애플로그인성공_provider전달_delegate신호() async {
         let credential = SocialCredential.apple(

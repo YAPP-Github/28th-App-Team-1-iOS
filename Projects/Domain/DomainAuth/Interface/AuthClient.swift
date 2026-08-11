@@ -26,6 +26,10 @@ public struct AuthClient: Sendable {
     /// 자격증명을 서버 세션으로 교환 (POST /auth/social/login) — 성공 시 토큰 페어를 TokenStore 에 저장하고
     /// 라우팅 판정값(동의 상태·프로필 등록 여부)을 돌려준다. 실패는 `AuthError` 로 매핑된다.
     public var login: @Sendable (SocialCredential) async throws -> LoginResult
+    /// 심사용 코드를 서버 세션으로 교환 (같은 엔드포인트, `provider=REVIEW`) — 소셜 OAuth 를 거치지 않고
+    /// 서버가 지정해 둔 데모 계정에 붙는다. 토큰 저장·판정값 반환은 `login` 과 동일하다.
+    /// 코드는 심사자가 화면에서 직접 입력한다 — 앱 바이너리에 심어두지 않는다. → [[auth#심사용 코드 로그인]]
+    public var loginWithReviewCode: @Sendable (_ code: String) async throws -> LoginResult
     /// 명시적 토큰 재발급 (POST /auth/token/refresh) — 만료 시 자동 재발급은 AuthorizedNetworkClient 가 수행.
     public var refresh: @Sendable () async throws -> Void
     /// 로그아웃 (DELETE /auth/logout) — 서버 Refresh Token 삭제. 로컬 토큰은 성공 여부와 무관하게 삭제한다.
@@ -40,6 +44,7 @@ public struct AuthClient: Sendable {
         handleOpenURL: @escaping @MainActor @Sendable (URL) -> Void,
         signIn: @escaping @Sendable (SocialProvider) async throws -> SocialCredential,
         login: @escaping @Sendable (SocialCredential) async throws -> LoginResult,
+        loginWithReviewCode: @escaping @Sendable (_ code: String) async throws -> LoginResult,
         refresh: @escaping @Sendable () async throws -> Void,
         logout: @escaping @Sendable () async throws -> Void,
         check: @escaping @Sendable () async throws -> AuthCheck,
@@ -49,6 +54,7 @@ public struct AuthClient: Sendable {
         self.handleOpenURL = handleOpenURL
         self.signIn = signIn
         self.login = login
+        self.loginWithReviewCode = loginWithReviewCode
         self.refresh = refresh
         self.logout = logout
         self.check = check

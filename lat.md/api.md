@@ -52,6 +52,7 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 | 메서드 | 엔드포인트 | 비고 |
 |---|---|---|
 | `login` | POST `/api/v1/auth/social/login` | KAKAO=액세스 토큰 / APPLE=authorization code 를 credential 로 전송. 성공 시 토큰 저장 + `LoginResult`(consentStatus·profileRegistered — 진입 게이트 판정값, [launch-routing](../docs/work/launch-routing.md)) 반환. 응답의 `newUser`·`userInfo` 는 소비자가 없어 디코딩하지 않는다 |
+| `loginWithReviewCode` | POST `/api/v1/auth/social/login` | 같은 엔드포인트에 `provider=REVIEW` + credential=스토어 심사용 코드. 서버가 코드를 검증해 지정 데모 계정의 토큰을 발급한다(rate limit 은 서버 몫). 응답 스키마·후처리는 `login` 과 동일 — 흐름은 [[auth#심사용 코드 로그인]] |
 | `refresh` | POST `/api/v1/auth/token/refresh` | 명시적 재발급 (자동은 AuthorizedNetworkClient) |
 | `logout` | DELETE `/api/v1/auth/logout` | 204. 로컬 토큰은 서버 응답과 무관하게 삭제 |
 | `check` | GET `/api/v1/auth/check` | 인증 동작 확인(테스트용) |

@@ -37,10 +37,16 @@ public struct AuthCreateAccountView: View {
 
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
+
+                if store.showsReviewCodeField {
+                    reviewCodeField
+                }
+
                 socialButtons
             }
         }
         .onAppear { isRevealed = true }
+        .dismissesKeyboardOnTap()
         .alert($store.scope(state: \.alert, action: \.alert))
     }
 
@@ -57,14 +63,37 @@ public struct AuthCreateAccountView: View {
     ///
     /// `ignoresSafeArea` 는 필수다 — Splash 가 화면 전체 중심을 기준으로 로고를 놓기 때문에,
     /// 안전영역 기준으로 중심을 잡으면 상·하 인셋 차이만큼(375×812 에서 5pt) 아래로 밀려 전환이 튄다.
+    /// 탭 제스처는 **로고 실제 영역(171×72)에만** 붙인다 — 아래 화면 전체로 늘리는 `frame` 뒤에 걸면
+    /// 빈 배경 어디를 눌러도 카운터가 오른다.
     private var logoMark: some View {
         Image.Logo.hilit
             .resizable()
             .scaledToFit()
             .frame(width: SplashView.logoSize.width, height: SplashView.logoSize.height)
+            .onTapGesture { send(.userTappedLogo) }
             .offset(y: SplashView.logoCenterOffsetY)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .ignoresSafeArea()
+    }
+
+    // MARK: - 심사용 코드 로그인
+
+    /// 스토어 심사자용 대체 로그인 — 로고 5탭으로 열린다. 카카오 로그인이 심사 기기에서 막히는 경우
+    /// (해외 IP 이상 로그인 감지·새 기기 인증)를 위한 우회로다. 경로는 App Review 노트에 적어 공개한다.
+    ///
+    /// 코드 자체는 앱에 없다 — 심사자가 입력한 값을 서버가 판정한다(`AuthClient.loginWithReviewCode`).
+    /// 시안에 없는 화면이라 DS 표준 컴포넌트만 조립하고 새 값을 만들지 않는다.
+    private var reviewCodeField: some View {
+        VStack(spacing: .ds(.p8)) {
+            HilitTextField("심사용 코드", text: $store.reviewCode)
+
+            ButtonLarge("데모 계정으로 로그인", .modal) {
+                send(.userTappedReviewCodeSignIn)
+            }
+            .disabled(!store.isReviewCodeSubmittable)
+        }
+        .padding(.horizontal, .ds(.p20))
+        .padding(.bottom, .ds(.p16))
     }
 
     // MARK: - 소셜 로그인
@@ -173,6 +202,20 @@ private struct SocialLoginButton: View {
 #Preview("소셜 로그인") {
     AuthCreateAccountView(
         store: Store(initialState: AuthCreateAccountFeature.State()) {
+            AuthCreateAccountFeature()
+        }
+    )
+}
+
+#Preview("심사용 코드 열린 상태") {
+    AuthCreateAccountView(
+        store: Store(
+            initialState: {
+                var state = AuthCreateAccountFeature.State()
+                state.logoTapCount = AuthCreateAccountFeature.reviewCodeTapThreshold
+                return state
+            }()
+        ) {
             AuthCreateAccountFeature()
         }
     )
