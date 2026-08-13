@@ -11,8 +11,8 @@ import SharedDesignSystemInterface
 import SwiftUI
 
 // @lat: [[feedback#G4 게스트 평가]]
-/// 지인 피드백 온보딩 메인(Figma `[4] 온보딩 - 메인`, node 1855:8498).
-/// 라이트 톤 — 타이틀 그린 하이라이트("피드백") + 부제 + 히어로 일러스트 자리(플레이스홀더) +
+/// 지인 피드백 온보딩 메인(Figma `Peerfeedback_onboarding1`, node 1855:8498).
+/// 라이트 톤 — 타이틀 그린 하이라이트("피드백") + 부제 + 히어로 일러스트(g100 판 위 214 정사각) +
 /// 안내 2행 + 하단 블랙 CTA. 닉네임 입력은 다음 스텝(GuestNicknameView).
 @ViewAction(for: GuestFeedbackFeature.self)
 struct GuestOnboardingView: View {
@@ -30,7 +30,9 @@ struct GuestOnboardingView: View {
                     .padding(.horizontal, .ds(.p20))
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, .ds(.p12))
+            // @ds(spacing): 34 — 타이틀 시작(Figma title-box y77 − 상태바 43). 스케일에 34 가 없다.
+            // 좌상단 닫기 X(위 10 + 글리프 24)가 끝나는 높이와 같아 글자와 겹치지 않는다.
+            .padding(.top, 34)
 
             footer
         }
@@ -56,18 +58,22 @@ struct GuestOnboardingView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    // MARK: - Illustration (placeholder)
+    // MARK: - Illustration
 
-    /// 온보딩 히어로 일러스트 자리(승인된 플레이스홀더). 실 에셋이 도착하면 이 프로퍼티만 교체한다.
+    /// 온보딩 히어로 — Figma «Frame 2147230590»(3683:9109): 판 위쪽에서 60 내려온 자리에 214 정사각
+    /// 일러스트(`feedback/214px`)를 가운데로 둔다. 판은 풀블리드고 **위 모서리만** 4pt 둥글다.
+    /// 판 높이는 시안이 406 이지만 여기선 남는 세로를 다 먹는다 — 시안 auto-layout 이 items-start 라
+    /// 화면이 길어지면 아래쪽 여백만 늘어나는 게 맞다(일러스트는 위에서 60 자리를 지킨다).
     private var illustration: some View {
-        Rectangle() // 풀블리드 — 코너 0(각진 edge).
-            .fill(Color.GrayScale.g100)
-            .overlay {
-                Image(systemName: "photo")
-                    .font(.largeTitle)
-                    .foregroundStyle(Color.GrayScale.g400)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // 에셋 원본이 214 정사각이라 크기를 지정하지 않는다 (image.md 크기 규칙).
+        Image.Img.feedback
+            .padding(.top, 60)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            // @ds(color): #F3F4F6 → GrayScale.g100 — 일러스트 판. 팔레트엔 g50(#F6F7F9)·g100(#EBECF1) 뿐이고,
+            // 페이지 배경(g50)보다 한 단계 어두워야 판이 보인다는 관계가 시안의 요점이라 g100 을 쓴다.
+            .background(Color.GrayScale.g100)
+            // @ds(radius): 4 — 판 위 모서리(아래는 각짐). DSRadius 토큰 없음
+            .clipShape(.rect(topLeadingRadius: 4, topTrailingRadius: 4))
     }
 
     // MARK: - Guide rows

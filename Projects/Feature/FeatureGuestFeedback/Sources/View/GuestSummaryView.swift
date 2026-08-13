@@ -31,7 +31,10 @@ struct GuestSummaryView: View {
                         axisList
                     }
                     .padding(.horizontal, .ds(.p20))
-                    .padding(.vertical, .ds(.p20))
+                    // @ds(spacing): 42 → p40 — 본문 시작(Figma 3052:5472 y85 − 상태바 43).
+                    // 좌상단 닫기 X(끝 34)를 지나 헤더가 시작한다.
+                    .padding(.top, .ds(.p40))
+                    .padding(.bottom, .ds(.p20))
                 }
                 submitButton
             }
