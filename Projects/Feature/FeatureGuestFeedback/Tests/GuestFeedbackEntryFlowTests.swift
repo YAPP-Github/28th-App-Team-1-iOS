@@ -15,6 +15,7 @@ import Testing
 @MainActor
 struct GuestFeedbackEntryFlowTests {
     private func makeStore(
+        clock: any Clock<Duration> = ImmediateClock(),
         entry: GuestFeedbackEntry = .fixture(),
         localStore: GuestFeedbackLocalStore = .inMemory()
     ) -> TestStoreOf<GuestFeedbackFeature> {
@@ -23,8 +24,17 @@ struct GuestFeedbackEntryFlowTests {
         } withDependencies: {
             $0.guestFeedbackClient = .mock(entry: entry)
             $0.guestFeedbackLocalStore = localStore
-            $0.continuousClock = ImmediateClock()
+            $0.continuousClock = clock
         }
+    }
+
+    /// entry 가 도착하면 재생 재료(영상 URL·질문 경계)가 함께 자식 State 로 넘어간다 — 게이트와 무관하다.
+    private func expectPlaybackMaterial(
+        _ state: inout GuestFeedbackFeature.State,
+        from entry: GuestFeedbackEntry = .fixture()
+    ) {
+        state.playback.videoURL = entry.videoURL
+        state.playback.boundaries = entry.questionBoundaries ?? []
     }
 
     @Test("OPEN 게이트면 온보딩으로 진입한다")
@@ -35,6 +45,7 @@ struct GuestFeedbackEntryFlowTests {
         await store.receive(\.inner.entryLoaded) {
             $0.entry = .fixture()
             $0.phase = .onboarding
+            expectPlaybackMaterial(&$0)
         }
     }
 
@@ -60,6 +71,8 @@ struct GuestFeedbackEntryFlowTests {
             $0.entry = .fixture()
             $0.phase = .evaluating
             $0.activeAxis = AttitudeAxis.allFive[0]
+            expectPlaybackMaterial(&$0)
+            $0.playback.isPlaying = true   // 시작 연출을 건너뛴 진입이라 바로 튼다
         }
     }
 
@@ -73,6 +86,8 @@ struct GuestFeedbackEntryFlowTests {
             $0.entry = entry
             $0.phase = .evaluating
             $0.activeAxis = AttitudeAxis.allFive[0]
+            expectPlaybackMaterial(&$0, from: entry)
+            $0.playback.isPlaying = true
         }
         #expect(store.state.canEvaluate == false)
         #expect(store.state.isSubmitEnabled == false)
@@ -94,6 +109,7 @@ struct GuestFeedbackEntryFlowTests {
         await store.receive(\.inner.entryLoaded) {
             $0.entry = entry
             $0.phase = .gateClosed(reason)
+            expectPlaybackMaterial(&$0, from: entry)
         }
     }
 
@@ -149,6 +165,7 @@ struct GuestFeedbackEntryFlowTests {
         await store.receive(\.inner.entryLoaded) {
             $0.entry = .fixture()
             $0.phase = .onboarding
+            expectPlaybackMaterial(&$0)
         }
         // 시작 → 온보딩 위 닉네임 시트 표출(phase 는 온보딩 유지).
         await store.send(.view(.startTapped)) { $0.isEnteringNickname = true }
@@ -158,12 +175,55 @@ struct GuestFeedbackEntryFlowTests {
             $0.phase = .starting
         }
         await store.receive(\.inner.draftSaved)   // 닉네임 확정 시점 즉시 저장
-        await store.receive(\.inner.videoReady) {
+        // 최소 노출만으론 안 넘어간다 — 영상 준비 보고가 아직 없어 오버레이가 남는다.
+        await store.receive(\.inner.startingCueElapsed) { $0.isStartingCueElapsed = true }
+        // 뷰의 영상 준비 종결 보고가 오면 그때 평가로.
+        await store.send(.playback(.view(.videoPrepareFinished(isPlayable: true)))) {
+            $0.playback.isPrepared = true
+        }
+        await store.receive(\.playback.delegate.prepareFinished) {
+            $0.isVideoPrepared = true
             $0.phase = .evaluating
             $0.startedEvaluation = true
             $0.activeAxis = AttitudeAxis.allFive[0]
+            $0.playback.isPlaying = true
         }
         await store.receive(\.inner.draftSaved)   // 평가 진입(startedEvaluation) 저장
+        await store.finish()
+    }
+
+    @Test("영상이 먼저 준비돼도 시작 연출 최소 노출 전에는 평가로 넘어가지 않는다")
+    func earlyVideoPrepareWaitsForStartingCue() async {
+        // 준비 보고가 연출보다 먼저 오는 순서를 만들려면 시계를 손으로 밀어야 한다.
+        let clock = TestClock()
+        let store = makeStore(clock: clock)
+
+        await store.send(.view(.onAppear))
+        await store.receive(\.inner.entryLoaded) {
+            $0.entry = .fixture()
+            $0.phase = .onboarding
+            expectPlaybackMaterial(&$0)
+        }
+        await store.send(.view(.startTapped)) { $0.isEnteringNickname = true }
+        await store.send(.view(.nicknameNextTapped)) {
+            $0.isEnteringNickname = false
+            $0.phase = .starting
+        }
+        await store.receive(\.inner.draftSaved)
+        // 준비 보고가 먼저 — phase 는 starting 에 머문다(문구가 깜빡이지 않게).
+        await store.send(.playback(.view(.videoPrepareFinished(isPlayable: true)))) {
+            $0.playback.isPrepared = true
+        }
+        await store.receive(\.playback.delegate.prepareFinished) { $0.isVideoPrepared = true }
+        await clock.advance(by: .seconds(1))
+        await store.receive(\.inner.startingCueElapsed) {
+            $0.isStartingCueElapsed = true
+            $0.phase = .evaluating
+            $0.startedEvaluation = true
+            $0.activeAxis = AttitudeAxis.allFive[0]
+            $0.playback.isPlaying = true
+        }
+        await store.receive(\.inner.draftSaved)
         await store.finish()
     }
 
@@ -175,6 +235,7 @@ struct GuestFeedbackEntryFlowTests {
         await store.receive(\.inner.entryLoaded) {
             $0.entry = .fixture()
             $0.phase = .onboarding
+            expectPlaybackMaterial(&$0)
         }
         await store.send(.view(.startTapped)) { $0.isEnteringNickname = true }
         await store.send(.view(.nicknameSheetDismissed)) { $0.isEnteringNickname = false }
@@ -212,10 +273,11 @@ struct GuestFeedbackEntryFlowTests {
         await store.receive(\.inner.entryLoaded) {
             $0.entry = .fixture()
             $0.phase = .onboarding
+            expectPlaybackMaterial(&$0)
         }
     }
 
-    @Test("X 탭은 어느 phase 에서든 부모에게 dismissed 를 알린다")
+    @Test("닫기 요청은 어느 phase 에서든 부모에게 dismissed 를 알린다")
     func closeNotifiesParent() async {
         let store = makeStore()
 

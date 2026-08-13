@@ -37,9 +37,10 @@ struct GuestEvaluationView: View {
 
                 VStack(spacing: 0) {
                     GuestVideoPlayerView(
-                        videoURL: store.entry?.videoURL,
-                        boundaries: store.entry?.questionBoundaries ?? [],
+                        store: store.scope(state: \.playback, action: \.playback),
                         isImmersive: store.isImmersiveWatching,
+                        // starting 동안엔 이 뷰가 블러 오버레이 뒤에 이미 살아 있다 — 소리만 먼저 새지 않게 재생을 미룬다.
+                        isPlaybackAllowed: store.phase == .evaluating,
                         onExpandTapped: { send(.expandVideoTapped) }
                     )
                     .padding(.horizontal, store.isImmersiveWatching ? 0 : .ds(.p20))
