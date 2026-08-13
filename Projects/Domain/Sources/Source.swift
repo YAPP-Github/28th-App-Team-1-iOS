@@ -5,6 +5,7 @@
 @_exported import DomainAppVersionImplementation
 @_exported import DomainAuthImplementation
 @_exported import DomainConsentImplementation
+@_exported import DomainDeeplinkImplementation
 @_exported import DomainInterviewImplementation
 @_exported import DomainPermissionImplementation
 @_exported import DomainRecordingImplementation

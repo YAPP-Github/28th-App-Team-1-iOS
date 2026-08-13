@@ -19,6 +19,8 @@ import PackageDescription
         // `objc: Class … is implemented in both …` 경고 + 전역 상태(DependencyValues 등) 분열이 난다 → 동적으로 승격.
         // 릴리스(TUIST_PRODUCT_TYPE=static-library)는 1차 모듈이 정적이라 반대다 — 전부 앱 바이너리 한 벌로 합쳐야
         // 복제가 0 이므로 오버라이드를 걷어 Tuist 기본값(정적)에 맡긴다.
+        // ChottuLinkSDK 는 여기 없다 — binaryTarget(XCFramework)이라 이 스위치가 닿지 않는다.
+        // 배포물 자체가 동적 프레임워크라 두 모드 모두 «앱에 한 벌 임베드» 로 같게 끝난다.
         productTypes: isStaticRelease ? [:] : [
             "ComposableArchitecture": .framework,
             "Dependencies": .framework,
@@ -41,7 +43,9 @@ import PackageDescription
 let package = Package(
     name: "App",
     dependencies: [
-        .package(url: "https://github.com/pointfreeco/swift-composable-architecture", from: "1.25.0"),
-        .package(url: "https://github.com/kakao/kakao-ios-sdk", from: "2.22.0")
+        // 유니버설 링크(FDL 대체) — 링크 도메인·AASA·deferred 를 SaaS 가 맡는다. 수신 전용으로만 쓴다.
+        .package(url: "https://github.com/ConnectingDotsInfotech/chottulink-ios-sdk.git", from: "1.1.2"),
+        .package(url: "https://github.com/kakao/kakao-ios-sdk", from: "2.22.0"),
+        .package(url: "https://github.com/pointfreeco/swift-composable-architecture", from: "1.25.0")
     ]
 )
