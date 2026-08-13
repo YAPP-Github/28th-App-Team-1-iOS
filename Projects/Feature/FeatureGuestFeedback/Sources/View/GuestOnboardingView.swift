@@ -10,6 +10,7 @@ import DomainGuestFeedbackInterface
 import SharedDesignSystemInterface
 import SwiftUI
 
+// Figma: «Part4 지인피드백 / Peerfeedback_onboarding1» node 802:7431
 // @lat: [[feedback#G4 게스트 평가]]
 /// 지인 피드백 온보딩 메인(Figma `Peerfeedback_onboarding1`, node 1855:8498).
 /// 라이트 톤 — 타이틀 그린 하이라이트("피드백") + 부제 + 히어로 일러스트(g100 판 위 214 정사각) +
@@ -37,25 +38,20 @@ struct GuestOnboardingView: View {
             footer
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(Color.GrayScale.g50.ignoresSafeArea())
+        .background(Color.BlackWhite.white.ignoresSafeArea())
     }
 
     // MARK: - Title
 
+    /// DS TitleBox — Figma «title-box»(802:7438) 1:1: "{요청자}님이 당신께 / [피드백]을 요청했어요".
     private var titleBlock: some View {
-        VStack(alignment: .leading, spacing: .ds(.p8)) {
-            VStack(alignment: .leading, spacing: 0) {
-                Text("\(requesterName)님이 당신께")
-                    .dsTypography(.head4)
-                    .foregroundStyle(Color.GrayScale.g900)
-                // 그린 형광펜 마커 — DS HighlightedText(Figma highlighted-text).
-                HighlightedText("피드백을 요청했어요", typography: .head4).hilight("피드백")
-            }
-            Text("이동 시간 중 딱 10분만 빌려줄 수 있나요?")
-                .dsTypography(.body3)
-                .foregroundStyle(Color.GrayScale.g500)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        TitleBox(
+            [
+                TitleBox.Line("\(requesterName)님이 당신께"),
+                TitleBox.Line("피드백을 요청했어요", highlight: "피드백")
+            ],
+            sub: "이동 시간 중 딱 10분만 빌려줄 수 있나요?"
+        )
     }
 
     // MARK: - Illustration
@@ -79,7 +75,7 @@ struct GuestOnboardingView: View {
     // MARK: - Guide rows
 
     private var guideRows: some View {
-        VStack(alignment: .leading, spacing: .ds(.p20)) {
+        VStack(alignment: .leading, spacing: .ds(.p40)) {
             guideRow(
                 icon: Image.Img.person,          // Figma icon1 = person/40px (435:656)
                 title: "AI가 못 보는 것도 있어요",
@@ -88,7 +84,7 @@ struct GuestOnboardingView: View {
             guideRow(
                 icon: Image.Img.talk,            // Figma icon2 = talk/40px (435:652)
                 title: "면접은 외우기가 아니라 대화예요",
-                subtitle: "정해진 답보다 얼마나 자연스러운지를 봐주세요"
+                subtitle: "정해진 답보다 얼마나 자연스러운지 봐주세요"
             )
         }
     }
@@ -114,11 +110,10 @@ struct GuestOnboardingView: View {
     // MARK: - Footer (CTA)
 
     private var footer: some View {
-        // CTA 위 여백 — Figma 실측 마지막 가이드(y650)~버튼(y723) ≈ 73pt. 대응 spacing 토큰 부재로 리터럴.
+        // CTA 위 여백은 Spacer 몫 — 시안 812 기준 y723 이지만 기기마다 화면 높이가 달라 바닥에 붙인다.
         ButtonLarge("피드백 시작하기", .bottom) {
             send(.startTapped)
         }
-        .padding(.top, 72)
     }
 }
 
