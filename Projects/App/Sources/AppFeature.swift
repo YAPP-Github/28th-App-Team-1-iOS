@@ -17,7 +17,9 @@ import Foundation
 
 // @lat: [[app]]
 // depends-on: [[auth]] — 로그인 전/후 루트 게이트. cross-feature 조립은 AppFeature 에서만.
-// depends-on: [[feedback#진입로와 닫기]] — 공유 딥링크(hilit://feedback/{token})가 게스트 평가를
+// depends-on: [[deeplink#두 경로]] — 링크 도착이 둘(설치 상태 onOpenURL · deferred 스트림)이라 진입 신호도 둘이다.
+//                             같은 링크가 양쪽으로 겹쳐 와도 진행 중 평가는 덮이지 않는다(presentGuestFeedback 가드).
+// depends-on: [[feedback#진입로와 닫기]] — 공유 링크(유니버설 링크 https + 개발용 hilit:// 스킴)가 게스트 평가를
 // 루트 밖 cover 로 present. 무인증 플로우라 루트(스플래시·auth·home) 무관, delegate(.dismissed)로 닫는다.
 // depends-on: [[home]] — Home 을 로그인 후 루트로 임베드(owner). cross-feature delegate 라우팅은 Feature 추가 시 이 자리에서 조립.
 // depends-on: [[interview]] — 온보딩 완주 delegate(.finished(sessionId)) 를 받아 면접 흐름을 present. 종료 두 신호(.finished/.closed)는 cover 를 닫고 홈을 다시 태운다.
@@ -86,7 +88,8 @@ struct AppFeature {
         case updateAlert(PresentationAction<UpdateAlert>)
         /// 세션 복구 판정 결과 — 목적지 또는 실패 종류.
         case launchRoutingResolved(LaunchRouting)
-        /// 커스텀 스킴 URL 수신 — 현재는 게스트 평가 딥링크 하나만 안다.
+        /// 외부 링크 수신 — 커스텀 스킴(`hilit://`)과 유니버설 링크(https) 둘 다 여기로 온다.
+        /// 현재 아는 형식은 게스트 평가 하나뿐이고, 나머지는 파서가 걸러 조용히 버린다.
         case deeplinkReceived(URL)
         case auth(AuthFeature.Action)
         case guestFeedback(PresentationAction<GuestFeedbackFeature.Action>)
@@ -133,6 +136,7 @@ struct AppFeature {
     @Dependency(\.appVersionClient) var appVersionClient
     @Dependency(\.authClient) var authClient
     @Dependency(\.consentClient) var consentClient
+    @Dependency(\.deeplinkClient) var deeplinkClient
     @Dependency(\.firstLaunchStore) var firstLaunchStore
     @Dependency(\.heldSessionStore) var heldSessionStore
     @Dependency(\.interviewClient) var interviewClient

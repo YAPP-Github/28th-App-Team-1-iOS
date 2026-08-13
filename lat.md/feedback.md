@@ -23,9 +23,14 @@ AxisLevelChip 은 Figma «button-medium»(node 2150:7297·2192:5191) 1:1 직사�
 
 ## 진입로와 닫기
 
-실앱 진입은 공유 딥링크 `hilit://feedback/{token}` 하나다. 파서 GuestFeedbackDeeplink(Feature 소유 — 링크 형태는 이 도메인의 계약)가 토큰을 추출하고, AppFeature 가 루트 밖 fullScreenCover 로 present 한다(조립은 [[app#Cross-feature Routing]]). 닫기는 전 phase 상단 X → delegate(.dismissed) 가 유일한 탈출구다.
+실앱 진입은 유니버설 링크 `https://hilit.chottu.link/report?reportId={token}`, 커스텀 스킴 `hilit://feedback/{token}` 은 개발·QA 경로로 존치. 파서 GuestFeedbackDeeplink 가 두 형식에서 토큰을 뽑고 AppFeature 가 루트 밖 fullScreenCover 로 present 한다([[app#Cross-feature Routing]]).
 
-- 파서는 엄격 판정 — scheme·host 일치 + path 세그먼트 정확히 1개. 유니버설 링크는 AASA 협의 후 같은 파서에 형식만 추가한다(호출부 불변).
+링크 형태는 이 도메인의 계약이라 파서도 Feature 가 소유한다. 닫기는 전 phase 상단 X → delegate(.dismissed) 가 유일한 탈출구다.
+
+- 링크 형식의 단일 소스는 `GuestFeedbackShareLink`(DomainFeedbackShareInterface) — **조립(리포트)과 해석(게스트)이 같은 사실을 본다**. 두 Feature 는 서로 의존할 수 없어(D3) 여기가 유일한 공유 지점이고, 갈라지면 만든 링크를 앱이 못 여는 실패가 링크를 받은 지인 쪽에서만 드러난다.
+- 값 셋(host·path·쿼리 이름)은 **iOS 단독으로 못 정한다** — 만드는 쪽과 여는 쪽이 플랫폼을 가리지 않아 한쪽만 바꾸면 그 링크가 반대편에서 죽는다. `path` 가 `/report` 인 건 대시보드 슬러그가 생성 후 변경이 안 돼 만들어진 대로 따라간 것이고(`/feedback` 은 404), 쿼리 이름이 `token` 이 아니라 `reportId` 인 것도 Android 와 맞춘 결과다 — 값의 실체는 공유 토큰이지 리포트 id 가 아니다. 배포된 링크는 바꿀 수 없다.
+- 파서는 엄격 판정 — 스킴 갈래는 host 일치 + path 세그먼트 정확히 1개, https 갈래는 host·path 일치 + `token` 쿼리 비어있지 않음.
+- 설치 상태 진입은 SDK 없이 성립한다 — Associated Domains 만 잡히면 iOS 가 쿼리 원본째 `onOpenURL` 로 준다. 링크 SaaS(ChottuLink)가 맡는 건 **deferred**(미설치 → 스토어 → 첫 실행)와 클릭 어트리뷰션뿐이고, 그 경로는 [[deeplink]] 가 가진다.
 - X 는 시안에 없는 코드 전용 상태(플레이스홀더 관례) — 시안 수령 시 교체. 평가 중 닫아도 draft 가 남아 재진입 시 이어하기로 복원된다.
 - Example 은 dismissed 라우팅을 붙이지 않는다(화면 상태 확인 목적) — X 는 실앱에서만 유효. 실서버 하네스는 hilit.my 를 직접 주입한다.
 - 사용자측 공유 UI(F4·R1 지인 섹션)는 여전히 후속 — R1 리포트(PR #71) 머지 뒤 그 화면에서 FeedbackShareClient 로 배선한다.

@@ -186,4 +186,4 @@ JWT — Access 3시간 / Refresh 7일, Rotation(재발급 시 페어가 통째�
 
 게이트: OPEN / PRIVATE(비공개·무효) / EXPIRED(영상 만료) / FULL(정원 4명) / ALREADY_SUBMITTED(이 기기 제출 완료) — 진입 화면 분기의 전부다. 에러는 `GuestFeedbackError` 로 매핑된다 — FEEDBACK_SHARE_TOKEN_NOT_FOUND → tokenNotFound(404), FEEDBACK_SHARE_CLOSED / FEEDBACK_CAPACITY_FULL / FEEDBACK_ALREADY_SUBMITTED → shareClosed/capacityFull/alreadySubmitted(409, 진입 후 상태 변화 경합), 제출 검증군(INCOMPLETE_RATINGS·INVALID_RATING_LEVEL·MISSING_DEVICE_ID)은 invalid(message:).
 
-공유 딥링크는 `hilit://feedback/{token}` — 토큰으로 링크를 조립·판정하는 것은 클라이언트(GuestFeedbackDeeplink) 책임이다([[feedback#진입로와 닫기]]).
+공유 링크는 `https://hilit.chottu.link/report?reportId={token}` — 토큰으로 링크를 조립·판정하는 것은 클라이언트(`GuestFeedbackShareLink`·`GuestFeedbackDeeplink`) 책임이다([[feedback#진입로와 닫기]]). 서버는 토큰만 발급하고 링크 형식을 모른다 — 쿼리 이름이 `token` 이 아닌 것도 그래서다(Android 와 맞춘 값).

@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import CoreCommonInterface
 import DomainAppVersionInterface
 import DomainInterviewInterface
 import Feature
@@ -119,7 +120,18 @@ extension AppFeature {
     private func presentGuestFeedback(_ state: inout State, _ url: URL) -> Effect<Action> {
         guard let token = GuestFeedbackDeeplink.parse(url),
               state.interview == nil, state.onboarding == nil, state.guestFeedback == nil
-        else { return .none }
+        else {
+            // 버리는 이유를 남긴다 — 링크를 탭했는데 아무 일도 안 일어날 때, 형식이 틀린 것인지
+            // 몰입 중이라 무시한 것인지 화면으로는 구분되지 않는다.
+            if LogGate.isVerbose {
+                let reason = GuestFeedbackDeeplink.parse(url) == nil ? "형식 불일치" : "다른 흐름 진행 중"
+                print("🚧 [DEEPLINK] 진입 안 함(\(reason)) — \(url.absoluteString)")
+            }
+            return .none
+        }
+        if LogGate.isVerbose {
+            print("🔗 [DEEPLINK] 게스트 평가 진입 — \(url.absoluteString)")
+        }
         state.guestFeedback = GuestFeedbackFeature.State(token: token)
         return .none
     }
