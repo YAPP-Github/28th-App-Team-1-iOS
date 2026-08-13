@@ -60,7 +60,7 @@ struct GuestVideoPlayerView: View {
         .onChange(of: store.reloadToken) { _, _ in
             tearDownPlayback()
             player = nil
-            Task { await prepare(force: true) }
+            Task { await prepare() }
         }
         .onDisappear(perform: tearDownPlayback)
     }
@@ -215,10 +215,16 @@ struct GuestVideoPlayerView: View {
     // MARK: - 준비·재생
 
     /// `AVPlayer(url:)` 즉시 생성은 URL 이 살아 있는지 알려주지 않아, asset 을 먼저 열어보고 플레이어를 만든다.
-    /// 열리지 않으면 플레이어를 만들지 않아 실패 안내가 남는다. 어느 결과든 준비 보고는 한 번 나간다.
-    private func prepare(force: Bool = false) async {
-        guard player == nil, let videoURL = store.videoURL else {
-            if !force { send(.videoPrepareFinished(isPlayable: false)) }
+    /// 열리지 않으면 플레이어를 만들지 않아 실패 안내가 남는다.
+    ///
+    /// **보고는 «이번에 준비를 시도한 결과» 일 때만 올린다** — 플레이어가 이미 살아 있으면 아무 말도 하지 않는다.
+    /// 화면이 다시 나타나 `.task` 가 재실행될 때(이미 준비된 상태) 실패로 보고하면, 멀쩡히 재생 중인
+    /// 영상에 실패 안내가 덮인다. 반대로 재시도(`reloadToken`)는 플레이어를 비우고 들어오므로 여기서 다시 보고한다.
+    private func prepare() async {
+        guard player == nil else { return }
+        guard let videoURL = store.videoURL else {
+            // URL 자체가 없는 경우(영상 파이프라인 전) — 실패가 아니라 «아직 없음» 이고, 판정은 리듀서가 한다.
+            send(.videoPrepareFinished(isPlayable: false))
             return
         }
 

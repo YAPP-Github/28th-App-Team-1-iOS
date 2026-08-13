@@ -43,7 +43,8 @@ public struct GuestVideoPlaybackFeature {
         /// 컨트롤(딤·재생 버튼) 표시 여부 — 무입력 3초 후 숨는다.
         /// **진행바는 여기 걸리지 않는다** — 붙박이다(리포트 하단 바와 같은 규약).
         public var areControlsVisible = true
-        /// 뷰가 asset 을 열어본 결과가 도착했는가 — 성공·실패 어느 쪽이든 한 번 선다.
+        /// 뷰가 asset 을 열어본 결과가 도착했는가 — 성공·실패 어느 쪽이든 선다.
+        /// 한 번 서면 내려가지 않는다(재시도 결과가 와도 «준비를 시도해 봤다» 는 사실은 그대로다).
         public var isPrepared = false
         /// 재생 실패 — 표시할 문구를 동봉한다.
         public var playbackFailureMessage: String?
@@ -121,13 +122,25 @@ public struct GuestVideoPlaybackFeature {
     private func reduceView(_ state: inout State, _ action: Action.View) -> Effect<Action> {
         switch action {
         case .videoPrepareFinished(let isPlayable):
-            guard !state.isPrepared else { return .none }
+            // **첫 보고만 받고 끝내지 않는다** — 재시도(`reloadToken`)도 준비를 다시 태우고 그 결과를 여기로 올린다.
+            // 첫 보고만 반영하면 «재시도 → 또 실패» 가 조용히 버려져, 실패 안내(=유일한 재시도 버튼)가
+            // 사라진 채 재생도 안 되는 막다른 화면이 남는다.
             state.isPrepared = true
-            // 열리지 않은 영상은 재생 실패로 표시한다 — URL 자체가 없는 경우(영상 파이프라인 전)는
-            // 실패가 아니라 «아직 없음» 이라 placeholder 로 두고 문구를 걸지 않는다.
-            if !isPlayable, state.videoURL != nil {
+            if isPlayable {
+                state.playbackFailureMessage = nil
+            } else if state.videoURL != nil {
+                // 열리지 않은 영상은 재생 실패로 표시한다 — URL 자체가 없는 경우(영상 파이프라인 전)는
+                // 실패가 아니라 «아직 없음» 이라 placeholder 로 두고 문구를 걸지 않는다.
                 state.playbackFailureMessage = Self.playbackFailureMessage
+                // 재시도가 걸어 둔 «재생 중» 을 되돌린다 — 재생 못 하는 화면이 재생 중이라고 말하면 안 된다.
+                // 실패 안내는 컨트롤 표시와 무관하게 뜨므로(딤·재생 버튼만 자동 숨김 대상) 숨김 타이머만 끈다.
+                state.isPlaying = false
+                return .merge(
+                    .cancel(id: CancelID.controlsHide),
+                    .send(.delegate(.prepareFinished))
+                )
             }
+            // 재시도發 보고까지 부모에게 알리지만, 시작 연출은 이미 걷혀 있어 부모가 무시한다(가드).
             return .send(.delegate(.prepareFinished))
 
         case .userTappedSurface:

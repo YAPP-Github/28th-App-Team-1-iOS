@@ -132,6 +132,53 @@ struct GuestVideoPlaybackTests {
         await store.receive(\.delegate.prepareFinished)
     }
 
+    @Test("재시도가 또 실패하면 실패 문구가 다시 선다 — 재시도 버튼이 사라지면 안 된다")
+    func retryFailureRestoresFailureMessage() async {
+        let clock = TestClock()
+        var state = GuestVideoPlaybackFeature.State()
+        state.videoURL = URL(string: "https://example.com/expired.mp4")
+        state.isPrepared = true
+        state.playbackFailureMessage = GuestVideoPlaybackFeature.playbackFailureMessage
+        let store = TestStore(initialState: state) {
+            GuestVideoPlaybackFeature()
+        } withDependencies: {
+            $0.continuousClock = clock
+        }
+
+        // «다시 시도» — 안내를 걷고 플레이어 재생성을 명령한다.
+        await store.send(.view(.userTappedPlaybackRetry)) {
+            $0.playbackFailureMessage = nil
+            $0.reloadToken = 1
+            $0.isPlaying = true
+            $0.areControlsVisible = true
+        }
+        // 그 재시도가 또 실패 — 안내가 다시 서고, 재생 중 표시는 내려간다.
+        await store.send(.view(.videoPrepareFinished(isPlayable: false))) {
+            $0.playbackFailureMessage = GuestVideoPlaybackFeature.playbackFailureMessage
+            $0.isPlaying = false
+        }
+        await store.receive(\.delegate.prepareFinished)
+    }
+
+    @Test("재시도가 성공하면 실패 문구가 걷힌다")
+    func retrySuccessClearsFailureMessage() async {
+        var state = GuestVideoPlaybackFeature.State()
+        state.videoURL = URL(string: "https://example.com/interview.mp4")
+        state.isPrepared = true
+        state.playbackFailureMessage = GuestVideoPlaybackFeature.playbackFailureMessage
+        state.isPlaying = true
+        let store = TestStore(initialState: state) {
+            GuestVideoPlaybackFeature()
+        } withDependencies: {
+            $0.continuousClock = ImmediateClock()
+        }
+
+        await store.send(.view(.videoPrepareFinished(isPlayable: true))) {
+            $0.playbackFailureMessage = nil
+        }
+        await store.receive(\.delegate.prepareFinished)
+    }
+
     @Test("영상 URL 자체가 없으면 실패가 아니라 «아직 없음» 이라 문구를 걸지 않는다")
     func missingVideoIsNotAFailure() async {
         let store = TestStore(initialState: GuestVideoPlaybackFeature.State()) {
