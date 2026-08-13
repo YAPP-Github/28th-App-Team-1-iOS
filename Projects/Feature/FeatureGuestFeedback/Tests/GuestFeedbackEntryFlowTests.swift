@@ -277,7 +277,7 @@ struct GuestFeedbackEntryFlowTests {
         }
     }
 
-    @Test("닫기 요청은 어느 phase 에서든 부모에게 dismissed 를 알린다")
+    @Test("좌상단 X 는 어느 phase 에서든 부모에게 dismissed 를 알린다 — 도착지 판단은 부모 몫")
     func closeNotifiesParent() async {
         let store = makeStore()
 

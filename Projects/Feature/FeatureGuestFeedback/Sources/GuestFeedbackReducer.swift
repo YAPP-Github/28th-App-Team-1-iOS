@@ -25,8 +25,8 @@ extension GuestFeedbackFeature {
             return reduceOnAppear(&state)
 
         case .closeTapped:
-            // 실앱 fullScreenCover 를 닫는 유일한 경로 — draft 는 로컬에 있어 재진입 시 이어하기로 복원된다.
-            // 상단 X 를 뺀 지금은 이걸 쏘는 뷰가 없다(부모 계약은 유지 — 이탈구를 다시 붙일 때 재사용).
+            // 실앱 fullScreenCover 의 유일한 탈출구 — draft 는 로컬에 있어 재진입 시 이어하기로 복원된다.
+            // 나간 뒤 어디에 서는지(홈·소셜 로그인)는 로그인 여부를 아는 AppFeature 가 정한다.
             return .send(.delegate(.dismissed))
 
         case .startTapped, .nicknameNextTapped, .nicknameSheetDismissed,

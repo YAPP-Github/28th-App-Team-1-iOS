@@ -27,13 +27,13 @@ AxisLevelChip 은 Figma «button-medium»(node 2150:7297·2192:5191) 1:1 직사�
 
 실앱 진입은 유니버설 링크 `https://hilit.chottu.link/report?reportId={token}`, 커스텀 스킴 `hilit://feedback/{token}` 은 개발·QA 경로로 존치. 파서 GuestFeedbackDeeplink 가 두 형식에서 토큰을 뽑고 AppFeature 가 루트 밖 fullScreenCover 로 present 한다([[app#Cross-feature Routing]]).
 
-링크 형태는 이 도메인의 계약이라 파서도 Feature 가 소유한다. 닫기 계약은 `delegate(.dismissed)` 하나뿐이고, 이걸 부르던 전 phase 상단 X 는 2026-08-13 사용자 결정으로 뺐다(시안에 없는 코드 전용 버튼이었다) — 지금 게스트 화면 안에는 탈출 어포던스가 없다. `closeTapped`·delegate 는 부모(AppFeature) 계약이라 남겨 뒀으니, 이탈구를 다시 붙일 땐 뷰에서 `closeTapped` 만 쏘면 된다.
+링크 형태는 이 도메인의 계약이라 파서도 Feature 가 소유한다. 닫기는 전 phase **좌상단** X → `delegate(.dismissed)` 가 유일한 탈출구다(2026-08-13 우상단 X 를 뺐다가 2026-08-14 좌상단으로 되살렸다 — 시안엔 없는 코드 전용 어포던스라 위치·여백은 DS 네비바를 눈으로 맞춘 값이고, cover 가 스택 밖이라 시스템 바를 못 쓴다). 바닥이 어두운 phase(시작 연출·평가)는 흰 X + 상단 스크림(`VideoOverlay(.darkClose)` 뒤집기, 리포트 플레이어와 같은 방식)을 얹어 밝은 영상 프레임 위에서도 읽히게 한다. **도착지는 화면이 정하지 않는다** — 로그인돼 있으면 홈, 아니면 소셜 로그인 화면이고 그 판단은 [[app#Cross-feature Routing]] 몫이다.
 
 - 링크 형식의 단일 소스는 `GuestFeedbackShareLink`(DomainFeedbackShareInterface) — **조립(리포트)과 해석(게스트)이 같은 사실을 본다**. 두 Feature 는 서로 의존할 수 없어(D3) 여기가 유일한 공유 지점이고, 갈라지면 만든 링크를 앱이 못 여는 실패가 링크를 받은 지인 쪽에서만 드러난다.
 - 값 셋(host·path·쿼리 이름)은 **iOS 단독으로 못 정한다** — 만드는 쪽과 여는 쪽이 플랫폼을 가리지 않아 한쪽만 바꾸면 그 링크가 반대편에서 죽는다. `path` 가 `/report` 인 건 대시보드 슬러그가 생성 후 변경이 안 돼 만들어진 대로 따라간 것이고(`/feedback` 은 404), 쿼리 이름이 `token` 이 아니라 `reportId` 인 것도 Android 와 맞춘 결과다 — 값의 실체는 공유 토큰이지 리포트 id 가 아니다. 배포된 링크는 바꿀 수 없다.
 - 파서는 엄격 판정 — 스킴 갈래는 host 일치 + path 세그먼트 정확히 1개, https 갈래는 host·path 일치 + `token` 쿼리 비어있지 않음.
 - 설치 상태 진입은 SDK 없이 성립한다 — Associated Domains 만 잡히면 iOS 가 쿼리 원본째 `onOpenURL` 로 준다. 링크 SaaS(ChottuLink)가 맡는 건 **deferred**(미설치 → 스토어 → 첫 실행)와 클릭 어트리뷰션뿐이고, 그 경로는 [[deeplink]] 가 가진다.
-- X 는 시안에 없는 코드 전용 상태(플레이스홀더 관례) — 시안 수령 시 교체. 평가 중 닫아도 draft 가 남아 재진입 시 이어하기로 복원된다.
+- X 는 시안에 없는 코드 전용 상태(플레이스홀더 관례) — 시안 수령 시 교체. 평가 중 닫아도 draft 가 남아 재진입 시 이어하기로 복원된다. X 가 글자를 덮지 않도록 라이트 화면의 본문 시작 높이는 시안 실측을 그대로 쓴다(온보딩 34 = title-box y77 − 상태바 43, 요약 42 → p40) — 마침 X 가 끝나는 높이(위 10 + 글리프 24)와 같다.
 - Example 은 dismissed 라우팅을 붙이지 않는다(화면 상태 확인 목적) — X 는 실앱에서만 유효. 실서버 하네스는 hilit.my 를 직접 주입한다.
 - 사용자측 공유 UI(F4·R1 지인 섹션)는 여전히 후속 — R1 리포트(PR #71) 머지 뒤 그 화면에서 FeedbackShareClient 로 배선한다.
 

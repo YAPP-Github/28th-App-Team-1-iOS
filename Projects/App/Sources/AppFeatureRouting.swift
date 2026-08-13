@@ -161,13 +161,27 @@ extension AppFeature {
         return .none
     }
 
+    /// 게스트 평가를 닫는다. **도착지는 로그인 여부가 정한다** (사용자 결정 2026-08-14) —
+    /// 로그인돼 있으면 홈, 아니면 소셜 로그인 화면. 둘 다 이미 루트가 들고 있는 상태라
+    /// cover 만 걷으면 그 화면이 드러난다(`.home` / `.auth`).
+    ///
+    /// 손볼 게 남는 건 **판정이 안 끝난 루트**뿐이다 — 게스트는 링크로 들어와 루트 판정과 무관하게
+    /// 뜨므로(무인증), 닫는 순간 루트가 아직 Splash 이거나 판정에 실패해 있을 수 있다.
+    /// 그대로 걷으면 스플래시에 갇히니 판정을 다시 태워 홈/로그인 중 한쪽으로 내보낸다.
+    /// 강제 업데이트(`.updateRequired`)는 그대로 막아 둔다 — 여기서 풀어 주면 차단이 뚫린다.
     private func reduceGuestFeedback(
         _ state: inout State,
         _ action: PresentationAction<GuestFeedbackFeature.Action>
     ) -> Effect<Action> {
         guard case .presented(.delegate(.dismissed)) = action else { return .none }
         state.guestFeedback = nil
-        return .none
+        switch state.root {
+        case .home, .auth, .updateRequired:
+            return .none
+        case .splash, .splashFailed:
+            state.root = .splash
+            return resolveLaunchRouting()
+        }
     }
 
     /// 업데이트 안내 알럿 — «업데이트» 만 받는다(«나중에» 는 알럿을 닫는 것으로 끝).
