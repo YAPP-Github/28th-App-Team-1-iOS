@@ -23,7 +23,7 @@
 | `ButtonLarge` | 화면 하단·모달·로그인 큰 버튼 (단일·2버튼) | 버튼 |
 | `ButtonStyle` 4종 | `.medium` `.mini` `.miniSub` `.tag` 크기 티어 | 버튼 |
 | `CameraGuideFrame` | 카메라 얼굴 맞춤 가이드 프레임 327² | 표시 |
-| `ChoiceChip` | N지선다 등폭 척도 칩 | 버튼 |
+| `ChoiceChip` | N지선다 척도 칩 (등폭·hug) | 버튼 |
 | `CountdownCard` | 남은 시간 다크 카드 | 표시 |
 | `DashIndicator` | 진행 단계 대시 | 네비게이션 |
 | `FeedbackCard` | 지인 피드백 한 장 — 왼쪽 6pt 테두리 | 표시 |

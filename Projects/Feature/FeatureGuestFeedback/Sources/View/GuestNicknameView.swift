@@ -13,8 +13,10 @@ import SwiftUI
 /// 닉네임 입력 패널 콘텐츠(Figma `온보딩 - 닉네임 입력 / 시안2` node 1855:8605, 패널 node 2094:7566).
 /// 온보딩 위에 올라오는 흰 풀블리드 패널 — 타이틀(그린 마커 "이름") + 안내 +
 /// 중앙 정렬 밑줄 입력 필드(텍스트 폭 hug) + 하단 CTA(빈 입력 시 비활성).
-/// 표출·딤·상단 고정 오프셋은 라우터(GuestFeedbackView)의 onboardingPhase 가 건다.
+/// 표출·딤·상단 고정 오프셋·키보드 도킹은 라우터(GuestFeedbackView)의 onboardingPhase 가 건다.
 /// 키보드가 올라와도 패널 상단은 그대로 — CTA 만 키보드 위로 밀리고 Spacer 가 압축된다.
+/// 도킹은 시스템 세이프에어리어 회피가 아니라 키보드 프레임 실측이다([[KeyboardDock]]) — 시스템
+/// 회피에 참여시키면 딤 뒤 온보딩까지 같이 올라간다.
 @ViewAction(for: GuestFeedbackFeature.self)
 struct GuestNicknameView: View {
     @Bindable var store: StoreOf<GuestFeedbackFeature>

@@ -30,7 +30,7 @@ Figma 버튼 7종을 옮긴 체계. (이 표만 알파벳순이 아니다 — �
 
 | 컴포넌트 | Figma | API | 갖는 규칙 |
 |---|---|---|---|
-| `ChoiceChip` | button-medium 2150:7297 | `(_ label:, isSelected:, tone: .positive/.negative, action:)` | N지선다 등폭 척도 칩 — HStack 에 나란히. 외형은 `.medium(layout: .fill)` 이 그리고, 이 타입은 **«선택 상태 → 톤»** 규칙만 갖는다 |
+| `ChoiceChip` | button-medium 2150:7297 | `(_ label:, isSelected:, tone: .positive/.negative, layout: .fill/.hug, action:)` | N지선다 척도 칩 — HStack 에 나란히. 외형은 `.medium(layout:)` 이 그리고, 이 타입은 **«선택 상태 → 톤»** 규칙만 갖는다. `layout` 기본 `.fill`(등폭), 라벨이 길어 가로 스크롤로 흘릴 땐 `.hug` |
 | `VideoControl` | video-control 435:830(play) · 435:837(pause) | `(isPlaying:, onSkipBackward:, onPlayPauseToggle:, onSkipForward:)` | 영상 컨트롤 한 줄 254×74 — 스킵은 44 히트박스 안 34 글리프, gap 46, 중앙은 74 정사각 g500 판(34 글리프 + p20, 모서리 0). **«상태 → 글리프»** 규칙을 갖는다: `isPlaying` 이면 ⏸(누르면 멈춤). 시안 변형 이름과 글리프가 뒤집혀 있어 이름이 아니라 글리프로 매핑했다(사고 사례 8·17번). 시안 backdrop blur 11.563 은 판이 불투명해 뺐다. 폭·위치는 호출부 몫 |
 
 ## 아직 DS 아님 — 인라인 유지
