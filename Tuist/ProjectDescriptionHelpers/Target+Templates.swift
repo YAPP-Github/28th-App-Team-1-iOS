@@ -111,6 +111,9 @@ public extension Target {
             // 버전 단일 소스는 Config/Version.xcconfig — 여기서 빌드 세팅으로 치환된다.
             "CFBundleShortVersionString": "$(MARKETING_VERSION)",
             "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
+            // 유니버설 링크(ChottuLink) API 키 — AppSecrets 가 여기서 읽는다. 계 구분 없이 한 벌이다
+            // (링크 도메인·대시보드 앱이 하나라서).
+            "CHOTTULINK_API_KEY": "$(CHOTTULINK_API_KEY)",
             // 카카오 로그인 — AppSecrets 가 여기서 읽는다.
             "KAKAO_NATIVE_APP_KEY": "$(KAKAO_NATIVE_APP_KEY)",
             "CFBundleURLTypes": [
@@ -140,8 +143,13 @@ public extension Target {
         ])
         // Sign in with Apple — 시뮬레이터는 이 entitlement만으로 동작하고, 실기기는
         // Apple Developer 포털에서 App ID(환경별 번들 접미사 각각)에 capability 활성화가 필요하다.
+        //
+        // Associated Domains — 지인 피드백 유니버설 링크(https). 도메인 문자열의 단일 소스는
+        // `GuestFeedbackShareLink.host` 지만 매니페스트는 앱 코드를 import 할 수 없어 여기 한 번 더 적는다 —
+        // 함께 고칠 것. Apple Developer 포털에서도 App ID 3계 각각에 capability 활성화가 필요하다.
         f.entitlements = f.entitlements ?? .dictionary([
-            "com.apple.developer.applesignin": ["Default"]
+            "com.apple.developer.applesignin": ["Default"],
+            "com.apple.developer.associated-domains": ["applinks:hilit.chottu.link"]
         ])
         f.sources = f.sources ?? ["Sources/**"]
         f.resources = f.resources ?? ["Resources/**"]   // Assets.xcassets(AppIcon 등) — 누락 시 앱 번들에 에셋이 안 들어간다
