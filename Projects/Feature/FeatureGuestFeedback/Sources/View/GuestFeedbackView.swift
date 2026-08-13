@@ -38,20 +38,6 @@ public struct GuestFeedbackView: View {
             }
         }
         .onAppear { send(.onAppear) }
-        // 실앱 fullScreenCover 탈출구 — 시안에 없는 코드 전용 상태다(플레이스홀더 관례,
-        // 시안 수령 시 교체). 몰입(다크)·카드/게이트(라이트) 어느 배경에서도 읽히도록
-        // 흰 원판 + g600 글리프로 띄운다. Example(내비 push)에선 delegate 를 아무도
-        // 안 받아 무반응 — 실앱 조립(AppFeature)에서만 유효하다.
-        .overlay(alignment: .topTrailing) {
-            Button { send(.closeTapped) } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Color.GrayScale.g600)
-                    .padding(.ds(.p8))
-                    .background(Color.BlackWhite.white.opacity(0.9), in: Circle())
-            }
-            .padding(.ds(.p16))
-        }
         .alert($store.scope(state: \.alert, action: \.alert))
     }
 
@@ -59,7 +45,7 @@ public struct GuestFeedbackView: View {
 
     /// starting·evaluating 을 한 케이스로 묶는다 — 평가 화면은 계속 살아 있고,
     /// 시작 로딩(Figma `[4] 온보딩 - 면접 시작 로딩`, node 1855:8702)은 그 위 블러 오버레이일 뿐이다.
-    /// videoReady 로 phase 가 evaluating 이 되면 프로토타입 Flow 1(1855:8702 → 1855:9821)대로
+    /// 영상 준비·최소 노출이 서서 phase 가 evaluating 이 되면 프로토타입 Flow 1(1855:8702 → 1855:9821)대로
     /// 오버레이(딤+블러+문구)가 페이드아웃하고, 동시에 평가 화면의 축 세그먼트 바가 아래에서 슬라이드업한다
     /// (슬라이드업은 GuestEvaluationView 쪽 — 같은 0.35s easeOut 커브로 동기).
     /// 스위치 케이스가 갈리면 뷰 정체성이 끊겨 이 크로스페이드가 불가능하다. 연출 중엔 아래 화면이 터치를 받지 않는다.
