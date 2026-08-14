@@ -10,9 +10,9 @@ import DomainGuestFeedbackInterface
 import SharedDesignSystemInterface
 import SwiftUI
 
-// Figma: «Part4 지인피드백 / Peerfeedback_onboarding1» node 802:7431
+// Figma: «Part4 지인피드백 / Peerfeedback_onboarding1» node 1945:7154
 // @lat: [[feedback#G4 게스트 평가]]
-/// 지인 피드백 온보딩 메인(Figma `Peerfeedback_onboarding1`, node 1855:8498).
+/// 지인 피드백 온보딩 메인(Figma `Peerfeedback_onboarding1`, node 1945:7154).
 /// 라이트 톤 — 타이틀 그린 하이라이트("피드백") + 부제 + 히어로 일러스트(g100 판 위 214 정사각) +
 /// 안내 2행 + 하단 블랙 CTA. 닉네임 입력은 다음 스텝(GuestNicknameView).
 @ViewAction(for: GuestFeedbackFeature.self)
@@ -23,17 +23,25 @@ struct GuestOnboardingView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: .ds(.p24)) {
+            VStack(alignment: .leading, spacing: 0) {
                 titleBlock
                     .padding(.horizontal, .ds(.p20))
-                illustration   // 풀블리드 — 양쪽 여백 없이 화면 폭 전체 (Figma node 1855:8499, x0 w375)
+                    // 시안 top-bar 프레임의 균일 간격 16 — title-box(1945:7161) 아래 판이 붙는다.
+                    .padding(.bottom, .ds(.p16))
+                illustration   // 풀블리드 — 양쪽 여백 없이 화면 폭 전체 (Figma node 1945:7155, x0 w375)
+                    .padding(.bottom, .ds(.p24))
                 guideRows
-                    .padding(.horizontal, .ds(.p20))
+                    // 안내 2행만 좌우 40 — 타이틀(20)보다 한 단 안쪽이다 (시안 1945:7163 x40 w295).
+                    .padding(.horizontal, .ds(.p40))
+                    // @ds(spacing): 28 — 안내 마지막 행과 하단 CTA 사이 (시안 콘텐츠 프레임 바닥 695 →
+                    // button-large/bottom y723). spacing 스케일에 28 이 없다.
+                    .padding(.bottom, 28)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            // @ds(spacing): 34 — 타이틀 시작(Figma title-box y77 − 상태바 43). 스케일에 34 가 없다.
-            // 좌상단 닫기 X(위 10 + 글리프 24)가 끝나는 높이와 같아 글자와 겹치지 않는다.
-            .padding(.top, 34)
+            // @ds(layout): 44 — 시안 top-bar(1947:6975) 높이. 그 아래 갭 16 자리에서 타이틀이 시작한다
+            // (title-box y103 − 상태바 43 = 60). 닫기 X 는 흐름이 아니라 오버레이(GuestFeedbackView
+            // `closeButton`)라, 이 화면이 바 높이만큼 자리를 비워 줘야 시안과 같은 자리에 선다.
+            .padding(.top, 44 + CGFloat.ds(.p16))
 
             footer
         }
@@ -43,7 +51,7 @@ struct GuestOnboardingView: View {
 
     // MARK: - Title
 
-    /// DS TitleBox — Figma «title-box»(802:7438) 1:1: "{요청자}님이 당신께 / [피드백]을 요청했어요".
+    /// DS TitleBox — Figma «title-box»(1945:7161) 1:1: "{요청자}님이 당신께 / [피드백]을 요청했어요".
     private var titleBlock: some View {
         TitleBox(
             [
