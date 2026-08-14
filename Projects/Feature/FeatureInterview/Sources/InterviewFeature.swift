@@ -7,6 +7,7 @@
 
 import ComposableArchitecture
 import DomainInterviewInterface
+import DomainInterviewReportInterface
 import DomainRecordingInterface
 import DomainSpeechInterface
 
@@ -30,6 +31,12 @@ public struct InterviewResumeSeed: Equatable, Sendable {
 /// 세션 payload(sessionId — 온보딩 분석 산출물)는 `State(sessionId:)` 로 받는다 — AppFeature 배선은 작업 D.
 @Reducer
 public struct InterviewFeature {
+    /// 리포트 생성 폴링 주기 — [[api#Interview Report]] 의 3~5초 규약. 리포트 화면(`ReportMainFeature`)과 같은 계약이다.
+    static let reportPollInterval: Duration = .seconds(3)
+    /// 대기 상한(≈1분). 채점 SLA 는 이보다 길 수 있어 무한정 붙잡지 않는다 — 넘으면 그대로 홈으로 보내고
+    /// 홈 목록의 «생성 중» 카드가 이어받는다(리포트 화면이 다시 폴링한다).
+    static let reportPollLimit = 20
+
     /// 면접 흐름 하위 화면 — push 스택이 아니라 전면 교체라 StackState 대신 enum destination.
     @Reducer
     public enum Screen {
@@ -87,8 +94,10 @@ public struct InterviewFeature {
         }
     }
 
+    @Dependency(\.continuousClock) var clock
     @Dependency(\.heldSessionStore) var heldSessionStore
     @Dependency(\.interviewClient) var interviewClient
+    @Dependency(\.interviewReportClient) var interviewReportClient
     @Dependency(\.interviewVideoUploadQueue) var uploadQueue
     @Dependency(\.recordingClient) var recordingClient
     @Dependency(\.speechClient) var speechClient
@@ -129,14 +138,18 @@ public struct InterviewFeature {
                 // 두 번째 통보가 도달할 수 있어, 이미 종료를 확정했으면 무시한다(업로드 재접수·이중 통보 방지).
                 guard case .session = state.screen, !state.isClosing else { return .none }
                 state.isClosing = true
-                // 산출물 소유권은 큐로 — enqueue(파일 이동+저널, 밀리초) 뒤 장치를 정지하고 즉시 홈(스펙 ①).
+                // 산출물 소유권은 큐로 — enqueue(파일 이동+저널, 밀리초) 뒤 장치를 정지한다(스펙 ①).
                 // 전환 중 유일하게 `discardRecording()` 을 부르지 않는 경로다 — 파일은 이제 큐 것이다.
+                // 그다음 **리포트 채점이 끝날 때까지 기다렸다가** 홈으로 통보한다(2026-08-14) — 그동안
+                // 화면은 세션의 `LoadingModal`(isFinishing)이 그대로 덮고 있어 인디케이터가 이어진다.
+                let sessionId = state.sessionId
                 return .run { send in
                     if let ref {
                         await uploadQueue.enqueue(ref.sessionId, ref.fileURL, wrapUp)
                     }
                     await recordingClient.stopPreview()
                     await speechClient.stopCapture()
+                    await waitForReportGeneration(sessionId: sessionId)
                     await send(.delegate(.finished))
                 }
 
@@ -186,6 +199,27 @@ public struct InterviewFeature {
 
             case .screen, .delegate:
                 return .none
+            }
+        }
+    }
+
+    /// 리포트 채점 대기 — `status != .generating` 이 될 때까지(또는 상한까지) 폴링한다.
+    /// 조회 실패는 «아직» 으로 본다(미생성 404 포함) — 상한 안에서 다시 묻는다. 상한을 넘으면 그냥 반환해
+    /// 홈으로 보낸다: 홈 목록이 «생성 중» 상태를 그리고 리포트 화면이 폴링을 잇는다.
+    /// 취소(상위 dismiss)면 즉시 빠져나온다 — 화면이 이미 없다.
+    private func waitForReportGeneration(sessionId: Int) async {
+        for _ in 0..<Self.reportPollLimit {
+            do {
+                if try await interviewReportClient.report(sessionId).status != .generating { return }
+            } catch is CancellationError {
+                return
+            } catch {
+                // 아직 — 아래 대기 후 다시 묻는다.
+            }
+            do {
+                try await clock.sleep(for: Self.reportPollInterval)
+            } catch {
+                return   // 취소
             }
         }
     }

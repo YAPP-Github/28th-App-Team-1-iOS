@@ -330,6 +330,7 @@ struct InterviewSessionSubmissionTests {
         }
         await store.receive(\.inner.answerSubmitted) {
             $0.isSubmitting = false
+            $0.isFinishing = true   // 녹화 없는 종료 — 리포트 대기 인디케이터가 여기서 선다
         }
         await store.receive(\.delegate.finished)
         await store.finish()   // fire-and-forget 이라 재생 완료 없이도 effect 가 남지 않는다
@@ -385,6 +386,7 @@ struct InterviewSessionSubmissionTests {
         await clock.advance(by: .seconds(3))   // 2차 백오프
         await store.receive(\.inner.answerSubmitted) {
             $0.isSubmitting = false
+            $0.isFinishing = true   // 녹화 없는 종료 — 리포트 대기 인디케이터가 여기서 선다
         }
         await store.receive(\.delegate.finished)
         #expect(attempts.value == 3)
@@ -441,6 +443,7 @@ struct InterviewSessionSubmissionTests {
         }
         await store.receive(\.inner.answerSubmissionFailed) {
             $0.isSubmitting = false
+            $0.isFinishing = true   // 녹화 없는 종료 — 리포트 대기 인디케이터가 여기서 선다
         }
         await store.receive(\.delegate.finished)
     }
@@ -468,6 +471,7 @@ struct InterviewSessionSubmissionTests {
         }
         await store.receive(\.inner.answerSubmitted) {
             $0.isSubmitting = false
+            $0.isFinishing = true   // 녹화 없는 종료 — 리포트 대기 인디케이터가 여기서 선다
         }
         await store.receive(\.delegate.finished)
         #expect(captured.value?.isWrapUp == true)
@@ -512,6 +516,7 @@ struct InterviewSessionSubmissionTests {
         }
         await store.receive(\.inner.answerSubmitted) {
             $0.isSubmitting = false
+            $0.isFinishing = true   // 녹화 없는 종료 — 리포트 대기 인디케이터가 여기서 선다
         }
         await store.receive(\.delegate.finished)
         #expect(captured.value?.endType == .manualEnd)
@@ -545,6 +550,7 @@ struct InterviewSessionSubmissionTests {
         }
         await store.receive(\.inner.answerSubmitted) {
             $0.isSubmitting = false
+            $0.isFinishing = true   // 녹화 없는 종료 — 리포트 대기 인디케이터가 여기서 선다
         }
         await store.receive(\.delegate.finished)
         #expect(captured.value?.endType == .hardCap)
