@@ -285,9 +285,9 @@ public struct ReportPeerFeedbackFeature {
     }
 
     /// 토큰 → 지인이 열 링크. 조립은 클라이언트 책임이다 ([[api#Feedback Share]]).
-    /// 도메인은 hilit.my 로 확정 (2026-07-29). 경로 구조는 웹 게스트 페이지 스펙 확정 시 재확인.
+    /// 형식의 단일 소스는 `GuestFeedbackShareLink` — 링크를 **해석하는** 게스트 쪽과 같은 사실을 본다.
     private static func shareLink(token: String) -> String {
-        "https://hilit.my/feedback/\(token)"
+        GuestFeedbackShareLink.url(token: token).absoluteString
     }
 
     /// 실패 안내 문구. 서버가 준 `message` 가 있는 항목 검증 실패만 그대로 노출하고,

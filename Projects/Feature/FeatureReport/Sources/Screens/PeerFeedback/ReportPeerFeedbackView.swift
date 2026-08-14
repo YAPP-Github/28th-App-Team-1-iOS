@@ -213,7 +213,7 @@ public struct ReportPeerFeedbackView: View {
 private func previewState(popup: ReportPeerFeedbackFeature.Popup) -> ReportPeerFeedbackFeature.State {
     var state = ReportPeerFeedbackFeature.State(sessionId: 1)
     state.selectedAxes = [.gaze, .voice]
-    state.createdLink = "https://hilit.my/feedback/preview-token"
+    state.createdLink = "https://hilit.chottu.link/report?reportId=preview-token"
     state.popup = popup
     return state
 }

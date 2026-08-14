@@ -20,7 +20,7 @@ import Foundation
 extension AppFeature {
     // MARK: - 실행 시점 훅
 
-    /// 실행 직후 한꺼번에 거는 세 갈래.
+    /// 실행 직후 한꺼번에 거는 네 갈래.
     ///
     /// 잔존 정리를 **판정보다 먼저** 끝낸다 — 순서를 지키려 판정을 effect 안에서 잇지 않고
     /// 별도 액션(`firstLaunchResolved`)으로 갈라 놓는다. 미완 영상 업로드 재개(저널)는 그 순서에
@@ -33,8 +33,23 @@ extension AppFeature {
                 await send(.firstLaunchResolved)
             },
             .run { [uploadQueue] _ in await uploadQueue.resumePending() },
-            cleanUpDeadHeldSession()
+            cleanUpDeadHeldSession(),
+            observeResolvedDeeplinks()
         )
+    }
+
+    /// 링크 SDK 가 해석해 낸 링크를 받는다 — **deferred**(앱이 없어 스토어를 다녀온 뒤 첫 실행)
+    /// 진입의 유일한 재료다. 설치 상태는 `onOpenURL` 이 원본 URL 로 이미 처리했고, 그때 SDK 가
+    /// 뒤늦게 같은 링크를 다시 흘려도 진행 중 평가는 덮이지 않는다(`presentGuestFeedback` 의 가드).
+    ///
+    /// 한 번의 해석이 URL 을 여럿 흘릴 수 있다 — 토큰이 어느 쪽에 실려 오는지 SDK 계약이 못 박지
+    /// 않아 후보를 다 받고 판정은 파서에 맡긴다. 앱이 사는 동안 열려 있는 스트림이라 취소하지 않는다.
+    private func observeResolvedDeeplinks() -> Effect<Action> {
+        .run { [deeplinkClient] send in
+            for await url in deeplinkClient.resolvedLinks() {
+                await send(.deeplinkReceived(url))
+            }
+        }
     }
 
     // MARK: - 진행 중(held) 면접 두 갈래 → [[app#Cross-feature Routing]]

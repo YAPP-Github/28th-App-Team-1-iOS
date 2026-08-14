@@ -28,6 +28,13 @@ public struct GuestFeedbackFeature {
         // 온보딩 위 닉네임 입력 바텀 시트의 표출 여부(별도 phase 아님).
         public var isEnteringNickname = false
         public var startedEvaluation = false
+        // 영상 재생 — 리포트 플레이어와 같은 동작(탭→컨트롤·3초 자동 숨김·칸 단위 이동)을 자식이 갖는다.
+        public var playback = GuestVideoPlaybackFeature.State()
+        // 시작 연출을 걷는 두 조건 — 둘 다 서야 evaluating 으로 넘어간다.
+        // 영상 준비 보고(뷰가 AVURLAsset 을 열어본 결과)와 안내 문구 최소 노출(리듀서 1초)은
+        // 서로 독립이라 각각 둔다: 준비가 빨라도 문구가 깜빡이지 않고, 준비가 늦어도 빈 화면에서 평가가 시작되지 않는다.
+        public var isVideoPrepared = false
+        public var isStartingCueElapsed = false
         public var activeAxis: AttitudeAxis?
         // 평가 화면 표시 모드 — true=몰입(풀블리드 영상+축 바만), false=카드(영상 카드+평가 카드).
         // 최초 진입·영상 다시보기는 몰입, 축 탭·요약 카드 수정 진입은 카드로 연다.
@@ -100,15 +107,16 @@ public struct GuestFeedbackFeature {
         case view(View)
         case inner(Inner)
         case delegate(Delegate)
-        // TCA 구조적 액션 — 3분류 밖의 presentation 전용 케이스.
+        // TCA 구조적 액션 — 3분류 밖의 presentation·자식 전용 케이스.
         case alert(PresentationAction<Alert>)
+        case playback(GuestVideoPlaybackFeature.Action)
 
         /// 사용자 입력·생명주기. View 의 send(...) 로만 방출된다.
         @CasePathable
         public enum View: BindableAction, Sendable {
             case binding(BindingAction<State>)
             case onAppear
-            case closeTapped            // 상단 X — 어느 phase 에서든 부모에게 dismissed 통보
+            case closeTapped            // 좌상단 X — 어느 phase 에서든 부모에게 dismissed 통보(도착지는 부모가 정한다)
             case startTapped            // 온보딩 → 닉네임 시트 표출
             case nicknameNextTapped     // 닉네임 확정 → starting
             case nicknameSheetDismissed // 닉네임 시트 스와이프 취소 → 온보딩 유지
@@ -131,7 +139,7 @@ public struct GuestFeedbackFeature {
         public enum Inner: Sendable {
             case entryLoaded(Result<GuestFeedbackEntry, GuestFeedbackError>)
             case submitFinished(Result<GuestFeedbackReceipt, GuestFeedbackError>)
-            case videoReady                    // starting 연출 종료 → evaluating
+            case startingCueElapsed            // 시작 연출 최소 노출(1초) 경과 — 영상 준비까지 서면 evaluating
             case draftSaved                    // debounce draft 저장 완료 → 저장 인디케이터 해제
             case completionToastExpired        // 완료 토스트 2초 경과 → 자동 해제
         }
@@ -151,6 +159,9 @@ public struct GuestFeedbackFeature {
 
     public var body: some ReducerOf<Self> {
         BindingReducer(action: \.view)
+        Scope(state: \.playback, action: \.playback) {
+            GuestVideoPlaybackFeature()
+        }
         Reduce { state, action in
             switch action {
             case .view(let viewAction):
@@ -160,6 +171,13 @@ public struct GuestFeedbackFeature {
             case .alert(.presented(.retryEnter)):
                 return enter(&state)
             case .alert:
+                return .none
+            // 영상 준비 종결(성공·실패 무관) — 시작 연출을 걷는 두 조건 중 하나.
+            case .playback(.delegate(.prepareFinished)):
+                guard state.phase == .starting, !state.isVideoPrepared else { return .none }
+                state.isVideoPrepared = true
+                return beginEvaluatingIfReady(&state)
+            case .playback:
                 return .none
             case .delegate:
                 return .none

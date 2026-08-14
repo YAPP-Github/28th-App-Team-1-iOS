@@ -13,7 +13,7 @@ import Foundation
 // GuestFeedbackFeature 의 리듀서 본문 — 타입 선언(Feature 파일)과 분리한 별도 파일.
 // cyclomatic-complexity 에러는 reduceView 를 카테고리 서브함수로 쪼개 해소했다(한 파일로도 가능).
 // 파일 분리는 다화면(7뷰) Feature 리듀서를 위한 의도적 구성 선택으로, 비차단 length 경고만 피한다.
-// body 가 호출하는 reduceView·reduceInner·enter·submit 만 internal, 나머지 헬퍼는 file-private.
+// body 가 호출하는 reduceView·reduceInner·enter·submit·beginEvaluatingIfReady 만 internal, 나머지 헬퍼는 file-private.
 extension GuestFeedbackFeature {
     private enum CancelID { case draftDebounce, completionToast }
 
@@ -26,6 +26,7 @@ extension GuestFeedbackFeature {
 
         case .closeTapped:
             // 실앱 fullScreenCover 의 유일한 탈출구 — draft 는 로컬에 있어 재진입 시 이어하기로 복원된다.
+            // 나간 뒤 어디에 서는지(홈·소셜 로그인)는 로그인 여부를 아는 AppFeature 가 정한다.
             return .send(.delegate(.dismissed))
 
         case .startTapped, .nicknameNextTapped, .nicknameSheetDismissed,
@@ -79,7 +80,7 @@ extension GuestFeedbackFeature {
             guard state.isEnteringNickname else { return .none }
             state.isEnteringNickname = false
             state.phase = .starting
-            return .merge(saveDraftNow(state), startVideo())
+            return .merge(saveDraftNow(state), startingCue())
 
         case .nicknameSheetDismissed:
             // 스와이프 취소 — 온보딩에 머물러 재진입 가능.
@@ -100,10 +101,14 @@ extension GuestFeedbackFeature {
             return .none
 
         case .rewatchTapped:
-            // 요약 «영상 다시보기» — 평가 몰입 시청으로 돌아간다.
+            // 요약 «영상 다시보기» — 평가 몰입 시청으로 돌아간다. 문구 그대로 **처음부터** 다시 튼다.
             guard state.phase == .summary else { return .none }
             state.isImmersiveWatching = true
             state.phase = .evaluating
+            state.playback.currentTime = 0
+            state.playback.seekTarget = 0
+            state.playback.seekToken += 1
+            state.playback.isPlaying = true
             return .none
 
         case .submitTapped:
@@ -191,12 +196,10 @@ extension GuestFeedbackFeature {
         case .entryLoaded(.failure(let error)):
             return reduceEnterFailure(&state, error)
 
-        case .videoReady:
+        case .startingCueElapsed:
             guard state.phase == .starting else { return .none }
-            state.startedEvaluation = true
-            state.activeAxis = state.entry?.axisList.first
-            state.phase = .evaluating
-            return saveDraftNow(state)
+            state.isStartingCueElapsed = true
+            return beginEvaluatingIfReady(&state)
 
         case .draftSaved:
             state.savingAxisCode = nil
@@ -213,17 +216,22 @@ extension GuestFeedbackFeature {
 
     /// 게이트별 착지 화면 — OPEN 은 이어하기 여부로, FULL 은 시청 전용 평가로, 나머지는 차단.
     private func reduceEntryGate(_ state: inout State, _ entry: GuestFeedbackEntry) -> Effect<Action> {
+        // 재생 재료는 게이트와 무관하게 먼저 넘긴다 — 차단 화면이면 화면 자체가 안 뜨니 해가 없다.
+        state.playback.videoURL = entry.videoURL
+        state.playback.boundaries = entry.questionBoundaries ?? []
         switch entry.gate {
         case .open:
             if state.startedEvaluation {
                 state.phase = .evaluating
                 state.activeAxis = entry.axisList.first   // 이어하기 재개 — 첫 축을 활성 세그먼트로
+                state.playback.isPlaying = true           // 시작 연출을 건너뛴 진입이라 바로 튼다
             } else {
                 state.phase = .onboarding
             }
         case .full:
             state.phase = .evaluating   // 시청 전용 — canEvaluate 가 submissionOpen 으로 막는다
             state.activeAxis = entry.axisList.first
+            state.playback.isPlaying = true
         case .private:
             state.phase = .gateClosed(.private)
         case .expired:
@@ -342,12 +350,24 @@ extension GuestFeedbackFeature {
         }
     }
 
-    /// 시작 화면 연출 — 짧은 대기 후 평가로 넘긴다. (실 영상 프리페치는 Task 후속.)
-    private func startVideo() -> Effect<Action> {
+    /// 시작 연출 최소 노출 — 영상이 곧바로 준비돼도 안내 문구("태도에 집중해서 시청해 주세요")가 깜빡이지 않게 1초는 유지한다.
+    /// 연출이 끝나도 영상 준비 보고가 없으면 오버레이는 남는다 (종결은 뷰가 보장 — GuestVideoPlayerView.prepare).
+    private func startingCue() -> Effect<Action> {
         .run { send in
             try? await clock.sleep(for: .seconds(1))
-            await send(.inner(.videoReady))
+            await send(.inner(.startingCueElapsed))
         }
+    }
+
+    /// 시작 연출 종료 — 영상 준비와 최소 노출이 **둘 다** 서야 평가로 넘어간다.
+    /// 넘어가는 순간 재생을 시작한다 — 연출 뒤에서 소리부터 새지 않게 여기까지 미뤄 둔 것이다.
+    func beginEvaluatingIfReady(_ state: inout State) -> Effect<Action> {
+        guard state.isVideoPrepared, state.isStartingCueElapsed else { return .none }
+        state.startedEvaluation = true
+        state.activeAxis = state.entry?.axisList.first
+        state.phase = .evaluating
+        state.playback.isPlaying = true
+        return saveDraftNow(state)
     }
 
     /// 즉시 저장도 debounce 와 같은 CancelID 를 공유한다 — 대기 중인 stale 스냅샷이

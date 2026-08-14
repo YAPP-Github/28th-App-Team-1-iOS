@@ -34,7 +34,7 @@
 대표 흐름 — **공유 딥링크 → 게스트 평가** (2026-08-07):
 1. `HilitApp.onOpenURL` 이 `hilit` 스킴만 `deeplinkReceived(url)` 로 보낸다(그 외는 카카오 SDK 콜백). `GuestFeedbackDeeplink.parse` 성공 시 `state.guestFeedback = GuestFeedbackFeature.State(token:)` — cover 는 **루트 Group 밖**이라 스플래시·로그인 전에도 뜬다(무인증 플로우, → [[feedback#진입로와 닫기]])
 2. 면접·온보딩 진행 중이거나 이미 게스트 cover 가 떠 있으면 무시 — 몰입을 끊지 않고, 진행 중 평가를 다른 토큰으로 갈아치우지 않는다
-3. `guestFeedback(.presented(.delegate(.dismissed)))` → cover 만 닫는다(홈 재조회 없음 — 게스트 평가는 사용자 데이터를 바꾸지 않는다). 게스트 cover 중에도 전역 LoadingModal 을 끈다 — G4 는 자체 loading phase 로 대기를 말한다
+3. `guestFeedback(.presented(.delegate(.dismissed)))` → cover 를 닫고 **로그인 여부가 도착지를 정한다**(2026-08-14): 로그인 상태면 홈, 아니면 소셜 로그인 화면 — 둘 다 루트가 이미 들고 있어 cover 만 걷으면 드러난다. 손볼 건 판정이 안 끝난 루트뿐이라 `.splash`·`.splashFailed` 면 `resolveLaunchRouting()` 을 다시 태워 한쪽으로 내보낸다(게스트는 루트 판정과 무관하게 링크로 들어오므로 닫을 때 스플래시에 갇힐 수 있다). `.updateRequired` 는 풀지 않는다 — 여기서 풀면 강제 업데이트 차단이 뚫린다. 홈 재조회는 없다 — 게스트 평가는 사용자 데이터를 바꾸지 않는다. 게스트 cover 중에도 전역 LoadingModal 을 끈다 — G4 는 자체 loading phase 로 대기를 말한다
 
 대표 흐름 — **마이페이지 → 세션 종료** (2026-08-08):
 1. 홈 내비바 프로필이 `delegate(.profileRequested)` 방출 → `state.myPage = MyPageFeature.State()` 로 fullScreenCover 제시. 자체 상단 바를 얹는 한 장짜리 화면이라 NavigationStack 없이 덮는다
