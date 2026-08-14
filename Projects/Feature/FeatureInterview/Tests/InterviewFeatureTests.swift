@@ -8,6 +8,8 @@
 import AVFoundation
 import ComposableArchitecture
 import DomainInterviewInterface
+import DomainInterviewReportInterface
+import DomainInterviewReportTesting
 import DomainRecordingInterface
 import DomainSpeechInterface
 import Foundation
@@ -32,6 +34,8 @@ struct InterviewFeatureTests {
             $0.interviewVideoUploadQueue.enqueue = { sessionId, fileURL, _ in
                 enqueued.withValue { $0.append((sessionId, fileURL)) }
             }
+            // 채점이 이미 끝난 응답 — 대기 없이 곧장 홈 통보로 이어진다(대기 경로는 아래 별도 테스트).
+            $0.interviewReportClient.report = { _ in InterviewReportFixtures.ready }
             $0.recordingClient.stopPreview = { previewStopped.withValue { $0 += 1 } }
             $0.speechClient.stopCapture = { captureStopped.withValue { $0 += 1 } }
         }
@@ -55,6 +59,7 @@ struct InterviewFeatureTests {
         let store = TestStore(initialState: initialState) {
             InterviewFeature()
         } withDependencies: {
+            $0.interviewReportClient.report = { _ in InterviewReportFixtures.ready }
             $0.recordingClient.stopPreview = {}
             $0.speechClient.stopCapture = {}
         }
@@ -66,6 +71,35 @@ struct InterviewFeatureTests {
         await store.finish()
     }
 
+    @Test("리포트가 GENERATING 이면 채점이 끝날 때까지 기다렸다 홈으로 통보한다 — 그동안 화면은 세션(로딩 모달)에 머문다")
+    func sessionFinishWaitsUntilReportIsGenerated() async {
+        let clock = TestClock()
+        let polls = LockIsolated(0)
+        var initialState = InterviewFeature.State(sessionId: 1)
+        initialState.screen = .session(.fixture)
+        let store = TestStore(initialState: initialState) {
+            InterviewFeature()
+        } withDependencies: {
+            $0.continuousClock = clock
+            $0.interviewReportClient.report = { _ in
+                polls.withValue { $0 += 1 }
+                return polls.value < 2 ? InterviewReportFixtures.generating : InterviewReportFixtures.ready
+            }
+            $0.interviewVideoUploadQueue.enqueue = { _, _, _ in }
+            $0.recordingClient.stopPreview = {}
+            $0.speechClient.stopCapture = {}
+        }
+
+        await store.send(.screen(.session(.delegate(.finished(.fixture, .fixture))))) {
+            $0.isClosing = true
+        }
+        // 첫 조회가 GENERATING — 주기만큼 흐른 뒤 다시 묻고, READY 를 받고서야 종료를 올린다.
+        await clock.advance(by: InterviewFeature.reportPollInterval)
+        await store.receive(\.delegate.finished)
+        await store.finish()
+        #expect(polls.value == 2)
+    }
+
     @Test("종료 확정 후 도착한 늦은 두 번째 종료·중단·실패 통보는 무시한다 — 업로드 재접수·이중 통보·파일 폐기 방지")
     func lateDuplicateSessionSignalsAreIgnoredAfterFinish() async {
         var initialState = InterviewFeature.State(sessionId: 1)
@@ -73,6 +107,7 @@ struct InterviewFeatureTests {
         let store = TestStore(initialState: initialState) {
             InterviewFeature()
         } withDependencies: {
+            $0.interviewReportClient.report = { _ in InterviewReportFixtures.ready }
             $0.interviewVideoUploadQueue.enqueue = { _, _, _ in }
             $0.recordingClient.stopPreview = {}
             $0.speechClient.stopCapture = {}

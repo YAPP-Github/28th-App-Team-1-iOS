@@ -101,6 +101,7 @@ struct InterviewSessionNetworkFailureTests {
         }
         await store.receive(\.inner.answerSubmitted) {
             $0.isSubmitting = false
+            $0.isFinishing = true   // 녹화 없는 종료 — 리포트 대기 인디케이터가 여기서 선다
         }
         // 세션 종료 후속(sessionCleanup·finished(nil,nil))은 이 테스트 관심 밖 — 도착만 소화한다.
         await store.receive(\.delegate.finished)
@@ -216,7 +217,10 @@ struct InterviewSessionNetworkFailureTests {
             $0.phase = .processingAnswer
             $0.isSubmitting = true
         }
-        await store.receive(\.inner.answerSubmitted) { $0.isSubmitting = false }
+        await store.receive(\.inner.answerSubmitted) {
+            $0.isSubmitting = false
+            $0.isFinishing = true   // 녹화 없는 종료 — 리포트 대기 인디케이터가 여기서 선다
+        }
         await store.receive(\.delegate.finished)
         await store.finish()
         #expect(submitted.value.first?.isWrapUp == false)
