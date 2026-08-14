@@ -125,7 +125,8 @@ public struct InterviewSessionView: View {
     private var miniButtonRow: some View {
         HStack(spacing: .ds(.p8)) {
             Spacer(minLength: 0)
-            if store.phase == .answering {
+            // 8:00 해금 뒤엔 «면접 종료하기» 하나만 남긴다 (2026-08-14 결정) — 두 버튼을 나란히 두지 않는다.
+            if store.phase == .answering, !store.isExitAvailable {
                 Button("답변 완료하기") {
                     send(.userTappedAnswerComplete)
                 }

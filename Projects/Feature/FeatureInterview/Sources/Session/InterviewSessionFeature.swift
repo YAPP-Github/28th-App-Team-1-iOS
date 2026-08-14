@@ -133,7 +133,9 @@ public struct InterviewSessionFeature {
         public var wrapUpStartedAt: Int?
         /// 계측 완료된 마무리 구간 — recordingStopped 가 delegate 로 실어 보낸다.
         public var wrapUpSpan: InterviewVideoWrapUpSpan?
-        /// 정지+합성 진행 중 — 재진입(두 번째 stopRecording)과 종료·이탈 입력을 함께 막는다.
+        /// 종료 처리 중(정지+합성 또는 녹화 없는 즉시 종료) — 재진입(두 번째 stopRecording)과 종료·이탈
+        /// 입력을 함께 막고, 화면은 `LoadingModal` 로 덮인다. 코디네이터의 리포트 생성 대기까지
+        /// 이 한 벌의 인디케이터가 이어 돈다([[interview#코디네이터]]) — 그동안 화면은 여기 머문다.
         public var isFinishing = false
         /// 네트워크 실패 오버레이 — 세션 상태·녹화를 살린 채 위에 얹는다(스펙 ③). nil 복귀 = 재개.
         @Presents public var failure: InterviewFailureFeature.State?
@@ -442,6 +444,9 @@ extension InterviewSessionFeature {
                 // 이미 종료된 세션(409) — 정상 종료로 수습한다. 녹화가 있으면 그래도 정지·합성 후 업로드 경로를 탄다.
                 state.isExitConfirmPresented = false
                 guard state.hasRecording else {
+                    // 합성이 없어도 인디케이터는 세운다 — 코디네이터가 리포트 생성을 기다리는 동안
+                    // 화면이 이 자리에 머물러서다(빈 세션 화면이 아니라 로딩 모달을 보여야 한다).
+                    state.isFinishing = true
                     return .merge(sessionCleanup(), .send(.delegate(.finished(nil, nil))))
                 }
                 return stopRecordingAndFinish(&state)
@@ -666,6 +671,8 @@ extension InterviewSessionFeature {
             guard state.hasRecording else {
                 // 녹화 없음 — 마무리 멘트는 fire-and-forget 으로 걸어두고 즉시 종료(영상 없는 리포트).
                 // 재생 주체는 Implementation 액터라 effect 종료·화면 교체에도 재생은 지속된다(PRD §3.7).
+                // 인디케이터는 세운다 — 리포트 생성 대기 동안 화면이 여기 머문다(위 sessionAlreadyEnded 와 같은 이유).
+                state.isFinishing = true
                 let wrapUp: Effect<Action> = audioData.map { data in
                     .run { _ in _ = await speechClient.play(data) }
                 } ?? .none

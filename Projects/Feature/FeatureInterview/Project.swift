@@ -9,6 +9,7 @@ let project = Project.makeModule(
         .feature(implements: "Interview", factory: .init(dependencies: [
             .composableArchitecture,
             .domain(interface: .interview),
+            .domain(interface: .interviewReport),   // 종료 후 리포트 채점 대기 폴링
             .domain(interface: .permission),
             .domain(interface: .recording),
             .domain(interface: .speech),
@@ -20,9 +21,11 @@ let project = Project.makeModule(
         .feature(tests: "Interview", factory: .init(dependencies: [
             .composableArchitecture,
             .domain(interface: .interview),
+            .domain(interface: .interviewReport),   // 종료 후 리포트 대기 폴링 스텁
             .domain(interface: .permission),
             .domain(interface: .recording),
-            .domain(interface: .speech)
+            .domain(interface: .speech),
+            .project(target: "DomainInterviewReportTesting", path: .domain(.interviewReport))   // 리포트 대기 폴링 fixture
         ])),
         .feature(example: "Interview", factory: .init(
             // 기본 example plist(feature(example:) 팩토리)를 오버라이드하므로 기본 키를 함께 유지한다.

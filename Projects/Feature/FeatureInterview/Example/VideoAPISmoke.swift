@@ -208,7 +208,8 @@ struct VideoAPISmoke: View {
             lines.append("cards \(report.cards?.count ?? 0)장 / script \(report.script?.count ?? 0)문장")
             let reasons = Set((report.cards ?? []).flatMap { ($0.highlightSpans ?? []).compactMap(\.reason) })
             if !reasons.isEmpty {
-                lines.append("reason: \(reasons.map(\.rawValue).sorted().joined(separator: ", "))")
+                // `reason` 은 서버 원문 String 이다(enum 승격 없음) — 그대로 정렬해 잇는다.
+                lines.append("reason: \(reasons.sorted().joined(separator: ", "))")
             }
             let redFlagCount = (report.cards ?? []).compactMap(\.cardRedFlagNotices).flatMap { $0 }.count
             lines.append("카드 레드플래그 \(redFlagCount)건")

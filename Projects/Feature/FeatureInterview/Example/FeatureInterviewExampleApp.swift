@@ -7,6 +7,7 @@
 
 import ComposableArchitecture
 import DomainInterviewInterface
+import DomainInterviewReportInterface
 import DomainSpeechInterface
 import FeatureInterviewImplementation
 import Foundation
@@ -53,6 +54,8 @@ struct FeatureInterviewExampleApp: App {
                     } withDependencies: {
                         // 질문 준비 폴링을 네트워크 없이 즉시 READY 로 — 준비 게이트 UI 는 테스트가 고정.
                         $0.interviewClient = .previewValue
+                        // 종료 후 리포트 대기도 즉시 READY — live 조회면 상한(≈1분)까지 스피너가 돈다.
+                        $0.interviewReportClient = .previewValue
                         // 재생도 즉시 완료 스텁 — live 재생 액터가 preview:// URL 로 실패해
                         // 네트워크 실패 화면으로 빠지는 것을 막는다(턴 루프가 즉답으로 순환).
                         $0.speechClient = .previewValue
