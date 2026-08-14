@@ -91,6 +91,10 @@ public struct OnboardingPortfolioUploadFeature {
         /// 삭제 확인 모달 표시 여부 — 파일 행 X 가 켜고, «네»/«아니요» 가 끈다.
         /// 삭제 API 는 «네» 에서만 나간다(X 만으로는 서버 파일이 그대로다).
         public var isDeleteConfirmPresented = false
+        /// delete 요청이 떠 있는 동안 — 응답 전까지 X 재탭을 막는다(같은 id 로 두 번 나가지 않게).
+        public var isDeleting = false
+        /// 삭제 실패 안내 줄 문구 — 첨부는 그대로 두고 이 줄만 띄운다. 성공·재시도에 비운다.
+        public var deleteErrorMessage: String?
         /// 진입 시 서버에 등록된 포트폴리오를 조회할지 — 코디네이터가 **빈 판으로 세우는 진입마다** 켠다
         /// (서버 READY 는 위저드 밖에서도 바뀐다 — [[onboarding#포트폴리오 업로드]]).
         /// 켜진 채 `onAppear` 를 한 번 받으면 스스로 끈다(뷰 `onAppear` 는 여러 번 온다).
@@ -100,6 +104,13 @@ public struct OnboardingPortfolioUploadFeature {
         var existingPortfolio: ExistingPortfolio?
 
         public var isContinueEnabled: Bool { upload.isUploaded }
+
+        /// 안내 줄(`InfoField(.error)`)에 띄울 문구 — 업로드 실패가 먼저다.
+        /// 둘이 겹칠 일은 없다: `failed` 는 첨부가 없는 판이라 삭제를 부를 X 자체가 없다.
+        public var errorMessage: String? {
+            if case let .failed(message) = upload { return message }
+            return deleteErrorMessage
+        }
 
         /// 지금 띄울 모달 — 표출 자리가 하나뿐이라 우선순위를 여기서 정한다.
         /// 기존 포폴 확인이 먼저다: 진입 직후 뜨고, 그 판엔 삭제를 부를 파일 행 X 가 아직 없다.
@@ -165,6 +176,10 @@ public struct OnboardingPortfolioUploadFeature {
             /// 진입 조회에서 READY 포트폴리오를 찾았다 — 확인 모달을 띄운다.
             /// 없거나 조회 실패면 이 액션 자체가 오지 않는다(빈 판 그대로 = 기존 흐름).
             case existingPortfolioFound(ExistingPortfolio)
+            /// DELETE 성공(404 = 서버에 이미 없음 포함) — 이때서야 판을 비운다.
+            case portfolioDeleted
+            /// DELETE 실패 — 첨부는 남기고 안내 줄만 띄운다.
+            case portfolioDeleteFailed(message: String)
         }
 
         /// 코디네이터(OnboardingFeature) 통보. 부모는 이것만 매칭한다 (D1).
@@ -184,6 +199,8 @@ public struct OnboardingPortfolioUploadFeature {
     static let unreadableFileMessage = "이 PDF에서 글자를 읽지 못했어요.\n글자가 드래그로 선택되는 PDF로 다시 올려주세요."
     /// 파일 읽기·네트워크 등 일반 실패 문구 — 디자인 미정, 임시.
     static let genericFailureMessage = "업로드에 실패했어요.\n잠시 후 다시 시도해 주세요."
+    /// 삭제 실패 폴백 문구 — 서버 message 가 있으면 그것을 우선한다(시안 443:9641 «서버에러메세지»).
+    static let deleteFailureMessage = "포트폴리오를 삭제하지 못했어요.\n잠시 후 다시 시도해 주세요."
     /// 용량 초과 문구 — 디자인 미정, 임시 (서버 FILE_TOO_LARGE 와 동일 조건).
     static let oversizedFileMessage = "20MB 이하의 PDF 파일만 업로드할 수 있어요."
     /// 페이지 초과 문구 — PRD S2 확정 (서버 PAGE_COUNT_EXCEEDED 와 동일 조건).
@@ -274,6 +291,7 @@ public struct OnboardingPortfolioUploadFeature {
 
         case let .fileSelected(url):
             let fileName = url.lastPathComponent
+            state.deleteErrorMessage = nil
             state.upload = .uploading(fileName: fileName, portfolioId: nil)
             return .run { send in
                 // 클라 선검증 = UX 용 빠른 차단. 최종 판정은 서버 실측 재검증(글자 수·암호 최종 판별은 서버).
@@ -308,6 +326,7 @@ public struct OnboardingPortfolioUploadFeature {
 
         case .userTappedRemoveFile:
             // 첨부된 파일이 있을 때만 확인 모달 — 삭제는 «네» 를 받고서 한다.
+            guard !state.isDeleting else { return .none }
             switch state.upload {
             case .uploading, .uploaded:
                 state.isDeleteConfirmPresented = true
@@ -318,13 +337,19 @@ public struct OnboardingPortfolioUploadFeature {
 
         case .userTappedDeleteConfirm:
             state.isDeleteConfirmPresented = false
+            state.deleteErrorMessage = nil
             switch state.upload {
             case let .uploading(_, portfolioId):
-                state.upload = .idle
-                return .merge(.cancel(id: CancelID.upload), deleteIfRegistered(portfolioId))
+                // register 접수 전이면 서버에 지울 게 없다 — 폴링만 끊고 빈 판으로.
+                guard let portfolioId else {
+                    state.upload = .idle
+                    return .cancel(id: CancelID.upload)
+                }
+                state.isDeleting = true
+                return .merge(.cancel(id: CancelID.upload), delete(portfolioId))
             case let .uploaded(_, portfolioId):
-                state.upload = .idle
-                return deleteIfRegistered(portfolioId)
+                state.isDeleting = true
+                return delete(portfolioId)
             case .idle, .failed:
                 return .none
             }
@@ -347,6 +372,20 @@ public struct OnboardingPortfolioUploadFeature {
         case let .existingPortfolioFound(existing):
             state.existingPortfolio = existing
             return .none
+
+        case .portfolioDeleted:
+            state.isDeleting = false
+            state.deleteErrorMessage = nil
+            state.upload = .idle
+            return .none
+
+        case let .portfolioDeleteFailed(message):
+            state.isDeleting = false
+            state.deleteErrorMessage = message
+            // 업로드 중이던 건이면 «네» 에서 폴링을 이미 끊었다 — 서버 파일이 남았으니 폴링을 다시 잇는다
+            // (안 이으면 판이 Processing... 에 멈춘 채 READY 로 못 넘어간다).
+            guard case let .uploading(_, portfolioId) = state.upload, let portfolioId else { return .none }
+            return pollStatus(portfolioId)
         }
     }
 
@@ -358,13 +397,7 @@ public struct OnboardingPortfolioUploadFeature {
         switch processing.status {
         case .processing:
             state.upload = .uploading(fileName: fileName, portfolioId: processing.portfolioId)
-            return .run { send in
-                try await clock.sleep(for: Self.pollInterval)
-                await send(.inner(.statusPolled(try await portfolioClient.status(processing.portfolioId))))
-            } catch: { error, send in
-                await send(.inner(.uploadFailed(message: Self.failureMessage(for: error))))
-            }
-            .cancellable(id: CancelID.upload, cancelInFlight: true)
+            return pollStatus(processing.portfolioId)
 
         case .ready:
             state.upload = .uploaded(fileName: fileName, portfolioId: processing.portfolioId)
@@ -394,12 +427,33 @@ public struct OnboardingPortfolioUploadFeature {
         (error as? PortfolioError)?.userMessage ?? genericFailureMessage
     }
 
+    /// 처리 상태 폴링 한 바퀴 — 한 주기 쉬고 status 를 물어 `statusPolled` 로 되돌린다.
+    private func pollStatus(_ portfolioId: UUID) -> Effect<Action> {
+        .run { send in
+            try await clock.sleep(for: Self.pollInterval)
+            await send(.inner(.statusPolled(try await portfolioClient.status(portfolioId))))
+        } catch: { error, send in
+            await send(.inner(.uploadFailed(message: Self.failureMessage(for: error))))
+        }
+        .cancellable(id: CancelID.upload, cancelInFlight: true)
+    }
+
     /// 서버에 이미 등록된 파일 제거 — 계정당 1개 제한이라 지워야 재업로드가 가능하다.
-    private func deleteIfRegistered(_ portfolioId: UUID?) -> Effect<Action> {
-        guard let portfolioId else { return .none }
-        return .run { _ in
-            // TODO: 삭제 실패 UX 미정 — 우선 무시한다 (실패 시 다음 업로드에서 PORTFOLIO_ALREADY_EXISTS 로 드러남).
-            _ = try? await portfolioClient.delete(portfolioId)
+    /// **낙관 갱신 금지** — 응답을 보고서야 판을 비운다(마이페이지 삭제와 같은 규칙).
+    /// 먼저 비우면 실패해도 사용자 눈엔 지워진 걸로 보이고, 서버엔 남아 다음 업로드가 409 로 막힌다.
+    private func delete(_ portfolioId: UUID) -> Effect<Action> {
+        .run { send in
+            _ = try await portfolioClient.delete(portfolioId)
+            await send(.inner(.portfolioDeleted))
+        } catch: { error, send in
+            // 404 = 서버에 이미 없다 — 지운 것과 결과가 같으니 성공으로 닫는다.
+            if case .notFound? = error as? PortfolioError {
+                await send(.inner(.portfolioDeleted))
+            } else {
+                await send(.inner(.portfolioDeleteFailed(
+                    message: (error as? PortfolioError)?.userMessage ?? Self.deleteFailureMessage
+                )))
+            }
         }
     }
 }
