@@ -17,7 +17,9 @@ let project = Project.makeModule(
         ])),
         .domain(testing: "FeedbackShare"),
         .domain(tests: "FeedbackShare", factory: .init(dependencies: [
-            .composableArchitecture   // withDependencies 로 AuthorizedNetworkClient 를 스텁해 liveValue 검증
+            .composableArchitecture,   // withDependencies 로 AuthorizedNetworkClient 를 스텁해 liveValue 검증
+            // 공유 링크 형식(GuestFeedbackShareLink) 왕복 검증 — 직접 import 하므로 전이 의존에 기대지 않는다.
+            .target(name: "DomainFeedbackShareInterface")
         ]))
     ]
 )

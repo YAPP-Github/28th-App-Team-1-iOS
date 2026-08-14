@@ -13,8 +13,9 @@ import SwiftUI
 /// 면접 시작 로딩 연출(Figma `[4] 온보딩 - 면접 시작 로딩`, node 1855:8702).
 /// "평가를 위해 [태도]에 집중해서 시청해 주세요" 안내를 화면 중앙에 얹는다.
 /// 별도 화면이 아니라 평가 화면 위 **블러 오버레이** — 시안대로 아래 평가 화면이 블러 너머로 비친다
-/// (조립은 GuestFeedbackView.evaluationPhase). 표시 전용 — 리듀서가 `videoReady`(약 1초) 연출을 마치면
-/// evaluating 으로 넘어가고, 이 오버레이는 페이드아웃하며 걷힌다(Flow 1 — 세그먼트 바 슬라이드업과 동시, 별도 액션 없음).
+/// (조립은 GuestFeedbackView.evaluationPhase). 표시 전용 — 최소 노출 1초(`startingCueElapsed`)와
+/// 영상 준비 보고(`videoPrepareFinished`)가 **둘 다** 서면 evaluating 으로 넘어가고, 이 오버레이는
+/// 페이드아웃하며 걷힌다(Flow 1 — 세그먼트 바 슬라이드업과 동시, 별도 액션 없음).
 @ViewAction(for: GuestFeedbackFeature.self)
 struct GuestStartingView: View {
     let store: StoreOf<GuestFeedbackFeature>

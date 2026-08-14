@@ -31,7 +31,10 @@ struct GuestSummaryView: View {
                         axisList
                     }
                     .padding(.horizontal, .ds(.p20))
-                    .padding(.vertical, .ds(.p20))
+                    // @ds(spacing): 42 → p40 — 본문 시작(Figma 3052:5472 y85 − 상태바 43).
+                    // 좌상단 닫기 X(끝 34)를 지나 헤더가 시작한다.
+                    .padding(.top, .ds(.p40))
+                    .padding(.bottom, .ds(.p20))
                 }
                 submitButton
             }
@@ -57,11 +60,12 @@ struct GuestSummaryView: View {
 
     // MARK: - 헤더 (타이틀 · 그린 마커 · 안내)
 
-    /// DS TitleBox — Figma «title-box»(3029:9187) 1:1: "{게스트}님, / 정성스러운 [피드백] 감사해요".
+    /// DS TitleBox — Figma «title-box»(802:7447) 1:1: "{게스트}님, / 정성스러운 [피드백] 감사해요".
+    /// 그린 마커는 둘째 줄 "피드백" 에만 — 시안에서 이름 줄은 highlighted-text 가 아닌 평문이다.
     private var header: some View {
         TitleBox(
             [
-                TitleBox.Line("\(guestName)님,"),
+                TitleBox.Line("{\(guestName)}님,"),
                 TitleBox.Line("정성스러운 피드백 감사해요", highlight: "피드백")
             ],
             sub: "\(requesterName)님에게 다음 피드백을 전달할게요"

@@ -17,7 +17,7 @@ struct GuestFeedbackEvaluationTests {
     private let gaze = AttitudeAxis(code: "GAZE", displayName: "시선")
 
     /// 평가 중 상태에서 시작하는 스토어 — 진입 플로우는 EntryFlowTests 가 검증하므로 생략한다.
-    /// activeAxis 는 videoReady 진입과 동일하게 첫 축(GAZE)으로 세팅한다.
+    /// activeAxis 는 시작 연출을 마치고 들어온 것과 동일하게 첫 축(GAZE)으로 세팅한다.
     private func makeEvaluatingStore(
         localStore: GuestFeedbackLocalStore = .inMemory(),
         clock: any Clock<Duration> = ImmediateClock()
@@ -366,6 +366,9 @@ struct GuestFeedbackEvaluationTests {
         await store.send(.view(.rewatchTapped)) {
             $0.isImmersiveWatching = true
             $0.phase = .evaluating
+            // «다시보기» 문구 그대로 처음부터 — 이동 명령(토큰)까지 실어 보낸다.
+            $0.playback.seekToken = 1
+            $0.playback.isPlaying = true
         }
     }
 }

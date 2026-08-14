@@ -134,9 +134,10 @@ public struct OnboardingPortfolioUploadView: View {
                 uploadCard
             }
 
-            if case let .failed(message) = store.upload {
-                // 시안 443:9641 은 자리표시 문구에 «서버에러메세지» 주석이 붙어 있다 — 문구는 서버 message 우선.
-                InfoField(message, style: .error)
+            // 시안 443:9641 은 자리표시 문구에 «서버에러메세지» 주석이 붙어 있다 — 문구는 서버 message 우선.
+            // 업로드 실패뿐 아니라 삭제 실패도 이 줄에 실린다(첨부는 남긴 채 — 리듀서 `errorMessage`).
+            if let errorMessage = store.errorMessage {
+                InfoField(errorMessage, style: .error)
             }
 
             attachedFile
@@ -280,6 +281,26 @@ private let previewFileName = "홍길동 자기소개서_SK프롭티어 기업 �
                     )
                 )
                 state.isDeleteConfirmPresented = true
+                return state
+            }()
+        ) {
+            OnboardingPortfolioUploadFeature()
+        }
+    )
+}
+
+// 삭제가 서버에서 실패하면 첨부 행은 그대로 남고 안내 줄만 붙는다(사라진 것처럼 보이면 안 된다).
+#Preview("삭제 실패") {
+    OnboardingPortfolioUploadView(
+        store: Store(
+            initialState: {
+                var state = OnboardingPortfolioUploadFeature.State(
+                    upload: .uploaded(
+                        fileName: previewFileName,
+                        portfolioId: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+                    )
+                )
+                state.deleteErrorMessage = OnboardingPortfolioUploadFeature.deleteFailureMessage
                 return state
             }()
         ) {

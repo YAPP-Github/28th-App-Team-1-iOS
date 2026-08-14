@@ -53,7 +53,7 @@ struct ReportPeerFeedbackFeatureTests {
         }
         await store.receive(\.inner.shareLinkCreated) {
             $0.isCreating = false
-            $0.createdLink = "https://hilit.my/feedback/tok"
+            $0.createdLink = "https://hilit.chottu.link/report?reportId=tok"
             $0.popup = .shareLinkReady
         }
 
@@ -145,7 +145,7 @@ struct ReportPeerFeedbackFeatureTests {
             $0.isCreating = false
             // 화면에서 고른 항목이 아니라 **링크에 잠긴** 항목이 남는다.
             $0.selectedAxes = [.expression]
-            $0.createdLink = "https://hilit.my/feedback/tok"
+            $0.createdLink = "https://hilit.chottu.link/report?reportId=tok"
             $0.isLinkRecovered = true
             $0.popup = .shareLinkReady
         }
@@ -191,7 +191,7 @@ struct ReportPeerFeedbackFeatureTests {
         await store.receive(\.inner.existingShareLoaded) {
             // 서버가 축을 늘려도 모르는 코드는 버린다.
             $0.selectedAxes = [.gaze, .voice]
-            $0.createdLink = "https://hilit.my/feedback/tok"
+            $0.createdLink = "https://hilit.chottu.link/report?reportId=tok"
             $0.isLinkRecovered = true
         }
         #expect(store.state.isAxisLocked)
@@ -226,7 +226,7 @@ struct ReportPeerFeedbackFeatureTests {
         _ popup: ReportPeerFeedbackFeature.Popup
     ) -> ReportPeerFeedbackFeature.State {
         var state = ReportPeerFeedbackFeature.State(sessionId: 7)
-        state.createdLink = "https://hilit.my/feedback/tok"
+        state.createdLink = "https://hilit.chottu.link/report?reportId=tok"
         state.popup = popup
         return state
     }
@@ -245,7 +245,7 @@ struct ReportPeerFeedbackFeatureTests {
         await store.send(.view(.userTappedCopyLink)) {
             $0.popup = .linkCopied
         }
-        #expect(copied.value == "https://hilit.my/feedback/tok")
+        #expect(copied.value == "https://hilit.chottu.link/report?reportId=tok")
 
         await clock.advance(by: .seconds(2))
         await store.receive(\.inner.linkCopiedPopupElapsed) {

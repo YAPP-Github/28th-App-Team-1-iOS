@@ -239,10 +239,68 @@ struct OnboardingPortfolioUploadFeatureTests {
 
         await store.send(.view(.userTappedDeleteConfirm)) {
             $0.isDeleteConfirmPresented = false
+            $0.isDeleting = true
+        }
+        await store.receive(\.inner.portfolioDeleted) {
+            $0.isDeleting = false
             $0.upload = .idle
         }
-        await store.finish()
         #expect(deletedId.value == Self.portfolioId)
+    }
+
+    @Test("삭제가 서버에서 실패하면 첨부를 남기고 서버 문구를 안내 줄에 띄운다")
+    func deleteFailureKeepsFileAndShowsServerMessage() async {
+        var initialState = OnboardingPortfolioUploadFeature.State()
+        initialState.upload = .uploaded(fileName: "포트폴리오.pdf", portfolioId: Self.portfolioId)
+        initialState.isDeleteConfirmPresented = true
+        let store = TestStore(initialState: initialState) {
+            OnboardingPortfolioUploadFeature()
+        } withDependencies: {
+            $0.portfolioClient.delete = { _ in throw PortfolioError.alreadyExists(message: "삭제할 수 없어요") }
+        }
+
+        await store.send(.view(.userTappedDeleteConfirm)) {
+            $0.isDeleteConfirmPresented = false
+            $0.isDeleting = true
+        }
+        await store.receive(\.inner.portfolioDeleteFailed) {
+            $0.isDeleting = false
+            $0.deleteErrorMessage = "삭제할 수 없어요"
+        }
+        // 첨부는 그대로 — 계속하기도 살아 있다(서버 파일이 남았으니 그 판이 진실이다).
+        #expect(store.state.upload == .uploaded(fileName: "포트폴리오.pdf", portfolioId: Self.portfolioId))
+        #expect(store.state.errorMessage == "삭제할 수 없어요")
+    }
+
+    @Test("서버에 이미 없는(404) 포폴 삭제는 성공으로 닫는다")
+    func deleteTreatsNotFoundAsDeleted() async {
+        var initialState = OnboardingPortfolioUploadFeature.State()
+        initialState.upload = .uploaded(fileName: "포트폴리오.pdf", portfolioId: Self.portfolioId)
+        let store = TestStore(initialState: initialState) {
+            OnboardingPortfolioUploadFeature()
+        } withDependencies: {
+            $0.portfolioClient.delete = { _ in throw PortfolioError.notFound(message: "없는 포트폴리오예요") }
+        }
+
+        await store.send(.view(.userTappedDeleteConfirm)) {
+            $0.isDeleting = true
+        }
+        await store.receive(\.inner.portfolioDeleted) {
+            $0.isDeleting = false
+            $0.upload = .idle
+        }
+    }
+
+    @Test("삭제 응답 전 X 재탭은 무시된다")
+    func removeIsIgnoredWhileDeleting() async {
+        var initialState = OnboardingPortfolioUploadFeature.State()
+        initialState.upload = .uploaded(fileName: "포트폴리오.pdf", portfolioId: Self.portfolioId)
+        initialState.isDeleting = true
+        let store = TestStore(initialState: initialState) {
+            OnboardingPortfolioUploadFeature()
+        }
+
+        await store.send(.view(.userTappedRemoveFile))
     }
 
     @Test("계속하기는 업로드 완료 전엔 무시된다")

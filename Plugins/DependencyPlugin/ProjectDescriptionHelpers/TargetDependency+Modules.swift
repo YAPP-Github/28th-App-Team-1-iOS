@@ -4,6 +4,7 @@ public extension TargetDependency {
 
     // MARK: External
 
+    static let chottuLinkSDK: TargetDependency = .external(name: "ChottuLinkSDK")
     static let composableArchitecture: TargetDependency = .external(name: "ComposableArchitecture")
     static let kakaoSDKCommon: TargetDependency = .external(name: "KakaoSDKCommon")
     static let kakaoSDKAuth: TargetDependency = .external(name: "KakaoSDKAuth")

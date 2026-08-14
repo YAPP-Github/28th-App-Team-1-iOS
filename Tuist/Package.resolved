@@ -1,5 +1,5 @@
 {
-  "originHash" : "aeb48682682a00d44337d42bc72e1be20f061bce211999277de912addfe209d2",
+  "originHash" : "ac205e2ec1689231b93cd250ae25f2d3b5c0e5ff86531e7f5819e44d4d42a8a8",
   "pins" : [
     {
       "identity" : "alamofire",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "7595cbcf59809f9977c5f6378500de2ad73b7ddb",
         "version" : "5.12.0"
+      }
+    },
+    {
+      "identity" : "chottulink-ios-sdk",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ConnectingDotsInfotech/chottulink-ios-sdk.git",
+      "state" : {
+        "revision" : "31694e29ec6cd9ebd5f71519f646d621c673c7ad",
+        "version" : "1.1.2"
       }
     },
     {

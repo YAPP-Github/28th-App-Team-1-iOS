@@ -96,10 +96,10 @@ enum NetworkLogger {
     static func request(_ req: URLRequest) {
         print("🌐 [REQ] \(req.httpMethod ?? "?") \(req.url?.absoluteString ?? "?")")
         if let headers = req.allHTTPHeaderFields, !headers.isEmpty {
-            print("   headers: \(LogRedaction.redacted(headers: headers))")
+            print("   headers: \(headers)")
         }
         if let body = req.httpBody, !body.isEmpty {
-            print("   body: \(LogRedaction.redacted(body: body))")
+            print("   body: \(String(decoding: body, as: UTF8.self))")
         }
     }
 
@@ -107,8 +107,7 @@ enum NetworkLogger {
         let icon = (200..<300).contains(http.statusCode) ? "✅" : "❌"
         print("\(icon) [RES] \(http.statusCode) \(url)")
         if !data.isEmpty {
-            // 로그인·재발급 응답이 토큰 페어를 실어 오므로 요청과 같은 가림을 통과시킨다.
-            print("   body: \(LogRedaction.redacted(body: data))")
+            print("   body: \(String(decoding: data, as: UTF8.self))")
         }
     }
 

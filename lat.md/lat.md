@@ -6,6 +6,7 @@
 - [[domain.map]] — 도메인 간 관계도·cross-feature 숨은 의존
 - [[api]] — D14 서버 API ↔ Domain Client 매핑·공통 규약(envelope·토큰·폴링·스트리밍)
 - [[app]] — AppFeature 코디네이터·cross-feature 라우팅
+- [[deeplink]] — Deeplink 도메인 (유니버설 링크 수신 — 설치/deferred 두 경로·SDK 경계)
 - [[home]] — Home 도메인
 - [[auth]] — Auth 도메인 (카카오·애플 소셜 로그인 + 서버 세션 교환)
 - [[interview]] — Interview 도메인 (InterviewClient — 면접 세션 API)

@@ -33,7 +33,8 @@ AppFeature  --.users(.profileUpdated)-->       Users   (list/detail 갱신)
 | Users (예정 — 데모 패턴) | DomainUser | UserClient → [[api#User]] |
 | App 스플래시 (예정 — 버전 게이트) | DomainAppVersion | AppVersionClient → [[api#AppVersion]] |
 | Auth 약관 동의 (예정 — A1 배선) | DomainConsent | ConsentClient → [[api#Consent]] |
-| Report (골격 — 화면 4종 자리표시, [[report]] · [ai-interview-report](../docs/work/ai-interview-report.md)) | DomainInterviewReport · DomainFeedbackShare | InterviewReportClient · FeedbackShareClient → [[api#Interview Report]] |
+| Report (골격 — 화면 4종 자리표시, [[report]] · [ai-interview-report](../docs/work/ai-interview-report.md)) | DomainInterviewReport · DomainFeedbackShare | InterviewReportClient · FeedbackShareClient → [[api#Interview Report]] · GuestFeedbackShareLink(링크 조립) |
+| App 딥링크 수신 (유니버설 링크 — [[deeplink]]) | DomainDeeplink · DomainFeedbackShare | DeeplinkClient · GuestFeedbackShareLink(링크 해석) |
 | GuestFeedback (예정 — 지인 웹/딥링크 진입) | DomainGuestFeedback | GuestFeedbackClient → [[api#Guest Feedback]] |
 | Profile (예정 — 데모 패턴) | DomainProfile | ProfileClient |
 

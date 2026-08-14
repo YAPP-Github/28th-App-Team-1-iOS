@@ -13,6 +13,8 @@ let project = Project.makeModule(
             .domain(interface: .appVersion),     // Splash 버전 게이트 — 강제·권장 업데이트 판정
             .domain(interface: .auth),
             .domain(interface: .consent),        // Splash 세션 복구 판정 — 게이트 2단(pending)
+            .domain(interface: .deeplink),       // 유니버설 링크 수신 — SDK 초기화 + deferred 해석 스트림
+            .domain(interface: .feedbackShare),  // onOpenURL 이 링크 도메인을 가릴 때 쓰는 형식 상수
             .domain(interface: .interview),      // 진행 중 면접 두 갈래 — 중단·재개 호출 + held 세션 보관
             .domain(interface: .recording),      // 앱 사망 세션 정리 — 죽은 프로세스가 남긴 녹화 파일 purge
             .shared(interface: .designSystem),   // AppView 전역 로딩 — LoadingModal 표출

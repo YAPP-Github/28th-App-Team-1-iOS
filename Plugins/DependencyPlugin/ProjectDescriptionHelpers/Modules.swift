@@ -20,6 +20,8 @@ public enum ModulePath {
         case common = "Common"
         case auth = "Auth"
         case interview = "Interview"
+        // 디바이스 측 IO — 유니버설 링크 수신·deferred 해석 (DeeplinkClient)
+        case deeplink = "Deeplink"
         // 디바이스 측 IO (서버 API 아님) — 카메라·마이크 권한
         case permission = "Permission"
         // 디바이스 측 IO — 카메라 프리뷰·A/V 캡처 (RecordingClient)

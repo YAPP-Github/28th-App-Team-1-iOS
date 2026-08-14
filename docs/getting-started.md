@@ -51,6 +51,8 @@ cp Projects/App/Config/Secrets.xcconfig.template Projects/App/Config/Secrets.xcc
 
 키가 비어있으면 **Dev 는 빌드 경고**만 내고(카카오 로그인 시도 시 `AppSecrets` 의 `assertionFailure`), **QA/Release 는 빌드가 실패**합니다 — `KakaoKeyGuard` 빌드 페이즈가 빈 키로 배포 빌드가 나가는 걸 차단합니다.
 
+같은 파일의 `CHOTTULINK_API_KEY` 는 유니버설 링크(지인 피드백)용이며 **비워둬도 됩니다** — 없으면 deferred 진입(재설치 후 첫 실행)과 클릭 통계만 빠지고, 설치 상태의 링크 진입은 Associated Domains 로 OS 가 직접 처리합니다.
+
 ---
 
 ## 2. 첫 빌드 & 실행

@@ -9,7 +9,6 @@ import ComposableArchitecture
 import DomainGuestFeedbackInterface
 import SharedDesignSystemInterface
 import SwiftUI
-import UIKit
 
 // @lat: [[feedback#G4 게스트 평가]]
 /// G4 핵심 평가 화면 — 몰입/카드 두 모드를 오간다.
@@ -22,8 +21,7 @@ struct GuestEvaluationView: View {
     @Bindable var store: StoreOf<GuestFeedbackFeature>
 
     /// 키보드 상단 y(글로벌) 실측 — 코멘트 아일랜드 도킹 기준. ∞ = 키보드 없음.
-    /// 시스템 키보드 세이프에어리어는 한국어 후보 바(input accessory) 높이를 반영하지
-    /// 못해 CTA 가 후보 바 뒤에 남는다 — willChangeFrame 의 endFrame 은 후보 바를 포함한다.
+    /// 왜 시스템 회피가 아니라 실측인지는 [[KeyboardDock]] 파일 머리말.
     @State private var keyboardTopY: CGFloat = .infinity
 
     var body: some View {
@@ -37,9 +35,10 @@ struct GuestEvaluationView: View {
 
                 VStack(spacing: 0) {
                     GuestVideoPlayerView(
-                        videoURL: store.entry?.videoURL,
-                        boundaries: store.entry?.questionBoundaries ?? [],
+                        store: store.scope(state: \.playback, action: \.playback),
                         isImmersive: store.isImmersiveWatching,
+                        // starting 동안엔 이 뷰가 블러 오버레이 뒤에 이미 살아 있다 — 소리만 먼저 새지 않게 재생을 미룬다.
+                        isPlaybackAllowed: store.phase == .evaluating,
                         onExpandTapped: { send(.expandVideoTapped) }
                     )
                     .padding(.horizontal, store.isImmersiveWatching ? 0 : .ds(.p20))
@@ -80,7 +79,7 @@ struct GuestEvaluationView: View {
                 }
             }
             // 코멘트 시트가 뜰 때 키보드가 본문(영상·카드·토스트)을 밀어올리지 않도록 계층째 고정한다.
-            .ignoresSafeArea(.keyboard, edges: .bottom)
+            .ignoresSafeArea(.keyboard)
 
             if store.commentEditing, store.activeAxis != nil {
                 commentOverlay
@@ -118,8 +117,8 @@ struct GuestEvaluationView: View {
                 questionRow(axis)
                 // 시청 전용에선 «비활성»이 아니라 «읽기 전용»이다 — 이미 고른 값이 그대로 보여야 한다.
                 // `.disabled` 를 쓰면 칩이 disabled 팔레트(g50/g300)로 수렴해 선택 표시가 사라진다.
+                // 탭 차단은 scaleBlock 안 칩 행에만 건다(가로 스크롤은 살린다).
                 scaleBlock(axis)
-                    .allowsHitTesting(store.canEvaluate)
                 commentRow(axis)
                     .disabled(!store.canEvaluate)
             }
@@ -133,7 +132,7 @@ struct GuestEvaluationView: View {
     /// 없음(미평가) → «저장 중 ...»(debounce 저장 진행) → «저장됨»(rating 존재) — savingAxisCode 로 구동.
     private func questionRow(_ axis: AttitudeAxis) -> some View {
         HStack(spacing: .ds(.p8)) {
-            Text(AxisScaleCopy.headline(for: axis, requesterName: store.entry?.requesterName))
+            Text(AxisScaleCopy.headline(for: axis))
                 .dsTypography(.sub4)
                 .foregroundStyle(Color.HilitBlack.b800)
             Spacer(minLength: .ds(.p8))
@@ -153,6 +152,10 @@ struct GuestEvaluationView: View {
     }
 
     /// 극 라벨(좋았어요 ↔ 아쉬웠어요) + 4단계 칩 한 줄.
+    /// 칩은 등폭이 아니라 **라벨 폭(hug) + 가로 스크롤**이다 — 시안 «질문 케이스 베리에이션»(802:9185)
+    /// 의 축별 문구가 길어 4개가 화면 폭에 안 들어가고, 디자이너 주석이 «일단 좌우 슬라이드로 구현» 이다.
+    /// 등폭(`.fill`)으로 두면 minimumScaleFactor 가 «자주 흔들림» 같은 라벨만 작게 줄여 칩마다 글자
+    /// 크기가 달라진다.
     private func scaleBlock(_ axis: AttitudeAxis) -> some View {
         VStack(alignment: .leading, spacing: .ds(.p8)) {
             HStack(spacing: 0) {
@@ -160,18 +163,26 @@ struct GuestEvaluationView: View {
                 Spacer()
                 TagLabel("아쉬웠어요", style: .redRed)
             }
-            HStack(spacing: .ds(.p8)) {
-                let labels = AxisScaleCopy.labels(for: axis.code)
-                ForEach(Array(labels.enumerated()), id: \.offset) { idx, label in
-                    ChoiceChip(
-                        label,
-                        isSelected: store.ratings[axis.code]?.level == idx + 1,
-                        tone: idx < 2 ? .positive : .negative
-                    ) {
-                        send(.levelSelected(idx + 1))
+            ScrollView(.horizontal) {
+                HStack(spacing: .ds(.p8)) {
+                    let labels = AxisScaleCopy.labels(for: axis.code)
+                    ForEach(Array(labels.enumerated()), id: \.offset) { idx, label in
+                        ChoiceChip(
+                            label,
+                            isSelected: store.ratings[axis.code]?.level == idx + 1,
+                            tone: idx < 2 ? .positive : .negative,
+                            layout: .hug
+                        ) {
+                            send(.levelSelected(idx + 1))
+                        }
                     }
                 }
+                // 시청 전용에선 칩 탭만 막는다 — 스크롤은 살려 둬야 4개 라벨을 끝까지 읽을 수 있다.
+                .allowsHitTesting(store.canEvaluate)
             }
+            .scrollIndicators(.hidden)
+            // 축을 바꾸면 스크롤을 앞으로 되감는다 — 이전 축에서 끝까지 민 위치가 남으면 첫 칩이 가려진다.
+            .id(axis.code)
         }
     }
 
@@ -291,29 +302,12 @@ struct GuestEvaluationView: View {
                 }
                 .padding(.horizontal, .ds(.p20))
                 .padding(.vertical, .ds(.p14))
-                .padding(.bottom, keyboardOverlap(in: geo))
+                .padding(.bottom, geo.keyboardOverlap(below: keyboardTopY))
             }
         }
-        // 시스템 회피를 끄고 실측만 쓴다 — 둘이 겹치면 이중 오프셋.
-        .ignoresSafeArea(.keyboard)
-        .onReceive(
-            NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)
-        ) { note in
-            guard let endFrame = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?
-                .cgRectValue else { return }
-            keyboardTopY = endFrame.minY
-        }
-        .onReceive(
-            NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)
-        ) { _ in
-            keyboardTopY = .infinity
-        }
+        // 시스템 회피는 화면 루트(GuestFeedbackView)에서 이미 껐다 — 여기선 실측 도킹만.
+        .readsKeyboardTop(into: $keyboardTopY)
         .animation(.easeOut(duration: 0.25), value: keyboardTopY)
-    }
-
-    /// 아일랜드 기준 바닥(홈 인디케이터 위)과 키보드 상단(후보 바 포함)의 겹침 — 키보드 없으면 0.
-    private func keyboardOverlap(in geo: GeometryProxy) -> CGFloat {
-        max(0, geo.frame(in: .global).maxY - keyboardTopY)
     }
 }
 

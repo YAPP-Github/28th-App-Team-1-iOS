@@ -62,23 +62,30 @@ enum GuestTextRules {
     }
 }
 
-/// 축별 4단계 척도 카피 — GAZE·VOICE 는 Figma 최종 시안 확정 문구, 나머지 3축(표정·자세·손동작)은
-/// 문구 확정 대기(PRD Part 4 §7-1)라 칩 한 줄이 유지되는 같은 길이 패턴의 잠정 문구를 쓴다.
+/// 축별 질문·4단계 척도 카피 — Figma «Part4 지인피드백 / 질문 케이스 베리에이션»(802:9185) 5축 확정 문구.
+/// 다섯 축 전부 시안이 나와 잠정 문구가 사라졌고, 질문에서 요청자 이름이 빠졌다(주어가 영상 속 인물로 자명).
 enum AxisScaleCopy {
-    /// index 0 → level 1(긍정) … index 3 → level 4(아쉬움)
+    /// index 0 → level 1(긍정) … index 3 → level 4(아쉬움).
+    /// 미확정 축 코드가 서버에서 오면 축 이름만으로 성립하는 중립 문구로 떨어진다.
     static func labels(for code: String) -> [String] {
         switch code {
-        case "GAZE": ["잘 맞춤", "꽤 맞춤", "가끔 피함", "자주 피함"]     // Figma «객관식 - 선택 후» 2192:4857
-        case "VOICE": ["적당함", "너무 큼", "조금 작음", "너무 작음"]     // Figma «객관식 - 선택 후» 2192:5256
+        case "EXPRESSION": ["안정됨", "꽤 안정됨", "가끔 굳음", "자주 굳음"]        // Figma «표정» 802:8885
+        case "GAZE": ["잘 맞춤", "꽤 맞춤", "가끔 피함", "자주 피함"]              // Figma «시선» 802:8814
+        case "GESTURE": ["잘 어울림", "꽤 어울림", "가끔 산만", "매우 산만"]     // Figma «손동작» 802:9027
+        case "POSTURE": ["반듯함", "꽤 반듯함", "가끔 산만", "매우 산만"]     // Figma «자세» 802:8956
+        case "VOICE": ["잘 들림", "꽤 들림", "꽤 안들림", "안들림"]          // Figma «목소리» 802:9098
         default: ["좋았어요", "괜찮았어요", "조금 아쉬움", "많이 아쉬움"]
         }
     }
 
-    static func headline(for axis: AttitudeAxis, requesterName: String?) -> String {
-        let name = requesterName ?? "지원자"
+    static func headline(for axis: AttitudeAxis) -> String {
         switch axis.code {
-        case "GAZE": return "\(name)님은 눈을 잘 마주치나요?"
-        default: return "\(name)님의 \(axis.displayName), 어땠나요?"
+        case "EXPRESSION": return "표정이 안정되어 보이나요?"
+        case "GAZE": return "눈을 잘 마주치나요?"
+        case "GESTURE": return "손동작이 말과 잘 어울리나요?"
+        case "POSTURE": return "자세를 잘 유지하나요?"
+        case "VOICE": return "목소리가 선명하게 들리나요?"
+        default: return "\(axis.displayName), 어땠나요?"
         }
     }
 }
