@@ -29,7 +29,12 @@ public struct AuthOnboardingNamingFeature {
             return !trimmed.isEmpty && trimmed.count <= AuthOnboardingNamingFeature.maxLength
         }
 
-        public init(step: Int = 1, totalSteps: Int = 3) {
+        /// `name` 은 소셜 제공자가 준 이름을 미리 채우는 자리 — 없으면 빈 칸으로 시작한다.
+        /// 서버 계약(한글·영문 5자)에 안 맞는 값은 코디네이터가 걸러서 넘기지 않는다:
+        /// 여기서 잘라 넣으면 «남의 이름을 멋대로 줄인» 값이 되고, 그대로 채우면 CTA 가 잠긴 채
+        /// 이유를 못 알리는 화면이 된다(길이 안내 문구가 시안에 없다).
+        public init(name: String = "", step: Int = 1, totalSteps: Int = 3) {
+            self.name = name
             self.step = step
             self.totalSteps = totalSteps
         }

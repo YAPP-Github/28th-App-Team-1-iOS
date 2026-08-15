@@ -128,7 +128,7 @@ private extension SocialCredential {
         switch self {
         case .kakao(let accessToken, _):
             LoginBody(provider: "KAKAO", credential: accessToken)
-        case .apple(_, let authorizationCode):
+        case .apple(_, let authorizationCode, _):
             LoginBody(provider: "APPLE", credential: authorizationCode)
         }
     }

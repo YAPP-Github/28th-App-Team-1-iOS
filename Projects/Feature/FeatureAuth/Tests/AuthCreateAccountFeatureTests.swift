@@ -33,10 +33,10 @@ final class AuthCreateAccountFeatureTests: XCTestCase {
         await store.send(.view(.userTappedSignIn(.kakao))) {
             $0.isAuthenticating = true
         }
-        await store.receive(\.inner.signInFinished.success, result) {
+        await store.receive(\.inner.signInFinished.success, .init(result: result)) {
             $0.isAuthenticating = false
         }
-        await store.receive(\.delegate.authenticated, result)
+        await store.receive(\.delegate.authenticated, .init(result: result))
     }
 
     /// 게이트 판정값은 login 응답이 실어 온다 — 기존 회원(동의 최신 + 프로필 등록)도 그대로 흐른다.
@@ -53,10 +53,10 @@ final class AuthCreateAccountFeatureTests: XCTestCase {
         await store.send(.view(.userTappedSignIn(.kakao))) {
             $0.isAuthenticating = true
         }
-        await store.receive(\.inner.signInFinished.success, result) {
+        await store.receive(\.inner.signInFinished.success, .init(result: result)) {
             $0.isAuthenticating = false
         }
-        await store.receive(\.delegate.authenticated, result)
+        await store.receive(\.delegate.authenticated, .init(result: result))
     }
 
     @MainActor
@@ -152,10 +152,10 @@ final class AuthCreateAccountFeatureTests: XCTestCase {
         await store.send(.view(.userTappedReviewCodeSignIn)) {
             $0.isAuthenticating = true
         }
-        await store.receive(\.inner.signInFinished.success, result) {
+        await store.receive(\.inner.signInFinished.success, .init(result: result)) {
             $0.isAuthenticating = false
         }
-        await store.receive(\.delegate.authenticated, result)
+        await store.receive(\.delegate.authenticated, .init(result: result))
     }
 
     /// 코드가 비었으면(공백뿐 포함) 서버를 때리지 않는다 — testValue 가 unimplemented 라 호출 시 실패한다.
@@ -203,7 +203,8 @@ final class AuthCreateAccountFeatureTests: XCTestCase {
     func test_애플로그인성공_provider전달_delegate신호() async {
         let credential = SocialCredential.apple(
             identityToken: "test-identity-token",
-            authorizationCode: "test-authorization-code"
+            authorizationCode: "test-authorization-code",
+            fullName: "서정원"
         )
         let result = Self.newUser
         let store = TestStore(initialState: AuthCreateAccountFeature.State()) {
@@ -223,9 +224,10 @@ final class AuthCreateAccountFeatureTests: XCTestCase {
         await store.send(.view(.userTappedSignIn(.apple))) {
             $0.isAuthenticating = true
         }
-        await store.receive(\.inner.signInFinished.success, result) {
+        // 애플이 준 이름이 판정값과 함께 코디네이터까지 실려 간다 — 이름 화면 프리필 재료다.
+        await store.receive(\.inner.signInFinished.success, .init(result: result, socialName: "서정원")) {
             $0.isAuthenticating = false
         }
-        await store.receive(\.delegate.authenticated, result)
+        await store.receive(\.delegate.authenticated, .init(result: result, socialName: "서정원"))
     }
 }

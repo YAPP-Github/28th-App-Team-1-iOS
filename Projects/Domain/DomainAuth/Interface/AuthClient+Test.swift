@@ -35,7 +35,8 @@ extension AuthClient {
             case .apple:
                 .apple(
                     identityToken: "preview-identity-token",
-                    authorizationCode: "preview-authorization-code"
+                    authorizationCode: "preview-authorization-code",
+                    fullName: "서정원"
                 )
             }
         },

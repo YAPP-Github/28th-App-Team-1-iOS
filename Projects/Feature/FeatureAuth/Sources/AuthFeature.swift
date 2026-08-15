@@ -9,6 +9,7 @@ import ComposableArchitecture
 import DomainAuthInterface
 import DomainConsentInterface
 import DomainUserInterface
+import Foundation
 
 // @lat: [[auth#가입 플로우]]
 // depends-on: [[app]] — 진입 판정(Splash 세션 복구)은 AppFeature 가 하고, 이 코디네이터는
@@ -52,6 +53,9 @@ public struct AuthFeature {
         /// 프로필 게이트 판정값 — 약관을 통과한 뒤 온보딩/홈을 가른다. 판정 전에는 nil.
         /// 약관 화면을 거치는 동안 들고 있어야 해서 State 에 남는다(제출 응답엔 이 값이 없다).
         public var profileRegistered: Bool?
+        /// 소셜 제공자가 준 이름 — 이름 화면 프리필용. 애플 최초 인가에만 실려 오고 그 외엔 nil.
+        /// 수집값(`name`)과 따로 두는 이유: 사용자가 지우거나 고칠 수 있어 «받은 값» 과 «확정값» 이 다르다.
+        public var socialName: String?
         /// 가입 온보딩 수집값 — 연차 화면 CTA 에서 셋을 묶어 한 번에 PATCH 한다.
         public var name = ""
         public var jobRole: String?
@@ -122,9 +126,10 @@ public struct AuthFeature {
         Reduce { state, action in
             switch action {
             // 소셜 인증 + 세션 교환 성공 — 게이트 2단 체인 진입.
-            case let .createAccount(.delegate(.authenticated(result))):
-                state.profileRegistered = result.profileRegistered
-                return enterGate(&state, consentStatus: result.consentStatus)
+            case let .createAccount(.delegate(.authenticated(success))):
+                state.profileRegistered = success.result.profileRegistered
+                state.socialName = success.socialName
+                return enterGate(&state, consentStatus: success.result.consentStatus)
 
             case .createAccount:
                 return .none
@@ -277,14 +282,36 @@ public struct AuthFeature {
 
     /// 게이트 ② 프로필 — 등록됐으면 홈, 아니면 가입 온보딩(이름부터).
     /// 판정값이 없으면(계약 위반) 미등록으로 읽는다 — 온보딩을 한 번 더 보는 쪽이 안전한 실패다.
+    /// 애플이 이름을 줬으면 그 값을 채워 넣는다 — 이미 받은 정보를 다시 타이핑시키지 않기 위해서다
+    /// (App Review Guideline 4). 화면 자체는 남긴다: 애플은 최초 인가에만 이름을 주므로
+    /// 재로그인·세션 복구로 들어오면 채울 값이 없고, 그때는 지금과 똑같이 빈 칸으로 물어야 한다.
     private func passProfileGate(_ state: inout State) -> Effect<Action> {
         guard state.profileRegistered == true else {
             state.path.append(.naming(AuthOnboardingNamingFeature.State(
+                name: Self.prefillableName(state.socialName) ?? "",
                 step: 1, totalSteps: Self.onboardingSteps
             )))
             return .none
         }
         return .send(.delegate(.signedIn))
+    }
+
+    /// 프리필 허용 문자 — 서버 계약이 «한글·영문만» 이라 완성형 한글과 라틴 알파벳만 통과시킨다.
+    private static let namePrefillAllowed = CharacterSet(charactersIn: "가"..."힣")
+        .union(CharacterSet(charactersIn: "A"..."Z"))
+        .union(CharacterSet(charactersIn: "a"..."z"))
+
+    /// 소셜 이름을 그대로 채워도 되는지 — PATCH 계약(한글·영문만, 최대 5자)에 맞을 때만 돌려준다.
+    /// 어긋나면 nil 로 빈 칸을 남긴다. 잘라 넣으면 남의 이름을 멋대로 줄인 값이 되고, 그대로 채우면
+    /// CTA 가 잠긴 채 이유를 못 알리는 화면이 된다(길이 안내 문구가 시안에 없다).
+    /// 공백을 낀 영문 풀네임이 주로 여기 걸린다 — 그 경우 사용자가 직접 적는 지금 동작 그대로다.
+    private static func prefillableName(_ socialName: String?) -> String? {
+        guard let trimmed = socialName?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty,
+              trimmed.count <= AuthOnboardingNamingFeature.maxLength,
+              trimmed.unicodeScalars.allSatisfy(namePrefillAllowed.contains)
+        else { return nil }
+        return trimmed
     }
 }
 

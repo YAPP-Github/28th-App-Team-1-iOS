@@ -88,7 +88,8 @@ struct FeatureAuthExampleApp: App {
                         case .apple:
                             return .apple(
                                 identityToken: "example-identity-token",
-                                authorizationCode: "example-authorization-code"
+                                authorizationCode: "example-authorization-code",
+                                fullName: "서정원"
                             )
                         }
                     }

@@ -26,9 +26,9 @@ final class AuthFeatureGateTests: XCTestCase {
     func test_동의미제출_프로필미등록_약관으로() async {
         let store = makeStore()
 
-        await store.send(.createAccount(.delegate(.authenticated(
-            LoginResult(consentStatus: .notSubmitted, profileRegistered: false)
-        )))) {
+        await store.send(.createAccount(.delegate(.authenticated(.init(
+            result: LoginResult(consentStatus: .notSubmitted, profileRegistered: false)
+        ))))) {
             $0.profileRegistered = false
             $0.path.append(.terms(AuthTermsFeature.State()))
         }
@@ -39,9 +39,9 @@ final class AuthFeatureGateTests: XCTestCase {
     func test_재동의_프로필등록됨_약관먼저() async {
         let store = makeStore()
 
-        await store.send(.createAccount(.delegate(.authenticated(
-            LoginResult(consentStatus: .stale, profileRegistered: true)
-        )))) {
+        await store.send(.createAccount(.delegate(.authenticated(.init(
+            result: LoginResult(consentStatus: .stale, profileRegistered: true)
+        ))))) {
             $0.profileRegistered = true
             $0.path.append(.terms(AuthTermsFeature.State()))
         }
@@ -52,10 +52,44 @@ final class AuthFeatureGateTests: XCTestCase {
     func test_동의최신_프로필미등록_온보딩으로() async {
         let store = makeStore()
 
-        await store.send(.createAccount(.delegate(.authenticated(
-            LoginResult(consentStatus: .upToDate, profileRegistered: false)
-        )))) {
+        await store.send(.createAccount(.delegate(.authenticated(.init(
+            result: LoginResult(consentStatus: .upToDate, profileRegistered: false)
+        ))))) {
             $0.profileRegistered = false
+            $0.path.append(.naming(AuthOnboardingNamingFeature.State(step: 1, totalSteps: 3)))
+        }
+    }
+
+    // MARK: - 소셜 이름 프리필 (App Review Guideline 4)
+
+    /// 애플이 준 이름은 이름 화면에 미리 채운다 — 이미 받은 정보를 다시 묻지 않는다.
+    @MainActor
+    func test_애플이름수신_이름화면프리필() async {
+        let store = makeStore()
+
+        await store.send(.createAccount(.delegate(.authenticated(.init(
+            result: LoginResult(consentStatus: .upToDate, profileRegistered: false),
+            socialName: "서정원"
+        ))))) {
+            $0.profileRegistered = false
+            $0.socialName = "서정원"
+            $0.path.append(.naming(AuthOnboardingNamingFeature.State(
+                name: "서정원", step: 1, totalSteps: 3
+            )))
+        }
+    }
+
+    /// 서버 계약(한글·영문 5자)을 넘는 이름은 채우지 않는다 — 채워 두면 CTA 가 잠긴 채 이유를 못 알린다.
+    @MainActor
+    func test_계약초과이름_프리필하지않음() async {
+        let store = makeStore()
+
+        await store.send(.createAccount(.delegate(.authenticated(.init(
+            result: LoginResult(consentStatus: .upToDate, profileRegistered: false),
+            socialName: "Jeongwon Seo"
+        ))))) {
+            $0.profileRegistered = false
+            $0.socialName = "Jeongwon Seo"
             $0.path.append(.naming(AuthOnboardingNamingFeature.State(step: 1, totalSteps: 3)))
         }
     }
@@ -65,9 +99,9 @@ final class AuthFeatureGateTests: XCTestCase {
     func test_동의최신_프로필등록됨_홈직행() async {
         let store = makeStore()
 
-        await store.send(.createAccount(.delegate(.authenticated(
-            LoginResult(consentStatus: .upToDate, profileRegistered: true)
-        )))) {
+        await store.send(.createAccount(.delegate(.authenticated(.init(
+            result: LoginResult(consentStatus: .upToDate, profileRegistered: true)
+        ))))) {
             $0.profileRegistered = true
         }
         await store.receive(\.delegate.signedIn)

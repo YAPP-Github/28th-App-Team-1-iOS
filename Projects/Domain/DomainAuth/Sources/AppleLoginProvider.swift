@@ -7,6 +7,7 @@
 
 import AuthenticationServices
 import DomainAuthInterface
+import Foundation
 import UIKit
 
 /// 애플 로그인 연동. ASAuthorization 타입은 이 파일 밖으로 나가지 않는다.
@@ -24,6 +25,10 @@ final class AppleLoginProvider: NSObject, SocialLoginProvider {
         try await withCheckedThrowingContinuation { continuation in
             self.continuation = continuation
             let request = ASAuthorizationAppleIDProvider().createRequest()
+            // 이름·이메일을 애플에서 받는다 — 요청하지 않으면 credential 이 둘 다 nil 로 와서
+            // 가입 온보딩이 이미 있는 정보를 다시 묻게 된다(App Review Guideline 4 리젝 사유).
+            // 이메일은 앱이 쓰지 않지만 scope 로 요청해야 서버가 코드 교환 때 ID 토큰에서 읽을 수 있다.
+            request.requestedScopes = [.fullName, .email]
             let controller = ASAuthorizationController(authorizationRequests: [request])
             controller.delegate = self
             controller.presentationContextProvider = self
@@ -68,8 +73,18 @@ extension AppleLoginProvider: ASAuthorizationControllerDelegate {
         }
         finish(with: .success(.apple(
             identityToken: identityToken,
-            authorizationCode: authorizationCode
+            authorizationCode: authorizationCode,
+            fullName: credential.fullName.flatMap(Self.displayName)
         )))
+    }
+
+    /// `PersonNameComponents` → 한 줄 표시 이름. 로캘 규칙을 타므로 직접 잇지 않고 포매터에 맡긴다
+    /// (한국어 «서정원», 영어 «Jeongwon Seo»). 구성요소가 다 비면 빈 문자열이 나오므로 nil 로 되돌린다.
+    private static func displayName(from components: PersonNameComponents) -> String? {
+        let formatted = PersonNameComponentsFormatter
+            .localizedString(from: components, style: .default)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return formatted.isEmpty ? nil : formatted
     }
 
     func authorizationController(

@@ -20,6 +20,20 @@ public struct AuthCreateAccountFeature {
     /// 심사용 코드 입력을 여는 로고 탭 횟수.
     public static let reviewCodeTapThreshold = 5
 
+    /// 로그인 성공 payload — 라우팅 판정값과, 애플이 준 이름을 함께 나른다.
+    /// 연관값 둘을 늘어놓지 않고 한 값으로 묶는 건 case path 를 살리기 위해서다
+    /// (연관값 2개짜리 case 는 튜플이라 `\.inner.signInFinished.success` 로 파고들 수 없다).
+    public struct SignInSuccess: Equatable, Sendable {
+        public let result: LoginResult
+        /// 애플이 **최초 인가 1회에만** 주는 이름 — 카카오·재로그인·심사용 코드 경로는 nil.
+        public let socialName: String?
+
+        public init(result: LoginResult, socialName: String? = nil) {
+            self.result = result
+            self.socialName = socialName
+        }
+    }
+
     @ObservableState
     public struct State: Equatable {
         /// 인증 진행 중 — **표시용이 아니라 재탭 차단용**이다. 로딩 표시는 AppView 의 전역
@@ -66,9 +80,10 @@ public struct AuthCreateAccountFeature {
         @CasePathable
         public enum Inner: Sendable {
             /// signIn(자격증명 획득) → login(서버 세션 교환·토큰 저장)까지 마친 결과.
-            /// credential 은 같은 effect 안에서 login 에 즉시 소비되고 payload 로도 남기지 않는다 —
-            /// 이후 분기에 필요한 건 로그인 응답의 판정값(`LoginResult`)뿐이다.
-            case signInFinished(Result<LoginResult, AuthError>)
+            /// credential 자체는 같은 effect 안에서 login 에 소비되고 남기지 않는다 — 이후 분기에
+            /// 필요한 건 `SignInSuccess`(판정값 + 애플이 준 이름)뿐이다. 이름을 여기서 흘리면
+            /// 다시 얻을 길이 없다 — 애플은 최초 인가에만 주고 재로그인은 nil 로 온다.
+            case signInFinished(Result<SignInSuccess, AuthError>)
         }
 
         public enum Alert: Equatable {}
@@ -78,7 +93,7 @@ public struct AuthCreateAccountFeature {
         public enum Delegate: Equatable {
             /// 소셜 인증 + 서버 세션 교환(토큰 Keychain 저장) 성공.
             /// 게이트 2단(동의 → 프로필) 분기는 판정값을 받은 코디네이터가 한다.
-            case authenticated(LoginResult)
+            case authenticated(SignInSuccess)
         }
     }
 
@@ -105,7 +120,8 @@ public struct AuthCreateAccountFeature {
                 return .run { send in
                     do {
                         let result = try await authClient.loginWithReviewCode(code)
-                        await send(.inner(.signInFinished(.success(result))))
+                        // 소셜 SDK 를 거치지 않는 경로라 실어 올 이름이 없다 — 이름 화면은 그대로 뜬다.
+                        await send(.inner(.signInFinished(.success(.init(result: result)))))
                     } catch {
                         await send(.inner(.signInFinished(.failure(error as? AuthError ?? .unexpected))))
                     }
@@ -120,7 +136,9 @@ public struct AuthCreateAccountFeature {
                         // 서버 세션 교환 — 성공 시 토큰 페어가 Keychain(TokenStore)에 저장된다.
                         // 이게 없으면 인증 필요 API 가 전부 NotAuthenticatedError 로 끊긴다.
                         let result = try await authClient.login(credential)
-                        await send(.inner(.signInFinished(.success(result))))
+                        await send(.inner(.signInFinished(.success(
+                            .init(result: result, socialName: credential.socialName)
+                        ))))
                     } catch {
                         await send(.inner(.signInFinished(.failure(error as? AuthError ?? .unexpected))))
                     }
@@ -130,9 +148,9 @@ public struct AuthCreateAccountFeature {
             case .view(.binding):
                 return .none
 
-            case let .inner(.signInFinished(.success(result))):
+            case let .inner(.signInFinished(.success(success))):
                 state.isAuthenticating = false
-                return .send(.delegate(.authenticated(result)))
+                return .send(.delegate(.authenticated(success)))
 
             case .inner(.signInFinished(.failure(.cancelled))):
                 state.isAuthenticating = false
