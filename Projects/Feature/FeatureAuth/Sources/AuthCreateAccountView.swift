@@ -5,7 +5,8 @@
 //  Created by 서정원 on 26/07/10.
 //
 
-// Figma: «Create_Account» https://www.figma.com/design/ZG7FUxWCvITmnvzZi7fpTS/?node-id=3632-14399
+// Figma: «Create_Account» https://www.figma.com/design/JL9YPbqBqmaC9Z0I3SzDZS/?node-id=443-5802
+//   (2026-08-15 개정 — 버튼 로고 24→34·라벨 head4 영문. 이전 시안 ZG7FUxWCvITmnvzZi7fpTS node 3632-14399)
 
 import ComposableArchitecture
 import SharedDesignSystemInterface
@@ -101,7 +102,7 @@ public struct AuthCreateAccountView: View {
     private var socialButtons: some View {
         VStack(spacing: .ds(.p8)) {
             SocialLoginButton(
-                title: "카카오톡으로 로그인",
+                title: "Sign in with Kakao",
                 icon: Image.Logo.kakaoWithBg24,
                 background: Color.Brand.kakao,
                 foreground: Color.HilitBlack.b900
@@ -111,7 +112,7 @@ public struct AuthCreateAccountView: View {
             .revealed(isRevealed, order: 0)
 
             SocialLoginButton(
-                title: "Apple로 로그인",
+                title: "Sign in with Apple",
                 icon: Image.Logo.appleWithBg24,
                 background: Color.HilitBlack.b900,
                 foreground: Color.BlackWhite.white
@@ -170,10 +171,16 @@ private extension View {
 
 /// 소셜 로그인 버튼 — 아이콘 + 라벨, 브랜드 색 판.
 ///
-// @ds(component): button-large/login (Figma 3756:15525 카카오 · 3756:15531 Apple) — h56·px8/py16·gap8,
-//   라벨 sub7. DS `ButtonLarge` 는 title(String) 단일 슬롯 + b800/white 고정이라 아이콘도 브랜드 색도 담을 수 없다.
+// @ds(component): button-large/login (Figma 2030:7288 카카오 · 2030:7287 Apple) — h56·px8/py11·gap8,
+//   로고 34, 라벨 head4. DS `ButtonLarge` 는 title(String) 단일 슬롯 + b800/white 고정이라 아이콘도 브랜드 색도 담을 수 없다.
 //   두 번째 사용처가 생기면 Shared 승격 후보 (아이콘 슬롯을 가진 large 티어).
 private struct SocialLoginButton: View {
+    /// 시안의 브랜드 로고 변(34) — 에셋은 24px 판뿐이라 확대해 쓴다.
+    // @ds(icon): 34 → Logo.{kakao,apple}WithBg24 — 시안이 같은 24px 컴포넌트를 34 로 인스턴스한 것이라
+    //   재드로잉이 아니다(순수 확대). 정수배가 아니라 image.md 의 «정수배» 예외에는 못 들어가니,
+    //   34 판 에셋이 생기면 이 frame 을 지우고 교체한다.
+    private static let iconSize: CGFloat = 34
+
     let title: String
     let icon: Image
     let background: Color
@@ -183,16 +190,21 @@ private struct SocialLoginButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: .ds(.p8)) {
-                // 아이콘은 24px 로 그려진 에셋을 그대로 쓴다 — 크기 지정·틴트 없음(DS 규칙).
+                // 틴트는 걸지 않는다(DS 규칙) — 크기만 시안 값으로 맞춘다.
                 icon
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: Self.iconSize, height: Self.iconSize)
 
                 Text(title)
-                    .dsTypography(.sub7)
+                    .dsTypography(.head4)
                     .foregroundStyle(foreground)
             }
             .frame(maxWidth: .infinity)
             .padding(.horizontal, .ds(.p8))
-            .padding(.vertical, .ds(.p16))
+            // @ds(spacing): 11 — 로고 34 와 합쳐 버튼 높이 56 을 만드는 값(개정 전 24+16·2 와 같은 높이).
+            //   스케일(4~24)에 11 이 없다
+            .padding(.vertical, 11)
             .background(background)
         }
         .buttonStyle(.plain)
