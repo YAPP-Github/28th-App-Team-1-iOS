@@ -56,8 +56,13 @@ public struct GuestFeedbackView: View {
     /// 실앱 fullScreenCover 의 유일한 탈출구 — 어느 phase 에서도 같은 자리(좌상단)에 둔다.
     /// **도착지는 여기가 정하지 않는다**: `delegate(.dismissed)` 만 올리고, 로그인돼 있으면 홈,
     /// 아니면 소셜 로그인 화면으로 보내는 판단은 AppFeature 몫이다 (사용자 결정 2026-08-14).
-    /// 시안에 없는 코드 전용 어포던스라(게스트 화면엔 X 가 그려져 있지 않다) 위치·여백은
-    /// DS 네비바(px20 · 44 바 안 24 글리프)를 눈으로 맞춘 값이다 — 스택 밖 cover 라 시스템 바가 안 그려진다.
+    ///
+    /// 시안에 `top-bar`(h44 · px20 · 아이콘 슬롯 40)가 들어오면서 코드 전용 어포던스가 아니게 됐다 —
+    /// 라이트 화면은 1947:6975(온보딩)·1947:6996(요약), 다크 화면은 1947:7368(평가). 글리프 자리는
+    /// 세 프레임 모두 «세이프에어리어 top + 10, leading 20» 으로 같아 아래 값이 그대로 1:1 이다.
+    /// **DS `.hilitPresentedNavigationBar` 를 안 쓰는 이유**: 그건 `safeAreaInset` 이라 모든 phase 의
+    /// 콘텐츠를 44 내리는데, 시안에서 다크(평가) 프레임의 top-bar 는 풀블리드 영상 **위에 절대배치**다.
+    /// 그래서 바는 오버레이로 두고, 흐름에 바를 넣은 라이트 화면만 각자 상단 여백(44+16)으로 자리를 비운다.
     /// Example(내비 push)에선 delegate 를 아무도 안 받아 무반응 — 실앱 조립에서만 유효하다.
     private var closeButton: some View {
         Button { send(.closeTapped) } label: {
@@ -65,8 +70,9 @@ public struct GuestFeedbackView: View {
             isDarkPhase ? Image.Cancel.white24 : Image.Cancel.default24
         }
         .padding(.leading, .ds(.p20))
-        // @ds(layout): 10 — 44 바 안에서 24 글리프가 서는 높이((44-24)/2). spacing 스케일에 10 이 없다
-        .padding(.top, 10)
+        // 시안 top-bar 의 글리프 자리 — 바 py9 + 아이콘 프레임 안 1(1981:6073/6074) = 10.
+        // 44 바 안에서 24 글리프가 서는 높이((44-24)/2)와도 같다.
+        .padding(.top, .ds(.p10))
     }
 
     /// DS `VideoOverlay(.darkClose)` 를 위아래로 뒤집어 상단에 깐다 — 리포트 플레이어 상단 스크림과 같은 방식.

@@ -12,7 +12,7 @@ import SwiftUI
 
 // @lat: [[feedback#G4 게스트 평가]]
 /// 제출 전 요약 화면 — "재원님에게 이렇게 전달 될 거예요" 축별 평가 리스트 + 전송 CTA.
-/// Figma 최종 «[4] 온보딩 - 메인(요약)»(node 2101:8781) 1:1 — 라이트 톤(흰 배경),
+/// Figma 최종 «Peerfeedback_done»(node 802:7442) 1:1 — 라이트 톤(흰 배경),
 /// «평가 항목» 헤더 + «영상 다시보기» 버튼, 카드 탭 = 해당 축 수정(summaryCardTapped), 연필 아이콘.
 /// 하단 블랙 `ButtonLarge`(.bottom). `submitTapped` 은 DS Modal(제출 불가역 경고, `.hilitModal`)을 경유한다.
 @ViewAction(for: GuestFeedbackFeature.self)
@@ -31,9 +31,10 @@ struct GuestSummaryView: View {
                         axisList
                     }
                     .padding(.horizontal, .ds(.p20))
-                    // @ds(spacing): 42 → p40 — 본문 시작(Figma 3052:5472 y85 − 상태바 43).
-                    // 좌상단 닫기 X(끝 34)를 지나 헤더가 시작한다.
-                    .padding(.top, .ds(.p40))
+                    // @ds(layout): 44 — 시안 top-bar(1947:6996) 높이. 그 아래 갭 16 자리에서 헤더가
+                    // 시작한다(title-box y103 − 상태바 43 = 60). 닫기 X 는 흐름이 아니라
+                    // 오버레이(GuestFeedbackView `closeButton`)라 이 화면이 바 높이만큼 자리를 비워 준다.
+                    .padding(.top, 44 + CGFloat.ds(.p16))
                     .padding(.bottom, .ds(.p20))
                 }
                 submitButton
