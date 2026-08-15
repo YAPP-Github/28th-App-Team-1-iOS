@@ -28,7 +28,7 @@ public struct AuthOnboardingNamingView: View {
                 // 내비바와 프로그레스 사이 간격 — 시안 top-bar/progress bar 사이 gap 8.
                 .padding(.top, .ds(.p8))
 
-            TitleBox(["반가워요!", "이름을 입력해주세요"], tag: "필수")
+            TitleBox(["반가워요!", "닉네임을 입력해주세요"], tag: "필수")
                 .padding(.top, .ds(.p20))
                 .padding(.horizontal, .ds(.p20))
 
@@ -56,7 +56,7 @@ public struct AuthOnboardingNamingView: View {
     // @ds(layout): 149 — 머리글과 입력란 사이. 시안은 name-field 를 y=367 에 절대 배치하는데,
     //              머리글 아래 여백(=125)에 비어 있는 서브 타이틀 슬롯 24 를 흡수시킨 값이다
     private var nameField: some View {
-        NameField("이름을 알려주세요", text: $store.name)
+        NameField("닉네임을 알려주세요", text: $store.name)
             .frame(maxWidth: .infinity)
             .padding(.top, 149)
             .onSubmit { send(.userTappedContinue) }
