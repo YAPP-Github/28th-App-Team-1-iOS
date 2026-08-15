@@ -138,8 +138,9 @@ actor CameraSessionManager {
         session.automaticallyConfiguresApplicationAudioSession = false
 
         session.beginConfiguration()
-        if session.canSetSessionPreset(.hd1280x720) {
-            session.sessionPreset = .hd1280x720
+        // 480p — 720p 의 16:9 와 달리 4:3 이라 프레임 비율이 바뀐다(프리뷰는 resizeAspectFill 이 흡수).
+        if session.canSetSessionPreset(.vga640x480) {
+            session.sessionPreset = .vga640x480
         }
         let output = AVCaptureMovieFileOutput()
         guard session.canAddOutput(output) else {
@@ -151,8 +152,8 @@ actor CameraSessionManager {
            output.availableVideoCodecTypes.contains(.h264) {
             output.setOutputSettings([
                 AVVideoCodecKey: AVVideoCodecType.h264,
-                // 상반신 고정 화면이라 2.5Mbps 로 충분 — 12분 ≈ 220MB (기본 ~8-10Mbps 는 700MB+, 업로드 병목).
-                AVVideoCompressionPropertiesKey: [AVVideoAverageBitRateKey: 2_500_000]
+                // 상반신 고정 화면이라 2Mbps 로 충분 — 12분 ≈ 180MB (기본 ~8-10Mbps 는 700MB+, 업로드 병목).
+                AVVideoCompressionPropertiesKey: [AVVideoAverageBitRateKey: 2_000_000]
             ], for: connection)
         }
         session.commitConfiguration()
