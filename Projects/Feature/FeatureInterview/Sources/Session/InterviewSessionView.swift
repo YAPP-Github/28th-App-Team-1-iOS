@@ -86,7 +86,7 @@ public struct InterviewSessionView: View {
             } else {
                 statusArea
             }
-            miniButtonRow
+            miniButtonStack
                 .padding(.top, .ds(.p10))
                 .padding(.bottom, .ds(.p10))
                 .padding(.horizontal, .ds(.p20))
@@ -112,7 +112,7 @@ public struct InterviewSessionView: View {
             HighlightedText("답변을 정리하고 있어요", typography: .body2)
                 .hilightColor(.black)
         case .finalCountdown:
-            // 카운트다운 중 상태 칩 없음 — 상단 빨간 칩 + 상시 토스트만 (Figma 2537:9525).
+            // 카운트다운 중 상태 칩 없음 — 상단 빨간 칩 + 상시 토스트만 (Figma 683:9302). 하단 버튼도 없다(아래 스택).
             EmptyView()
         }
     }
@@ -122,24 +122,31 @@ public struct InterviewSessionView: View {
         BubbleField(toast.message, .wide(tail: toast.hasTail ? .bottom : .none))
     }
 
-    private var miniButtonRow: some View {
-        HStack(spacing: .ds(.p8)) {
-            Spacer(minLength: 0)
-            // 8:00 해금 뒤엔 «면접 종료하기» 하나만 남긴다 (2026-08-14 결정) — 두 버튼을 나란히 두지 않는다.
-            if store.phase == .answering, !store.isExitAvailable {
-                Button("답변 완료하기") {
-                    send(.userTappedAnswerComplete)
-                }
-                .buttonStyle(.mini(.green))
-            }
-            if store.isExitAvailable {
+    /// 8:00 해금 뒤엔 버튼이 **둘**이고 세로로 쌓인다 — «면접 종료하기» 가 위, «답변 완료하기» 가 아래
+    /// (Figma «Interview_InProgress_ExitButtonShown» 683:9280 — 종료 top688 · 완료 top734, 둘 다 h34 라 간격 12).
+    /// 해금돼도 답변 완료 자리는 그대로다: 나란히 놓지 않으니 아래 칸이 밀리지 않는다.
+    private var miniButtonStack: some View {
+        VStack(alignment: .trailing, spacing: .ds(.p12)) {
+            // 최종 카운트다운엔 버튼이 없다 (Figma «InProgress_FinalCountdown» 683:9302 — 빨간 칩 + 토스트뿐).
+            // 남은 10초는 상한이 알아서 끝내므로 고를 것이 없고, 여기서 종료 확인 모달을 띄우면
+            // 답하는 사이 HARD_CAP 이 떨어진다.
+            if store.isExitAvailable, store.phase != .finalCountdown {
                 Button("면접 종료하기") {
                     send(.userTappedExit)
                 }
                 .buttonStyle(.mini(.filled))
             }
+            // answering 이 아닐 땐 감추되 **자리는 지킨다** — 빼면 위 «면접 종료하기» 와 상태 칩이
+            // 턴마다 46(=34+12) 내려앉는다. 해금 전에도, 버튼이 사라지는 카운트다운에도 이 칸이
+            // 밴드 높이(34)를 잡는다 — 시안의 카운트다운 토스트도 그만큼 내려와 있다(671 vs 해금 625).
+            Button("답변 완료하기") {
+                send(.userTappedAnswerComplete)
+            }
+            .buttonStyle(.mini(.green))
+            .opacity(store.phase == .answering ? 1 : 0)
+            .disabled(store.phase != .answering)
         }
-        .frame(minHeight: 34)
+        .frame(maxWidth: .infinity, alignment: .trailing)
     }
 
     // MARK: - 마무리·종료 확인·이탈 경고 모달 (DS LoadingModal/Modal + .hilitModal)
@@ -233,12 +240,21 @@ private func sessionPreview(
     }
 }
 
-#Preview("8분 — 종료 해금") {
+#Preview("8분 — 종료 해금(버튼 2개)") {
     sessionPreview {
         $0.phase = .answering
         $0.elapsedSeconds = 480
         $0.isExitAvailable = true
         $0.toast = .exitUnlocked
+    }
+}
+
+/// 해금 뒤 답변 정리 중 — «면접 종료하기» 가 위 자리를 그대로 지키는지(내려앉지 않는지) 보는 컷.
+#Preview("8분 후 — 답변 정리 중") {
+    sessionPreview {
+        $0.phase = .processingAnswer
+        $0.elapsedSeconds = 520
+        $0.isExitAvailable = true
     }
 }
 

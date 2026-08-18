@@ -128,10 +128,10 @@ Figma 2479:7569 · 2514:12754 · 2514:12799 · 2529:458.
 
 `InterviewSessionFeature` — 단일 화면 턴 상태머신(asking/answering/processingAnswer/finalCountdown) + 세션 시계 1초 틱. 8:00 종료 해금(토스트+«면접 종료하기») → 11:50 빨간 초읽기 → 12:00 hard cap 종료(PRD §3.6). 질문 텍스트는 View 에 노출하지 않는다(TTS-only).
 
-Figma: 2529:6309 · 2537:9397 · 2638:1750 · 2537:9442 · 2537:9525.
+Figma «[Part2. 면접 녹화]» 435:8697: 683:9250(질문) · 683:9260(답변) · 683:9280(8:00 해금) · 683:9290(종료 확인) · 683:9302(최종 카운트다운). 옛 id(2529:6309·2537:9397·2537:9442·2537:9525·2555:7739 …)는 디자이너가 섹션을 다시 만들며 사라졌다 — 다른 문서·주석에 남은 옛 id 는 아직 안 훑었다(2026-08-18).
 
 - phase 4종이 상태 칩 3종(PRD §3.5)에 대응한다 — «질문 듣는 중»/«답변 녹음 중»/«답변을 정리하고 있어요», finalCountdown 은 칩 없이 빨간 초읽기. «답변이 기록 됐어요» 토스트는 칩이 역할을 대체해 소멸했고, 남은 토스트는 exitUnlocked·timeExpired 2종뿐이다.
-- «답변 완료하기» 는 **8:00 해금 전에만** 보인다(2026-08-14) — 해금 뒤 하단 미니 버튼은 «면접 종료하기» 하나뿐이다. 그래서 해금 이후엔 턴이 더 넘어가지 않는다: 남은 동선은 종료(마치기)와 12:00 상한뿐이고, 마지막 답변은 그 종료 제출(MANUAL_END·HARD_CAP)에 실려 나간다.
+- 하단 미니 버튼은 8:00 해금 뒤 **둘**이 된다(2026-08-18 시안 반영 — Figma «Interview_InProgress_ExitButtonShown» 683:9280): «면접 종료하기»(위, 흰 채움) 와 «답변 완료하기»(아래, 그린)가 세로로 쌓인다. 해금 뒤에도 턴은 계속 넘어가고 종료 시점은 사용자가 고른다 — 12:00 상한까지 답변을 이어가도 된다. 답변 완료 칸은 `answering` 이 아닐 때도 자리를 지킨다(감추기만) — 빼면 위 버튼과 상태 칩이 턴마다 46 내려앉는다. **최종 카운트다운(11:50~)엔 버튼이 하나도 없다**(683:9302) — 남은 10초는 상한이 끝내니 고를 것이 없고, 종료 확인 모달을 띄우면 답하는 사이 HARD_CAP 이 떨어진다. 그때도 답변 완료 칸(34)은 자리로 남아 토스트가 시안만큼 내려온다. 2026-08-14 의 «해금 뒤 종료 버튼 하나» 는 이 시안으로 뒤집혔다.
 - «답변 완료하기» 는 침묵 판정을 기다리지 않고 즉시 `processingAnswer` 로 확정하고 `submitAnswer` 를 보낸다(중복 제출 가드 `isSubmitting`, 2026-08-02 작업 C — 2초 mock 소멸). 응답 분기: `nextQuestion` → asking 복귀+재생 / `sessionEnded` → endType 별 `finished(RecordingRef?, InterviewVideoWrapUpSpan?)`(NORMAL·MANUAL·HARD_CAP)·`aborted`(BACK_EXIT)·`failed(.speechRecognition)`(STT_RESET).
 - 종료 경로도 제출을 경유한다 — 마치기=MANUAL_END·12:00 상한=HARD_CAP(제출 완료까지 processingAnswer 로 대기, 제출 비행 중 상한 도달은 응답 수신 후 HARD_CAP 마감). **8분 전 이탈은 제출하지 않는다**(2026-08-09 설계 수정 — 아래 «중도 이탈»). 503 은 같은 제출을 1s·3s 백오프로 최대 2회 재시도, `SESSION_ALREADY_ENDED`(409)는 정상 종료로 수습한다(녹화가 있으면 정지·합성까지 태우고 `finished`).
 - 질문 재생: 요약 질문(턴 0)은 READY 동봉 mp3(`play`), 이후 질문은 `questionAudioStream`→`playStream`(chunked). 재생 실패는 같은 questionId 1회 재시도(TTS 재생성) 후 네트워크 오버레이(아래). 시간 마킹(questionAudioStart/End·answerStart)은 세션 시계 **raw** 스냅샷 — 아래 0점 정렬로 녹화 타임라인과 같은 축이다(유효시간 아님).
