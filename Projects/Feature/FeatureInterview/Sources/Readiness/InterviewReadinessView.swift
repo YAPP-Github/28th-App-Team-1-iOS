@@ -17,6 +17,7 @@ import SwiftUI
 @ViewAction(for: InterviewReadinessFeature.self)
 public struct InterviewReadinessView: View {
     @Bindable public var store: StoreOf<InterviewReadinessFeature>
+    @Environment(\.scenePhase) private var scenePhase
 
     public init(store: StoreOf<InterviewReadinessFeature>) {
         self.store = store
@@ -48,6 +49,11 @@ public struct InterviewReadinessView: View {
         }
         .animation(.easeInOut(duration: 0.3), value: store.phase)
         .onAppear { send(.onAppear) }
+        // 설정에서 권한을 바꾸고 돌아오는 길 — 화면이 그대로 살아 돌아오면 onAppear 가 다시 오지 않는다.
+        // 코디네이터 뷰(InterviewView)도 .active 를 보지만 그건 재개 판정용이라 여기서 따로 받는다.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { send(.sceneBecameActive) }
+        }
         // 진입 시 카메라·마이크 권한이 미허용이면 뜨는 설정 유도 alert.
         .alert($store.scope(state: \.alert, action: \.alert))
     }

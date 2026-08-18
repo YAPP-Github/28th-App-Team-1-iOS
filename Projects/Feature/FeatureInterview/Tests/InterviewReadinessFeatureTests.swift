@@ -243,6 +243,62 @@ struct InterviewReadinessFeatureTests {
         await store.finish()
     }
 
+    @Test("설정에서 허용하고 복귀하면 시작 게이트가 열리고 alert 가 닫힌다 — 프리뷰도 실카메라로 바뀐다")
+    func returningFromSettingsWithGrantOpensStartGate() async {
+        var state = InterviewReadinessFeature.State(sessionId: 1)
+        state.phase = .guide2
+        state.hasStarted = true
+        state.isPreviewResolved = true   // 진입 때 카메라 거부라 placeholder 로 해소된 상태
+        state.questionPrep = .ready(.fixture)
+        state.alert = InterviewReadinessFeature.permissionDeniedAlert()
+        let handle = CameraPreviewHandle(session: AVCaptureSession())
+        let store = TestStore(initialState: state) {
+            InterviewReadinessFeature()
+        } withDependencies: {
+            $0.permissionClient = client()   // 설정에서 둘 다 허용하고 돌아왔다
+            $0.recordingClient.startPreview = { handle }
+        }
+
+        await store.send(.view(.sceneBecameActive)) {
+            $0.isMediaPermissionGranted = true
+            $0.alert = nil
+        }
+        await store.receive(\.inner.previewResolved) {
+            $0.previewHandle = handle
+        }
+        // 게이트가 열렸으니 시작하기가 통한다 — 재진입·프로세스 종료 없이.
+        await store.send(.view(.userTappedStart))
+        await store.receive(\.delegate.startRequested)
+        await store.finish()
+    }
+
+    @Test("복귀했는데 여전히 미허용이면 아무것도 바뀌지 않는다 — alert 를 다시 띄우지도 않는다")
+    func returningFromSettingsWithoutGrantChangesNothing() async {
+        var state = InterviewReadinessFeature.State(sessionId: 1)
+        state.phase = .guide2
+        state.hasStarted = true
+        state.questionPrep = .ready(.fixture)
+        let store = TestStore(initialState: state) {
+            InterviewReadinessFeature()
+        } withDependencies: {
+            $0.permissionClient = client(status: { $0 == .camera ? .denied : .granted })
+        }
+
+        await store.send(.view(.sceneBecameActive))   // 상태 무변화
+        await store.finish()
+    }
+
+    @Test("이미 허용된 상태의 복귀는 권한을 다시 읽지 않는다")
+    func returningWhileAlreadyGrantedSkipsRecheck() async {
+        // permissionClient 미스텁 — 다시 읽으면 unimplemented 가 잡는다.
+        let store = TestStore(initialState: guide2State()) {
+            InterviewReadinessFeature()
+        }
+
+        await store.send(.view(.sceneBecameActive))
+        await store.finish()
+    }
+
     @Test("권한이 미허용이면 시작하기가 통하지 않는다 — 알림은 진입 alert 가 이미 했다")
     func startBlockedWhilePermissionDenied() async {
         var state = guide2State()

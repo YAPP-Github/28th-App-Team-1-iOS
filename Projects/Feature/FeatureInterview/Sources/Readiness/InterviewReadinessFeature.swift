@@ -15,6 +15,8 @@ import DomainRecordingInterface
 /// «…_Done» 2514:12754 · «…_Guide1» 2514:12799 · «…_Guide2» 2529:458).
 /// 진입 시 카메라·마이크 권한을 사용 시점 요청(PRD §8)하고, 하나라도 미허용이면 **그 자리에서** 설정 유도
 /// alert 를 띄운다 — 가이드 phase 자체는 그대로 진행하되 «면접 시작하기» 버튼은 계속 비활성이다.
+/// 설정에서 허용하고 돌아오는 길은 포그라운드 복귀(`sceneBecameActive`) 재조회가 연다 — 앱이 살아서
+/// 돌아오면 진입 판정이 낡은 값이라, 화면 재생성·프로세스 종료에 기대지 않고 그 자리에서 다시 읽는다.
 /// 화면 push 없이 단일 카메라 화면 위에서 phase 로만 전환한다:
 /// aligning(얼굴 맞춤) → ready(티커 강조) → guide1(질문은 소리로만) → guide2(총 10분 · 시작 버튼 활성).
 /// 시작 버튼 탭은 delegate(.startRequested) 로만 올린다 — 세션 화면 전환은 코디네이터 몫.
@@ -91,6 +93,9 @@ public struct InterviewReadinessFeature {
         /// 사용자 입력·생명주기. View 의 send(...) 로만 방출된다.
         public enum View: Equatable, Sendable {
             case onAppear
+            /// 포그라운드 복귀 — 설정에서 권한을 바꾸고 돌아왔을 수 있어 다시 읽는다.
+            /// 코디네이터 뷰(InterviewView)도 같은 전이를 보지만 그건 재개 판정(checkResume)용이라 별개다.
+            case sceneBecameActive
             /// 좌상단 뒤로가기 — 면접 흐름을 벗어난다(모달 없이 즉시, 아직 면접 전이라 되물을 게 없다).
             case userTappedBack
             case userTappedStart
@@ -114,7 +119,7 @@ public struct InterviewReadinessFeature {
         public enum Alert: Equatable, Sendable {
             /// 설정으로 이동 — 앱 권한 설정 화면을 연다.
             case openSettings
-            /// 닫기 — alert 만 닫고 화면 유지(시작 버튼은 계속 비활성 — 나가려면 뒤로가기).
+            /// 닫기 — alert 만 닫고 화면 유지. 시작 버튼은 설정에서 허용하고 돌아올 때까지 비활성이다.
             case close
         }
 
@@ -150,6 +155,24 @@ public struct InterviewReadinessFeature {
                     pollQuestionPrep(sessionId: state.sessionId),
                     scheduleAdvance(after: Self.aligningHold)
                 )
+
+            case .view(.sceneBecameActive):
+                // 설정 왕복 복귀 — 진입 때 굳은 판정을 새 status 로 덮는다. 이미 허용이면 읽을 이유가 없고,
+                // 아직 요청 전(onAppear 전)이면 그 요청이 판정을 세운다.
+                guard state.hasStarted, !state.isMediaPermissionGranted else { return .none }
+                // 거부는 앱이 다시 물을 수 없어 요청이 아니라 조회다 — 동기 status 로 충분(다이얼로그 없음).
+                let allGranted = [MediaPermission.camera, .microphone]
+                    .allSatisfy { permissionClient.status($0) == .granted }
+                // 여전히 미허용이면 그대로 둔다 — 복귀할 때마다 alert 를 다시 띄우지는 않는다.
+                guard allGranted else { return .none }
+                state.isMediaPermissionGranted = true
+                state.alert = nil   // 설정에서 허용하고 돌아왔다 — 안내가 소임을 다했다
+                // 카메라가 거부인 동안 backdrop 이 placeholder 로 남아 있다 — 이제 실카메라로 바꾼다
+                // (startPreview 는 멱등이라 이미 켜져 있으면 같은 핸들이 온다).
+                guard state.previewHandle == nil else { return .none }
+                return .run { send in
+                    await send(.inner(.previewResolved(recordingClient.startPreview())))
+                }
 
             case .view(.userTappedBack):
                 // 아직 면접이 시작되지 않았다(질문 재생 전·답변 0개) — 되묻는 모달 없이 바로 흐름을 나간다.
@@ -192,7 +215,8 @@ public struct InterviewReadinessFeature {
                 return .run { _ in await permissionClient.openSettings() }
 
             case .alert:
-                // 닫기 포함 — alert 만 닫고 화면 유지(ifLet 이 dismiss 처리). 재시도는 시작하기 재탭.
+                // 닫기 포함 — alert 만 닫고 화면 유지(ifLet 이 dismiss 처리).
+                // 재시도 지점은 설정 왕복 뒤의 복귀 재조회다(sceneBecameActive).
                 return .none
 
             case .delegate:
