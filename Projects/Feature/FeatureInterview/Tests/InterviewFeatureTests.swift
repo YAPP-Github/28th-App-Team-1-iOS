@@ -126,9 +126,10 @@ struct InterviewFeatureTests {
         await store.finish()
     }
 
-    @Test("면접 시작 전환은 준비 화면의 요약 질문(READY 페이로드)과 프리뷰 핸들을 세션 상태로 시드한다")
+    @Test("면접 시작 전환은 요약 질문·프리뷰 핸들을 세션에 시드하고 진행 중 보관을 시작한다")
     func startRequestedSeedsSummaryQuestionAndPreviewHandle() async {
         let handle = CameraPreviewHandle(session: AVCaptureSession())
+        let held = LockIsolated<HeldSession?>(nil)
         var readiness = InterviewReadinessFeature.State(sessionId: 1)
         readiness.previewHandle = handle
         readiness.questionPrep = .ready(.fixture)
@@ -136,6 +137,8 @@ struct InterviewFeatureTests {
         initialState.screen = .readiness(readiness)
         let store = TestStore(initialState: initialState) {
             InterviewFeature()
+        } withDependencies: {
+            $0.heldSessionStore.save = { held.setValue($0) }
         }
 
         await store.send(.screen(.readiness(.delegate(.startRequested)))) {
@@ -145,6 +148,8 @@ struct InterviewFeatureTests {
                 previewHandle: handle
             ))
         }
+        // 0초·표식 없음 — 표식은 세션 화면이 녹화를 열 때 찍는다(프로세스를 넘어 재개해도 잃을 게 없다).
+        #expect(held.value == HeldSession(sessionId: 1, recordedSeconds: 0))
     }
 
     @Test("질문 준비 실패는 questionPrep 실패 화면으로 전환한다")
@@ -205,6 +210,8 @@ struct InterviewFeatureTests {
             $0.speechClient.stopPlayback = { playbackStopped.withValue { $0 += 1 } }
         }
 
+        // heldSessionStore.save 미스텁 — 시작 전 이탈이 진행 중 보관을 심으면 unimplemented 가 잡는다
+        // (심으면 홈이 «진행 중» 카드를 그린다 — 2026-08-18 이 화면의 회귀 지점).
         await store.send(.screen(.readiness(.delegate(.backRequested))))
         await store.receive(\.delegate.closed)
         await store.finish()

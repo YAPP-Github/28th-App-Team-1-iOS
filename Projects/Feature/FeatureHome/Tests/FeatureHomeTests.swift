@@ -227,7 +227,7 @@ struct HomeHeldSessionTests {
         #expect(store.state.startInterview.variant == .exhausted)
     }
 
-    @Test("0초 보관값(준비 이탈)은 프로세스를 넘어 카드가 된다 — 잃을 영상이 없다")
+    @Test("0초 보관값(시작 직후)은 프로세스를 넘어 카드가 된다 — 잃을 영상이 없다")
     func zeroProgressHeldSurvivesRelaunch() async {
         let store = Self.store(
             held: HeldSession(sessionId: 1, recordedSeconds: 0, processToken: nil),

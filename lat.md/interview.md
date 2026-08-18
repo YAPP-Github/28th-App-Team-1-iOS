@@ -7,11 +7,11 @@ AI 면접 연습의 중심 도메인. `DomainInterview` 가 D14 면접 세션 AP
 
 멤버는 `createSession`(생성)·`sessionStatus`(준비 폴링)·`submitAnswer`(답변 제출 = 턴 루프의 축)·`questionAudioStream`(질문 TTS 재생 정보)·`checkResume`(재개 가능 조회)·`confirmResume`(재개 확정 — 응답은 `submitAnswer` 와 같은 `AnswerResult`)·`abandonSession`(중단 — `AbandonCause` 는 USER_EXIT/NETWORK_DISCONNECT 만, HOLD_EXPIRED 는 서버 내부 전용이라 타입에서 뺐다)·`reportList`(내 레포트 목록 — 홈 진입 로드가 쓴다, [[home#진입 로드]]).
 
-같은 모듈의 `HeldSessionStore` 는 진행 중(held) 세션의 **로컬 보관** seam(UserDefaults) — 서버에 진행중 세션 목록 API 가 없어 클라가 `sessionId`(+ 녹화 길이 `recordedSeconds` + 프로세스 표식 `processToken`)를 들고 있어야 홈이 «진행 중» 을 판정한다([[home#진입 로드]]). 수명: 세션 생성 시 저장(0초) → 백그라운드 마감마다 누적초·토큰으로 갱신 → 완료·중단·ENDED 판정 시 삭제.
+같은 모듈의 `HeldSessionStore` 는 진행 중(held) 세션의 **로컬 보관** seam(UserDefaults) — 서버에 진행중 세션 목록 API 가 없어 클라가 `sessionId`(+ 녹화 길이 `recordedSeconds` + 프로세스 표식 `processToken`)를 들고 있어야 홈이 «진행 중» 을 판정한다([[home#진입 로드]]). 수명: **면접 시작하기 탭 시 저장**(0초·표식 없음 — 2026-08-18, 그전엔 위저드 완주 시점이었다) → 세션 화면이 녹화를 열 때 표식 스탬프 → 백그라운드 마감마다 누적초·토큰으로 갱신 → 완료·중단·ENDED 판정 시 삭제.
 
 **소유 분담**(2026-08-08 배선 완료 — #69 «녹화하며 갱신» 이 해소된 지점이다): 앱 코디네이터([[app#Cross-feature Routing]])가 생성 save(0초·표식 없음)·완주 clear·홈 두 갈래(abandon 성공·재개 ENDED)의 clear·킬 클린업 clear 를 맡고, 면접 쪽은 **시작 시 표식 스탬프**·백그라운드 마감의 누적초 **갱신**·오버레이 중단(`NETWORK_DISCONNECT`) 뒤 clear([[interview#세션]])·복귀 ENDED 판정의 clear([[interview#코디네이터]])를 맡는다. `processToken` 은 «**이 프로세스에서 면접이 시작됐다**» 는 표식(프로세스당 상수 `currentProcessToken`)으로 세션 화면이 녹화를 열 때(`recordingStarted`) 찍히고, 재개 제안 판정 `isResumableInCurrentProcess`(표식 없음 ‖ 현재 프로세스)가 죽은 프로세스의 세션을 걸러 앞부분 없는 영상 재개를 막는다 — 세그먼트가 tmp·프로세스 수명이라서다([[interview#프리뷰]]).
 
-⚠️ 판정 기준이 «0초 여부» 가 아니라 표식인 건 2026-08-09 결함 수정이다 — `recordedSeconds` 는 백그라운드 마감에서만 갱신돼, **백그라운드를 거치지 않고 죽은 면접**(크래시·메모리 압박·동결 완주 전 강제 종료)이 0초로 남는다. 옛 규칙(0초 = 무조건 재개 가능)은 그걸 준비 이탈 보관분과 구분하지 못해 킬 클린업이 대상으로 잡지 못했고, 서버 세션이 영영 살아남았다. 표식 없는 구버전 저장값만 옛 규칙(0초 여부)으로 접는다. 킬 클린업의 판정은 Interface 순수 함수 `HeldSessionCleanup` 이 맡는다(효과는 AppFeature 가 싣는다): `target` 은 다른 프로세스에서 시작된 세션만 고르고(표식 없는 준비 단계·현재 프로세스 값은 불가침), `followup` 은 RESUMABLE → `abandon(USER_EXIT)` · ENDED → 로컬 정리로 가른다. App 테스트 타깃이 없어 결정표는 `HeldSessionCleanupTests`·`HeldSessionTests` 가 유닛으로 고정한다.
+⚠️ 판정 기준이 «0초 여부» 가 아니라 표식인 건 2026-08-09 결함 수정이다 — `recordedSeconds` 는 백그라운드 마감에서만 갱신돼, **백그라운드를 거치지 않고 죽은 면접**(크래시·메모리 압박·동결 완주 전 강제 종료)이 0초로 남는다. 옛 규칙(0초 = 무조건 재개 가능)은 그걸 갓 시작한 보관분(표식 없음)과 구분하지 못해 킬 클린업이 대상으로 잡지 못했고, 서버 세션이 영영 살아남았다. 표식 없는 구버전 저장값만 옛 규칙(0초 여부)으로 접는다. 킬 클린업의 판정은 Interface 순수 함수 `HeldSessionCleanup` 이 맡는다(효과는 AppFeature 가 싣는다): `target` 은 다른 프로세스에서 시작된 세션만 고르고(표식 없는 시작 직후 값·현재 프로세스 값은 불가침), `followup` 은 RESUMABLE → `abandon(USER_EXIT)` · ENDED → 로컬 정리로 가른다. App 테스트 타깃이 없어 결정표는 `HeldSessionCleanupTests`·`HeldSessionTests` 가 유닛으로 고정한다.
 
 Interface 에 계약 + `testValue`(unimplemented) + `previewValue`(샘플), Implementation 에 `liveValue` — 구현은 App/Example 만 link 한다(D4).
 
@@ -43,7 +43,7 @@ Part 2 «10분 음성 면접» 화면군 (`FeatureInterview`, Figma «[2] Interv
 `InterviewFeature` 가 흐름 루트 — screen enum destination(준비/세션/실패)을 전면 교체한다. push 스택이 없어 StackState 대신 `@Reducer enum`. 하위 화면의 delegate 만 매칭하고, 흐름 밖(보고서 진입·닫기)은 delegate(.finished/.closed)로 AppFeature 에 올린다. **정상 종료엔 화면이 없다** — 바로 홈이다.
 
 - `State(sessionId:)` 로 온보딩 분석이 만든 세션 id 를 들고 있다 — 준비 화면의 질문 준비 폴링과 세션 시드가 같은 세션을 쓴다. **재개 진입은 `State(sessionId:resume:)` 로 readiness 를 생략하고 세션으로 직행**한다(2026-08-08) — 질문 준비 폴링이 필요 없고(`confirmResume` 이 이미 최신 질문을 줬다) 카메라는 세션 onAppear 의 `startPreview` 가 연다 → [[interview#세션]].
-- 시작 전환(startRequested)은 준비 화면의 READY 페이로드(요약 질문)와 프리뷰 핸들을 `InterviewSessionFeature.State(sessionId:summaryQuestion:previewHandle:)` 로 시드한다 — 세션이 첫 턴을 바로 재생한다.
+- 시작 전환(startRequested)은 준비 화면의 READY 페이로드(요약 질문)와 프리뷰 핸들을 `InterviewSessionFeature.State(sessionId:summaryQuestion:previewHandle:)` 로 시드한다 — 세션이 첫 턴을 바로 재생한다. **진행 중 보관(`HeldSessionStore.save`, 0초·표식 없음)도 여기서 시작한다**(2026-08-18) — 위저드 완주 시점([[app#Cross-feature Routing]])에 심던 것을 옮긴 것으로, 준비 화면은 아직 면접 전이라 시작하기를 누르지 않고 뒤로가기만 해도 홈이 «진행 중» 카드를 그렸다. 대가는 그 이탈로 남는 서버 세션이 홈에서 보이지 않는다는 것 — 재진입 동선 없이 hold 만료 몫이 된다.
 - 세션 `finished(ref, wrapUp)` 는 산출물을 [[interview#업로드 큐]] 에 접수(`enqueue`)하고 장치를 정지한 뒤 `delegate(.finished)` 를 올린다. enqueue 는 파일 이동+저널까지라 밀리초고, 전송은 큐가 뒤에서 잇는다. 세션 `aborted`·실패 화면 `closeRequested` 는 `delegate(.closed)`.
 - **리포트 채점을 기다렸다 홈으로 보낸다**(2026-08-14): 장치 정지 뒤 `interviewReportClient.report` 를 3초 간격으로 폴링해 `status != GENERATING` 이 되면 통보한다. 조회 실패(미생성 404 포함)는 «아직» 으로 보고 다시 묻되, 상한 20회(≈1분)를 넘으면 그대로 통보한다 — 채점 SLA 가 더 길 수 있어 무한정 붙잡지 않고, 홈 목록의 «생성 중» 카드와 리포트 화면 폴링이 이어받는다([[report#1차 리포트]]). 대기 **화면**은 여전히 없다(2026-08-06 개편 유지) — 세션이 이미 세워 둔 `LoadingModal`(`isFinishing`, [[interview#세션]])이 그대로 덮고 있어 인디케이터 한 벌이 종료부터 홈 진입까지 이어진다.
 - 종료 신호는 **first-wins**(`isClosing`)다 — 종료 후에도 화면이 `.session` 에 머물러(갈아탈 화면이 없다) `guard case .session` 만으론 늦은 두 번째 세션 delegate 를 못 거른다.
@@ -81,12 +81,12 @@ Part 2 «10분 음성 면접» 화면군 (`FeatureInterview`, Figma «[2] Interv
 
 Figma 2479:7569 · 2514:12754 · 2514:12799 · 2529:458.
 
-- 진입 시 카메라·마이크 권한을 요청만 하고([[interview#권한]]) 거부여도 가이드는 조용히 진행 — 알리는 시점은 «면접 시작하기» 탭이다.
+- 진입 시 카메라·마이크 권한을 요청하고([[interview#권한]]) 하나라도 미허용이면 **그 자리에서** 설정 유도 alert 를 띄운다 — 가이드 phase 는 그대로 흐르되 시작 버튼만 계속 잠긴다. 판정 결과는 `isMediaPermissionGranted` 로 상태에 남겨 뷰의 비활성 조건이 된다(해소 전 기본값 false).
 - 좌상단 뒤로가기(2026-08-03 시안, 세션 화면과 같은 DS 네비바)는 **되묻는 모달 없이 즉시** `delegate(.backRequested)` → 코디네이터가 장치 정지 후 `closed`. 아직 질문 재생 전·답변 0개라 확인할 손실이 없다 — 8:00 전 이탈 경고는 «면접 진행 중» 전용이다. 서버 세션은 남지만 재진입 동선은 홈의 «이어서 진행» 몫([home-account](../docs/work/home-account.md) §4).
 - 질문 준비(preload, PRD §3.2)는 `InterviewClient.sessionStatus` 3초 폴링(온보딩 분석 스텝과 같은 주기). READY/FAILED 에서 스스로 멈추고, 그 사이 네트워크 에러는 `try?` 로 삼켜 다음 틱 재시도 — «시스템이 알아서 다시 시도» 가 폴링 지속이라 클라 타임아웃도 재시도 버튼도 없다. 최종 실패는 서버 FAILED 만 신뢰한다. READY 는 요약 질문 동봉 시에만 해소(`.ready(SummaryQuestion)` — 세션 시드용) — 페이로드 없는 READY 는 계약 위반으로 보고 폴링을 계속한다.
 - 준비 중(preparing)엔 시작 버튼 비활성 — 리듀서도 `questionPrep == .ready` 를 재확인해 레이스를 무시한다. FAILED → delegate(.prepFailed) → 실패 화면(questionPrep).
-- 시작하기 탭에 권한 미허용 → 설정 유도 alert: [설정으로 이동]=`openSettings` / [닫기]=alert 만 닫고 화면 유지 — 시작 버튼 재탭이 재시도 지점(막다른 길 없음). 설정에서 권한을 바꾸면 iOS 가 앱을 종료시켜 onAppear 부터 재진입하므로 별도 복귀 재확인은 두지 않는다. 탭 시점엔 권한이 전부 결정된 상태(진입 다이얼로그가 모달)라 status 동기 확인으로 판정한다.
-- aligning→ready 는 «최소 유지 시간(3초) + 프리뷰 해소» 이중 게이트 — 실패(권한 거부·시뮬레이터)도 해소로 치고 placeholder 로 진행한다(화면을 막지 않음, 게이트는 시작 탭). ready 이후는 시간 연출.
+- 진입 alert 는 [설정으로 이동]=`openSettings` / [닫기]=alert 만 닫고 화면 유지. 닫아도 시작 버튼은 잠긴 채라 남는 길은 «설정으로 이동» 또는 뒤로가기다 — 설정에서 권한을 바꾸면 iOS 가 앱을 종료시켜 onAppear 부터 다시 오므로 복귀 재확인은 두지 않는다. 판정은 진입 요청(모달)이 끝난 직후 status 동기 확인 한 번이고, 리듀서의 시작 탭 가드는 버튼 비활성과 겹치는 레이스 방어일 뿐이다.
+- aligning→ready 는 «최소 유지 시간(3초) + 프리뷰 해소» 이중 게이트 — 실패(권한 거부·시뮬레이터)도 해소로 치고 placeholder 로 진행한다(화면을 막지 않음, 막는 건 시작 버튼). ready 이후는 시간 연출.
 - 브래킷 프레임은 DS 로 승격됐다 — `SharedDesignSystem` 의 `CameraGuideFrame`(`Interface/Component/CameraGuideFrame.swift`), 화면은 문구만 넘긴다. 이것과 하단 티커는 에셋 없이 코드 드로잉이고, 블렌드 스위치는 [[interview#프리뷰]].
 - 하단 티커(문구 3연속)는 화면보다 넓어 **`overlay` 로 얹는다** — `.fixedSize().frame(maxWidth: .infinity)` 로 두면 넘친 이상적 폭이 부모로 새어 화면 좌표계가 넓어지고, 그 위 네비바가 왼쪽으로 밀려 뒤로가기가 가장자리에 붙는다(`.clipped()` 는 그림만 자를 뿐 레이아웃은 못 되돌린다). 높이·배경은 문구 «한 벌»이 잡는다. 2026-08-03 실기 확인 후 수정.
 
