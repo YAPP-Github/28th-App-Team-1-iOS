@@ -219,7 +219,7 @@ struct InterviewSessionBackgroundTests {
 
     // 백그라운드를 거치지 않고 죽은 면접(크래시·메모리 압박·동결 완주 전 강제 종료)을 킬 클린업이
     // 잡으려면 «이 프로세스에서 면접이 시작됐다» 는 표식이 **시작 시점에** 찍혀 있어야 한다. 생성 시점
-    // 보관값은 표식이 없어 준비 이탈 보관분과 구분되지 않고, 그래서 서버 세션이 영영 살아남았다
+    // 보관값은 표식이 없어 갓 시작한 보관분과 구분되지 않고, 그래서 서버 세션이 영영 살아남았다
     // (2026-08-09 결함 수정 — 판정 자체는 `HeldSessionTests`·`HeldSessionCleanupTests`).
     @Test("면접 시작이 보관값에 프로세스 표식을 찍는다 — 백그라운드 없이 죽어도 정리 대상이 된다")
     func recordingStartStampsProcessToken() async {

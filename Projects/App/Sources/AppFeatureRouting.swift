@@ -328,15 +328,13 @@ extension AppFeature {
         switch action {
         // 온보딩 완주 = 분석까지 끝나 세션이 준비된 상태 — 위저드를 닫고 그 세션으로 면접을 연다.
         // 홈은 안 태운다 — 어차피 면접에 가려지고, 갱신 시점은 면접이 끝나 돌아올 때다.
+        // 진행 중 보관은 **여기서 시작하지 않는다**(2026-08-18) — 준비 화면은 아직 면접 전이라,
+        // 여기서 심으면 시작하기를 누르지 않고 뒤로가기만 해도 홈이 «진행 중» 을 그렸다.
+        // 보관 시작 시점은 면접 Feature 의 시작하기 탭이다([[interview#코디네이터]]).
         case let .presented(.delegate(.finished(sessionId))):
             state.onboarding = nil
             state.interview = InterviewFeature.State(sessionId: sessionId)
-            // 면접 시작 = 진행 중 보관 시작 — 이 값의 존재가 홈의 «진행 중» 판정 재료다.
-            // 0초로 여는 건 여기까지고, 이후 갱신은 세션 Feature 몫이다 — 백그라운드 마감이
-            // 누적초 + 프로세스 토큰으로 덮어쓴다([[interview#세션]] 동결 경로).
-            return .run { [heldSessionStore] _ in
-                heldSessionStore.save(HeldSession(sessionId: sessionId, recordedSeconds: 0))
-            }
+            return .none
 
         // 중도 이탈 — 위저드만 닫고 홈을 다시 태운다. cover 를 닫는 것만으론 홈의
         // `onAppear` 가 다시 오지 않아 여기서 명시로 보낸다(겸사겸사 시트도 기본 자리로 —

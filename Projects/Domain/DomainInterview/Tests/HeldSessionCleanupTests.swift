@@ -12,7 +12,7 @@ import Testing
 
 // 앱 사망 세션 정리 판정(스펙 ④) — App 테스트 타깃이 없어 판정만 순수 함수로 내려 고정한다.
 struct HeldSessionCleanupTests {
-    @Test("보관값 없음·표식 없는 준비 단계·현재 프로세스 보관값은 정리 대상이 아니다")
+    @Test("보관값 없음·표식 없는 시작 직후 보관분·현재 프로세스 보관값은 정리 대상이 아니다")
     func nonTargets() {
         #expect(HeldSessionCleanup.target(nil) == nil)
         #expect(HeldSessionCleanup.target(HeldSession(sessionId: 1, recordedSeconds: 0, processToken: nil)) == nil)

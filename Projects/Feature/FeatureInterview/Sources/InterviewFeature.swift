@@ -117,6 +117,11 @@ public struct InterviewFeature {
                 guard case let .readiness(readiness) = state.screen,
                       case let .ready(summaryQuestion) = readiness.questionPrep
                 else { return .none }
+                // 진행 중 보관은 **여기서** 시작한다(2026-08-18) — 이 값의 존재가 홈의 «진행 중» 판정
+                // 재료라, 위저드 완주 시점에 심으면 시작하기를 누르지 않고 나간 사용자에게도 카드가 떴다.
+                // 0초·표식 없음으로 여는 건 여기까지다 — 표식은 세션 화면이 녹화를 열 때 찍고,
+                // 누적초는 백그라운드 마감마다 갱신한다([[interview#세션]] 동결 경로).
+                heldSessionStore.save(HeldSession(sessionId: state.sessionId, recordedSeconds: 0))
                 state.screen = .session(InterviewSessionFeature.State(
                     sessionId: state.sessionId,
                     summaryQuestion: summaryQuestion,
