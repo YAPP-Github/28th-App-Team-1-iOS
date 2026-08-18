@@ -152,3 +152,14 @@ Secrets.xcconfig
 # ──────────────────────────────────────────────────────────────
 .superpowers/
 docs/superpowers/
+
+# ──────────────────────────────────────────────────────────────
+# Understand Anything — 지식 그래프 산출물(재생성 가능, 수 MB)
+# 설정(config.json · .understandignore)은 팀 공유라 추적
+# ──────────────────────────────────────────────────────────────
+.understand-anything/knowledge-graph.json
+.understand-anything/fingerprints.json
+.understand-anything/meta.json
+.understand-anything/domain-graph.json
+.understand-anything/intermediate/
+.understand-anything/.trash-*/
