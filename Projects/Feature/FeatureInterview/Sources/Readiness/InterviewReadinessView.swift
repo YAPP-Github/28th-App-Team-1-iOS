@@ -48,7 +48,7 @@ public struct InterviewReadinessView: View {
         }
         .animation(.easeInOut(duration: 0.3), value: store.phase)
         .onAppear { send(.onAppear) }
-        // 시작하기 탭 시 권한 미허용이면 뜨는 설정 유도 alert.
+        // 진입 시 카메라·마이크 권한이 미허용이면 뜨는 설정 유도 alert.
         .alert($store.scope(state: \.alert, action: \.alert))
     }
 
@@ -100,7 +100,12 @@ public struct InterviewReadinessView: View {
                 send(.userTappedStart)
             }
             // 질문 준비 전 로딩 연출은 «협의 가능»(PRD §3.2) — 임시로 비활성만.
-            .disabled(store.phase == .guide1 || !store.isQuestionPrepReady)
+            // 권한 미허용도 같은 비활성 — 알림은 진입 시 alert 가 이미 했다.
+            .disabled(
+                store.phase == .guide1
+                    || !store.isQuestionPrepReady
+                    || !store.isMediaPermissionGranted
+            )
         }
     }
 }
@@ -192,6 +197,7 @@ private func withBackdrop(_ content: some View) -> some View {
     var state = InterviewReadinessFeature.State(sessionId: 1)
     state.phase = .guide2
     state.hasStarted = true
+    state.isMediaPermissionGranted = true
     state.questionPrep = .ready(   // 질문 준비 완료라야 시작 버튼이 활성이다.
         SummaryQuestion(questionId: 1, ttsAudio: nil, turn: TurnInfo(turnLevel: 0, depthLevel: 0))
     )
@@ -202,8 +208,8 @@ private func withBackdrop(_ content: some View) -> some View {
     ))
 }
 
-#Preview("권한 미허용 — 시작하기 탭 후 설정 유도 alert") {
-    // guide2 에서 시작하기를 탭한 직후 상황 — 권한 미허용이라 alert 가 떠 있다.
+#Preview("권한 미허용 — 진입 시 설정 유도 alert · 시작 버튼 비활성") {
+    // 진입 권한 요청이 미허용으로 해소된 상황 — alert 가 떠 있고 뒤의 시작 버튼은 비활성이다.
     var state = InterviewReadinessFeature.State(sessionId: 1)
     state.phase = .guide2
     state.hasStarted = true

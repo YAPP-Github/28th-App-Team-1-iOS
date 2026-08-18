@@ -13,12 +13,13 @@ import DomainRecordingInterface
 // @lat: [[interview#준비]]
 /// Part 2 진입 첫 화면 — 카메라 확인 + 면접 안내 (Figma «[2] Interview_Readiness» 2479:7569 ·
 /// «…_Done» 2514:12754 · «…_Guide1» 2514:12799 · «…_Guide2» 2529:458).
-/// 진입 시 카메라·마이크 권한을 사용 시점 요청(PRD §8)만 하고 — 거부돼 있어도 가이드는 조용히 진행 —
-/// 게이트는 «면접 시작하기» 탭: 미허용이면 설정 유도 alert(닫기 = 화면 유지, 재시도는 재탭).
+/// 진입 시 카메라·마이크 권한을 사용 시점 요청(PRD §8)하고, 하나라도 미허용이면 **그 자리에서** 설정 유도
+/// alert 를 띄운다 — 가이드 phase 자체는 그대로 진행하되 «면접 시작하기» 버튼은 계속 비활성이다.
 /// 화면 push 없이 단일 카메라 화면 위에서 phase 로만 전환한다:
 /// aligning(얼굴 맞춤) → ready(티커 강조) → guide1(질문은 소리로만) → guide2(총 10분 · 시작 버튼 활성).
 /// 시작 버튼 탭은 delegate(.startRequested) 로만 올린다 — 세션 화면 전환은 코디네이터 몫.
-/// 시작 게이트는 «guide2 + 권한 + 질문 준비 READY» 삼중 — 준비 중엔 시작 버튼 비활성(로딩 연출은 «협의 가능», 임시 비활성만).
+/// 시작 게이트는 «guide2 + 권한 + 질문 준비 READY» 삼중 — 하나라도 미충족이면 시작 버튼 비활성
+/// (질문 준비 중 로딩 연출은 «협의 가능», 임시 비활성만).
 @Reducer
 public struct InterviewReadinessFeature {
     /// phase 최소 유지 시간 — aligning 은 «최소 유지 + 프리뷰 해소» 이중 게이트(둘 다 충족 시 진행),
@@ -59,13 +60,15 @@ public struct InterviewReadinessFeature {
         /// onAppear 재진입 가드 — phase 타이머·권한 요청 effect 중복 실행 방지.
         public var hasStarted = false
         public var questionPrep: QuestionPrep = .preparing
+        /// 진입 요청으로 해소된 카메라·마이크 권한 — 둘 다 허용일 때만 true. 해소 전엔 false(시작 버튼 비활성).
+        public var isMediaPermissionGranted = false
         /// 프리뷰 핸들 — 있으면 backdrop 이 실카메라, 없으면 placeholder.
         public var previewHandle: CameraPreviewHandle?
         /// aligning→ready 이중 게이트 플래그 — 최소 유지 시간 경과.
         public var isAligningHoldElapsed = false
         /// aligning→ready 이중 게이트 플래그 — 프리뷰 해소(성공·실패 무관).
         public var isPreviewResolved = false
-        /// 시작하기 탭 시 권한 미허용이면 띄우는 설정 유도 alert.
+        /// 진입 시 권한이 미허용이면 띄우는 설정 유도 alert.
         @Presents public var alert: AlertState<Action.Alert>?
 
         /// 시작 게이트 판정용 — READY 페이로드 유무만 본다(질문 자체는 코디네이터가 세션에 시드).
@@ -100,6 +103,8 @@ public struct InterviewReadinessFeature {
             case phaseHoldFinished
             /// 질문 준비 폴링 해소 — READY 또는 FAILED (PROCESSING 은 계속 돈다).
             case questionPrepResolved(State.QuestionPrep)
+            /// 진입 권한 요청 해소 — 카메라·마이크 **둘 다** 허용이면 true.
+            case permissionsResolved(Bool)
             /// 프리뷰 해소 — 성공이면 핸들, 실패(권한 거부·장치 없음)면 nil. 실패여도 화면은 진행한다.
             case previewResolved(CameraPreviewHandle?)
         }
@@ -109,7 +114,7 @@ public struct InterviewReadinessFeature {
         public enum Alert: Equatable, Sendable {
             /// 설정으로 이동 — 앱 권한 설정 화면을 연다.
             case openSettings
-            /// 닫기 — alert 만 닫고 화면 유지. 재시도는 시작하기 재탭.
+            /// 닫기 — alert 만 닫고 화면 유지(시작 버튼은 계속 비활성 — 나가려면 뒤로가기).
             case close
         }
 
@@ -118,7 +123,7 @@ public struct InterviewReadinessFeature {
         public enum Delegate: Equatable, Sendable {
             /// 뒤로가기 탭 — 면접 흐름 이탈. 캡처 정지·상위 통보는 코디네이터가 처리한다.
             case backRequested
-            /// 면접 시작하기 탭(권한 허용 확인 후) — 세션 화면 전환은 코디네이터가 처리.
+            /// 면접 시작하기 탭(게이트 삼중 통과) — 세션 화면 전환은 코디네이터가 처리.
             case startRequested
             /// 질문 준비 최종 실패(서버 FAILED) — 실패 화면 전환은 코디네이터가 처리. 재시도 버튼 없음(PRD §3.2).
             case prepFailed
@@ -157,15 +162,8 @@ public struct InterviewReadinessFeature {
 
             case .view(.userTappedStart):
                 guard state.phase == .guide2 else { return .none }
-                // 질문 준비 전엔 버튼이 비활성(뷰) — 여기 도달했다면 레이스뿐이라 조용히 무시.
-                guard state.isQuestionPrepReady else { return .none }
-                // 진입 다이얼로그는 모달이라 여기 도달하면 권한은 전부 결정된 상태 — 동기 status 확인으로 충분.
-                let allGranted = [MediaPermission.camera, .microphone]
-                    .allSatisfy { permissionClient.status($0) == .granted }
-                guard allGranted else {
-                    state.alert = Self.permissionDeniedAlert()
-                    return .none
-                }
+                // 질문 준비 전·권한 미허용이면 버튼이 비활성(뷰) — 여기 도달했다면 레이스뿐이라 조용히 무시.
+                guard state.isQuestionPrepReady, state.isMediaPermissionGranted else { return .none }
                 return .send(.delegate(.startRequested))
 
             case .inner(.phaseHoldFinished):
@@ -174,6 +172,12 @@ public struct InterviewReadinessFeature {
                     return advanceFromAligningIfReady(&state)
                 }
                 return advancePhase(&state)
+
+            case let .inner(.permissionsResolved(isGranted)):
+                state.isMediaPermissionGranted = isGranted
+                // 미허용은 진입 즉시 알린다 — 시작 버튼이 비활성이라 탭으로는 알릴 기회가 없다.
+                if !isGranted { state.alert = Self.permissionDeniedAlert() }
+                return .none
 
             case let .inner(.previewResolved(handle)):
                 state.previewHandle = handle
@@ -198,7 +202,7 @@ public struct InterviewReadinessFeature {
         .ifLet(\.$alert, action: \.alert)
     }
 
-    /// 권한 미허용 시 설정 유도 alert. ⚠️ 문구는 임시 — PRD/PM 확정본 나오면 여기만 교체.
+    /// 권한 미허용 시 설정 유도 alert(진입 시점). ⚠️ 문구는 임시 — PRD/PM 확정본 나오면 여기만 교체.
     static func permissionDeniedAlert() -> AlertState<Action.Alert> {
         AlertState {
             TextState("카메라·마이크 권한이 필요해요")
@@ -215,15 +219,18 @@ public struct InterviewReadinessFeature {
     }
 
     /// 진입 시 사용 시점 요청(PRD §8) — notDetermined 만 시스템 다이얼로그가 뜬다.
-    /// 거부돼 있어도 여기선 알리지 않는다(게이트는 시작하기 탭). 하나가 거부여도 나머지도
-    /// 끝까지 요청한다 — 요청해야 설정 앱에 토글이 노출된다.
-    /// 권한 해소 후 카메라 허용이면 프리뷰를 시작한다 — 거부·실패는 nil 해소로 placeholder 진행.
+    /// 하나가 거부여도 나머지도 끝까지 요청한다 — 요청해야 설정 앱에 토글이 노출된다.
+    /// 요청이 다 끝난 뒤 둘 다 허용인지 해소해 올린다 — 미허용이면 리듀서가 진입 alert 를 띄운다.
+    /// 이어서 카메라 허용이면 프리뷰를 시작한다 — 거부·실패는 nil 해소로 placeholder 진행.
     private func requestPermissionsAndStartPreview() -> Effect<Action> {
         .run { send in
             for permission in [MediaPermission.camera, .microphone]
             where permissionClient.status(permission) == .notDetermined {
                 _ = await permissionClient.request(permission)
             }
+            let allGranted = [MediaPermission.camera, .microphone]
+                .allSatisfy { permissionClient.status($0) == .granted }
+            await send(.inner(.permissionsResolved(allGranted)))
             guard permissionClient.status(.camera) == .granted else {
                 return await send(.inner(.previewResolved(nil)))
             }

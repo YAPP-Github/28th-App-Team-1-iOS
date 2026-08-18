@@ -14,7 +14,7 @@ import Testing
 
 @testable import FeatureInterviewImplementation
 
-// 권한 게이트(진입 시 요청 → 시작하기 탭에서 확인, 미허용이면 설정 유도 alert)와 phase 자동 진행을 고정한다.
+// 권한 게이트(진입 시 요청 → 미허용이면 곧바로 설정 유도 alert + 시작 버튼 비활성)와 phase 자동 진행을 고정한다.
 @MainActor
 struct InterviewReadinessFeatureTests {
     /// 스텁 편의 — 기본값은 전부 허용.
@@ -42,11 +42,12 @@ struct InterviewReadinessFeatureTests {
         return client
     }
 
-    /// guide2(시작 버튼 활성) + 질문 준비 완료 상태 — 시작 탭 게이트 테스트 공통 시작점.
+    /// guide2(시작 버튼 활성) + 권한 허용 + 질문 준비 완료 상태 — 시작 탭 게이트 테스트 공통 시작점.
     private func guide2State() -> InterviewReadinessFeature.State {
         var state = InterviewReadinessFeature.State(sessionId: 1)
         state.phase = .guide2
         state.hasStarted = true
+        state.isMediaPermissionGranted = true
         state.questionPrep = .ready(.fixture)
         return state
     }
@@ -58,7 +59,7 @@ struct InterviewReadinessFeatureTests {
             InterviewReadinessFeature()
         } withDependencies: {
             $0.continuousClock = clock
-            // 거부 상태여도 가이드는 진행 — 알림은 시작하기 탭 시점으로 미룬다. 프리뷰는 nil 해소.
+            // 거부 상태여도 가이드 진행 자체는 막지 않는다(막는 건 시작 버튼). 프리뷰는 nil 해소.
             $0.permissionClient = client(status: { _ in .denied })
             $0.interviewClient = interviewClient()
         }
@@ -141,7 +142,7 @@ struct InterviewReadinessFeatureTests {
         await store.finish()
     }
 
-    @Test("진입 시 미결정 권한은 둘 다 끝까지 요청한다 — 거부돼도 alert 없이 조용히 진행")
+    @Test("진입 시 미결정 권한은 둘 다 끝까지 요청하고, 거부되면 곧바로 설정 유도 alert 를 띄운다")
     func entryRequestsAllNotDetermined() async {
         let clock = TestClock()
         let requested = LockIsolated<[MediaPermission]>([])
@@ -158,13 +159,61 @@ struct InterviewReadinessFeatureTests {
                 }
             )
         }
-        store.exhaustivity = .off   // phase 진행은 위 테스트가 고정 — 여기선 요청·무알림만 본다.
+        store.exhaustivity = .off   // phase 진행은 위 테스트가 고정 — 여기선 요청·진입 알림만 본다.
 
         await store.send(.view(.onAppear))
         await clock.advance(by: .seconds(8))   // 3+2+3 — 타이머 소진
-        await store.finish()
+        await store.skipReceivedActions()
         #expect(requested.value == [.camera, .microphone])
+        #expect(!store.state.isMediaPermissionGranted)   // 시작 버튼은 비활성
+        #expect(store.state.alert == InterviewReadinessFeature.permissionDeniedAlert())
+        await store.finish()
+    }
+
+    @Test("카메라·마이크 중 하나만 미허용이어도 진입 alert 를 띄운다")
+    func entryAlertsWhenSinglePermissionDenied() async {
+        let clock = TestClock()
+        let store = TestStore(initialState: InterviewReadinessFeature.State(sessionId: 1)) {
+            InterviewReadinessFeature()
+        } withDependencies: {
+            $0.continuousClock = clock
+            $0.interviewClient = interviewClient()
+            $0.permissionClient = client(status: { $0 == .microphone ? .denied : .granted })
+            $0.recordingClient.startPreview = { nil }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.view(.onAppear))
+        await store.skipReceivedActions()
+        #expect(!store.state.isMediaPermissionGranted)
+        #expect(store.state.alert == InterviewReadinessFeature.permissionDeniedAlert())
+
+        await clock.advance(by: .seconds(8))   // 잔여 phase 타이머 소진
+        await store.skipReceivedActions()
+        await store.finish()
+    }
+
+    @Test("권한이 모두 허용되면 진입 alert 없이 시작 게이트가 열린다")
+    func entryGrantsOpenStartGate() async {
+        let clock = TestClock()
+        let store = TestStore(initialState: InterviewReadinessFeature.State(sessionId: 1)) {
+            InterviewReadinessFeature()
+        } withDependencies: {
+            $0.continuousClock = clock
+            $0.interviewClient = interviewClient()
+            $0.permissionClient = client()
+            $0.recordingClient.startPreview = { nil }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.view(.onAppear))
+        await store.skipReceivedActions()
+        #expect(store.state.isMediaPermissionGranted)
         #expect(store.state.alert == nil)
+
+        await clock.advance(by: .seconds(8))
+        await store.skipReceivedActions()
+        await store.finish()
     }
 
     @Test("권한이 모두 허용된 상태에서 시작하기를 누르면 세션 시작을 통보한다")
@@ -194,17 +243,15 @@ struct InterviewReadinessFeatureTests {
         await store.finish()
     }
 
-    @Test("권한이 미허용인 상태에서 시작하기를 누르면 설정 유도 alert 를 띄우고 시작하지 않는다")
-    func startTapDeniedShowsAlert() async {
-        let store = TestStore(initialState: guide2State()) {
+    @Test("권한이 미허용이면 시작하기가 통하지 않는다 — 알림은 진입 alert 가 이미 했다")
+    func startBlockedWhilePermissionDenied() async {
+        var state = guide2State()
+        state.isMediaPermissionGranted = false
+        let store = TestStore(initialState: state) {
             InterviewReadinessFeature()
-        } withDependencies: {
-            $0.permissionClient = client(status: { $0 == .camera ? .denied : .granted })
         }
 
-        await store.send(.view(.userTappedStart)) {
-            $0.alert = InterviewReadinessFeature.permissionDeniedAlert()
-        }
+        await store.send(.view(.userTappedStart))   // 상태 무변화·delegate 없음
         await store.finish()
     }
 
@@ -303,7 +350,7 @@ struct InterviewReadinessFeatureTests {
         await store.finish()
     }
 
-    @Test("alert 닫기는 alert 만 닫고 화면에 머무른다 — 재시도는 시작하기 재탭")
+    @Test("alert 닫기는 alert 만 닫고 화면에 머무른다 — 시작 버튼은 계속 비활성")
     func closeFromAlertStays() async {
         var state = guide2State()
         state.alert = InterviewReadinessFeature.permissionDeniedAlert()
