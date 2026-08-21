@@ -95,26 +95,54 @@ public struct HeldSessionStore: Sendable {
     public var load: @Sendable () -> HeldSession?
     public var save: @Sendable (HeldSession) -> Void
     public var clear: @Sendable () -> Void
+    /// **장부가 아직 그 세션일 때만** 지운다 — 지웠으면 true(= 뒤처리 권한이 이 호출에 있다).
+    ///
+    /// 회수 경로(홈 두 갈래·복귀 검증·킬 클린업)는 전부 서버 왕복을 건넌 뒤에 장부를 걷는데, 그 사이
+    /// 다른 액션이 장부를 지우거나(완주·중단) **새 세션을 저장한다**(온보딩 완주 = 이용권이 잡히는 순간).
+    /// `load()` 로 확인한 뒤 `clear()` 를 부르면 그 두 호출 사이가 열려 있어, 하필 거기서 저장된 새 장부를
+    /// 지운다 — 회수 동선이 통째로 사라지는 #130 과 같은 고아를 우리 손으로 만든다. 확인과 삭제가
+    /// **한 연산**이어야 그 틈이 구조적으로 없다. 세그먼트 폐기·홈 재조회도 반환값 뒤에 세운다.
+    public var clearIfHolding: @Sendable (_ sessionId: Int) -> Bool
 
     public init(
         load: @escaping @Sendable () -> HeldSession?,
         save: @escaping @Sendable (HeldSession) -> Void,
-        clear: @escaping @Sendable () -> Void
+        clear: @escaping @Sendable () -> Void,
+        clearIfHolding: @escaping @Sendable (_ sessionId: Int) -> Bool
     ) {
         self.load = load
         self.save = save
         self.clear = clear
+        self.clearIfHolding = clearIfHolding
     }
 }
 
 public extension HeldSessionStore {
+    /// **판정을 시작한 그 세션의 보관값일 때만** 돌려준다 — 아니면 nil.
+    ///
+    /// 서버 왕복을 건넌 뒤 장부의 값(`hasStarted` 등)으로 **라우팅할 때** 쓴다: 그 사이 다른 세션이
+    /// 저장됐으면 B 의 값으로 A 를 라우팅하게 된다. 어긋나면 그 effect 는 할 일이 없으니 멈춘다
+    /// (장부를 바꾼 쪽이 자기 후속을 이미 들고 있다). **삭제는 이걸로 가드하지 않는다** —
+    /// 확인과 삭제 사이가 열려 있어서다. 그 자리는 `clearIfHolding` 한 연산이 맡는다.
+    func load(matching sessionId: Int) -> HeldSession? {
+        guard let held = load(), held.sessionId == sessionId else { return nil }
+        return held
+    }
+
     /// 인메모리 구현 — Preview·Example·Feature 테스트 용. UserDefaults 를 건드리지 않는다.
     static func inMemory(initial: HeldSession? = nil) -> HeldSessionStore {
         let held = LockIsolated<HeldSession?>(initial)
         return HeldSessionStore(
             load: { held.value },
             save: { session in held.withValue { $0 = session } },
-            clear: { held.withValue { $0 = nil } }
+            clear: { held.withValue { $0 = nil } },
+            clearIfHolding: { sessionId in
+                held.withValue { value in
+                    guard value?.sessionId == sessionId else { return false }
+                    value = nil
+                    return true
+                }
+            }
         )
     }
 }
@@ -125,7 +153,8 @@ extension HeldSessionStore: TestDependencyKey {
         HeldSessionStore(
             load: unimplemented("HeldSessionStore.load", placeholder: nil),
             save: unimplemented("HeldSessionStore.save"),
-            clear: unimplemented("HeldSessionStore.clear")
+            clear: unimplemented("HeldSessionStore.clear"),
+            clearIfHolding: unimplemented("HeldSessionStore.clearIfHolding", placeholder: false)
         )
     }
 
