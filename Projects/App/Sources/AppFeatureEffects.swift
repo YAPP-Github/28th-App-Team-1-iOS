@@ -79,6 +79,9 @@ extension AppFeature {
     /// [이어서 진행] — 서버에 살아 있는 세션으로 복귀. ① 재개 가능 조회 ② 재개 확정 ③ 면접 화면.
     /// ①·② 가 «끝난 세션» 을 내면 재개 재료가 아니므로 보관값을 지우고 홈을 다시 태워
     /// 변형을 갱신한다(진행 중 → 처음·소진).
+    ///
+    /// **시작 전 세션은 ② 를 건너뛰고 준비 화면으로 되돌린다**(2026-08-21) — 아직 질문이 오가지
+    /// 않아 확정할 «다음 턴» 이 없고, 사용자는 카메라 확인·가이드를 아직 보지 않았다.
     func resumeHeldSession(_ sessionId: Int) -> Effect<Action> {
         .run { [heldSessionStore, interviewClient, recordingClient] send in
             do {
@@ -93,6 +96,10 @@ extension AppFeature {
                     // 이탈 경로다. purgeRecordings 는 원장이 그 세션을 아직 소유해 no-op 이라 discard 가 맞다(멱등·비던짐).
                     await recordingClient.discardRecording()
                     return await send(.home(.view(.onAppear)))
+                }
+                // 시작 전 세션 — 살아 있다는 것만 확인하고 준비 화면으로 되돌린다.
+                if heldSessionStore.load()?.hasStarted == false {
+                    return await send(.interviewReadinessResumeResolved(sessionId: sessionId))
                 }
                 // 재개가 hold 무효화와 레이스면 409 가 아니라 200 + sessionEnded 로 온다(서버 계약).
                 // 질문이 비어 오는 것도 «끝난 세션» 과 같게 다룬다 — 이어서 물을 게 없으면 재개가 아니다.

@@ -44,6 +44,28 @@ struct HeldSessionTests {
         #expect(held.sessionId == 7)
         #expect(held.processToken == nil)
         #expect(!held.isResumableInCurrentProcess)   // 진행분 있음 + 토큰 없음 = 죽은 프로세스 취급
+        // 옛 장부는 [시작하기] 탭에서만 심었다 — 없는 필드를 false 로 읽으면 업그레이드 순간
+        // 진행 중이던 면접의 카드가 사라지고 킬 클린업이 그 세션을 닫아 버린다.
+        #expect(held.hasStarted)
+    }
+
+    // MARK: - 시작 전 장부 (2026-08-21 제품 결정 — 이용권이 잡힌 세션은 카드가 된다)
+
+    // 표식을 찍지 않는 게 핵심이다 — 찍으면 앱을 껐다 켠 순간 죽은 프로세스 값이 되어 킬 클린업이
+    // 세션을 닫고, 잡힌 이용권이 회수 동선 없이 사라진다.
+    @Test("시작 전 장부는 표식이 없어 프로세스를 넘어 살아남는다 — 카드도 남는다")
+    func unstartedSessionSurvivesRelaunch() {
+        let held = HeldSession(sessionId: 1, recordedSeconds: 0, hasStarted: false, processToken: nil)
+        #expect(held.isResumableInCurrentProcess)
+        #expect(!held.hasStarted)   // 카드는 뜨되 [이어서 진행] 은 준비 화면으로 되돌아간다
+    }
+
+    @Test("hasStarted 는 저장·복원을 왕복한다 — false 가 true 로 되살아나면 카드가 유령으로 뜬다")
+    func hasStartedSurvivesRoundTrip() throws {
+        let held = HeldSession(sessionId: 3, recordedSeconds: 0, hasStarted: false, processToken: nil)
+        let decoded = try JSONDecoder().decode(HeldSession.self, from: JSONEncoder().encode(held))
+        #expect(decoded == held)
+        #expect(!decoded.hasStarted)
     }
 
     @Test("프리뷰 보관값은 재개 가능하다 — 홈 프리뷰의 «진행 중» 변형이 필터에 걸려 사라지면 안 된다")
